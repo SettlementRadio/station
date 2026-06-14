@@ -45,6 +45,24 @@ assets/         Jingles / beds (gitignored)
 .env.example    Template with empty keys (committed)
 ```
 
+## Provider seams (T1)
+
+All vendor calls go through two modules — nothing else imports a vendor SDK:
+
+- [`src/providers/llm.py`](src/providers/llm.py) — `generate(prompt, *, system=None,
+  model="sonnet", cached_context=None, max_tokens=4000)`. `model` is a logical tier
+  (`haiku` | `sonnet` | `opus`) mapped to a real Claude ID inside the module;
+  `cached_context` is sent as a prompt-cache breakpoint.
+- [`src/providers/tts.py`](src/providers/tts.py) — `synthesize(text, *, voice, emotion=None,
+  out_path)`. `voice` is a logical name (e.g. `vell_night`) mapped to a vendor voice id;
+  the backend is selected by `TTS_PROVIDER` (`elevenlabs` now; `kokoro`/`orpheus` stubbed).
+
+Both read their keys from `.env`. Quick check from the repo root (needs a populated `.env`):
+
+```bash
+.venv/bin/python -c "from src.providers import llm; print(llm.generate('say hello'))"
+```
+
 ## Run
 
 Commands land here as the phase tasks are completed (see `docs/PHASE_A_TASKS.md`).

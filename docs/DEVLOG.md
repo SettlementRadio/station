@@ -33,6 +33,77 @@ A typical *build* session will be short, e.g.:
 
 ---
 
+## 2026-06-14 — Phase A — T1 provider abstraction (the two vendor seams)
+
+**Focus:** built Seam #1 — the only two modules that touch a vendor SDK — so every later
+task talks in logical tiers/voices and never imports `anthropic`/`elevenlabs` directly.
+
+**Decisions (the durable ones):**
+- **Tiers map to real IDs inside `llm.py`, nowhere else.** `haiku`→`claude-haiku-4-5-20251001`,
+  `sonnet`→`claude-sonnet-4-6` (default), `opus`→`claude-opus-4-8`. Unknown tier raises early.
+- **`cached_context` is a real cache breakpoint from day one.** It's placed *first* in the
+  system prompt with `cache_control: ephemeral`, and the small per-call `system` text follows
+  it — caching is a prefix match, so the stable canon must precede the volatile part. (Phase A
+  prefixes may be below the model's min cacheable size and silently not cache; the path is still
+  in use and grows into Phase B free.)
+- **`generate` is plain text-in/text-out — no thinking.** Simplest general-purpose seam and
+  keeps text cost trivial; a thinking knob can be added later without changing callers.
+- **TTS backend chosen by `TTS_PROVIDER`; `kokoro`/`orpheus` raise a clear `NotImplementedError`
+  stub.** Logical voice `vell_night` → ElevenLabs "Adam" (`pNInz6obpgDQGcFmaJgB`), the only place
+  a vendor voice id appears. `emotion` is accepted but reserved (no vendor knob wired yet).
+
+**Changed:**
+- New: `src/providers/llm.py`, `src/providers/tts.py`, `src/__init__.py`,
+  `src/providers/__init__.py`. Updated `README.md` (provider-seams section).
+- Created a throwaway `src/_scratch_t1.py`, ran it, deleted it (+ its `segments/_test.mp3`).
+
+**Why:** isolating both vendors behind one function each is what later lets us swap models,
+swap TTS to self-hosted, and share one code path between overnight batch and 60-sec near-live —
+without touching anything upstream.
+
+**Verification:** `python -m src._scratch_t1` made a live Claude call (returned a greeting) and
+a live ElevenLabs call (`segments/_test.mp3`, 24,703 bytes, confirmed real MPEG layer-III audio
+via `file`). Both keys read from `.env`. Scratch + artifact deleted afterward.
+
+**Next:** T2 — the `Segment` dataclass (Seam #2), so segment length/lead-time become dials.
+Commit: (uncommitted) · Clips: (none)
+
+---
+
+## 2026-06-14 — Phase A — T0 repo scaffold (skeleton + venv)
+
+**Focus:** stood up the reproducible project skeleton so the build has somewhere to live —
+no pipeline logic yet, just the tree, ignores, deps, and the env template.
+
+**Decisions (the durable ones):**
+- **`.gitkeep` to version the empty dirs.** `segments/` and `assets/` are gitignored, but the
+  dirs ship in git via a `.gitkeep` each (ignore `segments/*` but un-ignore the keep file), so a
+  fresh clone has the tree the pipeline expects without committing generated audio.
+- **`.env.example` holds every Phase A setting, not just T1's.** Added `ICECAST_SOURCE_PASSWORD`
+  (T5) now with a working local default (`hackme`) so the human fills keys once. Vendor voice IDs
+  stay **out** of env — the `vell_night` → real-id map lives in the `tts.py` registry per Seam #1.
+- **Loose lower-bound pins** in `requirements.txt` (`anthropic>=0.40`, `elevenlabs>=1.0`,
+  `python-dotenv`, `requests`) — simplest reproducible install for a solo Phase A.
+
+**Changed:**
+- Created the tree: `src/`, `src/providers/`, `config/`, `segments/` + `assets/` (gitignored,
+  with `.gitkeep`).
+- New files: `.gitignore`, `.env.example`, `requirements.txt`, `README.md` (setup + layout).
+- Created `.venv/` (Python 3.13.5, satisfies 3.11+) and installed all deps.
+
+**Why:** a clean, clone-and-run skeleton up front means every later task (T1→T6) just drops a file
+into a known place; the `.env.example`-completeness + `.gitkeep` choices both exist to make
+"fill keys once, then it works from a fresh clone" true.
+
+**Verification:** `pip install -r requirements.txt` succeeds in the fresh venv; all four deps
+import; `git check-ignore` confirms `.env` and `segments/*.mp3`/`assets/*.mp3` are ignored while
+`.gitkeep` stays tracked. Tree matches CLAUDE.md → "Repo conventions".
+
+**Next:** T1 — the provider abstraction (`llm.py` + `tts.py`), pending API keys in `.env`.
+Commit: (uncommitted) · Clips: (none)
+
+---
+
 ## 2026-06-13 — Phase 0 (planning) — Project shape, name, and the full doc pack settled
 
 **Focus:** turned a broad idea into a decided plan — architecture, funding angle, name, and the
