@@ -1,0 +1,51 @@
+# Settlement Radio
+
+An AI-powered fictional sci-fi radio station broadcasting 600 years ahead of the present.
+Every word and world decision is produced by Claude; the entire system is built by Claude Code.
+Voice synthesis (TTS) is the one external component.
+
+See [`CLAUDE.md`](CLAUDE.md) for the project constitution and
+[`docs/`](docs/) for the architecture, canon, and phase tasks.
+
+## Current phase: A — "Proof of Loop"
+
+Produce one ~5-minute audio segment (a single DJ, generated from the canon and voiced by TTS) and
+play it on a local loop in the browser.
+
+## Setup
+
+Requires **Python 3.11+** and **macOS** (Apple Silicon; system tools via Homebrew).
+
+```bash
+# 1. Create and activate a virtual environment
+python3 -m venv .venv
+source .venv/bin/activate
+
+# 2. Install Python dependencies
+pip install -r requirements.txt
+
+# 3. Configure secrets
+cp .env.example .env
+#   then edit .env and fill in ANTHROPIC_API_KEY and ELEVENLABS_API_KEY
+```
+
+System tools (`liquidsoap`, `icecast`, `ffmpeg`) are installed later in T5 — see
+[`docs/PHASE_A_TASKS.md`](docs/PHASE_A_TASKS.md).
+
+## Project layout
+
+```
+src/            Pipeline code
+  providers/    The two vendor seams (llm.py, tts.py)
+config/         Liquidsoap + Icecast configs
+docs/           Architecture, canon, phase tasks
+segments/       Generated audio (gitignored)
+assets/         Jingles / beds (gitignored)
+.env            Secrets (gitignored)
+.env.example    Template with empty keys (committed)
+```
+
+## Run
+
+Commands land here as the phase tasks are completed (see `docs/PHASE_A_TASKS.md`).
+The Phase A goal is `make play` → a fresh segment generated and served on a local stream.

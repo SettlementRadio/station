@@ -1,0 +1,16 @@
+# Secrets
+.env
+
+# Generated audio & assets (kept as empty dirs via .gitkeep)
+segments/*
+!segments/.gitkeep
+assets/*
+!assets/.gitkeep
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+.pytest_cache/
