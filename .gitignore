@@ -14,3 +14,6 @@ __pycache__/
 venv/
 *.egg-info/
 .pytest_cache/
+
+# Playout runtime (pids, logs)
+.run/

@@ -18,6 +18,7 @@ Two things this module is careful about:
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from datetime import datetime
 
 from .providers import llm
@@ -104,13 +105,20 @@ def safety_check(text: str) -> str:
     return text
 
 
-def write_segment_script(canon_text: str, now_iso: str) -> str:
+def write_segment_script(
+    canon_text: str,
+    now_iso: str,
+    *,
+    on_token: Callable[[str], None] | None = None,
+) -> str:
     """Ask Claude to write Vell's ~5-minute night-shift segment.
 
     Args:
         canon_text: the full contents of docs/CANON.md (the world bible).
         now_iso: the current real time as an ISO 8601 string; the in-world
             clock (real + 600 years) is derived from it for the time check.
+        on_token: optional progress callback, forwarded to `llm.generate`, so a
+            caller can show that the ~25s generation is alive (not frozen).
 
     Returns:
         The spoken script, run through the (placeholder) safety gate.
@@ -122,6 +130,7 @@ def write_segment_script(canon_text: str, now_iso: str) -> str:
         model="sonnet",          # CLAUDE.md: the default writing brain
         cached_context=canon_text,  # cost lever: canon as a cache breakpoint
         max_tokens=2000,
+        on_token=on_token,
     )
     return safety_check(script.strip())
 

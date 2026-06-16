@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Settlement Radio</title>
+  <style>
+    :root { color-scheme: dark; }
+    body {
+      background: radial-gradient(1200px 600px at 50% -10%, #16203a 0%, #0b0e14 60%);
+      color: #e6e6e6; margin: 0; min-height: 100vh;
+      font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .card { text-align: center; max-width: 34rem; padding: 2.5rem 1.5rem; }
+    h1 { font-weight: 600; letter-spacing: 0.18em; margin: 0 0 .35rem; font-size: 1.9rem; }
+    .tag { color: #8aa0b4; margin: 0 0 1.75rem; font-size: .95rem; letter-spacing: .02em; }
+    audio { width: 100%; margin: .5rem 0 0; }
+    .hint { color: #6c7a89; font-size: .8rem; margin-top: .75rem; }
+    .hint a { color: #8aa0b4; }
+    .disclosure {
+      color: #94a3b3; font-size: .8rem; line-height: 1.5; margin-top: 2rem;
+      border-top: 1px solid #1c2740; padding-top: 1.25rem;
+    }
+  </style>
+</head>
+<body>
+  <main class="card">
+    <h1>SETTLEMENT&nbsp;RADIO</h1>
+    <p class="tag">Night shift · broadcasting from 600 years ahead</p>
+
+    <audio controls autoplay src="/settlement.mp3">
+      Your browser can’t play this stream inline.
+    </audio>
+    <p class="hint">
+      Not playing? Open <a href="/settlement.mp3">/settlement.mp3</a> in a media
+      player (e.g. VLC), or run <code>ffplay http://localhost:8000/settlement.mp3</code>.
+    </p>
+
+    <!-- AI-disclosure (CLAUDE.md hard rule). Placeholder copy for Phase A;
+         the spoken disclosure + final wording arrive with public launch. -->
+    <p class="disclosure">
+      ⚠ This broadcast is <strong>entirely AI-generated</strong> — every word,
+      voice, and world decision is produced by Claude. A fictional science-fiction
+      tribute; not real events, people, or places.
+    </p>
+  </main>
+</body>
+</html>

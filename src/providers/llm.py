@@ -8,6 +8,8 @@ one file — nothing upstream changes. See docs/ARCHITECTURE.md "Seam #1".
 
 from __future__ import annotations
 
+from collections.abc import Callable
+
 import anthropic
 from dotenv import load_dotenv
 
@@ -39,6 +41,8 @@ def generate(
     model: str = "sonnet",
     cached_context: str | None = None,
     max_tokens: int = 4000,
+    on_token: Callable[[str], None] | None = None,
+    timeout: float = 120.0,
 ) -> str:
     """Return Claude's text output for `prompt`.
 
@@ -49,6 +53,16 @@ def generate(
         cached_context: large, stable text (e.g. the canon) sent as a
             prompt-cache breakpoint, so repeat calls pay ~0.1x on that input.
         max_tokens: output cap.
+        on_token: optional callback invoked with each text delta as it streams.
+            Lets callers show progress so a multi-second generation doesn't look
+            frozen; `None` is silent.
+        timeout: per-request timeout in seconds. A genuine network stall raises
+            promptly instead of blocking indefinitely.
+
+    The call is **streamed** so the first bytes arrive immediately (a 5-minute
+    script takes ~25s to generate; a non-streaming call would block silently at
+    the socket the whole time and look hung). The full text is still returned as
+    one string — streaming is an internal implementation detail of the seam.
 
     The Phase A cost lever lives here: `cached_context` is placed first in the
     system prompt with a cache_control breakpoint, and the smaller `system`
@@ -86,5 +100,11 @@ def generate(
     if system_blocks:
         kwargs["system"] = system_blocks
 
-    response = _get_client().messages.create(**kwargs)
-    return "".join(block.text for block in response.content if block.type == "text")
+    client = _get_client().with_options(timeout=timeout)
+    parts: list[str] = []
+    with client.messages.stream(**kwargs) as stream:
+        for text in stream.text_stream:
+            parts.append(text)
+            if on_token is not None:
+                on_token(text)
+    return "".join(parts)

@@ -33,6 +33,95 @@ A typical *build* session will be short, e.g.:
 
 ---
 
+## 2026-06-16 — Phase A — T6 one-command loop + browser player (+ streaming fix)
+
+**Focus:** made the whole Phase A loop a single command (`make play`), gave it a real
+browser play button, and fixed the script step's "looks-frozen" UX. This is the **Phase A
+definition of done** — verified by hearing a freshly generated Vell segment in the browser.
+
+**Decisions (the durable ones):**
+- **`make serve` always runs `stop` first.** Backgrounded Icecast instances kept surviving
+  and squatting port 8000 ("Could not create listener socket"). Making `serve` depend on
+  `stop` (which kills by PID file *and* by process pattern) means a stale server can never
+  block a fresh start — the recurring orphan problem is structurally gone.
+- **Processes background via `nohup` into `.run/` (gitignored); Liquidsoap runs through
+  `opam exec`.** No more "leave a terminal open per service" and no need to `eval "$(opam
+  env)"` first — `make` finds Liquidsoap itself. PIDs + logs live in `.run/`.
+- **A minimal static player page (`config/web/index.html`) served by Icecast at `/`.**
+  Browsers won't render a play button for a *bare* MP3 mount (Chrome/Firefox showed "empty
+  page" on `/settlement.mp3`), so the page wraps the mount in `<audio controls>`. It's also
+  the home for the **AI-generation disclosure** (a CLAUDE.md hard rule) — *not* the
+  out-of-scope "web player UI", just one static file.
+- **`llm.generate` now streams** (with an optional progress callback + a 120s timeout). The
+  non-streaming call blocked silently at the socket for the full ~25s generation, looked
+  hung, and kept getting Ctrl-C'd. Streaming returns the same string but surfaces progress
+  (`produce.py` prints a dot per chunk) and makes a real network stall fail fast.
+
+**Changed:**
+- New: `Makefile` (`generate`/`serve`/`play`/`stop`/`status`), `config/web/index.html`.
+- Updated: `config/icecast.xml` (webroot → `config/web`, `/` → the player), `src/providers/llm.py`
+  (streaming + `on_token` + `timeout`), `src/writer.py` + `src/produce.py` (thread the progress
+  callback), `README.md` (T6 run section), `.gitignore` (`.run/`).
+
+**Why:** one command + clean start/stop is what makes the loop demoable and stops the
+orphan-process foot-guns; the player page is the difference between "serves a stream URL" and
+"a human opens it and hears Vell"; streaming is what stops a 25-second call from looking broken.
+
+**Verification:** `make play` generated `segments/vell-20260616T225823.mp3` and served it —
+`http://localhost:8000/` shows the player, the mount returns `200 audio/mpeg`, and Liquidsoap's
+`libmad` decoded the **new** segment (confirmed in `.run/liquidsoap.log`). Heard end-to-end in
+the browser. **Known external blocker:** ElevenLabs **free-tier quota** caps fresh renders at
+~2 full 5-min segments/month (~4.2k credits each); once exhausted, `make play` fails at the TTS
+step with `quota_exceeded` (401) until the monthly reset — the pipeline itself is unchanged and
+proven. (Recorded to project memory.)
+
+**Next:** commit the T5 + T6 + streaming work (on a branch); optionally T7 (`make drop`, a ~60s
+segment) — which also fits within leftover ElevenLabs credits. Otherwise Phase A is done.
+Commit: (uncommitted) · Clips: (none)
+
+---
+
+## 2026-06-16 — Phase A — T5 playout (Layers 5–6): loop on a local stream
+
+**Focus:** stood up local playout — Liquidsoap loops the newest segment to a local Icecast
+mount with a never-dead fallback, so the stream is always live.
+
+**Decisions (the durable ones):**
+- **Homebrew no longer ships `liquidsoap`; build it from source via opam — *with* the MP3
+  plugins.** This was the session's real friction. The task assumed `brew install liquidsoap`,
+  but the formula is gone and upstream ships only Linux `.deb`s. Installed via `opam`, and
+  critically had to add **`lame` (MP3 encode)** and **`mad` (MP3 decode)** — the first build
+  had neither, so `%mp3` was "unsupported format" and it couldn't even read the segments. Also
+  needed `CPATH`/`LIBRARY_PATH` → Homebrew so the C stubs find headers on Apple Silicon. All of
+  this is now in the README so the build is reproducible.
+- **`radio.liq` re-picks the newest file on every loop** (`request.dynamic`), so a freshly
+  generated segment is adopted with no restart. Filenames sort by time → "last in a sorted
+  listing wins."
+- **Never-dead fallback:** `assets/bed.mp3` if present, else a quiet sine tone, via
+  `fallback(track_sensitive=false, …)` + `mksafe` — Icecast drops a source-less mount, so the
+  stream must never be silent.
+- **Icecast is local-only:** bound to `127.0.0.1:8000`, source password `hackme` matching
+  `.env` / `ICECAST_SOURCE_PASSWORD`. Not hardened for public — that's Phase C.
+
+**Changed:**
+- New: `config/icecast.xml`, `config/radio.liq`. Updated `README.md` (Playout/install section).
+- System: `brew install icecast ffmpeg coreutils curl lame mad`; `opam` + `opam install
+  liquidsoap lame mad` (Liquidsoap 2.4.4).
+
+**Why:** the "newest file wins + always-on fallback" pair is the minimal seed of the Phase-5
+scheduler (buffer depth as a parameter) without building a scheduler; pinning down the opam +
+lame/mad reality now means future machines reproduce the build instead of rediscovering it.
+
+**Verification:** `liquidsoap --check config/radio.liq` passes clean; starting Icecast +
+Liquidsoap serves `http://localhost:8000/settlement.mp3` (`200 audio/mpeg`), and the log shows
+`libmad` decoding the real Vell segment (not the fallback tone). Several orphaned test-Icecast
+processes were cleaned up afterward.
+
+**Next:** T6 — one command (`make play`) + a browser the human can actually press play in.
+Commit: (uncommitted) · Clips: (none)
+
+---
+
 ## 2026-06-16 — Phase A — T4 render to audio (Layer 4)
 
 **Focus:** wired the Phase A pipeline end to end — script → TTS → a populated `Segment` with a

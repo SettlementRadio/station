@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Settlement Radio — local-only Icecast config (Phase A, T5).
+
+  This streams ON YOUR MACHINE ONLY. It is intentionally minimal and uses a
+  documented default password so the loop "just works" for a single listener in
+  a browser. Do NOT expose this to the public internet as-is (Phase C hardens
+  distribution).
+
+  The <source-password> below MUST match ICECAST_SOURCE_PASSWORD in .env — that
+  is the password Liquidsoap (config/radio.liq) uses to push the stream in.
+  Both default to "hackme"; change them together if you change either.
+
+  Listen at:  http://localhost:8000/         (Icecast status page)
+  The stream:  http://localhost:8000/settlement.mp3   (mount in radio.liq)
+-->
+<icecast>
+    <location>Settlement Radio (local)</location>
+    <admin>admin@localhost</admin>
+
+    <limits>
+        <clients>20</clients>
+        <sources>2</sources>
+        <queue-size>524288</queue-size>
+        <client-timeout>30</client-timeout>
+        <header-timeout>15</header-timeout>
+        <source-timeout>10</source-timeout>
+        <burst-on-connect>1</burst-on-connect>
+        <burst-size>65535</burst-size>
+    </limits>
+
+    <authentication>
+        <!-- Liquidsoap logs in as user 'source' with this password.
+             Keep in sync with ICECAST_SOURCE_PASSWORD in .env. -->
+        <source-password>hackme</source-password>
+        <relay-password>hackme</relay-password>
+        <!-- Admin web UI at http://localhost:8000/admin/ -->
+        <admin-user>admin</admin-user>
+        <admin-password>hackme</admin-password>
+    </authentication>
+
+    <hostname>localhost</hostname>
+
+    <listen-socket>
+        <port>8000</port>
+        <bind-address>127.0.0.1</bind-address>
+    </listen-socket>
+
+    <!-- webroot is this repo's config/web (relative to the repo root, where the
+         Makefile runs Icecast from) so the bundled player page is served. A bare
+         Icecast MP3 mount won't render a play button in Chrome/Firefox; the
+         player at / wraps it in an <audio> element (and carries the AI-disclosure
+         notice). adminroot + logdir reuse Homebrew's dirs (Apple Silicon prefix
+         /opt/homebrew). -->
+    <paths>
+        <logdir>/opt/homebrew/var/log/icecast</logdir>
+        <webroot>config/web</webroot>
+        <adminroot>/opt/homebrew/share/icecast/admin</adminroot>
+        <!-- Open http://localhost:8000/ → the player page. -->
+        <alias source="/" destination="/index.html"/>
+    </paths>
+
+    <logging>
+        <accesslog>access.log</accesslog>
+        <errorlog>error.log</errorlog>
+        <loglevel>3</loglevel> <!-- 4 = debug, 3 = info, 2 = warn, 1 = error -->
+        <logsize>10000</logsize>
+    </logging>
+
+    <fileserve>1</fileserve>
+</icecast>

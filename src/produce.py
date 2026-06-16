@@ -50,7 +50,16 @@ def make_segment(
         A populated `Segment` with `script` and `audio_path` set.
     """
     canon_text = _CANON_PATH.read_text()
-    script = write_segment_script(canon_text, now_iso)
+
+    # The script is a ~25s streamed generation; print a dot per chunk so the run
+    # visibly progresses instead of looking frozen at a silent socket.
+    print("Writing Vell's script (streaming, ~25s)…", end="", flush=True)
+
+    def _progress(_delta: str) -> None:
+        print(".", end="", flush=True)
+
+    script = write_segment_script(canon_text, now_iso, on_token=_progress)
+    print(" done.", flush=True)
 
     # A unique, sortable id from the real timestamp, so Liquidsoap can pick the
     # newest file and ids never collide across runs.

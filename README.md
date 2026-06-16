@@ -29,8 +29,8 @@ cp .env.example .env
 #   then edit .env and fill in ANTHROPIC_API_KEY and ELEVENLABS_API_KEY
 ```
 
-System tools (`liquidsoap`, `icecast`, `ffmpeg`) are installed later in T5 — see
-[`docs/PHASE_A_TASKS.md`](docs/PHASE_A_TASKS.md).
+System tools for playout (`icecast`, `ffmpeg`, `liquidsoap`) — see
+[Playout (T5)](#playout-t5) below.
 
 ## Project layout
 
@@ -89,7 +89,112 @@ near-live drop. Generate a fresh ~5-min segment for the current time (needs a po
 .venv/bin/python -m src.produce
 ```
 
-## Run
+## Playout (T5)
 
-Commands land here as the phase tasks are completed (see `docs/PHASE_A_TASKS.md`).
-The Phase A goal is `make play` → a fresh segment generated and served on a local stream.
+Loop the generated segment on a **local** Icecast stream that never goes silent.
+
+### Install the system tools
+
+`icecast` and `ffmpeg` come from Homebrew. Liquidsoap **no longer has a Homebrew
+formula** (and upstream ships only Linux packages), so on macOS it installs via
+**opam**, the OCaml package manager, and must be built from source with the MP3
+codec plugins enabled — Liquidsoap's MP3 support is optional and pulled in via
+two extra opam packages: `lame` (MP3 **encode**, for the Icecast output) and
+`mad` (MP3 **decode**, to read the segments `produce.py` writes). Build them in
+the same `opam install` so Liquidsoap is compiled with both.
+
+```bash
+# 1. Stream server + audio plumbing, and the MP3 system libraries the codec
+#    plugins link against (lame = encoder, mad = decoder). coreutils + curl are
+#    Liquidsoap's other system deps.
+brew install icecast ffmpeg coreutils curl lame mad
+
+# 2. opam (OCaml package manager), then initialise it.
+brew install opam
+opam init -y && eval "$(opam env)"
+
+# 3. Build Liquidsoap WITH the MP3 plugins. CPATH/LIBRARY_PATH point the C stubs
+#    at Homebrew's headers/libs (not on clang's default Apple-Silicon search
+#    path). This compiles a sizable OCaml tree — allow ~30–60 min on first run.
+export CPATH="/opt/homebrew/include"
+export LIBRARY_PATH="/opt/homebrew/lib"
+opam install -y --assume-depexts liquidsoap lame mad
+```
+
+`liquidsoap` lives in opam's switch, so each new shell needs `eval "$(opam env)"`
+on PATH first (opam's `opam init` shell hook does this automatically for new
+terminals). Then sanity-check the playout script against your build — it should
+print nothing and exit 0:
+
+```bash
+liquidsoap --check config/radio.liq
+```
+
+### Configs
+
+- [`config/icecast.xml`](config/icecast.xml) — local-only Icecast on
+  `http://localhost:8000`. Reuses Homebrew's web/admin/log dirs so the status
+  page renders with no extra setup. The `<source-password>` must match
+  `ICECAST_SOURCE_PASSWORD` in `.env` (both default to `hackme`).
+- [`config/radio.liq`](config/radio.liq) — Liquidsoap plays the **newest** file
+  in [`segments/`](segments/) on a loop, re-scanning each loop so a freshly
+  generated segment is picked up without a restart. A **never-dead fallback**
+  (a bundled `assets/bed.mp3` if you drop one in, else a quiet sine tone) keeps
+  the mount live when no segment exists. Output is the `settlement.mp3` mount.
+
+### Run it
+
+Generate a segment first (T4), then, **from the repo root**, in two terminals:
+
+```bash
+# Terminal 1 — start the stream server
+icecast -c config/icecast.xml
+
+# Terminal 2 — start playout (reads ICECAST_SOURCE_PASSWORD from the env if set)
+liquidsoap config/radio.liq
+```
+
+Then open it in a browser:
+
+```
+http://localhost:8000/                     # player page (play button + disclosure)
+http://localhost:8000/settlement.mp3       # the raw audio stream
+```
+
+> The bundled player page lives at [`config/web/index.html`](config/web/index.html)
+> and is served by Icecast at `/`. Browsers won't render a play button for a bare
+> MP3 mount, so open `/` (the player), not `/settlement.mp3` directly. The page
+> also carries the AI-generation disclosure (a CLAUDE.md hard rule).
+
+But you normally won't run those by hand — use the `make` workflow below.
+
+## Run (T6)
+
+One command does the whole Phase A loop. From the repo root:
+
+```bash
+make play       # generate a fresh segment for NOW + serve it, then print the URL
+```
+
+Then open **http://localhost:8000/** and press play — you'll hear Vell deliver a
+freshly generated night-shift segment with a correct (in-world) time check.
+
+Individual targets:
+
+```bash
+make generate   # write a fresh segment for the current time (Claude → TTS)
+make serve      # start Icecast + Liquidsoap; loops the newest segment
+make stop       # stop both cleanly (no orphan processes / port-8000 squatters)
+make status     # show what's running and the mount's HTTP state
+```
+
+Notes:
+- `make serve` always stops any running instance first, so a stale Icecast can
+  never hold port 8000 — the recurring "Could not create listener socket"
+  problem is handled.
+- `make generate` / `make play` make a live Anthropic + ElevenLabs call, so they
+  need a populated `.env`. `make serve` makes no API calls.
+- Processes run in the background; PIDs and logs are under `.run/` (gitignored).
+  Liquidsoap runs via `opam exec`, so `make` finds it without `eval "$(opam env)"`.
+
+**Phase A definition of done:** `make play` → open the URL → hear Vell. ✅
