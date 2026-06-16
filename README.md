@@ -76,6 +76,19 @@ later. Print a fresh segment for the current time (needs a populated `.env`):
 .venv/bin/python -m src.writer
 ```
 
+## Render to audio (T4)
+
+[`src/produce.py`](src/produce.py) — `make_segment(now_iso, *, length_target_sec=300)` runs the
+Phase A pipeline: write the script (`write_segment_script`), synthesize it via the TTS seam with
+voice `vell_night`, write the audio into [`segments/`](segments/), and return a populated
+[`Segment`](src/segment.py) (`format="talk"`, `audio_path` set, `disclosure=True`). The length is
+a dial with a default, not a hardcoded constant — pass a smaller `length_target_sec` later for a
+near-live drop. Generate a fresh ~5-min segment for the current time (needs a populated `.env`):
+
+```bash
+.venv/bin/python -m src.produce
+```
+
 ## Run
 
 Commands land here as the phase tasks are completed (see `docs/PHASE_A_TASKS.md`).

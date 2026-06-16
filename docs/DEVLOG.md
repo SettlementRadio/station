@@ -33,6 +33,73 @@ A typical *build* session will be short, e.g.:
 
 ---
 
+## 2026-06-16 — Phase A — T4 render to audio (Layer 4)
+
+**Focus:** wired the Phase A pipeline end to end — script → TTS → a populated `Segment` with a
+playable audio file on disk.
+
+**Decisions (the durable ones):**
+- **`length_target_sec` is a parameter with a default, not a hardcoded `300`.** `make_segment`
+  defaults to ~5 min but takes the dial as a keyword arg, so the T7 60-sec drop is a different
+  argument, not a rewrite — honouring the Segment seam.
+- **Timestamped segment ids (`vell-YYYYMMDDThhmmss`).** Sortable so Liquidsoap's "newest file
+  wins" (T5) is trivial, and ids never collide across runs.
+- **Paths resolved from the module, not the cwd.** Canon read from `docs/CANON.md` and audio
+  written under `segments/` via `__file__`-relative paths, so `python -m src.produce` works from
+  anywhere. `format="talk"`, `disclosure=True` set per the T4 spec.
+- **No vendor SDKs here.** `produce.py` only touches the two seams (`writer` + `tts`), keeping
+  the whole pipeline behind the abstractions.
+
+**Changed:**
+- New: `src/produce.py`. Updated `README.md` (T4 section).
+
+**Why:** making length a dial on this one function is what later lets the same path serve an
+overnight block and a near-live drop; routing through the seams keeps model/TTS swaps a one-file
+change.
+
+**Verification:** `.venv/bin/python -m src.produce` generated
+`segments/vell-20260616T104252.mp3` — 4,093,536 bytes, **255.8 s (~4.3 min)** confirmed via
+`ffprobe` — in Vell's voice, and returned a populated `Segment` (`format=talk`,
+`length_target_sec=300`, `disclosure=True`).
+
+**Next:** T5 — playout: install `liquidsoap`/`icecast`/`ffmpeg` via Homebrew, loop the newest
+segment on a local Icecast stream with a silence-avoidance fallback.
+Commit: (uncommitted) · Clips: (none)
+
+---
+
+## 2026-06-16 — Phase A — T3 script generation (Layer 3, minimal)
+
+**Focus:** got Claude writing Vell's ~5-min night-shift segment from the canon — the single-
+function "writers' room", no multi-agent yet.
+
+**Decisions (the durable ones):**
+- **Canon rides in `cached_context`; only the small per-call instructions + clock pay full
+  price.** The bulky stable world bible is the cache breakpoint (the Phase A cost lever); the
+  variable system prompt stays compact.
+- **The +600yr clock is computed, never hardcoded, and preserves the real weekday.** A real
+  Tuesday 02:00 becomes an in-world Tuesday 02:00 six centuries on, so the spoken time check is
+  accurate. A `_part_of_day` phrase steers the time-check mood.
+- **Tier `sonnet` (the default writing brain); spoken-script-only output** — no stage directions,
+  labels, or headings, so the text goes straight to TTS.
+- **`safety_check(text)` is a no-op placeholder** marking exactly where a content gate slots in
+  before any public broadcast.
+
+**Changed:**
+- New: `src/writer.py`. Updated `README.md` (T3 section).
+
+**Why:** caching the whole canon keeps input cost ~0.1x on repeat runs, and computing the clock
+(rather than baking a year) means the time check never goes stale — the two things this step has
+to get right to be reusable.
+
+**Verification:** `.venv/bin/python -m src.writer` prints a coherent, in-character ~700–800-word
+script with a correct "settlement time" time check for the current time.
+
+**Next:** T4 — `src/produce.py`: script → TTS → a populated `Segment` audio file.
+Commit: 14902ba · Clips: (none)
+
+---
+
 ## 2026-06-16 — Phase A — T2 the Segment model (Seam #2)
 
 **Focus:** built Seam #2 — the `Segment` dataclass — so segment length and lead-time become
