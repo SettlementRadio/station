@@ -33,6 +33,37 @@ A typical *build* session will be short, e.g.:
 
 ---
 
+## 2026-06-16 — Phase A — T2 the Segment model (Seam #2)
+
+**Focus:** built Seam #2 — the `Segment` dataclass — so segment length and lead-time become
+dials on one code path instead of assumptions baked into the pipeline.
+
+**Decisions (the durable ones):**
+- **`Segment` matches the ARCHITECTURE.md spec verbatim**, dials and all: `length_target_sec`
+  (required, no default — callers *must* dial it) and `lead_time_sec` (defaults 0). Keeping the
+  shape identical to the doc means later phases plug in without a rewrite.
+- **`length_target_sec` is a required field, not defaulted.** Forcing it at construction is the
+  enforcement of "never hardcode length" — there's nowhere for a magic 300 to hide.
+- **`disclosure` defaults `True`; `meta` is a `field(default_factory=dict)`** open bag for
+  per-format extras, so the dataclass stays stable as formats grow.
+
+**Changed:**
+- New: `src/segment.py`. No other files touched (writer/produce consume it in T3–T4).
+
+**Why:** making length and lead-time *inputs* is what later lets one `make_segment` serve a
+3-hour overnight block and a 60-second near-live drop — only the numbers and the model/TTS tier
+change, never the code path.
+
+**Verification:** `python3 -c "from src.segment import Segment; print(Segment(id='demo-001',
+format='talk', length_target_sec=300))"` constructs and prints a fully-populated Segment
+(dials + `disclosure=True` + empty `meta`). No length is hardcoded anywhere else.
+
+**Next:** T3 — `src/writer.py`: Claude writes Vell's ~5-min segment from the canon, canon passed
+as the cache breakpoint.
+Commit: (uncommitted) · Clips: (none)
+
+---
+
 ## 2026-06-14 — Phase A — T1 provider abstraction (the two vendor seams)
 
 **Focus:** built Seam #1 — the only two modules that touch a vendor SDK — so every later

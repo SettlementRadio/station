@@ -63,6 +63,19 @@ Both read their keys from `.env`. Quick check from the repo root (needs a popula
 .venv/bin/python -c "from src.providers import llm; print(llm.generate('say hello'))"
 ```
 
+## Script generation (T3)
+
+[`src/writer.py`](src/writer.py) — `write_segment_script(canon_text, now_iso)` asks Claude
+(tier `sonnet`) to write Vell's ~5-minute night-shift talk segment from the canon. The canon is
+passed as the `cached_context` breakpoint (the Phase A cost lever); the in-world clock
+(`real time + 600 years`, weekday preserved) and the segment spec go in the small per-call system
+prompt so the time check is real. A no-op `safety_check(text)` marks where a content gate slots in
+later. Print a fresh segment for the current time (needs a populated `.env`):
+
+```bash
+.venv/bin/python -m src.writer
+```
+
 ## Run
 
 Commands land here as the phase tasks are completed (see `docs/PHASE_A_TASKS.md`).
