@@ -33,6 +33,44 @@ A typical *build* session will be short, e.g.:
 
 ---
 
+## 2026-06-17 — Phase A — free offline TTS backend (`say`) for testing
+
+**Focus:** added a second TTS backend — macOS's built-in `say` — so the loop can be
+tested unlimited and offline, after ElevenLabs' free tier ran dry (~2 full segments/month).
+
+**Decisions (the durable ones):**
+- **A `TTS_PROVIDER=say` backend, selected by env, alongside `elevenlabs` (still default).**
+  The seam's whole point is parallel backends; `say` is offline, free, unlimited, and
+  needs no key — ideal for exercising the pipeline without spending voice credits. It's a
+  *test* voice, not Vell's real one.
+- **Override per-run, don't change the default.** `TTS_PROVIDER=say make play` beats `.env`
+  (dotenv doesn't override a shell var), so the default stays `elevenlabs` and the free path
+  is one prefix away.
+- **A shared `_to_mp3()` helper (ffmpeg) for non-mp3 backends.** `say` emits AIFF; the helper
+  transcodes to the mp3 the pipeline expects. Deliberately shared so the future Kokoro backend
+  (emits WAV) reuses it — adding `say` is groundwork, not throwaway. The only per-provider bit
+  is its voice registry (`_SAY_VOICES`: `vell_night` → "Daniel").
+
+**Changed:**
+- Updated: `src/providers/tts.py` (`_synthesize_say` + `_to_mp3` + `say` dispatch + registry),
+  `.env.example` (document the three providers + the override tip), `README.md` (provider-seams
+  + Run notes).
+
+**Why:** TTS is the real cost wall (the script side is cache-cheap), so a free, offline voice
+keeps development unblocked when credits are exhausted — without touching anything but `tts.py`,
+which is exactly what the provider seam was built to allow.
+
+**Verification:** `TTS_PROVIDER=say .venv/bin/python -m src.produce` generated
+`segments/vell-20260617T200508.mp3` — **246 s (~4.1 min)**, valid mp3 via `ffprobe` — with zero
+ElevenLabs credits spent (only the cheap streamed Anthropic script call). Playout is
+provider-agnostic, so the T6 loop serves it unchanged.
+
+**Next:** commit the T5/T6/streaming + `say` work; optionally wire Kokoro later as the free
+*offline + high-quality* voice (reuses `_to_mp3`).
+Commit: (uncommitted) · Clips: (none)
+
+---
+
 ## 2026-06-16 — Phase A — T6 one-command loop + browser player (+ streaming fix)
 
 **Focus:** made the whole Phase A loop a single command (`make play`), gave it a real

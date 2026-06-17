@@ -26,6 +26,16 @@ _ELEVENLABS_VOICE_IDS = {
 _ELEVENLABS_MODEL = "eleven_multilingual_v2"
 _ELEVENLABS_OUTPUT_FORMAT = "mp3_44100_128"
 
+# macOS `say` voice names (list them with: say -v '?'). "Daniel" is a warm
+# British male — a serviceable stand-in for Vell while testing. Apple's free
+# downloadable "Enhanced"/"Premium" voices (System Settings → Accessibility →
+# Spoken Content → System Voice) sound far more natural; drop one in here once
+# installed. This backend is offline, free, and unlimited — for testing the
+# loop, not Vell's final voice.
+_SAY_VOICES = {
+    "vell_night": "Daniel",
+}
+
 
 def synthesize(
     text: str,
@@ -48,6 +58,10 @@ def synthesize(
     provider = os.getenv("TTS_PROVIDER", "elevenlabs").strip().lower()
     if provider == "elevenlabs":
         return _synthesize_elevenlabs(
+            text, voice=voice, emotion=emotion, out_path=out_path
+        )
+    if provider == "say":
+        return _synthesize_say(
             text, voice=voice, emotion=emotion, out_path=out_path
         )
     if provider in ("kokoro", "orpheus"):
@@ -97,4 +111,66 @@ def _synthesize_elevenlabs(
     with open(out_path, "wb") as f:
         for chunk in audio:
             f.write(chunk)
+    return out_path
+
+
+def _synthesize_say(
+    text: str,
+    *,
+    voice: str,
+    emotion: str | None,
+    out_path: str,
+) -> str:
+    """macOS built-in `say` implementation — offline, free, no quota.
+
+    For testing the loop without spending TTS credits. `say` writes AIFF, so we
+    render to a temp file and transcode to `out_path` (mp3) with ffmpeg, leaving
+    the rest of the pipeline (which expects mp3) untouched. `emotion` is ignored
+    (`say` has no such knob).
+    """
+    import subprocess
+    import tempfile
+
+    try:
+        say_voice = _SAY_VOICES[voice]
+    except KeyError:
+        raise ValueError(
+            f"unknown logical voice {voice!r}; expected one of "
+            f"{sorted(_SAY_VOICES)}"
+        ) from None
+
+    parent = os.path.dirname(out_path)
+    if parent:
+        os.makedirs(parent, exist_ok=True)
+
+    with tempfile.NamedTemporaryFile(suffix=".aiff", delete=False) as tmp:
+        aiff_path = tmp.name
+    try:
+        subprocess.run(
+            ["say", "-v", say_voice, "-o", aiff_path, text], check=True
+        )
+        _to_mp3(aiff_path, out_path)
+    finally:
+        if os.path.exists(aiff_path):
+            os.remove(aiff_path)
+    return out_path
+
+
+def _to_mp3(src_path: str, out_path: str) -> str:
+    """Transcode any ffmpeg-readable audio file to a 128k mp3 at `out_path`.
+
+    Shared by the non-mp3 backends (e.g. `say`, and future local-neural ones
+    like Kokoro that emit WAV) so the pipeline always lands an mp3 in segments/.
+    """
+    import subprocess
+
+    subprocess.run(
+        [
+            "ffmpeg", "-y", "-loglevel", "error",
+            "-i", src_path,
+            "-codec:a", "libmp3lame", "-b:a", "128k",
+            out_path,
+        ],
+        check=True,
+    )
     return out_path

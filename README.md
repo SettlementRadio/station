@@ -55,7 +55,9 @@ All vendor calls go through two modules — nothing else imports a vendor SDK:
   `cached_context` is sent as a prompt-cache breakpoint.
 - [`src/providers/tts.py`](src/providers/tts.py) — `synthesize(text, *, voice, emotion=None,
   out_path)`. `voice` is a logical name (e.g. `vell_night`) mapped to a vendor voice id;
-  the backend is selected by `TTS_PROVIDER` (`elevenlabs` now; `kokoro`/`orpheus` stubbed).
+  the backend is selected by `TTS_PROVIDER`: `elevenlabs` (default, the real voice),
+  `say` (macOS built-in — **offline, free, unlimited; for testing**), or the stubbed
+  `kokoro`/`orpheus`. Non-mp3 backends transcode to mp3 via ffmpeg (`_to_mp3`).
 
 Both read their keys from `.env`. Quick check from the repo root (needs a populated `.env`):
 
@@ -192,8 +194,15 @@ Notes:
 - `make serve` always stops any running instance first, so a stale Icecast can
   never hold port 8000 — the recurring "Could not create listener socket"
   problem is handled.
-- `make generate` / `make play` make a live Anthropic + ElevenLabs call, so they
-  need a populated `.env`. `make serve` makes no API calls.
+- `make generate` / `make play` make a live Anthropic call, plus a TTS call. With
+  the default `elevenlabs` backend that spends voice credits; the free tier only
+  covers ~2 full segments/month. **To test offline with no credits, use the
+  macOS `say` backend for that run:**
+  ```bash
+  TTS_PROVIDER=say make play     # generate + serve using the free, offline voice
+  ```
+  (`say` is lower quality — a stand-in for testing the loop, not Vell's real
+  voice. The shell override beats `.env`, so the default stays `elevenlabs`.)
 - Processes run in the background; PIDs and logs are under `.run/` (gitignored).
   Liquidsoap runs via `opam exec`, so `make` finds it without `eval "$(opam env)"`.
 
