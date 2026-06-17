@@ -18,8 +18,10 @@ ICE_PID    := $(RUN_DIR)/icecast.pid
 LIQ_PID    := $(RUN_DIR)/liquidsoap.pid
 ICE_LOG    := $(RUN_DIR)/icecast.log
 LIQ_LOG    := $(RUN_DIR)/liquidsoap.log
-PLAYER_URL := http://localhost:8000/
-STREAM_URL := http://localhost:8000/settlement.mp3
+# Use the IPv4 literal, not `localhost`: browsers resolve `localhost` to IPv6
+# ::1 first, but Icecast binds IPv4 127.0.0.1 — so `localhost` shows "empty page".
+PLAYER_URL := http://127.0.0.1:8000/
+STREAM_URL := http://127.0.0.1:8000/settlement.mp3
 
 .PHONY: help generate serve play stop status
 

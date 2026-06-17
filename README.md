@@ -135,7 +135,7 @@ liquidsoap --check config/radio.liq
 ### Configs
 
 - [`config/icecast.xml`](config/icecast.xml) — local-only Icecast on
-  `http://localhost:8000`. Reuses Homebrew's web/admin/log dirs so the status
+  `http://127.0.0.1:8000`. Reuses Homebrew's web/admin/log dirs so the status
   page renders with no extra setup. The `<source-password>` must match
   `ICECAST_SOURCE_PASSWORD` in `.env` (both default to `hackme`).
 - [`config/radio.liq`](config/radio.liq) — Liquidsoap plays the **newest** file
@@ -159,8 +159,8 @@ liquidsoap config/radio.liq
 Then open it in a browser:
 
 ```
-http://localhost:8000/                     # player page (play button + disclosure)
-http://localhost:8000/settlement.mp3       # the raw audio stream
+http://127.0.0.1:8000/                     # player page (play button + disclosure)
+http://127.0.0.1:8000/settlement.mp3       # the raw audio stream
 ```
 
 > The bundled player page lives at [`config/web/index.html`](config/web/index.html)
@@ -178,7 +178,7 @@ One command does the whole Phase A loop. From the repo root:
 make play       # generate a fresh segment for NOW + serve it, then print the URL
 ```
 
-Then open **http://localhost:8000/** and press play — you'll hear Vell deliver a
+Then open **http://127.0.0.1:8000/** and press play — you'll hear Vell deliver a
 freshly generated night-shift segment with a correct (in-world) time check.
 
 Individual targets:

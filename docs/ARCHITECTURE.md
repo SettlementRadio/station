@@ -16,7 +16,8 @@ Phase A code is shaped to grow into the big system without rewrites.
    conversation orchestrator; output is a structured **script**. *Phase A: a single function that
    asks Claude to write one DJ's 5-minute segment from the canon. No multi-agent yet.*
 4. **Production** — script → TTS → mix with jingles/beds → emit a `Segment`. *Phase A: built,
-   minimally (TTS only; mixing optional).*
+   minimally — TTS only. Mixing was deferred; the bed/jingle role is instead filled by the
+   playout fallback in `radio.liq` (Layer 5), so no mixing step exists in production yet.*
 5. **Scheduling & playout** — a scheduler decides what/when (buffer depth = a parameter);
    Liquidsoap plays segments with a fallback chain. *Phase A: Liquidsoap loops the one segment,
    with a silence-avoidance fallback. No scheduler yet.*
@@ -30,7 +31,9 @@ AI disclosure (placeholder now), operator console (later).
 Two modules are the *only* place vendor SDKs are imported.
 
 ```python
-# src/providers/llm.py
+# src/providers/llm.py  (as built)
+from collections.abc import Callable
+
 def generate(
     prompt: str,
     *,
@@ -38,8 +41,16 @@ def generate(
     model: str = "sonnet",   # "haiku" | "sonnet" | "opus" — mapped to real model IDs internally
     cached_context: str | None = None,  # large stable text (canon/cards) → sent as a cache breakpoint
     max_tokens: int = 4000,
+    on_token: Callable[[str], None] | None = None,  # streamed text deltas → caller progress
+    timeout: float = 120.0,                          # per-request timeout (seconds)
 ) -> str:
     """Return Claude's text output. Implementation selected by env (ANTHROPIC_API_KEY).
+
+    The call is STREAMED internally (the first bytes arrive immediately; a non-streaming
+    call blocked silently at the socket for the whole ~25s generation and looked hung).
+    `on_token` fires per text delta so callers can show progress; the full text is still
+    returned as one string — streaming is an implementation detail of the seam. `timeout`
+    makes a genuine network stall fail fast instead of blocking indefinitely.
 
     Model routing (logical tier → real ID):
       haiku  → claude-haiku-4-5-20251001   # high-volume, low-stakes, near-live
@@ -53,16 +64,22 @@ def generate(
         path is built now. The cached-context path above is the Phase A cost lever.)
     """
 
-# src/providers/tts.py
+# src/providers/tts.py  (as built)
 def synthesize(
     text: str,
     *,
     voice: str,              # a logical voice name from a voice registry, NOT a vendor voice id
-    emotion: str | None = None,
+    emotion: str | None = None,  # reserved — accepted but not yet wired to a vendor knob
     out_path: str,
 ) -> str:
     """Render speech to an audio file at out_path; return the path.
-       Implementation selected by env (TTS_PROVIDER=elevenlabs now; kokoro/orpheus later)."""
+       Implementation selected by env TTS_PROVIDER:
+         - elevenlabs  (DEFAULT) — ElevenLabs API, the real Phase A voice.
+         - say                   — macOS built-in `say`, offline/free/unlimited; a TEST voice,
+                                    added after the ElevenLabs free tier (~2 segments/mo) ran dry.
+                                    Emits AIFF → transcoded to mp3 via a shared `_to_mp3()` helper.
+         - kokoro / orpheus      — planned self-hosted backends; raise NotImplementedError for now.
+       Non-mp3 backends share `_to_mp3()` (ffmpeg) so the pipeline always lands an mp3."""
 ```
 
 Rules: callers pass *logical* model tiers ("haiku/sonnet/opus") and *logical* voice names; the
@@ -88,10 +105,22 @@ class Segment:
     meta: dict = field(default_factory=dict)
 ```
 
-The whole pipeline is `make_segment(spec) -> Segment`: write script (Layer 3) → synthesize
-(Layer 4) → return a `Segment` with `audio_path` set. Because `length_target_sec` and
-`lead_time_sec` are inputs, the same function serves overnight batch and near-live later — only
-the numbers and the model/TTS tier change.
+The whole pipeline is `make_segment(...) -> Segment`: write script (Layer 3) → synthesize
+(Layer 4) → return a `Segment` with `audio_path` set. As built (`src/produce.py`), the signature
+is:
+
+```python
+# src/produce.py  (as built)
+def make_segment(now_iso: str, *, length_target_sec: int = 300) -> Segment:
+    """Generate one talk Segment for `now_iso`: script → audio → Segment."""
+```
+
+The design intent (length is a dial, not a constant) holds: `length_target_sec` is a keyword
+input with a default, never hardcoded downstream, so the same path later serves an overnight block
+or a 60-sec near-live drop — only the number and the model/TTS tier change. Two notes vs. the
+original sketch: (1) the input is a real-time ISO string + a length dial, not a `spec` object;
+(2) `lead_time_sec` exists on the `Segment` but is not yet an input to `make_segment` (it becomes
+one when scheduling/near-live lands).
 
 ## Phase A data flow (what to actually build)
 

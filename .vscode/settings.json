@@ -1,0 +1,7 @@
+{
+  // Stop the Python extension from auto-activating the venv in the integrated
+  // terminal. That auto-activation sends a Ctrl-C to clear the prompt first,
+  // which was interrupting long-running commands (e.g. `make play` mid-generation).
+  // Activate manually when needed: source .venv/bin/activate
+  "python.terminal.activateEnvironment": false
+}

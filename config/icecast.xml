@@ -41,6 +41,12 @@
 
     <hostname>localhost</hostname>
 
+    <!-- Loopback-only (not exposed to the network). Bound to the IPv4 literal
+         127.0.0.1, so ALWAYS reach this via http://127.0.0.1:8000 — NOT
+         http://localhost:8000. Browsers resolve `localhost` to IPv6 ::1 first
+         and would hit a dead port ("empty page"). macOS won't reliably bind two
+         same-port loopback sockets (IPv4 + ::1), so we standardise on the IPv4
+         literal, which works in every browser. -->
     <listen-socket>
         <port>8000</port>
         <bind-address>127.0.0.1</bind-address>
