@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="800" viewBox="0 0 800 800" role="img" aria-label="Settlement Radio Symbol Transparent">
+  <title>Settlement Radio Symbol Transparent</title>
+  <desc>Beacon roundel on transparent background.</desc>
+  <circle cx="400" cy="400" r="304" fill="none" stroke="#F2C04D" stroke-width="42" stroke-linecap="round" stroke-linejoin="round"/>
+<circle cx="400" cy="274" r="54" fill="#F2C04D"/>
+<path d="M 286.000 386.000 A 125.000 125.000 0 0 0 514.000 386.000" fill="none" stroke="#F2C04D" stroke-width="42" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M 222.000 432.000 A 190.000 190.000 0 0 0 578.000 432.000" fill="none" stroke="#F2C04D" stroke-width="42" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>
