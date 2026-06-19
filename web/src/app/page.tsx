@@ -1,8 +1,10 @@
 import Image from "next/image";
 
+import SignupForm from "./SignupForm";
+
 // Coming-soon screen (A2-T2): one quiet night-field screen — beacon + wordmark
 // lockup, tagline, body, email signup, disclosure, follow links.
-// The signup form is presentational here; A2-T3 wires it to Buttondown.
+// The signup form (A2-T3) lives in SignupForm and posts to /api/subscribe.
 
 const followLinks = [
   { label: "X", href: "https://x.com/settlement_ch" },
@@ -38,29 +40,7 @@ export default function Home() {
           </p>
         </div>
 
-        <form
-          id="signup"
-          className="flex w-full max-w-sm flex-col gap-3 sm:flex-row"
-        >
-          <label htmlFor="email" className="sr-only">
-            Email address
-          </label>
-          <input
-            id="email"
-            name="email"
-            type="email"
-            autoComplete="email"
-            placeholder="you@example.com"
-            required
-            className="flex-1 rounded-md border border-amber/30 bg-white/5 px-4 py-3 text-base text-neutral placeholder:text-neutral/40 focus:border-amber focus:outline-none focus:ring-2 focus:ring-amber/60"
-          />
-          <button
-            type="submit"
-            className="rounded-md bg-amber px-5 py-3 font-semibold text-night transition-colors hover:bg-amber/90 focus:outline-none focus:ring-2 focus:ring-amber/60 focus:ring-offset-2 focus:ring-offset-night"
-          >
-            Notify me
-          </button>
-        </form>
+        <SignupForm />
 
         <p className="max-w-sm text-xs leading-relaxed text-neutral/60">
           A work of fiction, written and voiced with AI — a tribute to the

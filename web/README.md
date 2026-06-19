@@ -10,8 +10,17 @@ never built or deployed by Vercel.
 ```bash
 cd web
 npm install   # first time only
+cp .env.example .env.local   # then fill in BUTTONDOWN_API_KEY
 npm run dev   # http://localhost:3000
 ```
+
+## Email signup (Buttondown)
+
+The form posts to the `app/api/subscribe` route handler, which adds the email to the
+[Buttondown](https://buttondown.com/) list using the server-side `BUTTONDOWN_API_KEY` (never
+exposed to the client). The route validates the email, drops bots via a hidden honeypot field, and
+maps Buttondown's responses to `subscribed` / `already_subscribed` / error states the form shows.
+Set `BUTTONDOWN_API_KEY` in `.env.local` locally and as a Vercel env var for production.
 
 ## Brand foundation
 
