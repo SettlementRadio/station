@@ -67,6 +67,16 @@ See `docs/ARCHITECTURE.md` for the concrete interfaces and the `Segment` shape.
 - Small modules, clear names, type hints. Add a test only where the logic is non-trivial.
 - Every dependency and command goes in the `README.md` so the build is reproducible from scratch.
 
+### Monorepo: the web app (`/web`)
+
+The repo is a monorepo. The Python **station backend** stays at the root (`src/`, `config/`, etc.)
+and is never built or deployed by Vercel. Alongside it, **`/web`** is a self-contained Next.js
+(App Router + TypeScript + Tailwind) app — the public site, deployed to **settlementradio.com** via
+**Vercel with Root Directory = `web`**. It started as the A2 coming-soon page and **grows into the
+audio player + studio in Phase C** (new routes in the same app, pointing at the live stream). The
+two halves run independently, so web work and the Python pipeline don't block each other. Web
+secrets live in `web/.env.local` (and as Vercel env vars), separate from the root `.env`.
+
 ## Engineering standards (the station backend — apply from now on)
 
 These keep an unattended, 24/7, long-lived system maintainable. They apply to the Python

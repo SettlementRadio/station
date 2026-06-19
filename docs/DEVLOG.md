@@ -33,6 +33,64 @@ A typical *build* session will be short, e.g.:
 
 ---
 
+## 2026-06-19 — Phase A2 — the coming-soon site (`/web`), live on settlementradio.com
+
+**Focus:** built and shipped the public coming-soon page — a single branded night-field screen
+with working email capture — as a Next.js app in a new `/web` folder, deployed to
+**settlementradio.com** via Vercel. First non-Python surface; the seed that grows into the audio
+player + studio in Phase C.
+
+**Decisions (the durable ones):**
+- **Monorepo, one repo.** The Python station stays at the root; `/web` is a self-contained Next.js
+  (App Router + TS + Tailwind) app. **Vercel deploys only `/web`** (Root Directory = `web`); the
+  backend is never built or deployed by Vercel. Recorded in `CLAUDE.md` (A2-T7) so the two-part
+  shape is canon.
+- **Email signup with no database.** A server route `app/api/subscribe/route.ts` holds the
+  **Buttondown** key server-side and POSTs `{email_address}`; the client form never sees the key.
+  Honeypot field + email validation; Buttondown's `400 email_already_exists` is mapped to a
+  friendly "already on the list". Buttondown chosen because it's also the newsletter surface.
+- **The brand lockup *is* the `<h1>`.** The horizontal wordmark SVG (beacon + wordmark) renders as
+  the page heading via its `alt` text — on-brand and accessible without duplicate text. Brand
+  tokens are Tailwind v4 `@theme` vars (`night`/`amber`/`neutral`); Inter via `next/font`.
+- **Metadata points the OG/Twitter image absolute.** `metadataBase = https://settlementradio.com`
+  so the branded `og-image.png` resolves to an absolute URL for crawlers; title + description carry
+  the fiction/AI disclosure. (Known nit: the OG asset is a *portrait* stacked lockup, so a
+  `summary_large_image` Twitter card will center-crop it — flagged for a later landscape asset.)
+- **`/web` env is separate from the root `.env`.** Next only reads env files inside its own project
+  dir, so the Buttondown key lives in `web/.env.local` (gitignored) and as a Vercel env var — not
+  the root `.env`. This bit us once: the key was in root `.env` and the route saw nothing.
+- **Heed the Next 16 breaking-changes warning.** `web/AGENTS.md` says this Next.js differs from
+  training data — read `node_modules/next/dist/docs/` before coding (Image, route handlers,
+  metadata APIs all confirmed against the shipped docs).
+
+**Changed:**
+- New: `web/` Next.js app — `src/app/page.tsx` (coming-soon screen), `src/app/SignupForm.tsx`
+  (client form), `src/app/api/subscribe/route.ts` (Buttondown route), `src/app/layout.tsx`
+  (metadata), `src/app/globals.css` (brand tokens), `public/` brand assets, `.env.example`,
+  `README.md`.
+- Updated: root `CLAUDE.md` (the monorepo / `/web` subsection, A2-T7).
+- Accounts/infra (manual): Buttondown list + API key; Vercel project (Root Directory = `web`) with
+  the key as an env var; **settlementradio.com** DNS pointed at Vercel — **Microsoft mail records
+  left untouched** so `hello@settlementradio.com` keeps delivering.
+
+**Why:** a coming-soon page that captures emails is the cheapest "built in public" surface, and
+doing it as the *real* Next.js app (not a throwaway) means Phase C's player is new routes, not a
+rebuild. Keeping the key server-side and the web env separate from the station's is the difference
+between "works on my laptop" and "safe to deploy".
+
+**Verification:** `npm run build` / `lint` / `tsc --noEmit` all green. `/api/subscribe` smoke-tested
+live — invalid email → 400, honeypot filled → 200 (no API call), valid email with no key → 500.
+The Buttondown key authenticates (GET `/v1/subscribers` → 200). Rendered `<head>` shows the
+`og:*` / `twitter:*` / `<title>` tags with absolute image URLs. Page deployed and served over
+HTTPS at settlementradio.com (T5, done manually).
+
+**Next:** A2-T6 (optional) — flip on Vercel Web Analytics — then Phase B (the world engine /
+nightly batch). Consider a dedicated landscape Twitter/OG image.
+Commit: A2-T0 84b6a54 · A2-T1 b872cc0 · A2-T2 da0d443 · A2-T4 7b16259/bcf2c38/b176d76 ·
+A2-T7 (uncommitted) · Clips: (none)
+
+---
+
 ## 2026-06-17 — Phase A — free offline TTS backend (`say`) for testing
 
 **Focus:** added a second TTS backend — macOS's built-in `say` — so the loop can be
