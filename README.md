@@ -33,6 +33,52 @@ ahead of air from a living world-state (canon, cast, an event timeline, and a wo
 around the clock. Segment length is a parameter, so the same pipeline serves an overnight block or
 a near-live drop. Details in [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
 
+## Run it locally
+The station backend (the Python pipeline + Liquidsoap playout) runs on macOS (Apple Silicon)
+with Homebrew. Generation and playout are decoupled, so you can generate a segment, then serve it.
+
+**1. System packages.** Note: **Python 3.12, not 3.13** — the Kokoro TTS package requires
+`>=3.10,<3.13`.
+```bash
+brew install python@3.12 icecast ffmpeg coreutils curl lame mad espeak-ng
+```
+Liquidsoap is no longer in Homebrew; build it from source via opam, *with* the MP3 plugins
+(`lame` to encode, `mad` to decode — without them `%mp3` is "unsupported format"):
+```bash
+brew install opam && opam init -y
+opam install -y liquidsoap lame mad
+# Apple Silicon: point the C toolchain at Homebrew if the opam build can't find headers:
+#   export CPATH=/opt/homebrew/include LIBRARY_PATH=/opt/homebrew/lib
+```
+
+**2. Python environment** (on 3.12):
+```bash
+python3.12 -m venv .venv
+.venv/bin/pip install -r requirements.txt
+```
+
+**3. Voice — Kokoro (local TTS).** Kokoro is the default `TTS_PROVIDER`: a self-hosted,
+open-weight neural voice that is free, unlimited, and offline after a one-time model download.
+The `espeak-ng` system package (installed in step 1) is its grapheme-to-phoneme fallback. On the
+**first** `synthesize` call Kokoro downloads its model weights from HuggingFace (cached under
+`~/.cache/huggingface`) and a small spaCy English model for phonemization — so the first render
+is slow (~tens of seconds) and needs network; every render after is fast and offline. No API key.
+Alternatives, all behind the same seam (set `TTS_PROVIDER` in `.env`): `elevenlabs` (flagship
+cloud voice; needs `ELEVENLABS_API_KEY` + credits) and `say` (macOS built-in; offline fallback if
+Kokoro won't install).
+
+**4. Secrets.** Copy `.env.example` to `.env`. For a fully local, zero-cost run you only need
+`ANTHROPIC_API_KEY` (the script) and the default `TTS_PROVIDER=kokoro` (the voice);
+`ELEVENLABS_API_KEY` is optional.
+
+**5. Generate + play:**
+```bash
+make play     # write a fresh segment for the current time, then serve it
+make stop     # stop Icecast + Liquidsoap
+```
+`make play` prints the local player URL (`http://127.0.0.1:8000/`). See the `Makefile` for the
+individual `generate` / `serve` / `status` targets.
+
 ## A note on what you're hearing
 Settlement Radio is a **work of fiction, generated with AI**. The presenters are not real people;
 the news from the future is invented. AI generation is disclosed on the stream and the player.

@@ -27,10 +27,14 @@ from .providers import llm
 # `real year + 600`. Kept as a named constant, never a baked-in year.
 YEARS_AHEAD = 600
 
-# Target spoken length for the Phase A talk segment (CANON.md "Phase A segment
-# spec"). ~700-800 words ≈ ~5 minutes at an unhurried night-shift pace.
-WORDS_LOW = 700
-WORDS_HIGH = 800
+# Target spoken word count for the talk segment, tuned in B0 to land within ~10%
+# of the 300s `length_target_sec`. Kokoro's `vell_night` (bm_george) renders at
+# ~194 wpm (~3.23 words/sec), so 300s needs ~970 words; Claude tends to undershoot
+# a stated range by ~5-10%, so we ask for 1000-1050 to centre the rendered length
+# on target. Retune here if the TTS backend or pace changes (the rate is
+# voice-dependent — measure wps and divide the target by it).
+WORDS_LOW = 1000
+WORDS_HIGH = 1050
 
 
 def _inworld_clock(now_iso: str) -> str:

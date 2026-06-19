@@ -36,6 +36,32 @@ _SAY_VOICES = {
     "vell_night": "Daniel",
 }
 
+# Kokoro (self-hosted, open-weight, free/unlimited) voice presets. List the full
+# set with the package's `KPipeline.list_voices()` or see the Kokoro-82M model
+# card. The first letter encodes language (a=American, b=British English), the
+# second gender (m/f) — we derive the pipeline's lang_code from it below.
+#   vell_night -> a British male (warm, low), matching Vell's card + the `say`
+#                 "Daniel" stand-in.
+#   dj_two     -> a distinct American voice RESERVED for the second DJ, who is
+#                 defined in B1/B4. Repoint/rename once that card exists; kept
+#                 deliberately different from Vell so a two-voice talk segment
+#                 reads as two people.
+_KOKORO_VOICES = {
+    "vell_night": "bm_george",
+    "dj_two": "af_heart",
+}
+
+# Kokoro renders 24 kHz mono float audio. Speed 1.0 is the natural pace; length
+# is tuned via the writer's word count (B0), not by slowing the voice.
+_KOKORO_SAMPLE_RATE = 24_000
+_KOKORO_SPEED = 1.0
+_KOKORO_REPO_ID = "hexgrad/Kokoro-82M"
+
+# KPipeline loads model weights on construction (slow, ~seconds), so cache one
+# per language code across calls in a process (e.g. a buffer run voicing many
+# segments). Keyed by lang_code ("a"/"b").
+_kokoro_pipelines: dict[str, object] = {}
+
 
 def synthesize(
     text: str,
@@ -53,9 +79,13 @@ def synthesize(
             knob — kept in the signature so later providers can use it).
         out_path: where to write the audio file.
 
-    The implementation is chosen by TTS_PROVIDER (default "elevenlabs").
+    The implementation is chosen by TTS_PROVIDER (default "kokoro").
     """
-    provider = os.getenv("TTS_PROVIDER", "elevenlabs").strip().lower()
+    provider = os.getenv("TTS_PROVIDER", "kokoro").strip().lower()
+    if provider == "kokoro":
+        return _synthesize_kokoro(
+            text, voice=voice, emotion=emotion, out_path=out_path
+        )
     if provider == "elevenlabs":
         return _synthesize_elevenlabs(
             text, voice=voice, emotion=emotion, out_path=out_path
@@ -64,18 +94,18 @@ def synthesize(
         return _synthesize_say(
             text, voice=voice, emotion=emotion, out_path=out_path
         )
-    if provider in ("kokoro", "orpheus"):
+    if provider == "orpheus":
         # --- FUTURE: self-hosted TTS stub ----------------------------------
-        # Implement a `_synthesize_<provider>(...)` that renders to out_path
-        # using the same logical voice registry, then dispatch to it here.
-        # Nothing outside this module should need to change.
+        # Implement `_synthesize_orpheus(...)` rendering to out_path via the
+        # same logical voice registry, then dispatch to it here. Nothing
+        # outside this module should need to change.
         raise NotImplementedError(
             f"TTS_PROVIDER={provider!r} is a planned self-hosted backend; "
-            "not implemented yet. Use TTS_PROVIDER=elevenlabs for Phase A."
+            "not implemented yet. Use TTS_PROVIDER=kokoro for local voice."
         )
     raise ValueError(
         f"unknown TTS_PROVIDER {provider!r}; expected "
-        "'elevenlabs' (or future 'kokoro' / 'orpheus')"
+        "'kokoro' (default), 'elevenlabs', 'say' (or future 'orpheus')"
     )
 
 
@@ -153,6 +183,83 @@ def _synthesize_say(
     finally:
         if os.path.exists(aiff_path):
             os.remove(aiff_path)
+    return out_path
+
+
+def _kokoro_pipeline(lang_code: str):
+    """Return a cached Kokoro `KPipeline` for `lang_code` ('a'/'b'…).
+
+    Construction loads the 82M model (downloaded from HuggingFace on first use,
+    then cached locally by `huggingface_hub`), so we build one per language and
+    reuse it across calls within a process.
+    """
+    pipeline = _kokoro_pipelines.get(lang_code)
+    if pipeline is None:
+        from kokoro import KPipeline
+
+        pipeline = KPipeline(lang_code=lang_code, repo_id=_KOKORO_REPO_ID)
+        _kokoro_pipelines[lang_code] = pipeline
+    return pipeline
+
+
+def _synthesize_kokoro(
+    text: str,
+    *,
+    voice: str,
+    emotion: str | None,
+    out_path: str,
+) -> str:
+    """Kokoro implementation — self-hosted, open-weight, free, unlimited.
+
+    The default Phase B backend: local neural voice with no API quota, so the
+    mind can be iterated at volume (B0). Kokoro yields 24 kHz float chunks; we
+    concatenate them to a temp WAV and transcode to mp3 via the shared
+    `_to_mp3()` helper, leaving the rest of the pipeline (which expects mp3)
+    untouched. `emotion` is accepted but ignored — Kokoro has no such knob; the
+    signature is kept so other providers can use it.
+    """
+    import tempfile
+
+    import numpy as np
+    import soundfile as sf
+
+    try:
+        kokoro_voice = _KOKORO_VOICES[voice]
+    except KeyError:
+        raise ValueError(
+            f"unknown logical voice {voice!r}; expected one of "
+            f"{sorted(_KOKORO_VOICES)}"
+        ) from None
+
+    # Voice id encodes language in its first char (a=American, b=British). The
+    # pipeline's lang_code must match for correct grapheme-to-phoneme handling.
+    lang_code = kokoro_voice[0]
+    pipeline = _kokoro_pipeline(lang_code)
+
+    # The pipeline splits long text and yields (graphemes, phonemes, audio) per
+    # chunk; stitch the audio back into one clip.
+    chunks = [
+        audio
+        for _gs, _ps, audio in pipeline(
+            text, voice=kokoro_voice, speed=_KOKORO_SPEED
+        )
+    ]
+    if not chunks:
+        raise RuntimeError(f"Kokoro produced no audio for voice {voice!r}")
+    audio = np.concatenate(chunks)
+
+    parent = os.path.dirname(out_path)
+    if parent:
+        os.makedirs(parent, exist_ok=True)
+
+    with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as tmp:
+        wav_path = tmp.name
+    try:
+        sf.write(wav_path, audio, _KOKORO_SAMPLE_RATE)
+        _to_mp3(wav_path, out_path)
+    finally:
+        if os.path.exists(wav_path):
+            os.remove(wav_path)
     return out_path
 
 

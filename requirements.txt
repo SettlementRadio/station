@@ -1,4 +1,13 @@
+# Core pipeline (all phases).
 anthropic>=0.40
 elevenlabs>=1.0
 python-dotenv>=1.0
 requests>=2.31
+
+# Local TTS — Kokoro (default TTS_PROVIDER from B0). Self-hosted, free,
+# unlimited. Requires Python 3.10–3.12 (NOT 3.13 yet) and the espeak-ng system
+# package; see README "Kokoro (local TTS)" for the full install + the model
+# download. soundfile writes Kokoro's 24 kHz output to WAV before the shared
+# _to_mp3() transcode.
+kokoro>=0.9.4
+soundfile>=0.12
