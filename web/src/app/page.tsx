@@ -35,7 +35,7 @@ export default function Home() {
           </p>
           <p className="max-w-md text-sm leading-relaxed text-neutral/80 sm:text-base">
             Broadcasting soon from the settled worlds of the late 27th
-            century — news, music, and company across the dark. Leave your
+            century. News, music, and company across the dark. Leave your
             signal and we&rsquo;ll tell you when we&rsquo;re on air.
           </p>
         </div>
@@ -43,7 +43,7 @@ export default function Home() {
         <SignupForm />
 
         <p className="max-w-sm text-xs leading-relaxed text-neutral/60">
-          A work of fiction, written and voiced with AI — a tribute to the
+          A work of fiction, written and voiced with AI. A tribute to the
           science fiction that imagined us here.
         </p>
 
