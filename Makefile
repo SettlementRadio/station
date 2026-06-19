@@ -6,6 +6,7 @@
 #   make stop       Stop Icecast + Liquidsoap (no orphans left behind).
 #   make status     Show what's running and the mount state.
 #   make seed       Load docs/CANON.md into the world-state DB (B1; idempotent).
+#   make demo       Show the progressing-event relative-time flip (B2; needs seed).
 #
 # `generate`/`play` make a live Anthropic + ElevenLabs call (needs a populated
 # .env). `serve` just loops whatever segment already exists.
@@ -24,7 +25,7 @@ LIQ_LOG    := $(RUN_DIR)/liquidsoap.log
 PLAYER_URL := http://127.0.0.1:8000/
 STREAM_URL := http://127.0.0.1:8000/settlement.mp3
 
-.PHONY: help generate serve play stop status seed
+.PHONY: help generate serve play stop status seed demo
 
 help:
 	@echo "Settlement Radio (Phase A):"
@@ -34,12 +35,19 @@ help:
 	@echo "  make stop      stop Icecast + Liquidsoap"
 	@echo "  make status    show what's running"
 	@echo "  make seed      load docs/CANON.md into the world-state DB (B1)"
+	@echo "  make demo      show the progressing-event relative-time flip (B2)"
 
 # Seed the world-state DB from docs/CANON.md (the human-editable source). Reads
 # DATABASE_URL via src/config.py; idempotent (re-running reproduces the state).
 seed:
 	@echo "==> Seeding the world-state DB from docs/CANON.md…"
 	$(PY) -m src.world.seed
+
+# B2 proof: render the Lumen Festival at two `now` values and show the relative
+# phrase flip ("in five days" -> "yesterday"). Needs `make seed` first.
+demo:
+	@echo "==> Progressing-event demo (B2)…"
+	$(PY) -m src.world.events
 
 generate:
 	@echo "==> Generating a fresh segment for the current time…"

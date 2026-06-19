@@ -6,10 +6,10 @@ showrunner yet (see docs/ARCHITECTURE.md, Layer 3) — just `write_segment_scrip
 
 Two things this module is careful about:
 
-* **The +600yr clock.** The in-world time is `real time + 600 years`, computed
-  here from `now_iso` and never hardcoded (CANON.md "The time concept"). The
-  computed clock is handed to Claude in the small, per-call system prompt so the
-  time check is real.
+* **The +600yr clock.** The in-world time is `real time + 600 years`. That mapping
+  now lives in `world/clock.py` (the single source, B2); this module just calls
+  `clock.render_wall_clock` and hands the result to Claude in the small, per-call
+  system prompt so the time check is real (CANON.md "The time concept").
 * **The cost lever.** The canon is large and stable; it is passed to
   `llm.generate` as `cached_context` (a prompt-cache breakpoint), so repeat runs
   pay ~0.1x on it. The variable instructions + clock go in `system`. (CLAUDE.md
@@ -24,31 +24,29 @@ from datetime import datetime
 from .config import settings
 from .logging_setup import get_logger
 from .providers import llm
+from .world import clock
 
 log = get_logger(__name__)
 
-# The in-world clock offset (`settings.world_years_ahead`), the spoken word-count
-# guidance (`settings.writer_words_low` / `writer_words_high`), and the script
-# token cap all live in the typed settings module now — config over hardcoding
-# (CLAUDE.md). The word-count guidance was tuned in B0 to land within ~10% of the
-# length target at Kokoro's pace; retune those settings if the TTS pace changes.
+# The spoken word-count guidance (`settings.writer_words_low` / `writer_words_high`)
+# and the script token cap live in the typed settings module — config over
+# hardcoding (CLAUDE.md). The word-count guidance was tuned in B0 to land within
+# ~10% of the length target at Kokoro's pace; retune those settings if the TTS
+# pace changes. The +600yr clock itself lives in `world/clock.py` (B2).
 
 
 def _inworld_clock(now_iso: str) -> str:
-    """Render `now_iso` as the in-world wall clock, 600 years on.
+    """Render `now_iso` as a spoken time-check sentence for Claude.
 
-    We keep the real weekday, month, day and time of day exactly, and shift only
-    the *year* by +600, so a real Tuesday 02:00 is an in-world Tuesday 02:00, six
-    centuries later (CANON.md "The time concept"). The weekday is taken from the
-    real date, not recomputed for the +600yr date, to honour that mapping.
-    Returns a natural sentence Claude can use for an accurate time check.
+    The in-world wall clock (`real time + 600 years`, keeping the real weekday)
+    comes from `world/clock.py` — the single source of that mapping (B2). Here we
+    just wrap it with the part-of-day mood and the time-check instruction.
     """
     now = datetime.fromisoformat(now_iso)
-    inworld_year = now.year + settings.world_years_ahead
     part_of_day = _part_of_day(now.hour)
     # e.g. "Tuesday, 16 June 2626, 02:14 (the deep, quiet hours of the night)"
     return (
-        f"{now:%A}, {now:%-d %B} {inworld_year}, {now:%H:%M} "
+        f"{clock.render_wall_clock(now)} "
         f"({part_of_day}). Give a natural, accurate time check for this exact "
         f"time ({now:%H:%M})."
     )

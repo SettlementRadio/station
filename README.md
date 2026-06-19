@@ -81,6 +81,12 @@ any time you edit `docs/CANON.md`:
 ```bash
 make seed        # loads canon facts, both DJ cards, and the dated Lumen Festival event
 ```
+The station knows what time it is. The world clock ([`src/world/clock.py`](src/world/clock.py)) maps
+real time to the in-world `year + 600`, and event progression ([`src/world/events.py`](src/world/events.py))
+turns a stored event date into a live status and the phrase a DJ would say. See it flip:
+```bash
+make demo        # renders the Lumen Festival at two times: "in five days" -> "yesterday"
+```
 > **pgvector is intentionally not installed yet.** Phase B uses structured queries (by date /
 > status / tag) over the `events` and `canon` tables — the fast, right retrieval for now. Semantic
 > vector search is deferred to **B3**; when it lands it slots into `src/world/store.py` (a

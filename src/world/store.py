@@ -262,6 +262,16 @@ def get_cast_member(conn: psycopg.Connection, member_id: str) -> CastMember | No
     return CastMember(id, name, card, voice, list(tags))
 
 
+def get_event(conn: psycopg.Connection, event_id: str) -> Event | None:
+    """One event by id, or None (used by the B2 progression demo)."""
+    row = conn.execute(
+        "SELECT id, title, body, in_world_datetime, status, tags FROM events "
+        "WHERE id = %s",
+        (event_id,),
+    ).fetchone()
+    return None if row is None else Event(*row[:5], list(row[5]))
+
+
 def events_by_status(conn: psycopg.Connection, status: str) -> list[Event]:
     """Events with the given status, soonest first."""
     log.debug("db_events_by_status", status=status)
