@@ -17,3 +17,6 @@ venv/
 
 # Playout runtime (pids, logs)
 .run/
+
+# macOS junk
+.DS_Store
