@@ -1,0 +1,47 @@
+# Pre-commit hooks for the station backend (CLAUDE.md "Engineering standards").
+# Run on every commit and block on failure. Kept FAST on purpose — NO test suite
+# or other slow check here, or it gets bypassed. Install once with:
+#   .venv/bin/pre-commit install
+# Run across the whole repo manually with:
+#   .venv/bin/pre-commit run --all-files
+
+repos:
+  # Ruff: lint (with autofix) + format — the same config as pyproject.toml.
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.15.18
+    hooks:
+      - id: ruff
+        args: [--fix]
+      - id: ruff-format
+
+  # gitleaks: the automated backstop to the "never commit keys" hard rule.
+  # No baseline file to maintain (unlike detect-secrets) — scans the diff.
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.30.0
+    hooks:
+      - id: gitleaks
+
+  # Config-drift guardrail (B0.5): no direct env access outside src/config.py —
+  # everything must flow through the typed settings module (CLAUDE.md).
+  - repo: local
+    hooks:
+      - id: no-direct-env
+        name: env access only via src/config.py
+        entry: scripts/check_no_direct_env.sh
+        language: script
+        files: ^src/.*\.py$
+        exclude: ^src/config\.py$
+
+  # The basics: whitespace, final newline, big-file guard, config validity.
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-added-large-files
+      - id: check-json
+        # .vscode/settings.json is JSONC (allows comments) — valid for the
+        # editor but not strict JSON, so skip it here.
+        exclude: ^\.vscode/
+      - id: check-yaml
+      - id: check-toml

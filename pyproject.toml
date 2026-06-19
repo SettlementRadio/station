@@ -1,0 +1,20 @@
+# Settlement Radio — station backend tooling config.
+#
+# Dependencies live in requirements.txt (per repo conventions); this file holds
+# the lint/format config for ruff (CLAUDE.md "Engineering standards"). Run it with:
+#   .venv/bin/ruff check src        # lint
+#   .venv/bin/ruff format src       # format
+# Both also run on every commit via pre-commit (.pre-commit-config.yaml).
+
+[tool.ruff]
+line-length = 88
+target-version = "py311"  # CLAUDE.md: Python 3.11+
+src = ["src"]
+
+[tool.ruff.lint]
+# A pragmatic, fast set: pyflakes (F), pycodestyle (E/W), isort (I),
+# pyupgrade (UP), flake8-bugbear (B), comprehensions (C4), naming (N).
+select = ["E", "F", "W", "I", "UP", "B", "C4", "N"]
+
+[tool.ruff.format]
+quote-style = "double"

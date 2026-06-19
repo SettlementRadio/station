@@ -11,3 +11,15 @@ requests>=2.31
 # _to_mp3() transcode.
 kokoro>=0.9.4
 soundfile>=0.12
+
+# Foundation (B0.5): typed settings + structured logging.
+# pydantic-settings backs the single src/config.py module (env/.env -> typed
+# Settings); structlog is the one configured logger (JSON for 24/7 runs).
+pydantic-settings>=2.0
+structlog>=24.1
+
+# Dev tooling (B0.5) — lint/format + the pre-commit gate. Not needed at runtime;
+# installed in the dev venv. See README "Engineering standards / pre-commit".
+ruff>=0.8
+pre-commit>=4.0
+pytest>=8.0  # surgical tests (run with: .venv/bin/python -m pytest)

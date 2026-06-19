@@ -11,20 +11,19 @@ from __future__ import annotations
 
 import os
 
-from dotenv import load_dotenv
+from ..config import settings
+from ..logging_setup import get_logger
+from ..retry import call_with_retry
 
-load_dotenv()  # pull ELEVENLABS_API_KEY / TTS_PROVIDER from .env if present
+log = get_logger(__name__)
 
-# Logical voice name -> vendor voice id. Keeps the rest of the codebase free of
-# vendor ids. The DJ "Vell" (warm, low, unhurried) maps to ElevenLabs' "Adam".
-# Rename / repoint freely; this is the only place a vendor id appears.
+# Logical voice name -> vendor voice id. This is the seam's own domain data (its
+# whole job is to map a logical name to a vendor id), so the registries stay
+# here; only tunable *config* (model names, formats, rates) moved to settings.
+# The DJ "Vell" (warm, low, unhurried) maps to ElevenLabs' "Adam".
 _ELEVENLABS_VOICE_IDS = {
     "vell_night": "pNInz6obpgDQGcFmaJgB",  # ElevenLabs prebuilt "Adam"
 }
-
-# ElevenLabs render settings. mp3 is convenient for local playout in Phase A.
-_ELEVENLABS_MODEL = "eleven_multilingual_v2"
-_ELEVENLABS_OUTPUT_FORMAT = "mp3_44100_128"
 
 # macOS `say` voice names (list them with: say -v '?'). "Daniel" is a warm
 # British male — a serviceable stand-in for Vell while testing. Apple's free
@@ -51,11 +50,8 @@ _KOKORO_VOICES = {
     "dj_two": "af_heart",
 }
 
-# Kokoro renders 24 kHz mono float audio. Speed 1.0 is the natural pace; length
-# is tuned via the writer's word count (B0), not by slowing the voice.
-_KOKORO_SAMPLE_RATE = 24_000
-_KOKORO_SPEED = 1.0
-_KOKORO_REPO_ID = "hexgrad/Kokoro-82M"
+# Kokoro render settings (sample rate, speed, repo id) now live in `settings`;
+# length is tuned via the writer's word count (B0), not by slowing the voice.
 
 # KPipeline loads model weights on construction (slow, ~seconds), so cache one
 # per language code across calls in a process (e.g. a buffer run voicing many
@@ -79,34 +75,40 @@ def synthesize(
             knob — kept in the signature so later providers can use it).
         out_path: where to write the audio file.
 
-    The implementation is chosen by TTS_PROVIDER (default "kokoro").
+    The implementation is chosen by `settings.tts_provider` (default "kokoro").
     """
-    provider = os.getenv("TTS_PROVIDER", "kokoro").strip().lower()
-    if provider == "kokoro":
-        return _synthesize_kokoro(
-            text, voice=voice, emotion=emotion, out_path=out_path
+    provider = settings.tts_provider.strip().lower()
+    log.info("tts_synthesize_start", provider=provider, voice=voice, chars=len(text))
+
+    backends = {
+        "kokoro": _synthesize_kokoro,
+        "elevenlabs": _synthesize_elevenlabs,
+        "say": _synthesize_say,
+    }
+    backend = backends.get(provider)
+    if backend is None:
+        if provider == "orpheus":
+            # --- FUTURE: self-hosted TTS stub ------------------------------
+            # Implement `_synthesize_orpheus(...)` rendering to out_path via the
+            # same logical voice registry, then add it to `backends` above.
+            # Nothing outside this module should need to change.
+            raise NotImplementedError(
+                f"TTS_PROVIDER={provider!r} is a planned self-hosted backend; "
+                "not implemented yet. Use TTS_PROVIDER=kokoro for local voice."
+            )
+        raise ValueError(
+            f"unknown TTS_PROVIDER {provider!r}; expected "
+            "'kokoro' (default), 'elevenlabs', 'say' (or future 'orpheus')"
         )
-    if provider == "elevenlabs":
-        return _synthesize_elevenlabs(
-            text, voice=voice, emotion=emotion, out_path=out_path
-        )
-    if provider == "say":
-        return _synthesize_say(
-            text, voice=voice, emotion=emotion, out_path=out_path
-        )
-    if provider == "orpheus":
-        # --- FUTURE: self-hosted TTS stub ----------------------------------
-        # Implement `_synthesize_orpheus(...)` rendering to out_path via the
-        # same logical voice registry, then dispatch to it here. Nothing
-        # outside this module should need to change.
-        raise NotImplementedError(
-            f"TTS_PROVIDER={provider!r} is a planned self-hosted backend; "
-            "not implemented yet. Use TTS_PROVIDER=kokoro for local voice."
-        )
-    raise ValueError(
-        f"unknown TTS_PROVIDER {provider!r}; expected "
-        "'kokoro' (default), 'elevenlabs', 'say' (or future 'orpheus')"
+
+    # Bounded retry: a transient render/transcode failure retries rather than
+    # silently producing nothing; an exhausted call fails loudly into the logs.
+    result = call_with_retry(
+        f"tts.synthesize[{provider}]",
+        lambda: backend(text, voice=voice, emotion=emotion, out_path=out_path),
     )
+    log.info("tts_synthesize_done", provider=provider, voice=voice, out_path=result)
+    return result
 
 
 def _synthesize_elevenlabs(
@@ -127,12 +129,12 @@ def _synthesize_elevenlabs(
             f"{sorted(_ELEVENLABS_VOICE_IDS)}"
         ) from None
 
-    client = ElevenLabs(api_key=os.environ["ELEVENLABS_API_KEY"])
+    client = ElevenLabs(api_key=settings.elevenlabs_api_key or None)
     audio = client.text_to_speech.convert(
         voice_id=voice_id,
-        model_id=_ELEVENLABS_MODEL,
+        model_id=settings.tts_elevenlabs_model,
         text=text,
-        output_format=_ELEVENLABS_OUTPUT_FORMAT,
+        output_format=settings.tts_elevenlabs_output_format,
     )
 
     parent = os.path.dirname(out_path)
@@ -165,8 +167,7 @@ def _synthesize_say(
         say_voice = _SAY_VOICES[voice]
     except KeyError:
         raise ValueError(
-            f"unknown logical voice {voice!r}; expected one of "
-            f"{sorted(_SAY_VOICES)}"
+            f"unknown logical voice {voice!r}; expected one of {sorted(_SAY_VOICES)}"
         ) from None
 
     parent = os.path.dirname(out_path)
@@ -176,9 +177,7 @@ def _synthesize_say(
     with tempfile.NamedTemporaryFile(suffix=".aiff", delete=False) as tmp:
         aiff_path = tmp.name
     try:
-        subprocess.run(
-            ["say", "-v", say_voice, "-o", aiff_path, text], check=True
-        )
+        subprocess.run(["say", "-v", say_voice, "-o", aiff_path, text], check=True)
         _to_mp3(aiff_path, out_path)
     finally:
         if os.path.exists(aiff_path):
@@ -197,7 +196,7 @@ def _kokoro_pipeline(lang_code: str):
     if pipeline is None:
         from kokoro import KPipeline
 
-        pipeline = KPipeline(lang_code=lang_code, repo_id=_KOKORO_REPO_ID)
+        pipeline = KPipeline(lang_code=lang_code, repo_id=settings.tts_kokoro_repo_id)
         _kokoro_pipelines[lang_code] = pipeline
     return pipeline
 
@@ -227,8 +226,7 @@ def _synthesize_kokoro(
         kokoro_voice = _KOKORO_VOICES[voice]
     except KeyError:
         raise ValueError(
-            f"unknown logical voice {voice!r}; expected one of "
-            f"{sorted(_KOKORO_VOICES)}"
+            f"unknown logical voice {voice!r}; expected one of {sorted(_KOKORO_VOICES)}"
         ) from None
 
     # Voice id encodes language in its first char (a=American, b=British). The
@@ -241,7 +239,7 @@ def _synthesize_kokoro(
     chunks = [
         audio
         for _gs, _ps, audio in pipeline(
-            text, voice=kokoro_voice, speed=_KOKORO_SPEED
+            text, voice=kokoro_voice, speed=settings.tts_kokoro_speed
         )
     ]
     if not chunks:
@@ -255,7 +253,7 @@ def _synthesize_kokoro(
     with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as tmp:
         wav_path = tmp.name
     try:
-        sf.write(wav_path, audio, _KOKORO_SAMPLE_RATE)
+        sf.write(wav_path, audio, settings.tts_kokoro_sample_rate)
         _to_mp3(wav_path, out_path)
     finally:
         if os.path.exists(wav_path):
@@ -273,9 +271,16 @@ def _to_mp3(src_path: str, out_path: str) -> str:
 
     subprocess.run(
         [
-            "ffmpeg", "-y", "-loglevel", "error",
-            "-i", src_path,
-            "-codec:a", "libmp3lame", "-b:a", "128k",
+            "ffmpeg",
+            "-y",
+            "-loglevel",
+            "error",
+            "-i",
+            src_path,
+            "-codec:a",
+            "libmp3lame",
+            "-b:a",
+            settings.tts_mp3_bitrate,
             out_path,
         ],
         check=True,

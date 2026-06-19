@@ -16,11 +16,13 @@ from dataclasses import dataclass, field
 @dataclass
 class Segment:
     id: str
-    format: str               # "talk" | "news" | "music" | "ident" ...
-    length_target_sec: int    # the DIAL: 3600 for an hour, 60 for near-live. NEVER hardcode.
-    air_time: str | None = None   # ISO time this should air; None = "whenever"
-    lead_time_sec: int = 0        # how long before air it may be generated. The other DIAL.
+    format: str  # "talk" | "news" | "music" | "ident" ...
+    length_target_sec: (
+        int  # the DIAL: 3600 for an hour, 60 for near-live. NEVER hardcode.
+    )
+    air_time: str | None = None  # ISO time this should air; None = "whenever"
+    lead_time_sec: int = 0  # how long before air it may be generated. The other DIAL.
     script: str | None = None
     audio_path: str | None = None
-    disclosure: bool = True       # AI-generation disclosure attached
+    disclosure: bool = True  # AI-generation disclosure attached
     meta: dict = field(default_factory=dict)

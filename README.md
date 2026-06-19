@@ -79,6 +79,34 @@ make stop     # stop Icecast + Liquidsoap
 `make play` prints the local player URL (`http://127.0.0.1:8000/`). See the `Makefile` for the
 individual `generate` / `serve` / `status` targets.
 
+## Developing the station backend
+The backend follows the engineering standards in [`CLAUDE.md`](CLAUDE.md). For contributors:
+
+- **Config over hardcoding.** All tunable values live in one typed module,
+  [`src/config.py`](src/config.py) (`pydantic-settings`). Code reads `settings.X`; nothing reads a
+  raw literal or `os.getenv` directly. Every field can be overridden by an env var of the same name
+  (e.g. `LOG_LEVEL=debug`, `TTS_PROVIDER=elevenlabs`) — see `.env.example`.
+- **Structured logging, never `print()`.** [`src/logging_setup.py`](src/logging_setup.py)
+  configures `structlog` once (JSON by default for 24/7 runs; `LOG_JSON=false` for pretty console).
+  Get a logger with `from .logging_setup import get_logger`.
+- **Resilient external calls.** Claude and TTS calls go through `call_with_retry`
+  ([`src/retry.py`](src/retry.py)) — a bounded retry that logs loudly and re-raises on exhaustion,
+  rather than silently producing nothing.
+- **Lint + format.** [`ruff`](https://docs.astral.sh/ruff/) is configured in `pyproject.toml`:
+  ```bash
+  .venv/bin/ruff check src     # lint
+  .venv/bin/ruff format src    # format
+  ```
+- **Pre-commit hooks.** Fast checks run on every commit: ruff lint+format, a `gitleaks` secret
+  scan, a config-drift guardrail (`scripts/check_no_direct_env.sh` — fails if any code under `src/`
+  reads the environment directly instead of via `settings`), and whitespace/newline/large-file/
+  JSON-YAML-TOML basics. Install them once after creating the venv:
+  ```bash
+  .venv/bin/pre-commit install
+  .venv/bin/pre-commit run --all-files   # optional: run across the whole repo
+  ```
+  The test suite is deliberately **not** in pre-commit (it would get bypassed).
+
 ## A note on what you're hearing
 Settlement Radio is a **work of fiction, generated with AI**. The presenters are not real people;
 the news from the future is invented. AI generation is disclosed on the stream and the player.

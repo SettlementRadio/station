@@ -14,28 +14,24 @@ model/TTS tier — changes.
 from __future__ import annotations
 
 from datetime import datetime
-from pathlib import Path
 
+from .config import settings
+from .logging_setup import get_logger
 from .providers import tts
 from .segment import Segment
 from .writer import write_segment_script
 
-# Phase A talk segment defaults (PHASE_A_TASKS.md T4). The length is a dial with
-# a default, never a hardcoded constant downstream.
-DEFAULT_LENGTH_TARGET_SEC = 300  # ~5 minutes
-VELL_VOICE = "vell_night"        # logical voice name (see tts.py registry)
+log = get_logger(__name__)
 
-# Where generated audio lands (gitignored). Resolved from this file so it works
-# regardless of the working directory.
-_REPO_ROOT = Path(__file__).resolve().parent.parent
-_SEGMENTS_DIR = _REPO_ROOT / "segments"
-_CANON_PATH = _REPO_ROOT / "docs" / "CANON.md"
+# Phase A talk segment defaults (PHASE_A_TASKS.md T4) now live in `settings`: the
+# length target is a DIAL with a default, the voice + paths are config, never
+# hardcoded constants here.
 
 
 def make_segment(
     now_iso: str,
     *,
-    length_target_sec: int = DEFAULT_LENGTH_TARGET_SEC,
+    length_target_sec: int | None = None,
 ) -> Segment:
     """Generate one talk Segment for `now_iso`: script → audio → Segment.
 
@@ -43,31 +39,28 @@ def make_segment(
         now_iso: the current real time as an ISO 8601 string; the in-world clock
             (real + 600 years) is derived from it for the time check.
         length_target_sec: the DIAL — target spoken length in seconds. Defaults
-            to ~5 minutes for the Phase A talk segment; pass a smaller value for
-            a near-live drop (PHASE_A_TASKS.md T7). Never hardcoded downstream.
+            to `settings.segment_default_length_target_sec` (~5 min) for the
+            Phase A talk segment; pass a smaller value for a near-live drop
+            (PHASE_A_TASKS.md T7). Never hardcoded downstream.
 
     Returns:
         A populated `Segment` with `script` and `audio_path` set.
     """
-    canon_text = _CANON_PATH.read_text()
-
-    # The script is a ~25s streamed generation; print a dot per chunk so the run
-    # visibly progresses instead of looking frozen at a silent socket.
-    print("Writing Vell's script (streaming, ~25s)…", end="", flush=True)
-
-    def _progress(_delta: str) -> None:
-        print(".", end="", flush=True)
-
-    script = write_segment_script(canon_text, now_iso, on_token=_progress)
-    print(" done.", flush=True)
+    if length_target_sec is None:
+        length_target_sec = settings.segment_default_length_target_sec
 
     # A unique, sortable id from the real timestamp, so Liquidsoap can pick the
     # newest file and ids never collide across runs.
     seg_id = f"vell-{datetime.fromisoformat(now_iso):%Y%m%dT%H%M%S}"
-    out_path = _SEGMENTS_DIR / f"{seg_id}.mp3"
+    log.info("make_segment_start", seg_id=seg_id, length_target_sec=length_target_sec)
 
-    tts.synthesize(script, voice=VELL_VOICE, out_path=str(out_path))
+    canon_text = settings.canon_path.read_text()
+    script = write_segment_script(canon_text, now_iso)
 
+    out_path = settings.segments_dir / f"{seg_id}.mp3"
+    tts.synthesize(script, voice=settings.segment_vell_voice, out_path=str(out_path))
+
+    log.info("make_segment_done", seg_id=seg_id, audio_path=str(out_path))
     return Segment(
         id=seg_id,
         format="talk",
@@ -83,6 +76,11 @@ if __name__ == "__main__":
     # Runnable check: generate a fresh segment for the current time.
     #   .venv/bin/python -m src.produce
     segment = make_segment(datetime.now().isoformat())
-    print(f"Wrote {segment.format} segment {segment.id}")
-    print(f"  audio: {segment.audio_path}")
-    print(f"  length target: {segment.length_target_sec}s  disclosure: {segment.disclosure}")
+    log.info(
+        "segment_written",
+        fmt=segment.format,
+        seg_id=segment.id,
+        audio_path=segment.audio_path,
+        length_target_sec=segment.length_target_sec,
+        disclosure=segment.disclosure,
+    )

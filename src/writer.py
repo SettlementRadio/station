@@ -21,20 +21,17 @@ from __future__ import annotations
 from collections.abc import Callable
 from datetime import datetime
 
+from .config import settings
+from .logging_setup import get_logger
 from .providers import llm
 
-# How far ahead the station lives. CANON.md: the in-world year is always
-# `real year + 600`. Kept as a named constant, never a baked-in year.
-YEARS_AHEAD = 600
+log = get_logger(__name__)
 
-# Target spoken word count for the talk segment, tuned in B0 to land within ~10%
-# of the 300s `length_target_sec`. Kokoro's `vell_night` (bm_george) renders at
-# ~194 wpm (~3.23 words/sec), so 300s needs ~970 words; Claude tends to undershoot
-# a stated range by ~5-10%, so we ask for 1000-1050 to centre the rendered length
-# on target. Retune here if the TTS backend or pace changes (the rate is
-# voice-dependent — measure wps and divide the target by it).
-WORDS_LOW = 1000
-WORDS_HIGH = 1050
+# The in-world clock offset (`settings.world_years_ahead`), the spoken word-count
+# guidance (`settings.writer_words_low` / `writer_words_high`), and the script
+# token cap all live in the typed settings module now — config over hardcoding
+# (CLAUDE.md). The word-count guidance was tuned in B0 to land within ~10% of the
+# length target at Kokoro's pace; retune those settings if the TTS pace changes.
 
 
 def _inworld_clock(now_iso: str) -> str:
@@ -47,7 +44,7 @@ def _inworld_clock(now_iso: str) -> str:
     Returns a natural sentence Claude can use for an accurate time check.
     """
     now = datetime.fromisoformat(now_iso)
-    inworld_year = now.year + YEARS_AHEAD
+    inworld_year = now.year + settings.world_years_ahead
     part_of_day = _part_of_day(now.hour)
     # e.g. "Tuesday, 16 June 2626, 02:14 (the deep, quiet hours of the night)"
     return (
@@ -85,8 +82,8 @@ def _build_system_prompt(now_iso: str) -> str:
         "aloud, with no stage directions, headings, speaker labels, or notes.\n\n"
         f"Right now, settlement time, it is: {clock}\n\n"
         "Write one ~5-minute night-shift talk segment, "
-        f"{WORDS_LOW}-{WORDS_HIGH} words, fully in character per the world bible "
-        "and Vell's character card:\n"
+        f"{settings.writer_words_low}-{settings.writer_words_high} words, "
+        "fully in character per the world bible and Vell's character card:\n"
         "  - Open with a soft greeting to the one listener out there and a real, "
         "accurate time check ('settlement time') for the time given above.\n"
         "  - Move into a short, warm musing tied to ONE canon fact.\n"
@@ -127,23 +124,27 @@ def write_segment_script(
     Returns:
         The spoken script, run through the (placeholder) safety gate.
     """
+    log.info("write_segment_script_start", now=now_iso, canon_chars=len(canon_text))
     system = _build_system_prompt(now_iso)
     script = llm.generate(
         "Write tonight's segment now.",
         system=system,
-        model="sonnet",          # CLAUDE.md: the default writing brain
+        model=settings.llm_default_tier,  # CLAUDE.md: the default writing brain
         cached_context=canon_text,  # cost lever: canon as a cache breakpoint
-        max_tokens=2000,
+        max_tokens=settings.writer_max_tokens,
         on_token=on_token,
     )
-    return safety_check(script.strip())
+    script = safety_check(script.strip())
+    log.info("write_segment_script_done", words=len(script.split()))
+    return script
 
 
 if __name__ == "__main__":
     # Runnable check: print a fresh segment for the current time.
     #   .venv/bin/python -m src.writer
     from datetime import datetime as _dt
-    from pathlib import Path
 
-    canon = Path(__file__).resolve().parent.parent / "docs" / "CANON.md"
-    print(write_segment_script(canon.read_text(), _dt.now().isoformat()))
+    script = write_segment_script(
+        settings.canon_path.read_text(), _dt.now().isoformat()
+    )
+    print(script)  # the generated script is this CLI's deliverable (stdout)

@@ -60,7 +60,7 @@ provider works if you prefer — Buttondown is the default since it's your newsl
 
 ## A2-T4 — Metadata & social card
 **Do:** set the page `<title>` and meta description (include the fiction/AI note), Open Graph +
-Twitter card tags, and the branded OG image so shared links render a proper card. 
+Twitter card tags, and the branded OG image so shared links render a proper card.
 **Done when:** pasting the URL into a link-preview checker shows the branded card + title.
 
 ## A2-T5 — Deploy to Vercel + point the domain

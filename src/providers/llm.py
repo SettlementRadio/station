@@ -11,26 +11,27 @@ from __future__ import annotations
 from collections.abc import Callable
 
 import anthropic
-from dotenv import load_dotenv
 
-load_dotenv()  # pull ANTHROPIC_API_KEY (and friends) from .env if present
+from ..config import settings
+from ..logging_setup import get_logger
+from ..retry import call_with_retry
 
-# Logical tier -> current real Claude model ID. The mapping lives here so the
-# rest of the codebase only ever talks in tiers. See CLAUDE.md "Tech reality".
-_MODEL_IDS = {
-    "haiku": "claude-haiku-4-5-20251001",  # high-volume, low-stakes, near-live
-    "sonnet": "claude-sonnet-4-6",         # DEFAULT writing brain: DJ scripts
-    "opus": "claude-opus-4-8",             # hard reasoning only; runs rarely
-}
+# Logical tier -> real model id now lives in the typed settings module
+# (`settings.model_id(tier)`), so the mapping is config, not a literal here.
+# See CLAUDE.md "Tech reality" + "Engineering standards" (config over hardcoding).
+
+log = get_logger(__name__)
 
 _client: anthropic.Anthropic | None = None
 
 
 def _get_client() -> anthropic.Anthropic:
-    """Lazily build the SDK client (reads ANTHROPIC_API_KEY from the env)."""
+    """Lazily build the SDK client (api key from settings, falling back to env)."""
     global _client
     if _client is None:
-        _client = anthropic.Anthropic()
+        # Pass the key explicitly from settings; `or None` lets the SDK fall back
+        # to its own env lookup when the key isn't set in .env.
+        _client = anthropic.Anthropic(api_key=settings.anthropic_api_key or None)
     return _client
 
 
@@ -38,11 +39,11 @@ def generate(
     prompt: str,
     *,
     system: str | None = None,
-    model: str = "sonnet",
+    model: str | None = None,
     cached_context: str | None = None,
-    max_tokens: int = 4000,
+    max_tokens: int | None = None,
     on_token: Callable[[str], None] | None = None,
-    timeout: float = 120.0,
+    timeout: float | None = None,
 ) -> str:
     """Return Claude's text output for `prompt`.
 
@@ -50,14 +51,16 @@ def generate(
         prompt: the variable user turn.
         system: optional system instructions (the small, per-call part).
         model: logical tier "haiku" | "sonnet" | "opus" — mapped to a real ID.
+            Defaults to `settings.llm_default_tier`.
         cached_context: large, stable text (e.g. the canon) sent as a
             prompt-cache breakpoint, so repeat calls pay ~0.1x on that input.
-        max_tokens: output cap.
+        max_tokens: output cap. Defaults to `settings.llm_max_tokens`.
         on_token: optional callback invoked with each text delta as it streams.
             Lets callers show progress so a multi-second generation doesn't look
             frozen; `None` is silent.
         timeout: per-request timeout in seconds. A genuine network stall raises
-            promptly instead of blocking indefinitely.
+            promptly instead of blocking indefinitely. Defaults to
+            `settings.llm_timeout_sec`.
 
     The call is **streamed** so the first bytes arrive immediately (a 5-minute
     script takes ~25s to generate; a non-streaming call would block silently at
@@ -70,12 +73,10 @@ def generate(
     cache hit. (Prefixes below the model's minimum cacheable size won't cache;
     that's fine — the path is in use and grows into Phase B for free.)
     """
-    try:
-        model_id = _MODEL_IDS[model]
-    except KeyError:
-        raise ValueError(
-            f"unknown model tier {model!r}; expected one of {sorted(_MODEL_IDS)}"
-        ) from None
+    tier = model if model is not None else settings.llm_default_tier
+    max_tokens = max_tokens if max_tokens is not None else settings.llm_max_tokens
+    timeout = timeout if timeout is not None else settings.llm_timeout_sec
+    model_id = settings.model_id(tier)  # raises ValueError on an unknown tier
 
     # Build the system prompt as cache-aware blocks: stable content first (with
     # the breakpoint), volatile content after it. Caching is a prefix match, so
@@ -101,10 +102,27 @@ def generate(
         kwargs["system"] = system_blocks
 
     client = _get_client().with_options(timeout=timeout)
-    parts: list[str] = []
-    with client.messages.stream(**kwargs) as stream:
-        for text in stream.text_stream:
-            parts.append(text)
-            if on_token is not None:
-                on_token(text)
-    return "".join(parts)
+
+    log.info(
+        "llm_generate_start",
+        tier=tier,
+        model=model_id,
+        max_tokens=max_tokens,
+        cached=bool(cached_context),
+        prompt_chars=len(prompt),
+    )
+
+    def _do_stream() -> str:
+        # Re-built fresh per attempt: a retry restarts the stream cleanly (any
+        # partial output from a failed attempt is discarded).
+        parts: list[str] = []
+        with client.messages.stream(**kwargs) as stream:
+            for text in stream.text_stream:
+                parts.append(text)
+                if on_token is not None:
+                    on_token(text)
+        return "".join(parts)
+
+    text = call_with_retry("llm.generate", _do_stream)
+    log.info("llm_generate_done", tier=tier, model=model_id, output_chars=len(text))
+    return text
