@@ -67,11 +67,31 @@ Alternatives, all behind the same seam (set `TTS_PROVIDER` in `.env`): `elevenla
 cloud voice; needs `ELEVENLABS_API_KEY` + credits) and `say` (macOS built-in; offline fallback if
 Kokoro won't install).
 
-**4. Secrets.** Copy `.env.example` to `.env`. For a fully local, zero-cost run you only need
+**4. World-state database (Postgres).** From Phase B the world (canon, cast, events) lives in a
+local PostgreSQL database, seeded from `docs/CANON.md`. Install and start it with Homebrew, then
+create the database:
+```bash
+brew install postgresql@14
+brew services start postgresql@14      # run it now and at login
+createdb settlement_radio              # the default DB in DATABASE_URL
+```
+The connection string is `DATABASE_URL` (default `postgresql://localhost/settlement_radio`); set it
+in `.env` only if your Postgres differs. Seed the database from the canon — idempotent, so re-run it
+any time you edit `docs/CANON.md`:
+```bash
+make seed        # loads canon facts, both DJ cards, and the dated Lumen Festival event
+```
+> **pgvector is intentionally not installed yet.** Phase B uses structured queries (by date /
+> status / tag) over the `events` and `canon` tables — the fast, right retrieval for now. Semantic
+> vector search is deferred to **B3**; when it lands it slots into `src/world/store.py` (a
+> `CREATE EXTENSION vector` + a `canon_embeddings` table), driven by the `src/providers/embeddings.py`
+> seam stub. See the FUTURE note at the top of `store.py`.
+
+**5. Secrets.** Copy `.env.example` to `.env`. For a fully local, zero-cost run you only need
 `ANTHROPIC_API_KEY` (the script) and the default `TTS_PROVIDER=kokoro` (the voice);
 `ELEVENLABS_API_KEY` is optional.
 
-**5. Generate + play:**
+**6. Generate + play:**
 ```bash
 make play     # write a fresh segment for the current time, then serve it
 make stop     # stop Icecast + Liquidsoap
@@ -92,6 +112,10 @@ The backend follows the engineering standards in [`CLAUDE.md`](CLAUDE.md). For c
 - **Resilient external calls.** Claude and TTS calls go through `call_with_retry`
   ([`src/retry.py`](src/retry.py)) — a bounded retry that logs loudly and re-raises on exhaustion,
   rather than silently producing nothing.
+- **One place for SQL.** All world-state reads/writes go through
+  [`src/world/store.py`](src/world/store.py) — the same seam discipline as `providers/`. Nothing
+  else imports `psycopg` or writes SQL. `docs/CANON.md` is the human-editable source; the parser
+  ([`src/world/canon_source.py`](src/world/canon_source.py)) and `make seed` project it into the DB.
 - **Lint + format.** [`ruff`](https://docs.astral.sh/ruff/) is configured in `pyproject.toml`:
   ```bash
   .venv/bin/ruff check src     # lint

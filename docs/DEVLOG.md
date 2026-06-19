@@ -33,6 +33,116 @@ A typical *build* session will be short, e.g.:
 
 ---
 
+## 2026-06-19 — Phase B — B1 world-state DB: schema + SQL seam + seed from canon
+
+**Focus:** moved the world out of the flat file into a queryable Postgres store — the spine for the
+time-awareness (B2) and context-assembly (B3) work to come. Schema, one SQL seam, and a
+reproducible seed that projects `docs/CANON.md` into the DB.
+
+**Decisions (the durable ones):**
+- **`src/world/store.py` is the ONLY place SQL lives** — same seam discipline as `providers/`.
+  Nothing else imports `psycopg`. It owns the row dataclasses (1:1 with tables), reads
+  `settings.database_url` (never a literal), logs every query/error, and exposes the structured
+  reads B2/B3 need (`events_by_status`, `events_in_range`, `get_cast_member`, …).
+- **CANON.md stays the single human-editable source; the DB is a projection of it.** Added
+  `src/world/canon_source.py` to *parse* the markdown (numbered facts, `### ` DJ cards, `### `
+  events) rather than keep a second machine copy. Restructured CANON.md's DJ section into a
+  parseable `## Cast` (two cards) and a new `## Events` timeline with a real in-world datetime.
+- **Seed reproduces by TRUNCATE + reload in one transaction** — re-running yields the exact state
+  the file describes (no orphans, no dupes), satisfying "reproducible." Stable slug ids
+  (`canon-1`, `vell`, `lumen-festival`) keep references stable across re-seeds.
+- **Defined the second DJ: Wren, the first-light host** — a bright, question-asking foil to Vell's
+  calm night shift; maps to the `dj_two` Kokoro voice reserved in B0. (Approve/tune the persona.)
+- **pgvector deliberately NOT installed.** Structured date/status/tag queries are the right
+  retrieval now; the vector path is a documented FUTURE slot in `store.py` (extension +
+  `canon_embeddings` table), wired in B3 via the `providers/embeddings.py` stub. `tags` is a real
+  `text[]` column now (populated for cast/events; canon tags enriched in B3).
+
+**Changed:**
+- New: `src/world/{__init__,store,canon_source,seed}.py`, `tests/test_canon_source.py`.
+- Updated: `docs/CANON.md` (`## Cast` with Vell + new Wren; `## Events` with the dated Lumen
+  Festival), `requirements.txt` (`psycopg[binary]`), `Makefile` (`make seed`), `README.md`
+  (Postgres install + seed step + pgvector-deferral note + store-seam dev note), `.env.example`.
+- Dev env: `brew install postgresql@14` + `createdb settlement_radio`; installed `psycopg` in
+  `.venv`.
+
+**Why:** a flat file can't answer "what's happening near *now*?" — the whole point of Phase B is a
+world that progresses, which needs date/status queries. Parsing CANON.md (not duplicating it) keeps
+one source a human edits by hand, per CLAUDE.md.
+
+**Verification:** `make seed` loads 7 canon / 2 cast / 1 event; re-running twice leaves counts
+identical (idempotent). `events_by_status('upcoming')` and `events_in_range(...)` both return the
+festival; out-of-window/`'past'` queries return empty. `pytest` (parser, 4) + the existing retry
+tests pass; `ruff check src` clean.
+
+**Next:** B2 — world clock (`now + 600y` as the single source), event progression + a relative-time
+renderer ("in five days" → "yesterday"), and the two-`now` demo on the Lumen Festival.
+Commit: (uncommitted) · Clips: (none)
+
+---
+
+## 2026-06-19 — Phase B — B0.5 foundation: config + logging + lint/pre-commit + retries
+
+**Focus:** laid the engineering baseline before the world engine — one typed settings module,
+structured logging, lint/format + a pre-commit gate, and bounded retries on the vendor seams — so
+B1–B6 are *built on* the standards instead of retrofitted. Then hardened config against future
+sprawl (a config-vs-constant policy, area-prefix naming, and an automated drift guardrail).
+
+**Decisions (the durable ones):**
+- **One typed settings module, `src/config.py` (`pydantic-settings`).** Every tunable now reads
+  `settings.X`; no module reads a literal or the env directly. Precedence is process env → `.env` →
+  defaults. Secrets and conventional names (`ANTHROPIC_API_KEY`, `TTS_PROVIDER`, `DATABASE_URL`)
+  kept their plain forms, so `.env` and the per-run `TTS_PROVIDER=x make play` ergonomic are
+  unchanged. The tier→model-id map moved here as `settings.model_id(tier)`.
+- **Config vs domain constant — the real anti-sprawl rule, written into config.py's header.** Only
+  environment/run-tunable values live in `Settings`; logic *intrinsic to an algorithm* (relative-
+  time thresholds later, `_part_of_day` cutoffs, the vendor voice registries) stays as a *named*
+  module constant next to its code. A named constant is not a "magic number"; hauling it into
+  Settings makes a god-object, which is the mess to avoid.
+- **Area-prefix naming to prevent collisions as B1–B6 add fields.** `llm_`/`tts_`/`world_`/
+  `segment_`/`writer_`/… (reserved `context_`/`convo_`/`format_`/`buffer_`). Applied now while
+  small — renamed the unprefixed Phase-A fields (`years_ahead`→`world_years_ahead`,
+  `vell_voice`→`segment_vell_voice`, `words_*`→`writer_words_*`, the `elevenlabs_*`/`kokoro_*`→
+  `tts_*`) so B4's cap is `convo_max_tokens`, never a bare `max_tokens`.
+- **`structlog`, JSON by default, configured once.** `LOG_JSON=false` for pretty console. Every
+  external call and pipeline step logs start/outcome; replaced the `print()`/silent paths in
+  `llm.py`/`tts.py`/`writer.py`/`produce.py`. (CLI *deliverable* output — the writer's printed
+  script — stays on stdout; logging is for diagnostics.)
+- **Bounded retry on the seams (`src/retry.py`).** Claude's stream and every TTS render go through
+  `call_with_retry` — retries with linear backoff, logs each attempt loudly, re-raises on
+  exhaustion. The rule is "fail loudly into the logs, never silently produce nothing."
+- **`ruff` (lint+format) in `pyproject.toml`; a fast pre-commit gate.** Hooks: ruff, `gitleaks`
+  (the automated backstop to "never commit keys"), a **custom config-drift guardrail**
+  (`scripts/check_no_direct_env.sh` — blocks `os.getenv`/`os.environ`/`dotenv` anywhere under
+  `src/` except `config.py`), and whitespace/EOF/large-file/JSON-YAML-TOML basics. **No test suite
+  in pre-commit** (it would get bypassed).
+
+**Changed:**
+- New: `src/config.py`, `src/logging_setup.py`, `src/retry.py`, `tests/test_retry.py` (the one
+  non-trivial bit), `scripts/check_no_direct_env.sh`, `pyproject.toml`, `.pre-commit-config.yaml`.
+- Updated: `src/providers/llm.py` + `src/providers/tts.py` (settings + logging + retry; dropped
+  `load_dotenv`), `src/writer.py` + `src/produce.py` (settings + logging; field renames),
+  `requirements.txt` (pydantic-settings, structlog; dev: ruff, pre-commit, pytest), `.env.example`
+  (logging/retry/DB knobs), `README.md` ("Developing the station backend" section).
+- Dev env: installed pydantic-settings, structlog, ruff, pre-commit, pytest into `.venv`.
+
+**Why:** B0.5's whole point is to set the standards while the code is ~6 files, so the world engine
+inherits them. The config-vs-constant policy + prefixes + guardrail are the cheap insurance against
+the settings module rotting into an unsearchable junk drawer once B1–B6 pile on their knobs.
+
+**Verification:** `ruff check src` clean; `pytest` 3 passed; full `pre-commit run` green incl. the
+guardrail — and the guardrail correctly **blocks** a planted `os.environ` violation. Forced an
+Anthropic stream failure → caught, logged (`llm_generate_start`→`external_call_retry`→
+`external_call_failed`), re-raised. The real `make_segment` path emits the info-level JSON chain
+(`make_segment_start`→`write_segment_script_*`→`make_segment_done`).
+
+**Next:** B1 — PostgreSQL world-state DB: schema (`canon`/`cast`/`events`/`state`),
+`src/world/store.py` (the only SQL seam, reads `settings.database_url`), and a reproducible seed
+from `docs/CANON.md`.
+Commit: (uncommitted) · Clips: (none)
+
+---
+
 ## 2026-06-19 — Phase A2 — the coming-soon site (`/web`), live on settlementradio.com
 
 **Focus:** built and shipped the public coming-soon page — a single branded night-field screen

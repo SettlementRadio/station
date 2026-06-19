@@ -12,6 +12,12 @@ requests>=2.31
 kokoro>=0.9.4
 soundfile>=0.12
 
+# World-state database (B1): the queryable store behind src/world/store.py.
+# psycopg 3 (the modern Postgres driver); [binary] ships prebuilt wheels so no
+# local libpq/compiler is needed. pgvector is intentionally NOT added yet —
+# vector search is deferred to B3 (see store.py / README).
+psycopg[binary]>=3.1
+
 # Foundation (B0.5): typed settings + structured logging.
 # pydantic-settings backs the single src/config.py module (env/.env -> typed
 # Settings); structlog is the one configured logger (JSON for 24/7 runs).
