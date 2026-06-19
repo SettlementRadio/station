@@ -18,9 +18,14 @@ prepares the next phase's task packs. **Claude Code** builds and operates everyt
 ## PHASE 0 — Claim the ground (this week, ~3–4 h of your time)
 
 **YOU:**
-1. Buy the domain FIRST (everything hangs off it). Check `settlementradio.com` / `.fm` at a
-   registrar; put DNS on Cloudflare; enable free Email Routing → forward `hello@…` to a
-   dedicated project Gmail. Use that address for ALL project accounts below.
+1. Buy the domain FIRST (everything hangs off it) — via the deal that bundles the Microsoft
+   365 mailbox. Use `hello@settlementradio.com` from that mailbox **directly** for ALL project
+   accounts below — no email-routing/forwarding layer. Host DNS in ONE place (the domain/mail
+   provider, or Vercel) and add both the Microsoft mail records (MX/SPF/DKIM/autodiscover) and
+   the Vercel site records there. No Cloudflare needed.
+   - Caveat: confirm it's a real *sending-capable* M365 mailbox, not forwarding-only. If it's
+     forwarding-only, it's no better than free Cloudflare Email Routing into Gmail — in that case
+     use the free Cloudflare route and skip the paid add-on.
 2. One sitting: claim `@settlementradio` on YouTube, X, Instagram, Bluesky, Reddit, Ko-fi;
    create the GitHub **organization** `settlementradio` (org name is the unique asset; the repo
    inside can be named anything). Quick USPTO/EUIPO sanity search.
@@ -29,8 +34,8 @@ prepares the next phase's task packs. **Claude Code** builds and operates everyt
 4. Install Claude Code on your Mac (Node LTS + the CLI).
 5. Start the habit: screen-record Claude Code sessions; keep a `devlog/` folder of clips +
    one-line notes. This footage is future marketing gold and can't be recreated.
-6. Stand up the one-page "coming soon" site (Cloudflare Pages): premise (tribute hook), AI
-   disclosure line, email signup. Nothing else public yet.
+6. Stand up the one-page "coming soon" site **on Vercel** (you have Pro; it's the production
+   host too): premise (tribute hook), AI disclosure line, email signup. Nothing else public yet.
 
 **CLAUDE (chat):** done for this phase — the doc pack exists. On call for copy/naming/questions.
 **CLAUDE CODE:** nothing yet.

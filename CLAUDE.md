@@ -12,17 +12,13 @@ a tribute to the science-fiction authors who shaped the genre. **Every word, rea
 world decision is produced by Claude. The entire system is built by Claude Code.** Voice
 synthesis (TTS) is the one external component, because Anthropic does not make a voice product.
 
-## Current phase: PHASE A — "Proof of Loop"
+## Active phase
 
-**Goal:** produce ONE ~5-minute audio segment — a single DJ talking, generated from the canon by
-Claude and voiced by TTS — and play it on a **local** loop the human can listen to in a browser.
-
-**In scope:** one DJ, one segment, local playback only.
-**Out of scope for Phase A:** database, RAG, a second DJ, the time/event engine, the VPS,
-YouTube, donations, anything public. Those come in later phases. Do not build them now.
-
-**Definition of done:** running the documented command (e.g. `make play`) generates a fresh
-segment and serves a local stream; the human opens the URL and hears the DJ speak in character.
+The current phase and its scope live in `docs/ROADMAP.md`; the detailed task pack for the active
+phase is `docs/PHASE_<X>_TASKS.md`. **If you're unsure which phase is active, ask the human — do
+not assume.** Build only what the active phase's pack calls for; everything else is explicitly
+deferred to a later phase. (Phase A — "Proof of Loop," a single local segment — is complete;
+later phases add the world engine, more DJs, the VPS, public broadcast, etc.)
 
 ## Tech reality (important)
 
@@ -41,13 +37,10 @@ segment and serves a local stream; the human opens the URL and hears the DJ spea
     big worldbuilding calls); runs rarely.
   - Do NOT use Fable 5 / Mythos as a workhorse — overkill and ~2x Opus cost.
 - **Cost levers are mandatory, not optional** (text cost must stay near-trivial):
-  - **Prompt caching (Phase A)** — cache the stable canon / character cards / system prompt so
-    each call pays full price only for the small variable part (~90% off cached input). The
-    provider abstraction must support a cached-context path **from the start**, and Phase A uses
-    it (the canon is passed as a cache breakpoint).
-  - **Batch API (Phase B)** — once generation becomes a nightly batch job, run it through the
-    Batch API (50% off). Phase A generates a single segment on demand (a live call), so Batch is
-    deferred; do not build a Batch code path now.
+  - **Batch API** — the nightly generation is a batch job; run it through the Batch API (50% off).
+  - **Prompt caching** — cache the stable canon / character cards / system prompt so each call
+    pays full price only for the small variable part (~90% off cached input). The provider
+    abstraction must support a cached-context path from the start.
 - **Voice:** **ElevenLabs API (free tier)** for now — accessed ONLY through the TTS abstraction so
   it can be swapped for self-hosted Kokoro/Orpheus later without touching anything else.
 - **Playout:** Liquidsoap + Icecast + ffmpeg (Homebrew).
@@ -74,6 +67,31 @@ See `docs/ARCHITECTURE.md` for the concrete interfaces and the `Segment` shape.
 - Small modules, clear names, type hints. Add a test only where the logic is non-trivial.
 - Every dependency and command goes in the `README.md` so the build is reproducible from scratch.
 
+## Engineering standards (the station backend — apply from now on)
+
+These keep an unattended, 24/7, long-lived system maintainable. They apply to the Python
+**station backend**. The `/web` coming-soon app may be pragmatic/temporary and need not meet all
+of these.
+
+- **Config over hardcoding.** All tunable values — model tiers, file paths, DB connection,
+  segment defaults, buffer depth, provider names — come from ONE typed settings module
+  (`src/config.py`, loaded from env via `pydantic-settings`). No magic numbers or literal config
+  strings scattered in code. Code reads `settings.X`, never a raw literal.
+- **Structured logging, never `print()`.** Use Python `logging` (structured/JSON, e.g.
+  `structlog`) configured once, with levels (debug/info/warning/error). Every external call and
+  every batch step logs start/outcome. This is how you'll diagnose a 3 a.m. failure you didn't
+  watch — it is not optional polish for a 24/7 system.
+- **Error handling + retries on external calls.** Wrap Claude / TTS / DB calls with sensible
+  failure handling and bounded retries; on failure, fall back or fail loudly into the logs — never
+  silently produce nothing.
+- **Lint + format automatically.** Use `ruff` (lint + format) configured in `pyproject.toml`, and
+  run it (plus a fast secrets scanner) on every commit via **pre-commit** hooks. Keep hooks fast —
+  no test suite in pre-commit, or it gets bypassed.
+- **Type hints throughout**, especially on the seams and public functions.
+- **Tests are surgical, not exhaustive.** Test the bits with real logic where a silent bug would
+  hurt (e.g., the world clock and the relative-time renderer). Don't chase coverage on glue code.
+- **Secrets:** only in `.env` locally; on any server, not world-readable and never in the repo.
+
 ## Hard rules — never violate
 
 - **NEVER commit secrets or API keys.**
@@ -89,9 +107,11 @@ See `docs/ARCHITECTURE.md` for the concrete interfaces and the `Segment` shape.
 
 ## How to work (agent instructions)
 
-- Read `docs/ARCHITECTURE.md`, `docs/CANON.md`, and `docs/PHASE_A_TASKS.md` before coding.
-- Work **task by task** from `docs/PHASE_A_TASKS.md`, in order. After each task, state what you
-  did and exactly how the human can verify it.
+- Read `docs/ARCHITECTURE.md` and `docs/CANON.md`, plus the task pack for the **active phase**
+  (`docs/PHASE_<X>_TASKS.md` — `docs/ROADMAP.md` lists the phases; ask the human if unsure which
+  is active), before coding.
+- Work **task by task** from the active phase's task pack, in order. After each task, state what
+  you did and exactly how the human can verify it.
 - Keep changes small and reviewable. Update `README.md` as you go.
 - If a detail isn't specified, choose the simplest option that respects the two seams, and note
   the choice in your summary.
