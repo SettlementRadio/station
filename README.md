@@ -118,6 +118,20 @@ stitched into one talk segment. The facts are the hosts' *shared knowledge to re
 make conversation   # showrunner → dialogue → continuity → two-voice segment (Claude + TTS)
 ```
 
+Generation fills a proven skeleton, not a blank page. [`src/formats/`](src/formats/) holds three
+**program-format templates**, each a function `(now, context) -> Segment` behind a small registry
+([`make_format_segment`](src/formats/__init__.py)) that assembles exactly the cast each one needs:
+- **news** — a single-DJ desk: sting → in-world headlines derived from the current events →
+  sign-off. (Reportage, so stating the facts plainly is correct — the opposite of the talk rule.)
+- **talk** — the two-DJ conversation (open → banter → music lead-in → close); it *wraps* B4,
+  reusing `conversation.compose_segment` with a structural directive.
+- **music** — a single-DJ wrap: intro → a `[SONG]` slot marker (real song scheduling is Phase C
+  playout) → back-announce. The marker is kept in the script and never spoken.
+```bash
+make format FMT=news    # one format segment on demand (FMT=news|talk|music; Claude + TTS)
+make format FMT=music TOPIC="the festival"   # TOPIC steers canon retrieval
+```
+
 **5. Secrets.** Copy `.env.example` to `.env`. For a fully local, zero-cost run you only need
 `ANTHROPIC_API_KEY` (the script) and the default `TTS_PROVIDER=kokoro` (the voice);
 `ELEVENLABS_API_KEY` is optional.

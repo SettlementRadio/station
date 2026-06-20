@@ -33,6 +33,58 @@ A typical *build* session will be short, e.g.:
 
 ---
 
+## 2026-06-20 — Phase B — B5 program format templates (news / talk / music)
+
+**Focus:** reusable show backbones so generation fills a proven skeleton instead of a blank page —
+three formats, each a function `(now, context) -> Segment`, behind one registry/dispatcher.
+
+**Decisions (the durable ones):**
+- **New `src/formats/` package, one template per file + a registry.** `news`, `talk`, `music` each
+  implement `(now, ctx) -> Segment`; `FORMATS` (a `{name: FormatSpec}` map) plus
+  `make_format_segment(name, now_iso, topic=)` is the single public entry. The dispatcher assembles
+  exactly the cast each format needs (one card for news/music, both for talk) via the same
+  `context.assemble` seam, then calls the template — templates never touch the DB.
+- **`talk` *wraps* B4, doesn't re-implement it.** Extracted `conversation.compose_segment(ctx, now,
+  …)` (the context-taking generation core) out of `make_conversation_segment`, and added an optional
+  `extra_directive` to `orchestrate`. `talk` calls `compose_segment` with an open→banter→music
+  lead-in→close backbone. B4's own behaviour is unchanged.
+- **`news` is reportage — the anti-recitation rule is deliberately inverted.** Unlike the two-DJ
+  talk, a news anchor *should* state facts plainly; the prompt says so. Headlines are derived from
+  the events near `now` (live relative phrasing from `events.py`); fewer than N → the anchor extends
+  with plausible, canon-consistent items.
+- **`music` keeps a `[SONG]` slot marker.** One Claude call writes intro + back-announce separated by
+  a marker line; the marker stays in the saved `script` and in `Segment.meta`, but is split out
+  before rendering so it is **never spoken** (real song scheduling is Phase C playout). Split logic
+  (`split_on_marker`) is pure and unit-tested.
+- **Config gets a `format_` section** (per-format speaker ids, word-count guidance, length-target
+  DIALs, the song marker) — same config-over-hardcoding discipline; word counts/lengths are what make
+  the three read as tonally distinct (a tight ~2.5-min news desk vs. a short ~1.5-min music bed).
+- **Builders imported under aliases** (`from .news import news as build_news`) so the submodule names
+  (`formats.news`, …) aren't shadowed by the function names.
+
+**Changed:**
+- New: `src/formats/{__init__,common,news,talk,music,__main__}.py`, `tests/test_formats.py`
+  (marker split + registry).
+- Updated: `src/writers/conversation.py` (extracted `compose_segment` + `orchestrate` directive),
+  `src/config.py` (`format_` section), `Makefile` (`make format FMT=…`), `README.md`, `docs/HOWTO.md`.
+
+**Why:** Phase B's "the Mind" needs more than one show shape; templating the backbone makes each kind
+repeatable and tonally consistent while reusing the B4/B3 machinery (no new TTS or world-query code).
+The signature `(now, context)` is the same shape B6's nightly buffer will loop over.
+
+**Verification:** live `make format FMT=news` produced a coherent bulletin — sting → exactly 3
+in-world headlines (lead derived from the seeded Lumen Festival, "with four days to go", plus two
+canon-consistent invented items) → sign-off — rendered free via Kokoro to a **137.6s** segment
+against a **150s** target (~8%). Distinctly a measured news desk, not the warm late-night talk.
+`talk`/`music` share already-proven paths (B4 conversation; the news single-call + single-voice
+render, plus the unit-tested marker split). **29 `pytest` pass**; `ruff` + format clean.
+
+**Next:** B6 — a light nightly buffer (`make buffer`): ~an hour of varied segments (a mix of the
+three formats, both DJs) into `segments/`, the mind proven at volume at zero API cost.
+Commit: (uncommitted) · Clips: (none)
+
+---
+
 ## 2026-06-20 — Phase B — B4 second DJ + conversation orchestrator (the creative core)
 
 **Focus:** the hard creative core — two DJs (Vell, night → Wren, first light) holding a real,

@@ -64,11 +64,24 @@ All output lands in `segments/` (gitignored) as `.mp3`. Voice = Kokoro by defaul
 |----|--------|-----|
 | One single-DJ talk segment (Vell) **(Claude)** | `make generate` | `$PY -m src.produce` |
 | Two-DJ conversation (Vell + Wren) **(Claude)** | `make conversation` | `$PY -m src.writers.conversation` |
+| One **program-format** segment (B5) **(Claude)** | `make format FMT=news` | `$PY -m src.formats news` |
 | Print a single-DJ *script* only (no audio) **(Claude)** | — | `$PY -m src.writer` |
 
 - `make conversation` runs the writers' room (showrunner → dialogue → continuity), voices each turn
   in its own Kokoro voice, and stitches them into one segment. It prints the beat, the script, the
   audio path, and the continuity verdict.
+- **`make format`** fills a proven show backbone; pick one with `FMT=` (default `talk`) and
+  optionally steer canon retrieval with `TOPIC=`:
+  - `FMT=news` — single-DJ desk: sting → in-world headlines from current events → sign-off.
+  - `FMT=talk` — two-DJ show (open → banter → music lead-in → close); wraps `make conversation`.
+  - `FMT=music` — single-DJ wrap: intro → a `[SONG]` slot marker (Phase C plays the real track) →
+    back-announce. The marker stays in the printed script but is never spoken.
+  ```bash
+  make format FMT=news
+  make format FMT=music TOPIC="the festival"
+  ```
+  Output lands as `news-…`/`talk-…`/`music-…` in `segments/`; the raw form is `$PY -m src.formats
+  <news|talk|music> [topic…]`.
 - First Kokoro run downloads model weights (~tens of seconds, needs network); every run after is
   fast and offline.
 
@@ -77,8 +90,9 @@ All output lands in `segments/` (gitignored) as `.mp3`. Voice = Kokoro by defaul
 ## 3. Play it (Icecast + Liquidsoap)
 
 Generation and playout are decoupled. **`serve` loops the newest segment** in `segments/` — picked
-by file **modification time** (so it works whatever the filename prefix: `vell-…` or `convo-…`) — and
-re-scans after every loop, so a segment generated while the stream is up airs on the next pass.
+by file **modification time** (so it works whatever the filename prefix: `vell-…`, `convo-…`,
+`news-…`, `talk-…`, `music-…`) — and re-scans after every loop, so a segment generated while the
+stream is up airs on the next pass.
 
 | Do | `make` |
 |----|--------|
@@ -103,7 +117,7 @@ re-scans after every loop, so a segment generated while the stream is up airs on
 
 The suite is **surgical** — it covers the bits with real logic (the world clock, relative-time
 phrasing, the CANON parser, context assembly, dialogue parsing, retries), not glue. No DB or API is
-needed: tests use fixtures and pure functions. **24 tests** across 6 files.
+needed: tests use fixtures and pure functions. **29 tests** across 7 files.
 
 ```bash
 .venv/bin/pytest -q                       # run everything (fast, the default)
@@ -125,6 +139,7 @@ What each file covers:
 | `tests/test_canon_source.py` | 5 | parsing `CANON.md` → facts/cast/events; the B3 series-bible extractor |
 | `tests/test_context.py` | 3 | topic→tags tokenizer; the dynamic-block renderer (relative phrase + facts) |
 | `tests/test_conversation.py` | 4 | `parse_turns` (labels, `**bold**`, wrapped lines, preamble); continuity verdict reader |
+| `tests/test_formats.py` | 5 | music `[SONG]` split (bold/whitespace/no-marker); the format registry resolves builders + cast |
 | `tests/test_retry.py` | 3 | bounded retry: first-try success, recovery after transient fails, exhaust-then-raise |
 
 > Tests are deliberately **not** in the pre-commit hook (slow checks get bypassed) — run them

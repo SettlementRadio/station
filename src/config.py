@@ -124,6 +124,28 @@ class Settings(BaseSettings):
     convo_continuity_escalation_tier: str = "opus"  # only if the first flags trouble
     convo_continuity_max_tokens: int = 500
 
+    # --- Program formats (B5: reusable show skeletons) -------------------------
+    # Each format fills a proven backbone (see src/formats/). `news` and `music`
+    # are single-DJ; `talk` is the two-DJ conversation (wraps B4, reusing the
+    # convo_* settings above). Speakers are cast ids whose cards/voices drive the
+    # segment; word-count guidance and the length-target DIAL are per format so
+    # the three read as tonally distinct (a tight news desk vs. a short music bed).
+    format_news_speaker_id: str = "vell"  # the single DJ on the news desk
+    format_news_headline_count: int = 3  # in-world headlines per news segment
+    format_news_words_low: int = 320
+    format_news_words_high: int = 420
+    format_news_max_tokens: int = 900
+    format_news_length_target_sec: int = 150  # ~2.5-min news bulletin; a DIAL
+    format_music_speaker_id: str = "vell"  # the single DJ wrapping the track
+    format_music_words_low: int = 130
+    format_music_words_high: int = 200
+    format_music_max_tokens: int = 500
+    format_music_length_target_sec: int = 90  # ~1.5-min intro+back-announce; a DIAL
+    # The placeholder marker separating the music intro from the back-announce.
+    # Real song scheduling is Phase C playout; here the slot is just this marker,
+    # kept in the script and recorded in the Segment meta, never spoken.
+    format_music_song_marker: str = "[SONG]"
+
     # --- External-call resilience (bounded retry on Claude/TTS) ----------------
     retry_attempts: int = 3  # total attempts, including the first
     retry_backoff_sec: float = 2.0  # base linear backoff between attempts

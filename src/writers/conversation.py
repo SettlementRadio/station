@@ -98,10 +98,26 @@ def showrunner(ctx: AssembledContext, now: datetime) -> str:
 # --- Step 2: orchestrator ---------------------------------------------------
 
 
-def orchestrate(ctx: AssembledContext, beat: str, now: datetime) -> str:
-    """Write the two-DJ exchange in one call; return speaker-labelled dialogue."""
+def orchestrate(
+    ctx: AssembledContext,
+    beat: str,
+    now: datetime,
+    *,
+    extra_directive: str | None = None,
+) -> str:
+    """Write the two-DJ exchange in one call; return speaker-labelled dialogue.
+
+    `extra_directive` is an optional structural instruction (e.g. the B5 `talk`
+    format's open → banter → music lead-in → close backbone). It is woven in
+    before the format rules; `None` keeps B4's default handover shape.
+    """
     names = _names(ctx)
     label_help = " / ".join(f"{c.name}:" for c in ctx.speakers)
+    backbone = (
+        f"Follow this shape for the exchange:\n{extra_directive}\n\n"
+        if extra_directive
+        else ""
+    )
     system = (
         "You are the writers' room for Settlement Radio, scripting a SPOKEN "
         f"on-air exchange between two hosts — {names} — at the handover from the "
@@ -121,6 +137,7 @@ def orchestrate(ctx: AssembledContext, beat: str, now: datetime) -> str:
         "the handover.\n\n"
         f"Target {settings.convo_words_low}-{settings.convo_words_high} words "
         "total, across both voices.\n\n"
+        f"{backbone}"
         "FORMAT (strict): every line is one turn, prefixed with the speaker's name "
         f"and a colon — {label_help} — then the words they say. Alternate between "
         "them. No stage directions, no parentheticals, no narration, no headings, "
@@ -268,23 +285,50 @@ def make_conversation_segment(
         A populated talk `Segment` (two voices stitched), with the beat and the
         continuity verdict in `meta`.
     """
-    if length_target_sec is None:
-        length_target_sec = settings.segment_default_length_target_sec
-
     now = datetime.fromisoformat(now_iso)
-    seg_id = f"convo-{now:%Y%m%dT%H%M%S}"
-    log.info("convo_make_segment_start", seg_id=seg_id, topic=topic)
+    log.info("convo_make_segment_start", topic=topic)
 
     ctx = context.assemble(now, topic=topic, speakers=settings.convo_speaker_ids)
+    return compose_segment(ctx, now, length_target_sec=length_target_sec)
+
+
+def compose_segment(
+    ctx: AssembledContext,
+    now: datetime,
+    *,
+    seg_id: str | None = None,
+    length_target_sec: int | None = None,
+    extra_directive: str | None = None,
+    fmt: str = "talk",
+) -> Segment:
+    """Turn an already-assembled context into a two-DJ talk `Segment`.
+
+    The generation core shared by `make_conversation_segment` (B4) and the B5
+    `talk` format: showrunner → orchestrator → continuity → two-voice render. The
+    caller assembles the context (so the speakers are already chosen) and may pass
+    a `seg_id`, a `length_target_sec` DIAL, and an `extra_directive` (a structural
+    backbone for the orchestrator — the B5 `talk` template uses it). `fmt` is the
+    `Segment.format` label (kept "talk" — the format template, if any, is recorded
+    in `meta`).
+    """
+    if length_target_sec is None:
+        length_target_sec = settings.segment_default_length_target_sec
+    if seg_id is None:
+        seg_id = f"convo-{now:%Y%m%dT%H%M%S}"
+
     if len(ctx.speakers) < 2:
         raise ValueError(
             "a conversation needs at least two cast members; "
-            f"got {[c.id for c in ctx.speakers]} from convo_speaker_ids "
-            f"{settings.convo_speaker_ids} (run `make seed`?)"
+            f"got {[c.id for c in ctx.speakers]} (run `make seed`?)"
         )
 
+    log.info(
+        "convo_compose_start", seg_id=seg_id, speakers=[c.id for c in ctx.speakers]
+    )
     beat = showrunner(ctx, now)
-    script = safety_check(orchestrate(ctx, beat, now).strip())
+    script = safety_check(
+        orchestrate(ctx, beat, now, extra_directive=extra_directive).strip()
+    )
 
     turns = parse_turns(script, ctx.speakers)
     if not turns:
@@ -297,7 +341,7 @@ def make_conversation_segment(
     audio_path = _render_turns(turns, seg_id)
 
     log.info(
-        "convo_make_segment_done",
+        "convo_compose_done",
         seg_id=seg_id,
         turns=len(turns),
         voices=sorted({t.voice for t in turns}),
@@ -306,9 +350,9 @@ def make_conversation_segment(
     )
     return Segment(
         id=seg_id,
-        format="talk",
+        format=fmt,
         length_target_sec=length_target_sec,
-        air_time=now_iso,
+        air_time=now.isoformat(),
         script=script,
         audio_path=audio_path,
         disclosure=True,

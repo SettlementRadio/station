@@ -10,6 +10,7 @@
 #   make demo       Show the progressing-event relative-time flip (B2; needs seed).
 #   make context    Print the writer's assembled context for now (B3; needs seed).
 #   make conversation  Generate a two-DJ talk segment (B4; needs seed; Claude+TTS).
+#   make format FMT=…  Generate one B5 format segment (news|talk|music; needs seed).
 #
 # `generate`/`play` make a live Anthropic + ElevenLabs call (needs a populated
 # .env). `serve` just loops whatever segment already exists.
@@ -28,7 +29,12 @@ LIQ_LOG    := $(RUN_DIR)/liquidsoap.log
 PLAYER_URL := http://127.0.0.1:8000/
 STREAM_URL := http://127.0.0.1:8000/settlement.mp3
 
-.PHONY: help generate serve play play-convo stop status seed demo context conversation
+.PHONY: help generate serve play play-convo stop status seed demo context conversation format
+
+# B5 format default: `make format` builds a talk segment; override with FMT=news
+# or FMT=music. Pass a TOPIC=... to steer canon retrieval.
+FMT   ?= talk
+TOPIC ?=
 
 help:
 	@echo "Settlement Radio (Phase A):"
@@ -42,6 +48,7 @@ help:
 	@echo "  make demo      show the progressing-event relative-time flip (B2)"
 	@echo "  make context   print the writer's assembled context for now (B3)"
 	@echo "  make conversation  generate a two-DJ talk segment (B4)"
+	@echo "  make format FMT=…  generate one B5 format segment (news|talk|music)"
 
 # Seed the world-state DB from docs/CANON.md (the human-editable source). Reads
 # DATABASE_URL via src/config.py; idempotent (re-running reproduces the state).
@@ -66,6 +73,12 @@ context:
 conversation:
 	@echo "==> Generating a two-DJ conversation segment (B4)…"
 	$(PY) -m src.writers.conversation
+
+# B5: generate one program-format segment from a proven skeleton. Live Anthropic
+# + TTS; needs `make seed`. e.g. `make format FMT=news` or `make format FMT=music`.
+format:
+	@echo "==> Generating a '$(FMT)' format segment (B5)…"
+	$(PY) -m src.formats $(FMT) $(TOPIC)
 
 generate:
 	@echo "==> Generating a fresh segment for the current time…"
