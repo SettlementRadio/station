@@ -105,6 +105,25 @@ class Settings(BaseSettings):
     # give the DJs a longer horizon; it is a date query, not a cost driver.
     context_event_window_days: int = 14
 
+    # --- Conversation (B4: two-DJ dialogue — the writers' room) ----------------
+    # The cast ids (cards from the DB) who hold the conversation, in handover
+    # order: the night host then the first-light host. Their logical voices come
+    # from each card's `logical_voice`, mapped to a preset in providers/tts.py.
+    convo_speaker_ids: list[str] = ["vell", "wren"]
+    # Spoken-length guidance for the whole exchange (both DJs combined). Kept
+    # shorter than a single-DJ segment so iteration is fast and TTS time is low; a
+    # two-voice exchange feels longer than its word count. Retune as needed.
+    convo_words_low: int = 450
+    convo_words_high: int = 600
+    # Per-step model tiers + output caps. The orchestrator (the dialogue) and the
+    # showrunner (beat pick) run on the default writing brain; continuity runs on
+    # sonnet and ESCALATES to opus only when the sonnet pass flags trouble.
+    convo_max_tokens: int = 1600  # orchestrator: the dialogue draft
+    convo_showrunner_max_tokens: int = 300  # showrunner: a short beat brief
+    convo_continuity_tier: str = "sonnet"  # first continuity pass
+    convo_continuity_escalation_tier: str = "opus"  # only if the first flags trouble
+    convo_continuity_max_tokens: int = 500
+
     # --- External-call resilience (bounded retry on Claude/TTS) ----------------
     retry_attempts: int = 3  # total attempts, including the first
     retry_backoff_sec: float = 2.0  # base linear backoff between attempts

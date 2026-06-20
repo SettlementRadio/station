@@ -33,6 +33,155 @@ A typical *build* session will be short, e.g.:
 
 ---
 
+## 2026-06-20 — Phase B — B4 second DJ + conversation orchestrator (the creative core)
+
+**Focus:** the hard creative core — two DJs (Vell, night → Wren, first light) holding a real,
+in-character conversation that *uses* a current event/canon fact without info-dumping, voiced in two
+distinct Kokoro voices and stitched into one talk `Segment`.
+
+**Decisions (the durable ones):**
+- **A light writers' room in three Claude steps, one shared cache.** New
+  `src/writers/conversation.py`: a **showrunner** picks one beat/angle from the events near `now`;
+  an **orchestrator** writes the whole exchange; a **continuity** editor checks it. All three pass
+  the *same* `cached_context` (bible + both cards), so the prompt cache is reused across the
+  session — only the small variable part of each call pays full price.
+- **Single-call dialogue, both personas in one prompt** (per the B4 guidance) — cheaper and more
+  coherent than turn-by-turn agents. The output is speaker-labelled (`Vell:` / `Wren:`); a parser
+  (`parse_turns`) splits it into per-voice turns, tolerating `**bold**` labels, wrapped lines, and
+  stray preamble. Try multi-agent only if single-call feels flat (it didn't).
+- **Anti-recitation baked into the prompt:** the facts are the hosts' *shared knowledge to
+  reference naturally*, never to explain to each other or recite. This is the line between "a
+  conversation" and "two narrators," and it's the whole point of the task.
+- **Continuity escalates by cost only when needed:** one pass on `sonnet`; if it flags trouble,
+  re-check on `opus`. Advisory in B4 (verdict logged + stored in `Segment.meta`), exercising the
+  seam a real continuity/safety gate slots into. The draft also runs through the existing
+  `safety_check()` placeholder.
+- **Two-voice rendering = synthesize per turn, then stitch.** Each turn is voiced in its DJ's own
+  logical voice (`vell_night` / `dj_two`) and the per-turn mp3s are joined by a new
+  `tts.concat_audio()` (ffmpeg concat demuxer, stream-copy — no re-encode). **All ffmpeg stays in
+  `tts.py`**, next to `_to_mp3`, keeping the seam intact.
+- **`context.assemble` generalized to N speakers.** `speakers=` now takes one id *or* several
+  (both cards → cached core); a `speaker` convenience property keeps the single-DJ B3 path
+  unchanged. This is what B5's formats will reuse.
+
+**Changed:**
+- New: `src/writers/{__init__,conversation.py}`, `tests/test_conversation.py` (the brittle
+  `parse_turns` + verdict reader).
+- Updated: `src/world/context.py` (multi-speaker `assemble` + `speakers`/`speaker` property),
+  `src/providers/tts.py` (`concat_audio`), `src/config.py` (a `convo_` section: speaker ids, word
+  guidance, per-step token caps, continuity tier + opus escalation tier), `src/writer.py`
+  (`speakers=` kwarg), `Makefile` (`make conversation`), `README.md`.
+
+**Why:** Phase B's definition of done is "two DJs hold a sensible in-character conversation that
+uses canon." Single-call + a strong anti-recitation rule gets a genuine exchange for one Claude
+call's cost; voicing turns separately is the only way two voices share one segment cleanly.
+
+**Verification:** live `make conversation` produced a **22-turn, 2:47** two-voice segment
+(`vell_night` + `dj_two`), continuity `OK` on the first `sonnet` pass. The dialogue reacts and
+builds turn-to-turn (distinct voices: Vell musing/warm, Wren bright/forward), gives a real time
+check at the handover, and references canon glancingly ("four days out from the Lumen," weeks-old
+letters riding the relay) without explaining it — judged "a conversation, not two narrators." 24
+`pytest` pass; `ruff` + format clean; env-drift guardrail green; the single-DJ B3 path still
+assembles.
+
+**Next:** B5 — program format templates (`news` / `talk` / `music`), each `(now, context) ->
+Segment`; `talk` wraps this B4 conversation.
+Commit: (uncommitted) · Clips: (none)
+
+---
+
+## 2026-06-19 — Phase B — B3 context assembly for the writer (structured retrieval; vector RAG stubbed)
+
+**Focus:** feed the writer the *right slice* of the world for `now` — cheaply and fast — from the
+DB, and stop reading the whole `CANON.md` into the prompt. The retrieval spine for B4–B6.
+
+**Decisions (the durable ones):**
+- **`src/world/context.py` — `assemble(now, *, topic, speaker)` splits the world into two parts
+  that match the two cost seams.** A **cached stable core** (series bible + the speaking DJ's card)
+  → sent as `cached_context` (the prompt-cache lever, ~0.1x on repeats); plus the **dynamic now**
+  (events near `now` with live status + relative phrasing, and topic-relevant canon) → the small
+  per-call part. The split is deliberate: the core barely changes, the dynamic part is what makes a
+  segment time-aware.
+- **Structured retrieval only; vectors stay a documented, *unused* seam.** Date/status/tag SQL is
+  the right, fast tool while the canon is tiny. `src/providers/embeddings.py` fixes the contract
+  (`retrieve()` no-op returning `[]`; `embed()` raises) with the TRIGGER spelled out — implement
+  real vectors only when the context outgrows the cache *or* you need meaning-based (not date/tag)
+  recall. `context.py` never calls it (done-when: "the seam exists but is unused").
+- **The series bible is read from `CANON.md`, not the DB.** It's standing prose not projected into
+  rows; a `canon_source.load_series_bible()` extracts just those sections, so `CANON.md` stays the
+  single human-editable source while everything dynamic comes from the DB.
+- **Canon goes in the *dynamic* (queried) half, not the cache** — matching the RAG intent
+  (tag-matched to topic, anticipating growth). Today facts carry no tags, so a topic query falls
+  back to the full (small) canon via a new `store.canon_by_tags()` — the seam is ready for when
+  facts get tagged.
+- **`context.py` touches no SQL** — the only DB block calls the `store` seam; psycopg never leaks
+  out of `store.py`.
+
+**Changed:**
+- New: `src/world/context.py`, `src/providers/embeddings.py`, `tests/test_context.py`.
+- Updated: `src/world/store.py` (`canon_by_tags`), `src/world/canon_source.py`
+  (`load_series_bible`), `src/writer.py` (calls `context.assemble`, no more whole-file read),
+  `src/produce.py` (dropped the canon read), `src/config.py` (`context_event_window_days`,
+  `writer_speaker_id`), `tests/test_canon_source.py` (bible-loader test), `Makefile`
+  (`make context`), `README.md`.
+
+**Why:** a flat file can't answer "what's relevant *now*?" cheaply. Splitting cached-core from
+queried-dynamic keeps the cost lever while making the prompt time-aware; deferring vectors avoids
+standing up pgvector before it earns its keep.
+
+**Verification:** `make context` prints the cached core (bible + Vell's card) and the dynamic slice
+— the Lumen Festival rendered live as **"in five days (upcoming)"** plus the 7 canon facts. A
+stubbed `llm.generate` confirmed the writer sends bible+card as `cached_context` and clock + events
++ facts in the system prompt. 20 `pytest` pass; `ruff` clean; env-drift guardrail green.
+*(Noted, not fixed — pre-existing B1 parser truncates a multi-line event `**Body:**` to its first
+line; out of B3 scope.)*
+
+**Next:** B4 — second DJ + the conversation orchestrator (showrunner → dialogue → continuity),
+two-voice render.
+Commit: 7d114f1 · Clips: (none)
+
+---
+
+## 2026-06-19 — Phase B — B2 world clock + event progression + relative-time renderer
+
+**Focus:** the time-awareness spine, and the proof of the progressing event — render the *same*
+event at two `now` values and watch the phrase flip ("in five days" → "yesterday").
+
+**Decisions (the durable ones):**
+- **`src/world/clock.py` is the single source of the real→in-world (`now + 600y`) mapping.** The
+  inline computation that lived in `writer.py` moved here; the writer now calls
+  `clock.render_wall_clock`. Two uses kept deliberately apart: **display** (`render_wall_clock`)
+  keeps the real weekday/day/month and only relabels the year (+600), honouring CANON's "a real
+  Tuesday is an in-world Tuesday"; **arithmetic** (`to_inworld`/`to_real`) shifts both sides by
+  +600 so the gap to an event is identical in real and in-world frames. Handles the 29-Feb
+  Gregorian trap (2000 leap, 2600 not).
+- **`src/world/events.py` is pure (no DB/IO).** `status_of(event, now)` → upcoming/today/past and
+  `relative_phrase(event, now)` → "tomorrow"/"in five days"/"tonight"/"yesterday"/"last week" —
+  computed against the in-world `now`. Purity makes the brittle bit (phrasing thresholds) trivially
+  testable and lets B3 call it on already-fetched rows.
+- **Phrasing thresholds + number-words are domain constants, not config** — named module-level
+  constants next to the code (per the B0.5 config-vs-constant rule), since they're intrinsic to the
+  renderer, not operator-tunable.
+- **The demo anchors `now` on the event's own date** (not the wall clock), so the proof is
+  deterministic: five days before → "in five days" (upcoming); one day after → "yesterday" (past).
+
+**Changed:**
+- New: `src/world/{clock,events}.py`, `tests/test_clock.py`, `tests/test_events.py`.
+- Updated: `src/writer.py` (calls `clock` instead of inline `+600y`), `src/world/store.py` (a small
+  read for the demo), `Makefile` (`make demo`), `README.md`.
+
+**Why:** "a world that progresses" is the whole Phase B pitch and the future hero clip; it needs one
+authoritative clock and a renderer that turns a stored date into the phrase a DJ would actually say.
+
+**Verification:** `make demo` reads the seeded Lumen Festival and prints `[upcoming] "in five days"`
+at `now−5d` and `[past] "yesterday"` at `now+1d`. `pytest` (clock + events) green; `ruff` clean.
+
+**Next:** B3 — context assembly: cached core (bible + DJ card) + structured-query dynamic
+(events/canon), the vector seam stubbed; rewire the writer onto it.
+Commit: cb23d09 · Clips: (none)
+
+---
+
 ## 2026-06-19 — Phase B — B1 world-state DB: schema + SQL seam + seed from canon
 
 **Focus:** moved the world out of the flat file into a queryable Postgres store — the spine for the

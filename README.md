@@ -36,6 +36,8 @@ a near-live drop. Details in [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
 ## Run it locally
 The station backend (the Python pipeline + Liquidsoap playout) runs on macOS (Apple Silicon)
 with Homebrew. Generation and playout are decoupled, so you can generate a segment, then serve it.
+For a one-page command cheat-sheet (every `make` target, the test commands, env knobs, and
+troubleshooting), see [`docs/HOWTO.md`](docs/HOWTO.md).
 
 **1. System packages.** Note: **Python 3.12, not 3.13** — the Kokoro TTS package requires
 `>=3.10,<3.13`.
@@ -103,6 +105,18 @@ make context     # prints the cached core and the dynamic (events/canon) slice f
 > [`src/world/store.py`](src/world/store.py) (a `CREATE EXTENSION vector` + a `canon_embeddings`
 > table). The trigger — context outgrowing the cache, or needing meaning-based recall — is spelled
 > out at the top of both files.
+
+Two DJs hold a conversation, not two monologues. The conversation orchestrator
+([`src/writers/conversation.py`](src/writers/conversation.py)) runs a light writers' room over the
+assembled context: a **showrunner** picks one beat from the current events, an **orchestrator**
+writes the whole two-voice exchange in a single call from both DJ cards (Vell, night → Wren,
+first light), and a **continuity** pass checks it against canon on `sonnet`, escalating to `opus`
+only if it flags trouble. Each turn is voiced in that DJ's own Kokoro voice and the turns are
+stitched into one talk segment. The facts are the hosts' *shared knowledge to reference naturally*
+— the prompt forbids reciting or explaining canon to each other.
+```bash
+make conversation   # showrunner → dialogue → continuity → two-voice segment (Claude + TTS)
+```
 
 **5. Secrets.** Copy `.env.example` to `.env`. For a fully local, zero-cost run you only need
 `ANTHROPIC_API_KEY` (the script) and the default `TTS_PROVIDER=kokoro` (the voice);

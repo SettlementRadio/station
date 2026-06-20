@@ -286,3 +286,53 @@ def _to_mp3(src_path: str, out_path: str) -> str:
         check=True,
     )
     return out_path
+
+
+def concat_audio(parts: list[str], out_path: str) -> str:
+    """Concatenate the per-turn mp3s of a multi-voice segment into one at out_path.
+
+    Used by the B4 conversation orchestrator, which voices each DJ turn separately
+    (so each gets its own logical voice) and then stitches the turns back into a
+    single talk `Segment`. ffmpeg lives only in this module, so the join lives here
+    too, next to `_to_mp3`. The turns are all rendered by the same backend, so they
+    share a codec and can be stream-copied (`-c copy`) via the concat demuxer — no
+    re-encode, no quality loss.
+    """
+    import subprocess
+    import tempfile
+
+    if not parts:
+        raise ValueError("concat_audio: no parts to concatenate")
+
+    parent = os.path.dirname(out_path)
+    if parent:
+        os.makedirs(parent, exist_ok=True)
+
+    # The concat demuxer reads a list file of `file '<path>'` lines.
+    with tempfile.NamedTemporaryFile("w", suffix=".txt", delete=False) as f:
+        list_path = f.name
+        for p in parts:
+            f.write(f"file '{os.path.abspath(p)}'\n")
+    try:
+        subprocess.run(
+            [
+                "ffmpeg",
+                "-y",
+                "-loglevel",
+                "error",
+                "-f",
+                "concat",
+                "-safe",
+                "0",
+                "-i",
+                list_path,
+                "-c",
+                "copy",
+                out_path,
+            ],
+            check=True,
+        )
+    finally:
+        os.remove(list_path)
+    log.info("tts_concat_done", parts=len(parts), out_path=out_path)
+    return out_path

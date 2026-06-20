@@ -2,12 +2,14 @@
 #
 #   make generate   Write a fresh segment for the current time (Claude → TTS).
 #   make serve      Start Icecast + Liquidsoap (clean start; backgrounded).
-#   make play       generate + serve, then print the local stream URL.
+#   make play       generate (single-DJ) + serve, then print the local stream URL.
+#   make play-convo generate a two-DJ conversation + serve it (B4).
 #   make stop       Stop Icecast + Liquidsoap (no orphans left behind).
 #   make status     Show what's running and the mount state.
 #   make seed       Load docs/CANON.md into the world-state DB (B1; idempotent).
 #   make demo       Show the progressing-event relative-time flip (B2; needs seed).
 #   make context    Print the writer's assembled context for now (B3; needs seed).
+#   make conversation  Generate a two-DJ talk segment (B4; needs seed; Claude+TTS).
 #
 # `generate`/`play` make a live Anthropic + ElevenLabs call (needs a populated
 # .env). `serve` just loops whatever segment already exists.
@@ -26,11 +28,12 @@ LIQ_LOG    := $(RUN_DIR)/liquidsoap.log
 PLAYER_URL := http://127.0.0.1:8000/
 STREAM_URL := http://127.0.0.1:8000/settlement.mp3
 
-.PHONY: help generate serve play stop status seed demo context
+.PHONY: help generate serve play play-convo stop status seed demo context conversation
 
 help:
 	@echo "Settlement Radio (Phase A):"
-	@echo "  make play      generate a fresh segment + serve it, print the URL"
+	@echo "  make play      generate a single-DJ segment + serve it, print the URL"
+	@echo "  make play-convo generate a two-DJ conversation + serve it"
 	@echo "  make generate  write a fresh segment for the current time"
 	@echo "  make serve     start Icecast + Liquidsoap (loops newest segment)"
 	@echo "  make stop      stop Icecast + Liquidsoap"
@@ -38,6 +41,7 @@ help:
 	@echo "  make seed      load docs/CANON.md into the world-state DB (B1)"
 	@echo "  make demo      show the progressing-event relative-time flip (B2)"
 	@echo "  make context   print the writer's assembled context for now (B3)"
+	@echo "  make conversation  generate a two-DJ talk segment (B4)"
 
 # Seed the world-state DB from docs/CANON.md (the human-editable source). Reads
 # DATABASE_URL via src/config.py; idempotent (re-running reproduces the state).
@@ -56,6 +60,12 @@ demo:
 context:
 	@echo "==> Assembled writer context (B3)…"
 	$(PY) -m src.world.context
+
+# B4: generate a two-DJ conversation segment (showrunner → orchestrator →
+# continuity → two-voice render). Makes live Anthropic calls; needs `make seed`.
+conversation:
+	@echo "==> Generating a two-DJ conversation segment (B4)…"
+	$(PY) -m src.writers.conversation
 
 generate:
 	@echo "==> Generating a fresh segment for the current time…"
@@ -83,6 +93,11 @@ serve: stop
 	@echo "       Stop   : make stop"
 
 play: generate serve
+
+# Two-DJ counterpart of `play`: generate a conversation, then serve. Playout picks
+# the newest segment by modification time, so the fresh convo airs even with older
+# vell-*/convo-* files in segments/.
+play-convo: conversation serve
 
 stop:
 	@-[ -f $(LIQ_PID) ] && kill `cat $(LIQ_PID)` 2>/dev/null || true

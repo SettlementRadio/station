@@ -23,10 +23,14 @@ segments_dir = "segments"
 ice_password = environment.get(default="hackme", "ICECAST_SOURCE_PASSWORD")
 
 # --- Source 1: the newest segment, re-picked every time a track ends. ---
-# produce.py names files vell-YYYYmmddTHHMMSS.mp3, which sort lexicographically
-# by time, so the last audio file in a sorted listing is the freshest. Re-scanning
+# Pick by MODIFICATION TIME, not by filename order. Segments now use different
+# prefixes — produce.py writes vell-YYYYmmddTHHMMSS.mp3 (single DJ) and the
+# conversation writes convo-… (two DJs) — which no longer sort by time (a `vell-`
+# always sorts after any `convo-`), so a name sort would wrongly prefer an old
+# Vell clip over a fresh conversation. `file.mtime` is prefix-agnostic. Re-scanning
 # on each request means a segment generated while the stream is up is picked up
-# automatically on the next loop, with no restart.
+# automatically on the next loop, with no restart. (Phase A/B placeholder: the
+# real scheduler that plays *through* a buffer arrives in Phase C.)
 def newest_segment() =
   files = file.ls(absolute=true, sorted=true, segments_dir)
   audio_files = list.filter(
@@ -37,7 +41,12 @@ def newest_segment() =
     log("No segment in #{segments_dir} yet — falling back.")
     null
   else
-    newest = list.nth(audio_files, list.length(audio_files) - 1)
+    newest = list.fold(
+      fun(best, f) ->
+        if best == "" or file.mtime(f) > file.mtime(best) then f else best end,
+      "",
+      audio_files
+    )
     log("Now playing newest segment: #{newest}")
     request.create(newest)
   end

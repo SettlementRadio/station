@@ -146,7 +146,7 @@ def write_segment_script(
     ctx = context.assemble(
         datetime.fromisoformat(now_iso),
         topic=topic,
-        speaker=settings.writer_speaker_id,
+        speakers=settings.writer_speaker_id,
     )
     speaker_name = ctx.speaker.name if ctx.speaker else "the host"
     system = _build_system_prompt(now_iso, speaker_name, ctx.dynamic)

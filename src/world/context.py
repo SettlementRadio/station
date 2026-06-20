@@ -25,6 +25,7 @@ widens (and eventually gains the embeddings seam) — the cached core stays cach
 from __future__ import annotations
 
 import re
+from collections.abc import Sequence
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 
@@ -42,23 +43,31 @@ class AssembledContext:
     """The world slice for one generation: a cached core + the dynamic now.
 
     `cached_context` is for `llm.generate(..., cached_context=...)`; `dynamic` is
-    woven into the per-call system prompt. The structured fields (`speaker`,
+    woven into the per-call system prompt. The structured fields (`speakers`,
     `events`, `canon`) are exposed too, so later callers (the B4 conversation
     orchestrator, B5 formats) can reuse the same query without re-fetching.
+
+    `speakers` holds one card for the single-DJ writer (B3) or both for a two-DJ
+    conversation (B4); `speaker` is a convenience for the single-DJ case.
     """
 
     cached_context: str
     dynamic: str
-    speaker: CastMember | None
+    speakers: list[CastMember] = field(default_factory=list)
     events: list[Event] = field(default_factory=list)
     canon: list[CanonFact] = field(default_factory=list)
+
+    @property
+    def speaker(self) -> CastMember | None:
+        """The first (or only) speaking DJ — for single-DJ callers like B3."""
+        return self.speakers[0] if self.speakers else None
 
 
 def assemble(
     now: datetime,
     *,
     topic: str | None = None,
-    speaker: str | None = None,
+    speakers: str | Sequence[str] | None = None,
 ) -> AssembledContext:
     """Assemble the world context for `now`.
 
@@ -67,15 +76,16 @@ def assemble(
             event window and the relative phrasing.
         topic: optional subject; when given, canon is filtered to tag-matched
             facts (falling back to all facts when nothing matches — see below).
-        speaker: optional cast id (e.g. "vell"); its card joins the stable core so
-            the writer speaks in that DJ's voice.
+        speakers: one cast id (e.g. "vell") or several (e.g. ["vell", "wren"]);
+            each one's card joins the cached stable core, so the writer — single
+            DJ (B3) or a two-DJ conversation (B4) — speaks in character. An unknown
+            id raises rather than silently dropping a persona.
 
     Returns:
         An `AssembledContext` — cached stable core + dynamic now + the rows used.
     """
-    log.info(
-        "context_assemble_start", now=now.isoformat(), topic=topic, speaker=speaker
-    )
+    ids = [speakers] if isinstance(speakers, str) else list(speakers or [])
+    log.info("context_assemble_start", now=now.isoformat(), topic=topic, speakers=ids)
 
     bible = canon_source.load_series_bible(settings.canon_path)
     iw_now = clock.to_inworld(now)
@@ -83,22 +93,25 @@ def assemble(
 
     # All SQL stays behind the store seam; this block is the only DB work.
     with store.connect() as conn:
-        card = store.get_cast_member(conn, speaker) if speaker else None
-        if speaker and card is None:
-            # Fail loud rather than silently dropping the DJ's persona.
-            raise ValueError(f"unknown speaker cast id {speaker!r} (run `make seed`?)")
+        cards: list[CastMember] = []
+        for sid in ids:
+            card = store.get_cast_member(conn, sid)
+            if card is None:
+                # Fail loud rather than silently dropping the DJ's persona.
+                raise ValueError(f"unknown speaker cast id {sid!r} (run `make seed`?)")
+            cards.append(card)
         raw_events = store.events_in_range(conn, iw_now - window, iw_now + window)
         canon = _select_canon(conn, topic)
 
     # Recompute each event's status live so the writer never sees a stale snapshot.
     near_events = [events_mod.progressed(e, now) for e in raw_events]
 
-    cached_context = _render_core(bible, card)
+    cached_context = _render_core(bible, cards)
     dynamic = _render_dynamic(near_events, canon, now)
 
     log.info(
         "context_assemble_done",
-        speaker=card.id if card else None,
+        speakers=[c.id for c in cards],
         events=len(near_events),
         canon=len(canon),
         cached_chars=len(cached_context),
@@ -107,7 +120,7 @@ def assemble(
     return AssembledContext(
         cached_context=cached_context,
         dynamic=dynamic,
-        speaker=card,
+        speakers=cards,
         events=near_events,
         canon=canon,
     )
@@ -144,11 +157,10 @@ def _topic_tags(topic: str) -> list[str]:
 # --- Rendering --------------------------------------------------------------
 
 
-def _render_core(bible: str, card: CastMember | None) -> str:
-    """The cached stable core: series bible + the speaking DJ's character card."""
+def _render_core(bible: str, cards: list[CastMember]) -> str:
+    """The cached stable core: series bible + each speaking DJ's character card."""
     parts = [bible]
-    if card is not None:
-        parts.append(f"## Your character — {card.name}\n\n{card.card_text}")
+    parts += [f"## Character — {c.name}\n\n{c.card_text}" for c in cards]
     return "\n\n".join(p for p in parts if p).strip()
 
 
@@ -174,7 +186,7 @@ def _render_dynamic(events: list[Event], canon: list[CanonFact], now: datetime) 
 if __name__ == "__main__":
     # Runnable check: print the assembled context for Vell, now.
     #   .venv/bin/python -m src.world.context      (or: make context)
-    ctx = assemble(datetime.now(), speaker=settings.writer_speaker_id)
+    ctx = assemble(datetime.now(), speakers=settings.writer_speaker_id)
     print("===== CACHED CORE (stable) =====\n")
     print(ctx.cached_context)
     print("\n===== DYNAMIC (this call) =====\n")
