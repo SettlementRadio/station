@@ -87,11 +87,22 @@ turns a stored event date into a live status and the phrase a DJ would say. See 
 ```bash
 make demo        # renders the Lumen Festival at two times: "in five days" -> "yesterday"
 ```
-> **pgvector is intentionally not installed yet.** Phase B uses structured queries (by date /
-> status / tag) over the `events` and `canon` tables — the fast, right retrieval for now. Semantic
-> vector search is deferred to **B3**; when it lands it slots into `src/world/store.py` (a
-> `CREATE EXTENSION vector` + a `canon_embeddings` table), driven by the `src/providers/embeddings.py`
-> seam stub. See the FUTURE note at the top of `store.py`.
+The writers' room is fed the right slice of that world by
+[`src/world/context.py`](src/world/context.py): `assemble(now)` returns a **cached stable core**
+(the series bible + the speaking DJ's card → sent as a prompt-cache breakpoint) plus the **dynamic
+now** (events near the current time, with live status and relative phrasing, and topic-relevant
+canon — all by structured DB query). Inspect exactly what the writer will send:
+```bash
+make context     # prints the cached core and the dynamic (events/canon) slice for now
+```
+> **pgvector is intentionally not installed.** Phase B uses structured queries (by date /
+> status / tag) over the `events` and `canon` tables — the fast, right retrieval while the canon is
+> small. Semantic vector search stays a **documented seam, unused**: the interface lives in
+> [`src/providers/embeddings.py`](src/providers/embeddings.py) (a no-op `retrieve()` + a
+> `NotImplementedError` `embed()`), and when its trigger fires it slots into
+> [`src/world/store.py`](src/world/store.py) (a `CREATE EXTENSION vector` + a `canon_embeddings`
+> table). The trigger — context outgrowing the cache, or needing meaning-based recall — is spelled
+> out at the top of both files.
 
 **5. Secrets.** Copy `.env.example` to `.env`. For a fully local, zero-cost run you only need
 `ANTHROPIC_API_KEY` (the script) and the default `TTS_PROVIDER=kokoro` (the voice);
@@ -121,7 +132,9 @@ The backend follows the engineering standards in [`CLAUDE.md`](CLAUDE.md). For c
 - **One place for SQL.** All world-state reads/writes go through
   [`src/world/store.py`](src/world/store.py) — the same seam discipline as `providers/`. Nothing
   else imports `psycopg` or writes SQL. `docs/CANON.md` is the human-editable source; the parser
-  ([`src/world/canon_source.py`](src/world/canon_source.py)) and `make seed` project it into the DB.
+  ([`src/world/canon_source.py`](src/world/canon_source.py)) and `make seed` project it into the DB,
+  and the writer reads its world back out through [`src/world/context.py`](src/world/context.py),
+  never the raw file.
 - **Lint + format.** [`ruff`](https://docs.astral.sh/ruff/) is configured in `pyproject.toml`:
   ```bash
   .venv/bin/ruff check src     # lint

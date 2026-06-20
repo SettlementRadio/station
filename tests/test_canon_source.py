@@ -96,3 +96,17 @@ def test_ignores_non_target_sections(tmp_path):
     # "## The station" prose must not leak into any parsed collection.
     facts, cast, events = _load(tmp_path)
     assert len(facts) == 3 and len(cast) == 2 and len(events) == 1
+
+
+def test_series_bible_keeps_narrative_prose_only(tmp_path):
+    # B3 cached core: the bible loader keeps the standing narrative section (with
+    # its heading) and drops the structured sections (facts/cast/events).
+    path = tmp_path / "CANON.md"
+    path.write_text(_DOC)
+    bible = canon_source.load_series_bible(path)
+    assert "## The station" in bible
+    assert "Prose that is NOT a parsed section" in bible
+    # None of the structured rows leak into the cached core.
+    assert "Lumen Festival" not in bible
+    assert "vell_night" not in bible
+    assert "First fact" not in bible

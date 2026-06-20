@@ -10,10 +10,15 @@ Two things this module is careful about:
   now lives in `world/clock.py` (the single source, B2); this module just calls
   `clock.render_wall_clock` and hands the result to Claude in the small, per-call
   system prompt so the time check is real (CANON.md "The time concept").
-* **The cost lever.** The canon is large and stable; it is passed to
-  `llm.generate` as `cached_context` (a prompt-cache breakpoint), so repeat runs
-  pay ~0.1x on it. The variable instructions + clock go in `system`. (CLAUDE.md
-  "Cost levers".)
+* **The cost lever.** The bulky, stable core (series bible + the DJ's card) is
+  assembled by `world/context.py` (B3) and passed to `llm.generate` as
+  `cached_context` (a prompt-cache breakpoint), so repeat runs pay ~0.1x on it.
+  The variable instructions + clock + the *dynamic* world slice (events near now,
+  topic-relevant canon) go in `system`. (CLAUDE.md "Cost levers".)
+
+B3 rewired this module: it no longer reads the whole `docs/CANON.md`. Instead it
+asks `context.assemble(now, speaker=…)` for exactly the slice of the world it
+needs — the cached core plus the queried events/canon — built from the DB.
 """
 
 from __future__ import annotations
@@ -24,7 +29,7 @@ from datetime import datetime
 from .config import settings
 from .logging_setup import get_logger
 from .providers import llm
-from .world import clock
+from .world import clock, context
 
 log = get_logger(__name__)
 
@@ -67,24 +72,32 @@ def _part_of_day(hour: int) -> str:
     return "late night"
 
 
-def _build_system_prompt(now_iso: str) -> str:
-    """The small, per-call instructions: who is talking, the clock, the spec.
+def _build_system_prompt(now_iso: str, speaker_name: str, dynamic: str) -> str:
+    """The small, per-call instructions: who is talking, the clock, the now.
 
-    Stays compact on purpose — the bulky, stable canon rides in `cached_context`
-    so only this part pays full price on a cache hit.
+    Stays compact on purpose — the bulky, stable core (series bible + the DJ's
+    card) rides in `cached_context`, so only this part pays full price on a cache
+    hit. `dynamic` is the queried world slice from `context.assemble` (events near
+    now + topic-relevant canon); it is woven in so the segment is time-aware.
     """
-    clock = _inworld_clock(now_iso)
+    clock_line = _inworld_clock(now_iso)
+    world_now = f"\nWhat's true right now:\n{dynamic}\n" if dynamic else ""
     return (
         "You are the writer for Settlement Radio, scripting the night-shift "
-        "host Vell. Write the SPOKEN SCRIPT ONLY — exactly the words Vell says "
-        "aloud, with no stage directions, headings, speaker labels, or notes.\n\n"
-        f"Right now, settlement time, it is: {clock}\n\n"
+        f"host {speaker_name}. Write the SPOKEN SCRIPT ONLY — exactly the words "
+        f"{speaker_name} says aloud, with no stage directions, headings, speaker "
+        "labels, or notes.\n\n"
+        f"Right now, settlement time, it is: {clock_line}\n"
+        f"{world_now}\n"
         "Write one ~5-minute night-shift talk segment, "
         f"{settings.writer_words_low}-{settings.writer_words_high} words, "
-        "fully in character per the world bible and Vell's character card:\n"
+        f"fully in character per the world bible and {speaker_name}'s character "
+        "card (in the cached context above):\n"
         "  - Open with a soft greeting to the one listener out there and a real, "
         "accurate time check ('settlement time') for the time given above.\n"
-        "  - Move into a short, warm musing tied to ONE canon fact.\n"
+        "  - Move into a short, warm musing tied to ONE world fact or current "
+        "event from above — reference it naturally, as shared knowledge; never "
+        "recite or explain it.\n"
         "  - Lead into a piece of music — described in-world, not named or "
         "played (this is talk only).\n"
         "  - Close with a small, hopeful line.\n"
@@ -105,30 +118,43 @@ def safety_check(text: str) -> str:
 
 
 def write_segment_script(
-    canon_text: str,
     now_iso: str,
     *,
+    topic: str | None = None,
     on_token: Callable[[str], None] | None = None,
 ) -> str:
-    """Ask Claude to write Vell's ~5-minute night-shift segment.
+    """Ask Claude to write the night-shift DJ's ~5-minute segment.
+
+    The world context is assembled by `context.assemble` (B3) — the cached stable
+    core (series bible + the DJ's card) and the dynamic slice (events near now,
+    topic-relevant canon), all from the DB. This function no longer reads
+    `docs/CANON.md`; `make seed` must have populated the world store.
 
     Args:
-        canon_text: the full contents of docs/CANON.md (the world bible).
         now_iso: the current real time as an ISO 8601 string; the in-world
-            clock (real + 600 years) is derived from it for the time check.
+            clock (real + 600 years) is derived from it for the time check and the
+            event window.
+        topic: optional subject to steer canon retrieval (tag-matched; see
+            `context.assemble`). Defaults to the full canon when omitted.
         on_token: optional progress callback, forwarded to `llm.generate`, so a
             caller can show that the ~25s generation is alive (not frozen).
 
     Returns:
         The spoken script, run through the (placeholder) safety gate.
     """
-    log.info("write_segment_script_start", now=now_iso, canon_chars=len(canon_text))
-    system = _build_system_prompt(now_iso)
+    log.info("write_segment_script_start", now=now_iso, topic=topic)
+    ctx = context.assemble(
+        datetime.fromisoformat(now_iso),
+        topic=topic,
+        speaker=settings.writer_speaker_id,
+    )
+    speaker_name = ctx.speaker.name if ctx.speaker else "the host"
+    system = _build_system_prompt(now_iso, speaker_name, ctx.dynamic)
     script = llm.generate(
         "Write tonight's segment now.",
         system=system,
         model=settings.llm_default_tier,  # CLAUDE.md: the default writing brain
-        cached_context=canon_text,  # cost lever: canon as a cache breakpoint
+        cached_context=ctx.cached_context,  # cost lever: stable core cache breakpoint
         max_tokens=settings.writer_max_tokens,
         on_token=on_token,
     )
@@ -139,10 +165,6 @@ def write_segment_script(
 
 if __name__ == "__main__":
     # Runnable check: print a fresh segment for the current time.
-    #   .venv/bin/python -m src.writer
-    from datetime import datetime as _dt
-
-    script = write_segment_script(
-        settings.canon_path.read_text(), _dt.now().isoformat()
-    )
+    #   .venv/bin/python -m src.writer      (needs `make seed` first)
+    script = write_segment_script(datetime.now().isoformat())
     print(script)  # the generated script is this CLI's deliverable (stdout)

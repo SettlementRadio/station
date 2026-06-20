@@ -18,14 +18,14 @@ it (`world/canon_source.py`) and loads it here. Connection details come from
 `settings.database_url` (B0.5) — never a hardcoded string.
 
 ------------------------------------------------------------------------------
-FUTURE — vector search (deferred to B3, see PHASE_B_TASKS.md):
+FUTURE — vector search (a documented, UNUSED seam as of B3; see PHASE_B_TASKS.md):
 Structured queries over `events`/`canon` (by date / status / tag) are the right,
-fast retrieval for now, so pgvector is intentionally NOT enabled yet. When the
-assembled context outgrows the prompt cache or needs semantic (not date/tag)
-recall, it slots in HERE: `CREATE EXTENSION vector`, add a `canon_embeddings(
-canon_id, embedding vector(N))` table joined to `canon`, and a `search_canon()`
-query — driven by the `providers/embeddings.py` seam stub. Nothing outside this
-module should need to change.
+fast retrieval for now, so pgvector is intentionally NOT enabled yet. The seam
+contract lives stubbed in `providers/embeddings.py`. When the assembled context
+outgrows the prompt cache or needs semantic (not date/tag) recall, it slots in
+HERE: `CREATE EXTENSION vector`, add a `canon_embeddings(canon_id, embedding
+vector(N))` table joined to `canon`, and a `search_canon()` query — driven by that
+seam. Nothing outside this module should need to change.
 ------------------------------------------------------------------------------
 """
 
@@ -236,6 +236,27 @@ def set_state(conn: psycopg.Connection, key: str, value: str) -> None:
 def all_canon(conn: psycopg.Connection) -> list[CanonFact]:
     """All canon facts, ordered by id."""
     rows = conn.execute("SELECT id, text, tags FROM canon ORDER BY id").fetchall()
+    return [CanonFact(id, text, list(tags)) for id, text, tags in rows]
+
+
+def canon_by_tags(conn: psycopg.Connection, tags: Iterable[str]) -> list[CanonFact]:
+    """Canon facts whose tags overlap any of `tags`, ordered by id.
+
+    The tag-matched retrieval B3's `context.assemble` uses to pull only the canon
+    relevant to a topic. Uses Postgres array overlap (`&&`). An empty `tags` (or no
+    overlap) returns no rows — the caller decides whether to fall back to the full
+    set. NOTE: the seeded canon facts currently carry empty tags (the parser leaves
+    them blank), so this returns nothing until facts are tagged; the seam is in
+    place for when they are. Until then context.assemble falls back to `all_canon`.
+    """
+    tag_list = list(tags)
+    log.debug("db_canon_by_tags", tags=tag_list)
+    if not tag_list:
+        return []
+    rows = conn.execute(
+        "SELECT id, text, tags FROM canon WHERE tags && %s ORDER BY id",
+        (tag_list,),
+    ).fetchall()
     return [CanonFact(id, text, list(tags)) for id, text, tags in rows]
 
 

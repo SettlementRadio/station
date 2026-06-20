@@ -7,6 +7,7 @@
 #   make status     Show what's running and the mount state.
 #   make seed       Load docs/CANON.md into the world-state DB (B1; idempotent).
 #   make demo       Show the progressing-event relative-time flip (B2; needs seed).
+#   make context    Print the writer's assembled context for now (B3; needs seed).
 #
 # `generate`/`play` make a live Anthropic + ElevenLabs call (needs a populated
 # .env). `serve` just loops whatever segment already exists.
@@ -25,7 +26,7 @@ LIQ_LOG    := $(RUN_DIR)/liquidsoap.log
 PLAYER_URL := http://127.0.0.1:8000/
 STREAM_URL := http://127.0.0.1:8000/settlement.mp3
 
-.PHONY: help generate serve play stop status seed demo
+.PHONY: help generate serve play stop status seed demo context
 
 help:
 	@echo "Settlement Radio (Phase A):"
@@ -36,6 +37,7 @@ help:
 	@echo "  make status    show what's running"
 	@echo "  make seed      load docs/CANON.md into the world-state DB (B1)"
 	@echo "  make demo      show the progressing-event relative-time flip (B2)"
+	@echo "  make context   print the writer's assembled context for now (B3)"
 
 # Seed the world-state DB from docs/CANON.md (the human-editable source). Reads
 # DATABASE_URL via src/config.py; idempotent (re-running reproduces the state).
@@ -48,6 +50,12 @@ seed:
 demo:
 	@echo "==> Progressing-event demo (B2)…"
 	$(PY) -m src.world.events
+
+# B3 check: print the stable cached core + the dynamic (events/canon) slice the
+# writer will send for the current time. Needs `make seed` first.
+context:
+	@echo "==> Assembled writer context (B3)…"
+	$(PY) -m src.world.context
 
 generate:
 	@echo "==> Generating a fresh segment for the current time…"

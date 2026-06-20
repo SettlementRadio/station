@@ -96,6 +96,14 @@ class Settings(BaseSettings):
     writer_words_low: int = 1000
     writer_words_high: int = 1050
     writer_max_tokens: int = 2000  # output cap for one talk script (~1000 words)
+    writer_speaker_id: str = "vell"  # cast id whose card the writer speaks from (B3)
+
+    # --- Context assembly (B3: structured retrieval for the writers' room) -----
+    # The half-window, in whole days, for "events near `now`": context.assemble
+    # pulls events whose in-world datetime falls within ±this of the in-world now,
+    # so an upcoming festival or a just-passed one reaches the writer. Widen it to
+    # give the DJs a longer horizon; it is a date query, not a cost driver.
+    context_event_window_days: int = 14
 
     # --- External-call resilience (bounded retry on Claude/TTS) ----------------
     retry_attempts: int = 3  # total attempts, including the first

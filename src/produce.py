@@ -54,8 +54,9 @@ def make_segment(
     seg_id = f"vell-{datetime.fromisoformat(now_iso):%Y%m%dT%H%M%S}"
     log.info("make_segment_start", seg_id=seg_id, length_target_sec=length_target_sec)
 
-    canon_text = settings.canon_path.read_text()
-    script = write_segment_script(canon_text, now_iso)
+    # The writer pulls its world context from the DB via context.assemble (B3);
+    # no CANON.md read here. `make seed` must have populated the world store.
+    script = write_segment_script(now_iso)
 
     out_path = settings.segments_dir / f"{seg_id}.mp3"
     tts.synthesize(script, voice=settings.segment_vell_voice, out_path=str(out_path))

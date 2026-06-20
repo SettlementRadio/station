@@ -37,6 +37,32 @@ def load(canon_path: Path) -> tuple[list[CanonFact], list[CastMember], list[Even
     return facts, cast, events
 
 
+# The standing narrative sections that make up the "series bible": stable world
+# description that is NOT projected into structured rows (unlike canon facts /
+# cast / events). These form the cached stable core in context.assemble (B3).
+_BIBLE_HEADINGS = ("the station", "the time concept")
+
+
+def load_series_bible(canon_path: Path) -> str:
+    """Return the standing narrative prose (the 'series bible') from CANON.md.
+
+    These are the stable, slow-changing world-description sections (the station's
+    identity and the time concept) — the parts that are *not* seeded as rows.
+    `context.assemble` (B3) passes this as the cached stable core, so reading it
+    here keeps CANON.md the single human-editable source. Original `## ` headings
+    are preserved so the cached text reads naturally to the model.
+    """
+    out: list[str] = []
+    keep = False
+    for line in canon_path.read_text().splitlines():
+        m = re.match(r"^##\s+(?!#)(.+)$", line)  # H2 only
+        if m:
+            keep = _normalize_heading(m.group(1)) in _BIBLE_HEADINGS
+        if keep:
+            out.append(line)
+    return "\n".join(out).strip()
+
+
 # --- Section splitting ------------------------------------------------------
 
 
