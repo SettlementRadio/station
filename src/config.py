@@ -146,6 +146,19 @@ class Settings(BaseSettings):
     # kept in the script and recorded in the Segment meta, never spoken.
     format_music_song_marker: str = "[SONG]"
 
+    # --- Nightly buffer (B6: light pre-generated buffer; bridge to Phase C) ----
+    # `make buffer` generates a small, varied run of segments in one go — the mind
+    # proven at volume, without the real 24/7 scheduler (that, the buffer-depth
+    # dial, the Batch API, and the content-safety gate all land in Phase C). It
+    # cycles `buffer_rotation` (a mix of the three B5 formats, so both DJs appear —
+    # `talk` is the two-DJ show) until the segments' length targets sum to roughly
+    # `buffer_target_sec` of audio. Lower the target for a quick check, e.g.
+    # `BUFFER_TARGET_SEC=600 make buffer`; `buffer_max_segments` is a hard stop so a
+    # tiny per-segment length can't spin an unbounded run.
+    buffer_target_sec: int = 3600  # ~an hour of audio; the (pre-Phase-C) buffer depth
+    buffer_rotation: list[str] = ["talk", "news", "music"]  # B5 format names, cycled
+    buffer_max_segments: int = 30  # safety cap on segments per run
+
     # --- External-call resilience (bounded retry on Claude/TTS) ----------------
     retry_attempts: int = 3  # total attempts, including the first
     retry_backoff_sec: float = 2.0  # base linear backoff between attempts

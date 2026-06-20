@@ -33,6 +33,65 @@ A typical *build* session will be short, e.g.:
 
 ---
 
+## 2026-06-20 — Phase B — B6 light nightly buffer (`make buffer`) — the mind at volume
+
+**Focus:** one command that generates a small, varied block of audio in a single run — the mind
+proven at volume at zero API cost — *without* building the real 24/7 scheduler (that, the
+buffer-depth dial, the Batch API, and the content-safety gate are all deferred to Phase C). This
+completes Phase B's "bonus" line: the whole mind runs at volume for free via Kokoro.
+
+**Decisions (the durable ones):**
+- **New `src/buffer.py` — a loop over the B5 dispatcher, not a new generation path.** `build_buffer`
+  cycles `settings.buffer_rotation` (a mix of the three formats) calling `make_format_segment` per
+  slot until the segments' `length_target_sec` values sum to ~`buffer_target_sec`. It reuses the
+  whole stack underneath unchanged (formats → conversation/writer → context → world → providers);
+  B6 adds *no* new world-query, LLM, or TTS code.
+- **Length is measured by the segments' own targets, not a duplicated length table.** Rather than
+  pre-planning durations (which would re-encode each format's length in a second place), the loop
+  generates one segment, adds its *actual* `length_target_sec` to the running total, and stops when
+  it reaches the goal — so the only source of a format's length stays its own config. It lands a
+  little OVER target (a half-segment would be worse than slightly long).
+- **Variety + progression come for free from the rotation + an advancing `air_time`.** Each slot is
+  generated against an `air_cursor` that advances by the prior segment's length, so the block is
+  contiguous *and* each segment assembles its own world context at its slot time — current events
+  progress across the hour, exactly the Phase-B spine paying off. Both DJs appear because `talk` is
+  the two-DJ show.
+- **Each segment self-describes on disk; the run gets a manifest — the Phase-C handoff shape.**
+  Every segment writes a `segments/<id>.json` sidecar (the full `Segment` via `dataclasses.asdict`),
+  and the run writes `segments/buffer-<ts>.json` (ordered playlist: ids, formats, contiguous
+  air_times, lengths, paths). Nothing reads the manifest to *air* it yet — that's the Phase-C
+  scheduler — but the on-disk contract it will consume exists now.
+- **A `buffer_max_segments` safety cap.** A hard stop so a tiny per-segment length (or a silly
+  target) can't spin an unbounded run. All three knobs (`buffer_target_sec`, `buffer_rotation`,
+  `buffer_max_segments`) live in a new `buffer_` config section; `make buffer SECONDS=` is the
+  per-run length shortcut.
+
+**Changed:**
+- New: `src/buffer.py` (loop + sidecar + manifest + CLI).
+- Updated: `src/config.py` (a `buffer_` section), `Makefile` (`make buffer`, `SECONDS=` override,
+  help/header), `README.md`, `.env.example` (the B6 knobs), `docs/HOWTO.md` (buffer row + §2/§3/§6).
+
+**Why:** Phase B's bonus done-when is "the whole mind runs at volume for free." Looping the B5
+dispatcher (instead of writing a scheduler) gets that proof in the smallest code, and accumulating
+by the segments' real length targets keeps length single-sourced. The sidecar+manifest is the cheap
+groundwork that makes the Phase-C scheduler a *reader* of this output, not a rewrite.
+
+**Verification:** the loop/sidecar/manifest/cap logic was exercised with a stubbed
+`make_format_segment` (no DB/Claude/TTS): rotation cycles correctly, air_times are contiguous
+(22:00:00 → +5m → +2.5m …), the target-driven loop stops just over goal (600s target → 4 segments,
+840s), the `max_segments` cap holds (target 999999 → exactly 30), and a `<id>.json` per segment plus
+one `buffer-*.json` manifest are written with all Segment fields. `ruff check src` + format clean;
+new `segments/*.json` are gitignored. **Not yet run end-to-end** on the real stack (needs seeded
+Postgres + the Kokoro model; the full hour is ~20 live segments) — that real run is the one
+remaining human check.
+
+**Next:** Phase B is feature-complete (B0–B6). Run a real `make buffer` for the hero clip, then
+Phase C — the VPS, the real scheduler that airs *through* this buffer/manifest, public broadcast,
+the content-safety gate, and the player/studio in `/web`.
+Commit: (uncommitted) · Clips: (none)
+
+---
+
 ## 2026-06-20 — Phase B — B5 program format templates (news / talk / music)
 
 **Focus:** reusable show backbones so generation fills a proven skeleton instead of a blank page —

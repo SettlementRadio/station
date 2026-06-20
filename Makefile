@@ -11,6 +11,7 @@
 #   make context    Print the writer's assembled context for now (B3; needs seed).
 #   make conversation  Generate a two-DJ talk segment (B4; needs seed; Claude+TTS).
 #   make format FMT=…  Generate one B5 format segment (news|talk|music; needs seed).
+#   make buffer        Generate ~an hour of varied segments into segments/ (B6; needs seed).
 #
 # `generate`/`play` make a live Anthropic + ElevenLabs call (needs a populated
 # .env). `serve` just loops whatever segment already exists.
@@ -29,12 +30,16 @@ LIQ_LOG    := $(RUN_DIR)/liquidsoap.log
 PLAYER_URL := http://127.0.0.1:8000/
 STREAM_URL := http://127.0.0.1:8000/settlement.mp3
 
-.PHONY: help generate serve play play-convo stop status seed demo context conversation format
+.PHONY: help generate serve play play-convo stop status seed demo context conversation format buffer
 
 # B5 format default: `make format` builds a talk segment; override with FMT=news
 # or FMT=music. Pass a TOPIC=... to steer canon retrieval.
 FMT   ?= talk
 TOPIC ?=
+
+# B6 buffer: target audio length in seconds. Default is the configured ~hour;
+# lower it for a quick check, e.g. `make buffer SECONDS=600`.
+SECONDS ?=
 
 help:
 	@echo "Settlement Radio (Phase A):"
@@ -49,6 +54,7 @@ help:
 	@echo "  make context   print the writer's assembled context for now (B3)"
 	@echo "  make conversation  generate a two-DJ talk segment (B4)"
 	@echo "  make format FMT=…  generate one B5 format segment (news|talk|music)"
+	@echo "  make buffer    generate ~an hour of varied segments into segments/ (B6)"
 
 # Seed the world-state DB from docs/CANON.md (the human-editable source). Reads
 # DATABASE_URL via src/config.py; idempotent (re-running reproduces the state).
@@ -79,6 +85,14 @@ conversation:
 format:
 	@echo "==> Generating a '$(FMT)' format segment (B5)…"
 	$(PY) -m src.formats $(FMT) $(TOPIC)
+
+# B6: generate a small varied buffer (~an hour of audio) in one run — a mix of the
+# three B5 formats and both DJs, each a proper Segment with a JSON sidecar, plus a
+# run manifest. Live Anthropic + Kokoro TTS; needs `make seed`. Override the target
+# length with SECONDS=… for a quick check, e.g. `make buffer SECONDS=600`.
+buffer:
+	@echo "==> Generating a light nightly buffer (B6)…"
+	$(PY) -m src.buffer $(SECONDS)
 
 generate:
 	@echo "==> Generating a fresh segment for the current time…"

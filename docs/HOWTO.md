@@ -65,6 +65,7 @@ All output lands in `segments/` (gitignored) as `.mp3`. Voice = Kokoro by defaul
 | One single-DJ talk segment (Vell) **(Claude)** | `make generate` | `$PY -m src.produce` |
 | Two-DJ conversation (Vell + Wren) **(Claude)** | `make conversation` | `$PY -m src.writers.conversation` |
 | One **program-format** segment (B5) **(Claude)** | `make format FMT=news` | `$PY -m src.formats news` |
+| A **whole varied buffer** (~an hour, B6) **(Claude)** | `make buffer` | `$PY -m src.buffer` |
 | Print a single-DJ *script* only (no audio) **(Claude)** | — | `$PY -m src.writer` |
 
 - `make conversation` runs the writers' room (showrunner → dialogue → continuity), voices each turn
@@ -82,6 +83,20 @@ All output lands in `segments/` (gitignored) as `.mp3`. Voice = Kokoro by defaul
   ```
   Output lands as `news-…`/`talk-…`/`music-…` in `segments/`; the raw form is `$PY -m src.formats
   <news|talk|music> [topic…]`.
+- **`make buffer`** (B6) is the bridge to Phase C — *not* the real 24/7 scheduler. It generates a
+  **whole varied block in one run**: it cycles the three formats (so both DJs appear — `talk` is the
+  two-DJ show) until their length targets sum to ~`buffer_target_sec` of audio, advancing each
+  segment's `air_time` so the block plays back-to-back and current events progress across it. Every
+  segment lands as `segments/<id>.mp3` **plus** a `segments/<id>.json` metadata sidecar, and the run
+  is summarized in a `segments/buffer-<timestamp>.json` **manifest** (the on-disk shape a Phase C
+  scheduler will read). The full hour is ~20 segments — **slow** (each is a Claude call + a render);
+  use `SECONDS=` for a quick check:
+  ```bash
+  make buffer                 # ~an hour of varied segments (default buffer_target_sec)
+  make buffer SECONDS=600     # ~10 minutes — a fast check (target length in seconds)
+  ```
+  Tune the mix and ceiling in `.env`: `BUFFER_ROTATION` (which formats, in order),
+  `BUFFER_TARGET_SEC` (the default length), `BUFFER_MAX_SEGMENTS` (the safety cap). See §6.
 - First Kokoro run downloads model weights (~tens of seconds, needs network); every run after is
   fast and offline.
 
@@ -108,8 +123,9 @@ stream is up airs on the next pass.
 - Player: <http://127.0.0.1:8000/>  ·  Stream: <http://127.0.0.1:8000/settlement.mp3>
 - Use the IPv4 literal `127.0.0.1`, not `localhost` (Icecast binds IPv4).
 - Logs while serving: `.run/icecast.log`, `.run/liquidsoap.log`.
-- No scheduler yet — playout always loops the single newest segment; the real scheduler that plays
-  *through* a buffer is Phase C.
+- No scheduler yet — playout always loops the single newest segment. `make buffer` (§2) now
+  pre-generates a whole block + a manifest, but **nothing reads that manifest to air it in order
+  yet**; the real scheduler that plays *through* the buffer is Phase C.
 
 ---
 
@@ -177,6 +193,11 @@ TTS_PROVIDER=kokoro        # default: local, free, offline. Also: elevenlabs | s
 LOG_JSON=false             # human-pretty console logs (default true = JSON for 24/7)
 LOG_LEVEL=debug            # debug | info | warning | error
 DATABASE_URL=postgresql://localhost/settlement_radio
+
+# B6 buffer (`make buffer`):
+BUFFER_TARGET_SEC=3600          # ~how much audio per run, in seconds (default ~an hour)
+BUFFER_ROTATION=["talk","news","music"]   # which formats to cycle, in order (JSON list)
+BUFFER_MAX_SEGMENTS=30          # safety cap on segments per run
 ```
 
 Override per run without editing `.env`:
@@ -184,6 +205,7 @@ Override per run without editing `.env`:
 ```bash
 TTS_PROVIDER=say make generate        # use macOS `say` instead of Kokoro
 LOG_JSON=false make conversation      # readable logs for this run
+make buffer SECONDS=600               # a ~10-min buffer (shortcut for BUFFER_TARGET_SEC)
 ```
 
 Provider notes: `kokoro` = local neural voice (default, no key); `elevenlabs` = flagship cloud

@@ -132,6 +132,19 @@ make format FMT=news    # one format segment on demand (FMT=news|talk|music; Cla
 make format FMT=music TOPIC="the festival"   # TOPIC steers canon retrieval
 ```
 
+A **light nightly buffer** ([`src/buffer.py`](src/buffer.py)) generates the whole mind at volume in
+one run — the bridge to Phase C, *not* the real 24/7 scheduler. It cycles the three formats (so both
+DJs appear) until their length targets sum to ~an hour of audio, advancing each segment's `air_time`
+so the block plays back-to-back and the world's current events progress across it. Every segment
+lands as `segments/<id>.mp3` **plus** a `segments/<id>.json` metadata sidecar, and the run is
+summarized in a `segments/buffer-<timestamp>.json` manifest — the on-disk shape a Phase C scheduler
+will read. (The real scheduler, the buffer-depth dial, the Batch API, and the content-safety gate
+are deferred to Phase C; with free local Kokoro the Batch-API cost case is now weak.)
+```bash
+make buffer                 # ~an hour of varied segments into segments/ (Claude + Kokoro; slow)
+make buffer SECONDS=600     # a shorter run for a quick check (target length in seconds)
+```
+
 **5. Secrets.** Copy `.env.example` to `.env`. For a fully local, zero-cost run you only need
 `ANTHROPIC_API_KEY` (the script) and the default `TTS_PROVIDER=kokoro` (the voice);
 `ELEVENLABS_API_KEY` is optional.
