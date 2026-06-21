@@ -33,6 +33,67 @@ A typical *build* session will be short, e.g.:
 
 ---
 
+## 2026-06-21 — Pre-Phase-C — full audit + roadmap/architecture realignment + switchable TTS
+
+**Focus:** a full audit of everything built (Phases A/B) and everything planned (C→F), then
+realigning the docs to the *truth* and to an expanded product vision — plus a small code fix so both
+TTS backends are fully switchable. No build-phase work; this is the session that makes Phase C
+safe to start from.
+
+**Decisions (the durable ones):**
+- **Roadmap integrity fix.** A prior draft of `ROADMAP.md` had marked **Phase C as "✓ DONE"** and
+  put "we are here" at the soft launch — false (HEAD is B6; C is unbuilt). Corrected: Phase C is the
+  *current* build phase. A roadmap that lies about being public-ready is the one error that could let
+  a future session skip the safety/deploy phase entirely.
+- **Two standing Phase-C constraints, from the human.** (1) **The VPS does ALL generation and
+  playout — no personal hardware in the runtime loop** (killed the "generate on the Mac and rsync"
+  option in C6). (2) **Voice is a runtime setting** — both Kokoro (free) and ElevenLabs (flagship)
+  must work via `settings.tts_provider`, not a one-way door.
+- **The world is two layers (the refined vision).** A large, mostly-static **bible** (RAG-able:
+  history, literature, finance, war, nations, peoples, geography, tech, cast) + a generative
+  **living "now" at +600y**: events modelled as multi-beat **stories with a lifecycle** (rumoured →
+  upcoming → happening → developing → past), surfaced by a **news desk** that recurs/evolves stories
+  across the day with past/now/future framing and cross-segment continuity. This is the Phase-D
+  keystone.
+- **Vision distributed across phases, not crammed into C.** World-sim + news desk + sound design +
+  songs + voice/emotion/pronunciation + DJ roster/memory + programming backbone → **D**. Near-live +
+  a write **management/control surface** + **listener interaction** → **E**. Community inbound +
+  in-universe surfaces → **F**.
+- **Architecture gains exactly ONE new concept — Layer 0 (listener inbound).** Everything else fits
+  existing layers/seams (proven "no rewrite below the seams"). The Batch API was downgraded from a
+  MUST to "revisit when it pays" (Kokoro made the text bill trivial); the `orpheus` stub generalized
+  to a streaming/self-hosted backend (Cartesia for near-live); a **pronunciation** knob reserved
+  alongside `emotion` on the TTS seam.
+
+**Changed:**
+- `docs/ROADMAP.md` — Phase C moved out of DONE into a real build section (constraints baked in);
+  Phase D expanded into the living-world spec; Phase E → "Scale, near-live & control"; milestone ✓
+  corrected.
+- `docs/ARCHITECTURE.md` — new Layer 0 (inbound); per-layer C/D/E forward notes; console → control
+  surface; softened Batch rule; generalized TTS stub; reserved pronunciation; "How later phases plug
+  in" rewritten into C/D/E blocks.
+- `docs/PHASE_C_TASKS.md` — C6 reframed to *verify* (registry now done); **added the missing
+  scheduler → Liquidsoap playout task**; decisive music-slot default (drop from rotation in C); soak
+  "give it a now" note; C0 safety-check shape + C3 disclosure-as-setting; removed Discord
+  (four-channel rule); C0/C1 ordering note.
+- `docs/ai-radio-marketing-strategy.md` — superseded banner (four channels), Cloudflare Pages →
+  Vercel.
+- `src/providers/tts.py` — added Wren to the ElevenLabs ("Rachel") and `say` ("Samantha") registries;
+  all three backends now map both DJs, so the **two-DJ show renders on any backend**.
+- `src/writer.py` — docstring fix (`speaker=` → `speakers=`). Deleted `README_Backup.md` (cruft).
+- Verified green: `ruff check` clean, `pytest` 29 passed.
+
+**Why:** truth-in-docs is load-bearing for an agent-built project — the next session acts on what the
+docs say, so a false "done" or an out-of-date plan is a real production risk, not cosmetics. Encoding
+the full vision + constraints *before* building C means every later pack is informed and the
+architecture can prove none of it forces a rewrite below the two seams.
+
+**Next:** begin Phase C — **C0** (real safety + continuity gates), landing **C1** (time-aware
+framing) alongside it.
+Commit: (uncommitted at time of entry — docs realignment + TTS registry in the working tree)  ·  Clips: none
+
+---
+
 ## 2026-06-20 — Phase B — B6 light nightly buffer (`make buffer`) — the mind at volume
 
 **Focus:** one command that generates a small, varied block of audio in a single run — the mind

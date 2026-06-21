@@ -7,6 +7,14 @@ donations follow.**
 
 Replace every `[BRACKET]` placeholder.
 
+> **STATUS (post-Phase B): partly superseded by `docs/ROADMAP.md` — trust the ROADMAP on conflicts.**
+> - **Channels were narrowed to FOUR on purpose:** YouTube · X · Ko-fi · GitHub. The wider set
+>   below (Bluesky, Reddit, Tumblr, TikTok, a Discord, Buffer, etc.) was deliberately dropped —
+>   read it as background, not a to-do list.
+> - **The site is on Vercel, not Vercel**; the newsletter is **Buttondown**. Every
+>   "Vercel" mention below should read "Vercel."
+> The principles, the two hooks, the content engine, and the launch sequencing here all still hold.
+
 ---
 
 ## 0. The core principle (read first)
@@ -35,7 +43,7 @@ Run these in parallel with the build so the two workstreams stay in lockstep.
 
 **During Phase A (proof of loop) — PLANT THE FLAG, quietly.**
 - Claim handles everywhere (same name): X, Bluesky, YouTube, Reddit, GitHub, a domain, Ko-fi.
-- Stand up a one-page "coming soon" site (Cloudflare Pages) with the premise and an email signup.
+- Stand up a one-page "coming soon" site (Vercel) with the premise and an email signup.
 - Start a *private* dev log (notes + clips you'll publish later). Don't launch publicly yet.
 - Make the GitHub repo public early — an open repo is credibility and discoverability.
 
@@ -69,7 +77,7 @@ Run these in parallel with the build so the two workstreams stay in lockstep.
 **Home base (the product is the marketing):**
 - **The 24/7 YouTube Live stream** — your flagship. A calm sci-fi visual + endless stream +
   YouTube's discoverability (the "lofi radio" playbook). This is where casual listeners live.
-- **The station website** (Cloudflare Pages) — web player, the premise, the support links, the
+- **The station website** (Vercel) — web player, the premise, the support links, the
   AI-disclosure, the supporters page.
 
 **Dev / AI audience (the built-by-agents hook):**
@@ -174,7 +182,7 @@ self-promotion rules and post the *story* (the tribute, the build), with the lin
 
 ## 7. Marketing tool stack (free-tier first)
 
-**Channels:** X, Bluesky, YouTube, Reddit, a Discord server, GitHub, the Cloudflare Pages site.
+**Channels:** X, Bluesky, YouTube, Reddit, a Discord server, GitHub, the Vercel site.
 **Content production:** a simple clip/audiogram tool for turning audio into shareable video;
 **Canva** (free) for thumbnails and lore graphics; the YouTube stream visual itself.
 **Newsletter:** **Buttondown** or **Substack** (free tiers) for the build log / essays.

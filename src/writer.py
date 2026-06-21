@@ -17,7 +17,7 @@ Two things this module is careful about:
   topic-relevant canon) go in `system`. (CLAUDE.md "Cost levers".)
 
 B3 rewired this module: it no longer reads the whole `docs/CANON.md`. Instead it
-asks `context.assemble(now, speaker=…)` for exactly the slice of the world it
+asks `context.assemble(now, speakers=…)` for exactly the slice of the world it
 needs — the cached core plus the queried events/canon — built from the DB.
 """
 

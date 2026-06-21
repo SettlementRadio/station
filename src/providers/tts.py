@@ -20,19 +20,28 @@ log = get_logger(__name__)
 # Logical voice name -> vendor voice id. This is the seam's own domain data (its
 # whole job is to map a logical name to a vendor id), so the registries stay
 # here; only tunable *config* (model names, formats, rates) moved to settings.
-# The DJ "Vell" (warm, low, unhurried) maps to ElevenLabs' "Adam".
+#   vell_night -> "Adam" (warm, low, unhurried) for Vell, matching his card and
+#                 the Kokoro `bm_george` / `say` "Daniel" stand-ins.
+#   dj_two     -> "Rachel" (American female) for Wren, the bright first-light
+#                 host — the sibling of the Kokoro `af_heart` preset, kept
+#                 distinct from Vell so a two-voice talk segment reads as two
+#                 people. Rachel leans calm; swap for a brighter prebuilt (e.g.
+#                 "Elli" MF3mGyEYCl7XYWbV9V6O) after a listen if Wren feels flat.
 _ELEVENLABS_VOICE_IDS = {
     "vell_night": "pNInz6obpgDQGcFmaJgB",  # ElevenLabs prebuilt "Adam"
+    "dj_two": "21m00Tcm4TlvDq8ikWAM",  # ElevenLabs prebuilt "Rachel"
 }
 
 # macOS `say` voice names (list them with: say -v '?'). "Daniel" is a warm
-# British male — a serviceable stand-in for Vell while testing. Apple's free
-# downloadable "Enhanced"/"Premium" voices (System Settings → Accessibility →
-# Spoken Content → System Voice) sound far more natural; drop one in here once
-# installed. This backend is offline, free, and unlimited — for testing the
-# loop, not Vell's final voice.
+# British male stand-in for Vell; "Samantha" a bright American female for Wren —
+# both serviceable while testing, and kept distinct so a two-DJ talk segment
+# reads as two people. Apple's free downloadable "Enhanced"/"Premium" voices
+# (System Settings → Accessibility → Spoken Content → System Voice) sound far
+# more natural; drop one in here once installed. This backend is offline, free,
+# and unlimited — for testing the loop, not the DJs' final voices.
 _SAY_VOICES = {
     "vell_night": "Daniel",
+    "dj_two": "Samantha",
 }
 
 # Kokoro (self-hosted, open-weight, free/unlimited) voice presets. List the full
