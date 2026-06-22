@@ -42,7 +42,7 @@ station/
 │   ├── PHASE_B_ORIENTATION.md     # ← this file
 │   ├── DEVLOG.md                  # one entry per session (… B3, B4, B5, B6)
 │   ├── HOWTO.md
-│   └── ai-radio-marketing-strategy.md
+│   └── MARKETING.md                # the marketing playbook + validatable milestones
 ├── src/
 │   ├── config.py                  # B0.5 — the ONE typed settings module (pydantic-settings)
 │   ├── logging_setup.py           # B0.5 — structlog, configured once (JSON default)

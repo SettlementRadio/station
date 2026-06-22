@@ -14,7 +14,8 @@ forward phase says **what YOU do / what CLAUDE chat does / what CLAUDE CODE does
 **Channels (deliberately only four):** **YouTube** (the broadcast + how-it's-made) · **X** (the one
 active feed: build-in-public + the road to an Anthropic feature) · **Ko-fi** (donations) · **GitHub**
 (the open repo + README = credibility + the featurable artifact). Everything else was dropped on
-purpose.
+purpose. **The marketing playbook + the validatable milestones (M0–M5) live in `docs/MARKETING.md`;**
+this file owns the *sequence*, that one owns the *how*.
 
 **Division of labor:** **YOU** decide, listen, write the world, claim/post/apply (human-only).
 **CLAUDE (chat)** plans, writes docs/copy, researches, preps each next pack. **CLAUDE CODE** builds
@@ -210,8 +211,8 @@ some — the commercial goal, *sustained*.
 
 ## Phase F / BEYOND — The wider world (no dates; triggered by signals)
 
-- **Community worldbuilding** — open inbound contributions (the CC BY-SA agreement is ready in the
-  funding kit).
+- **Community worldbuilding** — open inbound contributions under a **CC BY-SA** contributor
+  agreement (the intended model; drafted when this triggers — see `docs/MARKETING.md` §4).
 - **In-universe surfaces** — feeds, portals, new front-ends on the same world-state spine.
 - **The universe beyond one station** — each new surface is a fresh pack → Claude Code; the seams
   mean none of it is a rewrite.

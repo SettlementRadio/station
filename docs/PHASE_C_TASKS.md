@@ -156,25 +156,17 @@ channels; community worldbuilding; the wider in-universe digital world.
 
 ---
 
-## Marketing bits (Phase C = SOFT launch)
+## Marketing this phase — pointer only
 
-**Do NOW — you have a conversation clip, which is the trigger the whole social plan was waiting for.**
-- Listen to the clip; confirm it's a continuity-passing segment (not the afternoon-handover one).
-- Fire the **held "first real post"** on X with the clip (from the kick-off pack): *"Settlement Radio
-  just held its first real conversation — two AI DJs, in character, and the station knows what day it
-  is in 2626. [clip]"* Begin the build-in-public cadence (the "held breath" exchange and the
-  time-awareness are both strong threads).
-- Update the coming-soon page to a "nearly on air" note.
-- Start `highlights.md` — log the postable moments as they happen during Phase C builds.
+The full playbook + acceptance checklists live in **`docs/MARKETING.md`**; sequencing in
+`docs/ROADMAP.md`. This phase touches two marketing milestones — work them there, not here:
 
-**At SOFT launch (when C9 passes — 24/7 live):**
-- The **"it's alive" announcement**: the live YouTube/stream link, in Station + Maker voice.
-- **Turn on Ko-fi** (the donation surface) now that there's a living station to support.
-- Quietly invite your seeded followers (the warmed X audience) to the live stream.
-- First **YouTube clips/Shorts** from the live station.
-- Keep it a *soft* launch — quiet, to your existing followers. The big coordinated launch (Show HN +
-  Reddit + the hero demo clip + the case study + the Anthropic outreach + the Cookbook PR) is
-  **Phase D**, fired only once the station demonstrably retains people.
+- **M0 — Seed (do NOW):** you have the continuity-passing conversation clip the whole plan was
+  waiting for. Fire the held "first real post" on X, start `docs/highlights.md`, update the
+  coming-soon page to "nearly on air." (Checklist: MARKETING.md §3 / M0.)
+- **M1 — Soft launch (only when C9 passes):** "it's alive" post, Ko-fi on, first YouTube clips,
+  Plausible on the player. Quiet, to existing followers — the loud launch is Phase D / M4.
+  (Checklist: MARKETING.md §3 / M1.)
 
 **Don't go loud before C9.** A public 24/7 stream that stalls, airs dead silence, or says something
 unsafe in its first week is the one first impression you can't redo — and it's why C0–C4 gate C7/C8.
