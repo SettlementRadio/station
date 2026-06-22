@@ -123,6 +123,24 @@ class Settings(BaseSettings):
     convo_continuity_tier: str = "sonnet"  # first continuity pass
     convo_continuity_escalation_tier: str = "opus"  # only if the first flags trouble
     convo_continuity_max_tokens: int = 500
+    # C0: continuity is now a GATE, not advisory. When a draft flags, the room
+    # regenerates with the editor's note fed back, up to this many attempts total;
+    # if it still fails, the slot drops to an evergreen fallback (never airs the
+    # flawed draft). 2 = one draft + one note-guided retry. (Spec: PHASE_C C0.)
+    convo_continuity_max_attempts: int = 2
+
+    # --- Content-safety gate (C0: real automated check on every draft) ---------
+    # CLAUDE.md "Content safety": before any public broadcast, generated text must
+    # pass a safety gate. The gate is a fast keyword pre-filter + a cheap LLM pass
+    # on the `haiku` tier (see src/safety.py). `safety_enabled=False` bypasses it
+    # for local dev ONLY — production must leave it on. `safety_max_attempts` is the
+    # single-call producers' policy: generate, regenerate once on a flag, then fall
+    # back to an evergreen segment (2 = one draft + one retry). The blocklist itself
+    # is a named module constant in safety.py (intrinsic data, not config).
+    safety_enabled: bool = True
+    safety_llm_tier: str = "haiku"  # the cheap, near-live tier for the LLM pass
+    safety_max_tokens: int = 200  # the reviewer replies "OK" / "FLAG: …" — small
+    safety_max_attempts: int = 2  # draft + one regenerate before evergreen fallback
 
     # --- Program formats (B5: reusable show skeletons) -------------------------
     # Each format fills a proven backbone (see src/formats/). `news` and `music`

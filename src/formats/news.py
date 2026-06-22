@@ -15,14 +15,15 @@ from __future__ import annotations
 
 from datetime import datetime
 
+from .. import evergreen
 from ..config import settings
 from ..logging_setup import get_logger
 from ..providers import llm
+from ..safety import generate_safe
 from ..segment import Segment
 from ..world import clock
 from ..world import events as events_mod
 from ..world.context import AssembledContext
-from ..writer import safety_check
 from . import common
 
 log = get_logger(__name__)
@@ -71,14 +72,26 @@ def news(now: datetime, ctx: AssembledContext) -> Segment:
     log.info("format_news_start", seg_id=seg_id, anchor=anchor_card.id)
 
     system = _build_system(ctx, now, anchor_card.name)
-    script = llm.generate(
-        "Write the news bulletin now.",
-        system=system,
-        model=settings.llm_default_tier,
-        cached_context=ctx.cached_context,
-        max_tokens=settings.format_news_max_tokens,
+    script, safety = generate_safe(
+        lambda: llm.generate(
+            "Write the news bulletin now.",
+            system=system,
+            model=settings.llm_default_tier,
+            cached_context=ctx.cached_context,
+            max_tokens=settings.format_news_max_tokens,
+        )
     )
-    script = safety_check(script.strip())
+    if not safety.ok:
+        # C0: regeneration didn't clear the safety gate — never air the flagged
+        # draft; drop this slot to a safe evergreen instead.
+        log.error("format_news_safety_fallback", seg_id=seg_id, reason=safety.reason)
+        return evergreen.evergreen_segment(
+            now,
+            fmt="news",
+            seg_id=seg_id,
+            length_target_sec=settings.format_news_length_target_sec,
+            reason=f"safety: {safety.reason}",
+        )
 
     audio_path = common.render_single_voice([script], anchor_card.logical_voice, seg_id)
     log.info("format_news_done", seg_id=seg_id, words=len(script.split()))

@@ -33,6 +33,64 @@ A typical *build* session will be short, e.g.:
 
 ---
 
+## 2026-06-22 — Phase C — C1: time-aware show framing (the afternoon-handover fix)
+
+**Focus:** stop the room hardcoding a night→first-light handover at every hour — the bug that made
+an afternoon talk slot say "all night / this morning / handover" and get (correctly) rejected by the
+new C0 continuity gate. Land it right behind C0 so the gate isn't thrashing on a framing bug.
+**Decisions:**
+- New `src/world/framing.py` — a pure clock→`ShowFrame` mapper (the single home for "who's on air
+  this hour and what's the situation"): deep/late night = Vell solo · first light = Vell→Wren
+  handover · morning/afternoon/evening = Wren anchors · nightfall = Wren→Vell handover. Stateless
+  and DB-free (host ids passed in), so it's unit-tested like `clock.py`/`events.py`.
+- `showrunner()` and `orchestrate()` now take the frame (computed once in `compose_segment`) and drop
+  its `part_of_day` + prose `situation` into the prompt in place of the constant. The time-check
+  instruction is handover-placed only when the frame is actually a handover.
+- Frame fields (`part_of_day`, `lead`, `handover`) ride in the Segment meta for the scheduler/debug.
+- Window boundaries + daypart cutoffs are named module constants (intrinsic daily schedule, not
+  config) — no new settings. Daylight hours can NEVER be framed as a handover (a unit test pins this).
+- Scope: the two-DJ room only (the sole continuity-gated path, and the documented bug). Reassigning
+  which solo DJ reads news/music by the clock, and wiring the buffer to avoid odd talk slots, is the
+  scheduler's job (C2) — not folded in here. The Phase A single-DJ `writer.py` still hardcodes a
+  night frame; it's off the gated 24/7 path, noted as a later cleanup.
+**Changed:** new `src/world/framing.py`; `src/writers/conversation.py` (showrunner/orchestrate/
+compose wired to the frame, meta enriched); tests `test_framing.py` (+ updated `test_compose_gate.py`
+stubs for the new `frame=` kwarg). 46 tests pass.
+**Why:** an unattended 24/7 station generates talk across the whole day; without hour-true framing it
+manufactures self-contradictions the C0 gate then burns attempts regenerating before falling back to
+evergreen. C1 removes the bug so the gate guards real problems, not a constant.
+**Next:** C2 — honest length accounting (ffprobe) + a real rolling scheduler wired to playout.
+Commit: <pending>  ·  Clips: —
+
+## 2026-06-22 — Phase C — C0: the safety + continuity gates are real
+
+**Focus:** turn the two no-op placeholders (the `safety_check` stub and advisory continuity) into
+*blocking* gates, so nothing unsafe or self-contradictory can reach air.
+**Decisions:**
+- `safety_check` now returns a verdict (`SafetyResult`), not mutated text — it's a *gate*, not a
+  rewriter. Two stages, cheap-first: a fast keyword/profanity pre-filter (no API), then an LLM pass
+  on the `haiku` tier tuned to ALLOW in-world sci-fi conflict and flag only genuinely unsafe
+  content. The "what to do when flagged" policy lives with the producers, not the gate.
+- New `src/safety.py` (the gate, used by every producer) and `src/evergreen.py` (the safe fallback).
+  Moved `safety_check` out of `writer.py` into `safety.py`; updated all four producers' imports.
+- Policy: regenerate on a flag (bounded), then drop to an evergreen segment — a flagged/contradictory
+  draft is NEVER rendered or written to `segments/`/the manifest. Single-DJ producers use
+  `safety.generate_safe`; the two-DJ room runs a combined safety+continuity loop in `compose_segment`,
+  feeding the continuity editor's note back into the rewrite.
+- Named the continuity dial `convo_continuity_max_attempts` (matches the existing `convo_continuity_*`
+  family + the config prefix convention), not the spec's illustrative `continuity_max_attempts`.
+- Evergreen is render-on-demand from a small static pool for now; C4 promotes it to a pre-rendered
+  pool + the full fallback chain + health checks.
+**Changed:** new `src/safety.py`, `src/evergreen.py`; `src/config.py` (safety_* + continuity dial);
+`src/writer.py`, `src/formats/news.py`, `src/formats/music.py`, `src/writers/conversation.py` (gates
+wired); `.env.example`; tests `test_safety.py`, `test_evergreen.py`, `test_compose_gate.py` (40 pass).
+**Why:** CLAUDE.md requires a real safety gate before any public broadcast, and a 24/7 stream can't
+air the afternoon-handover contradiction the orientation caught. Gates + a never-dead fallback are the
+hard prerequisite to exposing the stream (C7/C8).
+**Next:** C1 — time-aware show framing — to land right behind C0, so the new gate isn't thrashing on
+the hardcoded night→dawn handover bug (it would currently regenerate, then fall back to evergreen).
+Commit: <pending>  ·  Clips: —
+
 ## 2026-06-21 — Pre-Phase-C — full audit + roadmap/architecture realignment + switchable TTS
 
 **Focus:** a full audit of everything built (Phases A/B) and everything planned (C→F), then

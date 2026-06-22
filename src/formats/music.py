@@ -16,13 +16,14 @@ from __future__ import annotations
 import re
 from datetime import datetime
 
+from .. import evergreen
 from ..config import settings
 from ..logging_setup import get_logger
 from ..providers import llm
+from ..safety import generate_safe
 from ..segment import Segment
 from ..world import clock
 from ..world.context import AssembledContext
-from ..writer import safety_check
 from . import common
 
 log = get_logger(__name__)
@@ -76,14 +77,25 @@ def music(now: datetime, ctx: AssembledContext) -> Segment:
     log.info("format_music_start", seg_id=seg_id, dj=dj_card.id)
 
     system = _build_system(ctx, now, dj_card.name)
-    script = llm.generate(
-        "Write the music intro and back-announce now.",
-        system=system,
-        model=settings.llm_default_tier,
-        cached_context=ctx.cached_context,
-        max_tokens=settings.format_music_max_tokens,
+    script, safety = generate_safe(
+        lambda: llm.generate(
+            "Write the music intro and back-announce now.",
+            system=system,
+            model=settings.llm_default_tier,
+            cached_context=ctx.cached_context,
+            max_tokens=settings.format_music_max_tokens,
+        )
     )
-    script = safety_check(script.strip())
+    if not safety.ok:
+        # C0: never air a flagged draft — fall back to a safe evergreen slot.
+        log.error("format_music_safety_fallback", seg_id=seg_id, reason=safety.reason)
+        return evergreen.evergreen_segment(
+            now,
+            fmt="music",
+            seg_id=seg_id,
+            length_target_sec=settings.format_music_length_target_sec,
+            reason=f"safety: {safety.reason}",
+        )
 
     parts = split_on_marker(script, marker)
     if len(parts) < 2:

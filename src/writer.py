@@ -26,9 +26,11 @@ from __future__ import annotations
 from collections.abc import Callable
 from datetime import datetime
 
+from . import evergreen
 from .config import settings
 from .logging_setup import get_logger
 from .providers import llm
+from .safety import generate_safe
 from .world import clock, context
 
 log = get_logger(__name__)
@@ -107,16 +109,6 @@ def _build_system_prompt(now_iso: str, speaker_name: str, dynamic: str) -> str:
     )
 
 
-def safety_check(text: str) -> str:
-    """Placeholder content-safety gate (no-op in Phase A).
-
-    Nothing is public in Phase A, so this just returns the text unchanged. It
-    exists so the script step already has the seam where a real gate slots in
-    before any public broadcast (CLAUDE.md "Content safety").
-    """
-    return text
-
-
 def write_segment_script(
     now_iso: str,
     *,
@@ -140,25 +132,29 @@ def write_segment_script(
             caller can show that the ~25s generation is alive (not frozen).
 
     Returns:
-        The spoken script, run through the (placeholder) safety gate.
+        The spoken script, having cleared the C0 safety gate. If the draft is
+        flagged and a regeneration still fails, returns a safe evergreen script
+        instead — never the flagged text.
     """
     log.info("write_segment_script_start", now=now_iso, topic=topic)
-    ctx = context.assemble(
-        datetime.fromisoformat(now_iso),
-        topic=topic,
-        speakers=settings.writer_speaker_id,
-    )
+    now = datetime.fromisoformat(now_iso)
+    ctx = context.assemble(now, topic=topic, speakers=settings.writer_speaker_id)
     speaker_name = ctx.speaker.name if ctx.speaker else "the host"
     system = _build_system_prompt(now_iso, speaker_name, ctx.dynamic)
-    script = llm.generate(
-        "Write tonight's segment now.",
-        system=system,
-        model=settings.llm_default_tier,  # CLAUDE.md: the default writing brain
-        cached_context=ctx.cached_context,  # cost lever: stable core cache breakpoint
-        max_tokens=settings.writer_max_tokens,
-        on_token=on_token,
+    script, safety = generate_safe(
+        lambda: llm.generate(
+            "Write tonight's segment now.",
+            system=system,
+            model=settings.llm_default_tier,  # CLAUDE.md: the default writing brain
+            cached_context=ctx.cached_context,  # cost lever: stable-core cache
+            max_tokens=settings.writer_max_tokens,
+            on_token=on_token,
+        )
     )
-    script = safety_check(script.strip())
+    if not safety.ok:
+        # C0: a flagged draft must never air; fall back to a safe evergreen script.
+        log.error("write_segment_script_safety_fallback", reason=safety.reason)
+        return evergreen.evergreen_script(now)
     log.info("write_segment_script_done", words=len(script.split()))
     return script
 
