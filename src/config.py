@@ -213,6 +213,22 @@ class Settings(BaseSettings):
     disclosure_every_n: int = 4  # air a spoken ident every N content segments
     disclosure_voice: str = "vell_night"  # logical voice for the ident (tts.py)
 
+    # --- Disk retention (C2.5: GC aired segment audio so 24/7 can't fill disk) --
+    # C2 prunes the *schedule* (aired entries leave the state + playlist); C2.5
+    # prunes the *files* — at ~1 MB/min of generated audio the VPS disk fills in
+    # weeks. `prune()` (src/scheduler.py, run at the end of each top-up) deletes a
+    # `<id>.mp3`/`<id>.json` render in `segments_dir` only when it is aired
+    # (unreferenced by the live schedule) AND its air end is more than
+    # `segment_retention_hours` in the past — a grace window so a just-aired clip
+    # Liquidsoap may still be reading isn't yanked, and recent audio stays around
+    # for clip-cutting/debug. The shared disclosure ident clip and everything under
+    # `assets/` are NEVER collected (see src/scheduler.py prune()).
+    # `segment_retention_max_gb` is an optional emergency backstop: when set and
+    # `segments_dir` still exceeds it after the age sweep, the oldest aired renders
+    # are deleted (ignoring the grace window) until back under the cap; None = off.
+    segment_retention_hours: float = 6.0  # grace past air end before a render is GC'd
+    segment_retention_max_gb: float | None = None  # optional hard size backstop; off
+
     # --- External-call resilience (bounded retry on Claude/TTS) ----------------
     retry_attempts: int = 3  # total attempts, including the first
     retry_backoff_sec: float = 2.0  # base linear backoff between attempts

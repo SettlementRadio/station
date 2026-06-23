@@ -68,8 +68,9 @@ it on the org page.
   [settlementradio.com](https://settlementradio.com) · [X](LINK)
 </div>
 
-A tribute to the authors who imagined the future — the *spirit* of golden-age science
-fiction in an original world. No franchise, no borrowed IP.
+A love letter to 20th-century science fiction — the golden-age and new-wave authors who
+imagined the future. We honor their *spirit*, never their work: an original world, no
+franchise, no borrowed IP.
 
 ### What's here
 - **[station](../station)** — the Python pipeline: the writers' room, the world clock,
@@ -110,6 +111,8 @@ this is the page Anthropic devrel will actually read.
 
   **A 24/7 AI sci-fi radio station broadcasting from the year 2626.**
   Synthetic DJs · an original world · every word written by Claude · built entirely by Claude Code.
+
+  *A love letter to 20th-century science fiction — broadcasting from the future it imagined.*
 
   <!-- add at MG6: [![Live](badge)](LINK) -->
   ![License](https://img.shields.io/badge/code-MIT-blue)

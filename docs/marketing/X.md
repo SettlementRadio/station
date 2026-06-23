@@ -16,16 +16,19 @@ post a task in a later calendar year, bump it (2627, …). Never imply the year 
 
 ## Audience, hooks, goals (read once)
 
+- **The motto (carry it — see `MARKETING.md`):** *"A love letter to 20th-century science fiction —
+  broadcasting from the future it imagined."* Even on dev-leaning X, the tribute is *why* the project
+  exists; don't let the build-story bury it.
 - **Primary audience on X:** indie devs / AI builders. **Lead with the built-by-agents hook**
   ("an entire 600-years-future station stood up by Claude Code"). They share things that are
-  *technically novel and honestly documented*.
+  *technically novel and honestly documented* — but pair it with the tribute so it has a soul.
 - **Secondary thread:** sci-fi / worldbuilding people (the tribute hook). Lore drops carry this.
 - **Goal through Phase C:** seed the **first ~100 genuinely-interested followers** and build the
   agentic-build narrative that earns an Anthropic feature later — *before* the soft launch (M1).
   This is audience-*seeding*, not launch. Stay calm; the loud launch is Phase D / M4.
-- **IP safety:** frame everything as *tribute* — "the authors who imagined the future," the *spirit*
-  of golden-age sci-fi. Never a named franchise, character, or living author's creation. This is the
-  one rule that matters most in public.
+- **IP safety:** the tribute is to **20th- / early-21st-century science fiction — the golden-age and
+  new-wave authors** and their *spirit*. Honor the era and its ideas; **never** name a franchise, a
+  character, or a living author's creation. This is the one rule that matters most in public.
 
 ## Posting mechanics (the "when" and "how")
 
@@ -78,12 +81,28 @@ seconds and looks intentional, so build-in-public posts convert visitors to foll
 >
 > Two AI DJs. Every word written by Claude. The whole thing built by Claude Code, in public.
 >
-> No franchise, no borrowed IP — an original world, as a tribute to the sci-fi that raised us.
+> It's a love letter to 20th-century science fiction — the authors who taught us to imagine the future. We don't borrow their worlds; we built an original one and broadcast from inside it.
 >
 > Follow along. 🛰️
 **Done-when:** posted.
 **Result check (72h):** any follows + bookmarks at all = the premise lands. Note which hook the
 repliers respond to (tech vs. tribute) — it tells you which to lead with next.
+
+### MX1b — The "why" (the tribute post) — pin-worthy companion
+**Depends on:** nothing — **do now**, a day or two after MX1.
+**Audience:** sci-fi / general (the tribute hook leads here). **Goal:** make the *soul* of the project
+unmistakable early, so the channel never reads as only a tech demo. This is the seed of the eventual
+tribute essay (M4).
+**Asset:** a quiet brand card, or text-only.
+**Post:**
+> Why a radio station from the future?
+>
+> Because a generation grew up on science fiction that promised us somewhere to go — the golden-age and new-wave writers who imagined settled worlds, long nights between the stars, voices carrying across the dark.
+>
+> Settlement Radio is a thank-you to them. Not their worlds — our own, built in their spirit, broadcasting from 600 years on, the way they taught us to dream it. 🌌
+**Done-when:** posted.
+**Result check (72h):** replies that *get it* (people naming what the genre meant to them) +
+bookmarks. This post tells you whether the tribute lands — if it's flat, sharpen it; it's the heart.
 
 ### MX2 — First real conversation (the held first clip) — PIN THIS
 **Depends on:** **C1** (time-aware framing) — the clip must be a continuity-passing segment, *not*
@@ -243,6 +262,7 @@ clip, the essay) is Phase D / M4.
 |------|-----------|------|---------|
 | MX0 Foundation | — (now) | profile | — |
 | MX1 Premise | — (now) | post | — |
+| MX1b The "why" / tribute | — (now) | post | — |
 | MX2 First conversation | **C1** | audiogram | 📌 pin |
 | MX3 Safety/continuity gate | **C0** | thread | — |
 | MX4 World clock | **C1** | thread + clip | — |

@@ -23,6 +23,10 @@ How a top-up run works (one call to `top_up`, run periodically — cron/systemd 
      (the existing buffer/fallback keeps the air live) and let the next run retry.
   6. Persist the schedule and write the ordered playlist
      (`settings.schedule_playlist_path`) of upcoming audio paths, in air order.
+  7. PRUNE the disk (C2.5): delete aired, unreferenced one-shot renders whose air
+     end is past the `settings.segment_retention_hours` grace window, so a 24/7
+     station can't fill the box. The shared disclosure ident clip and everything
+     under `assets/` are never collected (see `prune()`).
 
 As it places content, the scheduler also weaves a spoken AI-disclosure ident
 (src/disclosure.py) into the order every `settings.disclosure_every_n` content
@@ -38,6 +42,7 @@ fallback chain.
 
 from __future__ import annotations
 
+import dataclasses
 import json
 import sys
 import time
@@ -84,6 +89,26 @@ def _entry(seg: Segment) -> dict:
         "actual_duration_sec": seg.actual_duration_sec,
         "length_target_sec": seg.length_target_sec,
     }
+
+
+def _write_sidecar(seg: Segment) -> None:
+    """Write `segments/<id>.json` next to the render so it self-describes (C2.5).
+
+    Parity with the B6 buffer's sidecar: it records the segment's `air_time` and
+    measured duration, which is what `prune()` reads to compute a render's air end
+    *after* it has aired and left the live schedule. Best-effort — a sidecar write
+    failure is logged, never fatal (the audio aired fine; the GC just falls back to
+    the file's mtime for that one render). The shared disclosure ident has no
+    per-id sidecar: its audio is one reused clip, protected by name, not by age.
+    """
+    if not seg.audio_path:
+        return
+    path = settings.segments_dir / f"{seg.id}.json"
+    try:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(json.dumps(dataclasses.asdict(seg), indent=2), encoding="utf-8")
+    except OSError as exc:  # disk full / perms — don't kill a segment that rendered
+        log.warning("schedule_sidecar_write_failed", seg_id=seg.id, error=str(exc))
 
 
 def _duration_of(entry: dict) -> float:
@@ -248,6 +273,10 @@ def top_up(now: datetime | None = None) -> list[dict]:
             continue
         consecutive_skips = 0
 
+        # Self-describing sidecar so prune() can read this render's air end once it
+        # has aired out of the live schedule (C2.5). Written with the pinned slot
+        # air_time already set on the segment by `_generate_slot`.
+        _write_sidecar(seg)
         entry = _entry(seg)
         duration = _duration_of(entry)
         upcoming.append(entry)
@@ -278,7 +307,148 @@ def top_up(now: datetime | None = None) -> list[dict]:
         runway_sec=round(runway_sec),
         playlist=str(playlist_path),
     )
+
+    # C2.5 — bound the segment disk: GC aired, unreferenced renders. Runs on the
+    # freshly-saved state so it sees the same `upcoming` set as protected. Failures
+    # here must never break a top-up (the air is fed; disk GC is housekeeping).
+    try:
+        prune(now)
+    except Exception as exc:  # noqa: BLE001 — housekeeping must not break playout
+        log.error("prune_error", error=str(exc))
+
     return upcoming
+
+
+# --- C2.5: disk retention — GC aired, unreferenced one-shot renders ----------
+# The shared disclosure ident clip is rendered once and reused by EVERY ident slot
+# (src/disclosure.py), so it must survive even when an ident entry ages out. We
+# exempt it by the stable name prefix `disclosure.render_ident_audio` writes.
+_IDENT_NAME_PREFIX = "ident-disclosure-"
+
+
+def _referenced_audio(state: dict) -> set[str]:
+    """Resolved audio paths still in the live schedule — never deleted by prune."""
+    referenced: set[str] = set()
+    for e in state.get("entries", []):
+        ap = e.get("audio_path")
+        if ap:
+            referenced.add(str(Path(ap).resolve()))
+    return referenced
+
+
+def _air_end_from_sidecar(sidecar: Path) -> datetime | None:
+    """A render's air end from its `<id>.json` sidecar (air_time + duration), or None.
+
+    Returns None when the sidecar is missing or unparseable so the caller can fall
+    back to the file's mtime — the sidecar is the precise signal (it survives the
+    schedule-entry pruning), mtime is the safety net for pre-C2.5 renders.
+    """
+    if not sidecar.exists():
+        return None
+    try:
+        data = json.loads(sidecar.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return None
+    if not data.get("air_time"):
+        return None
+    try:
+        return _end_of(data)  # reuses air_time + measured/target duration
+    except (KeyError, ValueError):
+        return None
+
+
+def prune(now: datetime | None = None) -> dict:
+    """Delete aired, unreferenced one-shot renders from `segments_dir` (C2.5).
+
+    A `<id>.mp3` (and its `<id>.json` sidecar) is removed only when ALL hold:
+      (a) it is NOT referenced by any live schedule entry's audio (the live state);
+      (b) its air end is more than `segment_retention_hours` in the past — the grace
+          window (from the sidecar; mtime if no sidecar);
+      (c) it is a per-segment render under `segments_dir` (the glob's scope).
+
+    NEVER touched: the shared disclosure ident clip (`ident-disclosure-*.mp3`,
+    reused across slots), anything under `assets/` (this only ever scans
+    `segments_dir`), and any file still in the live playlist/schedule. An optional
+    `segment_retention_max_gb` backstop then deletes the oldest aired renders —
+    ignoring the grace window — if the directory is still over the cap. Returns a
+    summary `{files, bytes}` for the caller/log.
+    """
+    now = now or datetime.now()
+    seg_dir = settings.segments_dir
+    if not seg_dir.exists():
+        return {"files": 0, "bytes": 0}
+
+    referenced = _referenced_audio(_load_state())
+    retention_sec = settings.segment_retention_hours * 3600
+
+    removed_files = 0
+    removed_bytes = 0
+    # Survivors that COULD be GC'd later (aired one-shot renders kept only by the
+    # grace window) — the candidate pool the size backstop draws from, oldest first.
+    survivors: list[tuple[datetime, Path, Path | None]] = []
+
+    for mp3 in sorted(seg_dir.glob("*.mp3")):
+        # Protect the shared, reused disclosure ident — deleting it because one
+        # ident slot aged out would break every future ident (or force re-renders).
+        if mp3.name.startswith(_IDENT_NAME_PREFIX):
+            continue
+        # Protect anything still in the live schedule/playlist.
+        if str(mp3.resolve()) in referenced:
+            continue
+
+        sidecar = mp3.with_suffix(".json")
+        sidecar = sidecar if sidecar.exists() else None
+        air_end = _air_end_from_sidecar(mp3.with_suffix(".json"))
+        if air_end is None:
+            air_end = datetime.fromtimestamp(mp3.stat().st_mtime)
+
+        if (now - air_end).total_seconds() <= retention_sec:
+            survivors.append((air_end, mp3, sidecar))  # within grace — keep for now
+            continue
+
+        removed_files += 1
+        removed_bytes += _delete_render(mp3, sidecar, "aged_out", now - air_end)
+
+    # Optional emergency backstop: if still over the cap, delete oldest aired
+    # renders that were spared only by the grace window, oldest first, until under.
+    cap_gb = settings.segment_retention_max_gb
+    if cap_gb is not None and cap_gb > 0:
+        cap_bytes = int(cap_gb * 1024**3)
+        total = sum(f.stat().st_size for f in seg_dir.glob("*") if f.is_file())
+        if total > cap_bytes:
+            log.warning("prune_over_cap", total_bytes=total, cap_bytes=cap_bytes)
+            for air_end, mp3, sidecar in sorted(survivors, key=lambda s: s[0]):
+                if total <= cap_bytes:
+                    break
+                freed = _delete_render(mp3, sidecar, "over_cap", now - air_end)
+                total -= freed
+                removed_files += 1
+                removed_bytes += freed
+
+    log.info("prune_done", files=removed_files, bytes=removed_bytes)
+    return {"files": removed_files, "bytes": removed_bytes}
+
+
+def _delete_render(mp3: Path, sidecar: Path | None, reason: str, age) -> int:
+    """Delete a render's `<id>.mp3` (+ sidecar); return bytes reclaimed. Best-effort."""
+    freed = 0
+    for f in (mp3, sidecar):
+        if f is None:
+            continue
+        try:
+            size = f.stat().st_size
+            f.unlink()
+            freed += size  # count only what was actually removed
+        except OSError as exc:
+            log.warning("prune_unlink_failed", file=str(f), error=str(exc))
+    log.info(
+        "prune_removed",
+        seg=mp3.stem,
+        reason=reason,
+        age_sec=round(age.total_seconds()),
+        bytes=freed,
+    )
+    return freed
 
 
 def main(argv: list[str]) -> int:
@@ -286,9 +456,22 @@ def main(argv: list[str]) -> int:
 
     .venv/bin/python -m src.scheduler                 (one top-up; cron/systemd in C5)
     .venv/bin/python -m src.scheduler --interval 300  (local: top up every 5 min)
+    .venv/bin/python -m src.scheduler --prune         (C2.5: run only the disk GC)
 
     Needs `make seed` + a populated .env (live Claude + TTS).
     """
+    if argv and argv[0] == "--prune":
+        # Just the C2.5 GC — no generation, so no Claude/TTS needed. Handy for
+        # verifying retention against the segments already on disk.
+        result = prune()
+        print(
+            f"\n----- PRUNE: removed {result['files']} file(s), "
+            f"{result['bytes'] / 1024**2:.1f} MB "
+            f"(retention {settings.segment_retention_hours}h) "
+            f"from {settings.segments_dir} -----"
+        )
+        return 0
+
     interval: float | None = None
     if len(argv) >= 2 and argv[0] == "--interval":
         try:

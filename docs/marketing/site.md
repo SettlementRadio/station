@@ -18,6 +18,11 @@ page that asks for an email *and* a play *and* a donation converts on none of th
 **In-world year = `real year + 600` → 2626 in 2026.** The current copy says "late 27th century" —
 consistent; keep it relative, never hardcode a year.
 
+**The motto belongs on the site more than anywhere** (it's the surface you own): *"A love letter to
+20th-century science fiction — broadcasting from the future it imagined."* The current page already
+carries a tribute line ("a tribute to the science fiction that imagined us here") — keep that spirit
+through every stage; the player must never lose the *why* (see `MARKETING.md` → The spirit & motto).
+
 ---
 
 ## The current state (Stage 0 — live)
@@ -86,6 +91,7 @@ thing: press play — and have a reason to come back.** Support is secondary; em
 **Copy (hero):**
 > **Settlement Radio — live now from 2626.**
 > Two AI DJs, an original world, every word written by Claude. ▶ Listen.
+> *A love letter to 20th-century science fiction — broadcasting from the future it imagined.*
 > *A work of fiction, voiced with AI.*
 **Done-when:** settlementradio.com plays the live stream, shows the disclosure, and offers
 support/follow links — on the existing Vercel app.

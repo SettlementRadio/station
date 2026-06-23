@@ -157,6 +157,19 @@ make schedule INTERVAL=300    # local: keep topping up every 5 minutes
 near-live later). For Phase C the `music` format is dropped from `BUFFER_ROTATION` (its `[SONG]` slot
 has nothing to fill it until Phase D), so only `talk`/`news` air — no silent gaps.
 
+**Disk retention** ([`src/scheduler.py`](src/scheduler.py) `prune()`, C2.5). At ~1 MB/min of
+generated audio, an unbounded `segments/` would fill the VPS disk in weeks. After every top-up the
+scheduler garbage-collects each `<id>.mp3` (+ its `<id>.json` sidecar) that has **aired** (is no
+longer referenced by the live playlist) and whose air end is more than `SEGMENT_RETENTION_HOURS`
+(default 6) in the past — a grace window so a just-aired clip Liquidsoap may still be reading isn't
+yanked. The **shared disclosure ident** clip (`ident-disclosure-*.mp3`, reused across every ident
+slot) and everything under **`assets/`** (curated, non-regenerable media) are never collected; the GC
+only ever touches `segments/`. An optional `SEGMENT_RETENTION_MAX_GB` backstop evicts the oldest
+aired renders if the directory still exceeds the cap. Each sweep logs the files + bytes reclaimed.
+```bash
+make prune                    # standalone GC (no Claude/TTS) — verify retention on disk
+```
+
 **AI disclosure on air** ([`src/disclosure.py`](src/disclosure.py), C3). The station must say it's
 AI-generated (CLAUDE.md; EU AI Act Art. 50). As it places content, the scheduler weaves a short
 **spoken disclosure ident** into the playlist every `DISCLOSURE_EVERY_N` content segments (default

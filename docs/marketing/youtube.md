@@ -28,6 +28,9 @@ until Phase D.
   fall into the world. Mixed dev + sci-fi.
 - **Lead hook on YouTube:** the **experience** — "a calm sci-fi station you can leave on" — with the
   built-by-Claude-Code story as the reason-to-care underneath. Less technical than X.
+- **The motto (carry it — see `MARKETING.md`):** *"A love letter to 20th-century science fiction —
+  broadcasting from the future it imagined."* Put the tribute in the channel About and the trailer;
+  it's the soul, not a footer.
 - **Goal through Phase C:** have the channel + a small Shorts library ready so that when the live
   stream goes public (M1), there's somewhere for discovery to land. **North star: returning viewers
   + watch time**, not subscriber count.
@@ -69,7 +72,7 @@ until Phase D.
 - **Description (About):**
   > Settlement Radio is a 24/7 AI science-fiction radio station broadcasting from the year 2626 — 600 years ahead of now. Two synthetic DJs, Vell and Wren, host an original future world, with every word written by Claude and the whole station built by Claude Code.
   >
-  > A tribute to the authors who imagined the future. This channel is AI-generated fiction, voiced with AI.
+  > A love letter to 20th-century science fiction — the golden-age and new-wave authors who imagined the future. An original world, broadcasting from inside it. This channel is AI-generated fiction, voiced with AI.
   >
   > 🌐 settlementradio.com
 - **Links:** website (settlementradio.com), X. (Add Ko-fi at MY6, not before.)
@@ -140,7 +143,7 @@ the soak.
   > 🌐 settlementradio.com
   > 🐦 Updates: [X LINK]
   >
-  > A tribute to the authors who imagined the future.
+  > A love letter to 20th-century science fiction — broadcasting from the future it imagined.
 - **Category:** Music (or Science & Technology); **latency:** Normal; **Made for kids:** No;
   **DVR/recording:** on.
 - Keep it **unlisted** (or quietly public, un-announced) through the C9 soak.

@@ -12,6 +12,8 @@ searchable, and the source material for the case study and "built in public" pos
 - Once code exists, "Changed" overlaps with git commits; that's fine. The log's real value is
   **Decisions** and **Why**, which commits don't capture.
 - When you write the case study, read this bottom-up (oldest first) — it's the story arc.
+- **This is the marketing content feedstock** — there is no separate `highlights.md`. Flag shareable
+  moments with the `📣 Postable:` line below; the `docs/marketing/*` playbooks mine the DEVLOG.
 
 **Entry template (copy this):**
 
@@ -21,6 +23,9 @@ searchable, and the source material for the case study and "built in public" pos
 **Decisions:** the durable choices (the things that matter in three months).
 **Changed:** files/commits/accounts that concretely changed.
 **Why:** the one or two reasons behind the key decision (your future self will thank you).
+**📣 Postable:** (optional) if this session produced something shareable — a clip, a milestone, a
+neat mechanism — one line on what to post + the clip/commit. This is the marketing feedstock the
+platform docs (`docs/marketing/*`) mine; `grep "📣"` to find them. Skip when there's nothing to post.
 **Next:** the single next action.
 Commit: <hash>  ·  Clips: <filenames in devlog/>
 ```
@@ -32,6 +37,110 @@ A typical *build* session will be short, e.g.:
 > audio). Commit: a1b2c3 · Clips: 2026-07-02-first-script.mov
 
 ---
+
+## 2026-06-23 — Phase C — C2.5: disk retention — GC aired segment audio
+
+**Focus:** bound `segments/` so a 24/7 station can't fill the VPS disk. C2 already prunes the
+*schedule* (aired entries leave the state + playlist), but the **mp3 files themselves were never
+deleted** — at ~1 MB/min of generated audio the 40 GB CX22 fills in a few weeks. C2.5 deletes aired,
+unreferenced one-shot renders, and nothing else.
+**Decisions:**
+- **`prune()` lives in `src/scheduler.py` and runs at the end of every `top_up()`.** It keys off the
+  same "aired + unreferenced" notion C2's schedule-entry pruning already uses (reusing `_load_state`,
+  `_end_of`, `_duration_of`), wrapped so a GC failure can never break a top-up — the air is fed first;
+  disk GC is housekeeping. Also exposed standalone as `python -m src.scheduler --prune` / `make prune`
+  (no Claude/TTS) for verifying retention against what's on disk.
+- **Deletes a `<id>.mp3` (+ its `<id>.json` sidecar) only when ALL hold:** (a) not referenced by any
+  live schedule entry's `audio_path`; (b) its **air end** is more than `segment_retention_hours`
+  (default 6) in the past — a grace window so a just-aired clip Liquidsoap may still be reading isn't
+  yanked, and recent audio stays available for clip-cutting/debug; (c) it's a per-segment render under
+  `segments_dir` (the `*.mp3` glob's scope).
+- **The scheduler now writes a per-segment sidecar** (parity with the B6 buffer — `dataclasses.asdict`
+  to `<id>.json`). This is the load-bearing choice: the sidecar records `air_time` + measured duration,
+  the only reliable source of a render's **air end** *after* it has aired out of the live schedule.
+  mtime alone breaks the grace window when `buffer_depth_hours` > retention (a deep-buffer render's
+  mtime is hours before it even airs); the sidecar is the precise signal, mtime the fallback for
+  pre-C2.5 renders.
+- **Protect, never delete — the landmines:** the **shared disclosure ident** clip
+  (`ident-disclosure-*.mp3`, reused by every ident slot per `src/disclosure.py`) is exempt by name
+  prefix — deleting it because one ident slot aged out would break every future ident; **everything
+  under `assets/`** is safe because the GC only ever globs `segments/`; and any file still in the live
+  playlist/schedule survives via the reference check.
+- **Optional `segment_retention_max_gb` backstop** (default off): if `segments_dir` still exceeds the
+  cap after the age sweep, the oldest aired renders are evicted (ignoring the grace window) until under
+  — the emergency valve so the disk is bounded even if retention is set too generous. Each sweep logs
+  files + bytes reclaimed so disk management is auditable.
+- **Config:** new `segment_retention_hours` + `segment_retention_max_gb` in a new "Disk retention"
+  section; the ident name prefix stays a module constant (intrinsic, not a tunable).
+**Changed:** `src/scheduler.py` (`prune()`, `_write_sidecar()` + its call in `top_up`, `--prune` CLI,
+docstring step 7); `src/config.py` (the `segment_retention_*` block); `Makefile` (`make prune`);
+`.env.example`; `README.md` (a "Disk retention" paragraph); `tests/test_scheduler.py` (+7 cases —
+aged removal, referenced kept, in-grace kept, ident protected, mtime fallback, max-GB backstop,
+sidecar written per render; existing C2/C3 tests' `_wire` now sandboxes `segments_dir`/retention so a
+top-up's prune never touches the real `segments/`). `ruff` clean; **62 tests pass** (55 + 7 new).
+**Why:** an unattended 24/7 stream that never deletes audio is a guaranteed disk-full outage in weeks —
+a hard prerequisite to the C5 deploy + C9 soak. Keying file deletion off air end (via the sidecar, not
+mtime) is what keeps the grace window correct at any buffer depth; exempting the shared ident and
+`assets/` is what stops the GC from eating non-regenerable or render-once-reuse files.
+**Verification:** `make prune` against a sandbox (an aired-10h render, a 1h-old render, the ident
+clip) collected the aged render + its sidecar, kept the in-grace render, and left the ident untouched
+(`prune_removed`/`prune_done` logged the file + bytes). The aged/referenced/grace/ident/mtime/backstop
+paths and the per-render sidecar write are covered deterministically by the new scheduler tests
+(stubbed generation, no live calls). Not yet exercised across a long live `make schedule` run on the
+VPS — that, watching `segments/` stabilise over days, is the C9 soak check.
+**Next:** C3 is already in; C4 — never-dead air: pre-rendered evergreen pool (kept at a GC-exempt path)
++ the full playout fallback chain + health checks/alerts.
+Commit: <pending>  ·  Clips: —
+
+## 2026-06-23 — Phase C — C3: AI disclosure in the air (spoken ident + on the player)
+
+**Focus:** turn `Segment.disclosure` from a never-read field into behaviour — a short spoken
+AI-disclosure ident woven into playout on a cadence, plus the same written line on the web surface
+and ready for the YouTube description. Fixes orientation open-risk #5 ("AI disclosure is a field, not
+a behaviour"); satisfies the CLAUDE.md disclosure rule + EU AI Act Art. 50.
+**Decisions:**
+- **New `src/disclosure.py` — the ident is static, canon-safe copy, like evergreen.** Two named
+  constants are the single source of truth: `DISCLOSURE_SPOKEN` (the voiced line) and `DISCLOSURE_LINE`
+  (the written line). Because it names nothing real and references no hour/event, it skips the
+  safety/continuity gates entirely (same reasoning as `evergreen.py`) and needs **no Claude call**.
+- **Rendered once, reused.** The line never changes, so the ident audio is cached to a stable file
+  keyed by `(provider, voice)` — flipping `TTS_PROVIDER` or the voice re-renders rather than airing a
+  stale clip; otherwise every ident slot reuses the one clip (Kokoro is slow, so this matters).
+  Duration is stamped through the same C2 `formats.stamp_duration` chokepoint, so the scheduler times
+  it like any other segment.
+- **The scheduler weaves it, not Liquidsoap.** `top_up` places an ident every `disclosure_every_n`
+  CONTENT segments (default 4), tracked by a `content_since_ident` counter **persisted in
+  `schedule.json`** so the cadence stays steady across runs and pruning (not restarting each top-up).
+  The ident is just another ordered playlist entry — so `config/radio.liq` needed **zero change**, it
+  airs in order automatically. An ident render failure is logged and skipped (counter resets) — never
+  blocks content or causes dead air, consistent with C2's never-dead-air stance.
+- **One written line, shared.** `web/src/lib/disclosure.ts` holds the canonical web copy and the page
+  renders from it (replacing the hardcoded disclosure paragraph); the same line belongs in the YouTube
+  description (wired in C7) and grows into the C8 player. Backend `DISCLOSURE_LINE` and the web
+  constant are kept saying the same thing (the two halves run independently per CLAUDE.md, so the
+  string is intentionally mirrored, not shared across the seam).
+- **Config:** new `disclosure_enabled` (master switch; false = local dev only), `disclosure_every_n`,
+  `disclosure_voice` (mirrors `segment_vell_voice`). The ident *text* stays a module constant (intrinsic
+  content, not a tunable), per the config-vs-constant rule.
+**Changed:** new `src/disclosure.py`; `src/scheduler.py` (ident weaving + persisted counter);
+`src/config.py` (a `disclosure_` block); new `web/src/lib/disclosure.ts` + `web/src/app/page.tsx`
+(render from it); `Makefile` (`make ident` + FORCE); `.env.example`; `README.md`; `tests/test_scheduler.py`
+(+3 cases: cadence, persistence, ident-failure resilience; existing C2 tests disable disclosure to stay
+isolated). `ruff` clean; **55 tests pass** (52 + 3 new); web `tsc --noEmit` green.
+**Why:** a public 24/7 broadcast must *say* it's AI-generated, audibly and on screen — a hard
+prerequisite to exposing the stream (C7/C8). Weaving the ident in the scheduler (vs. a Liquidsoap
+rotation) keeps disclosure on measured-duration airtime accounting and one ordered playlist, and makes
+the cadence a config dial; persisting the counter is what stops a steady cadence from resetting every
+top-up.
+**Verification:** `make ident` (run with `TTS_PROVIDER=say` for speed) rendered the ident to an
+**11.9s** clip and printed both the spoken + written lines; a second run logged
+`disclosure_ident_cached` (reuse confirmed). The cadence/persistence/failure paths are covered
+deterministically by the new scheduler tests (stubbed generation, no live calls). Not yet run through a
+full live `make schedule` on the seeded stack — that, and a listen on the real Kokoro voice, is the
+remaining human check.
+**Next:** C4 — never-dead air: pre-rendered evergreen pool + the full playout fallback chain
+(scheduled → evergreen → bed → ident) + health checks/alerts on stall / low-buffer / failed run.
+Commit: <pending>  ·  Clips: —
 
 ## 2026-06-22 — Phase C — C2: honest length accounting + a real rolling scheduler
 

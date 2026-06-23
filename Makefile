@@ -35,7 +35,7 @@ LIQ_LOG    := $(RUN_DIR)/liquidsoap.log
 PLAYER_URL := http://127.0.0.1:8000/
 STREAM_URL := http://127.0.0.1:8000/settlement.mp3
 
-.PHONY: help generate serve air play play-convo stop status seed demo context conversation format buffer schedule ident
+.PHONY: help generate serve air play play-convo stop status seed demo context conversation format buffer schedule ident prune
 
 # B5 format default: `make format` builds a talk segment; override with FMT=news
 # or FMT=music. Pass a TOPIC=... to steer canon retrieval.
@@ -66,6 +66,7 @@ help:
 	@echo "  make format FMT=…  generate one B5 format segment (news|talk|music)"
 	@echo "  make buffer    generate ~an hour of varied segments into segments/ (B6)"
 	@echo "  make ident     render the spoken AI-disclosure ident (C3)"
+	@echo "  make prune     GC aired segment audio past the retention window (C2.5)"
 	@echo "  make schedule  top up the rolling buffer to depth + write the playlist (C2)"
 	@echo "  make air       schedule + serve — the live scheduler-driven stream (C2)"
 
@@ -122,6 +123,13 @@ schedule:
 ident:
 	@echo "==> Rendering the AI-disclosure ident (C3)…"
 	$(PY) -m src.disclosure $(if $(FORCE),--force,)
+
+# C2.5: garbage-collect aired, unreferenced segment audio so a 24/7 run can't fill
+# the disk. Runs automatically at the end of every `make schedule`; this target is
+# the standalone GC (no Claude/TTS) for verifying retention against what's on disk.
+prune:
+	@echo "==> Pruning aired segment audio past the retention window (C2.5)…"
+	$(PY) -m src.scheduler --prune
 
 generate:
 	@echo "==> Generating a fresh segment for the current time…"

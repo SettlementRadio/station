@@ -33,8 +33,9 @@ job is conversion of goodwill, framed in the station's voice.
 - Brand it with the **beacon + wordmark** (same as every other surface); night-field feel.
 - Write the **About** in the station's voice (not "please donate"):
   > Settlement Radio broadcasts 24/7 from the year 2626 — two AI DJs, an original world, every word
-  > written by Claude. It runs on real compute and real voices. If it keeps you company across the
-  > dark, you can help keep the lights on and bring the next DJ on air. 🛰️
+  > written by Claude. It's a love letter to 20th-century science fiction, the authors who imagined
+  > the future, broadcasting from inside it. It runs on real compute and real voices; if it keeps you
+  > company across the dark, you can help keep the lights on and bring the next DJ on air. 🛰️
 - Set up **GitHub Sponsors** in parallel (the dev-native button; wired via `FUNDING.yml` in MG6).
 - **Leave it unlinked/quiet** — no buttons anywhere until MK1.
 **Done-when:** the page exists, is on-brand, and is *not* yet linked from any channel.

@@ -24,6 +24,29 @@ If you find marketing strategy duplicated anywhere else, it's a bug — delete i
 
 ---
 
+## The spirit & the motto (say this everywhere — it's the soul, not decoration)
+
+The single thing a stranger must understand: **Settlement Radio is a tribute to 20th- and
+early-21st-century science fiction — the golden-age and new-wave authors whose books taught a
+generation to imagine the future.** We don't borrow their worlds or characters (the IP line); we
+honor their *spirit* by building an **original** world and broadcasting from 600 years ahead — as if
+their dream of the future simply kept going.
+
+**The motto (one canonical line — use it verbatim across every surface):**
+> **A love letter to 20th-century science fiction — broadcasting from the future it imagined.**
+
+**The fuller "why" (for the site About, the GitHub README, the tribute essay):**
+> Settlement Radio is a love letter to the science fiction of the last century — the golden-age and
+> new-wave authors who dreamed our future first. We honor their spirit, never their work: an original
+> world, broadcasting from 600 years on, the way they taught us to imagine it.
+
+**Rule:** every premise/bio/About across X, YouTube, GitHub, the site, and Ko-fi **must carry the
+motto or the tribute beat** — not just the "built by Claude Code" hook. The tech hook earns the dev
+crowd; the tribute is *why the project exists*, and it's what makes people root for it. If a piece of
+copy doesn't make the tribute legible, it's not finished.
+
+---
+
 ## 0. Core principle (read first)
 
 **You do not market *to* Anthropic. You build something the community shares, and Anthropic
@@ -32,8 +55,9 @@ spreading in the developer/sci-fi world. The one concrete *direct* door is contr
 the **Anthropic Cookbook** on GitHub. Everything else is earned.
 
 **Two hooks, two audiences — lead with the right one per channel:**
-- **Tribute hook** (emotional): "a love letter to the sci-fi authors who raised a generation,
-  broadcasting from the world they imagined." → general / sci-fi audiences.
+- **Tribute hook** (emotional): "a love letter to 20th-century science fiction — the golden-age and
+  new-wave authors who imagined the future — broadcasting from the world they dreamed." → general /
+  sci-fi audiences. *(This is the motto above; lead with it on every non-dev surface.)*
 - **Built-by-agents hook** (technical): "an entire 600-years-future civilization stood up by Claude
   Code agents, broadcasting live and time-aware." → dev / AI audiences.
 
@@ -78,6 +102,11 @@ Narrowed on purpose. A wider set (Bluesky, Reddit-as-feed, Tumblr, TikTok, a Dis
   differentiator almost no one else has.
 - **Lore drops:** a faux 2626 news headline, a DJ backstory. Builds the universe in public; feeds
   the sci-fi audience. *(Richer once the Phase D world engine is live.)*
+- **Tribute drops (carry the soul):** short posts that make the *why* legible — the idea or feeling
+  from a 20th-century sci-fi classic that a segment echoes, honored in the original world ("tonight's
+  show is in the spirit of the generation-ship stories — without ever being one"). Honor the era and
+  its themes; **never name a living author's characters or a franchise.** At least one tribute beat
+  every couple of weeks, so the project never reads as *only* a tech demo.
 - **Milestone announcements:** "the station is live," "DJ #2 joins the night shift."
 
 **Hero pieces (built for the loud launch, DM):**
@@ -89,8 +118,13 @@ Narrowed on purpose. A wider set (Bluesky, Reddit-as-feed, Tumblr, TikTok, a Dis
 **Tone:** in-universe where it delights (the station "speaking"); honest behind-the-scenes where it
 builds trust (you, the maker). Draft all of it with Claude.
 
-**Operational log:** keep `docs/highlights.md` — a running list of postable moments as they happen
-during builds, so the content engine always has raw material. (Created at M0.)
+**The content feedstock is `docs/DEVLOG.md` — not a separate list.** The DEVLOG already captures
+every milestone, decision, and clip, one entry per session, and its own header names it "the source
+material for the case study and 'built in public' posts." So **don't keep a parallel highlights doc**
+— mine the DEVLOG. To make postable moments fast to find, each DEVLOG entry that produced something
+shareable adds a **`📣 Postable:`** line (a one-liner + the clip/commit); skim or `grep "📣"` when
+it's time to post. This doc and the per-platform docs decide *what/when/how* to post; the DEVLOG is
+*what happened* (the raw material). Two jobs, one source each — no duplication.
 
 ---
 
@@ -104,7 +138,7 @@ back up. Phases (CM/DM/EM) map to `docs/ROADMAP.md`.
 Quiet build-in-public warming. The trigger already exists: a real two-DJ conversation clip.
 - [ ] First real X post fired (the "first real conversation" clip).
 - [ ] Build-in-public cadence started (≥1 process post/week).
-- [ ] `docs/highlights.md` created and being appended.
+- [ ] DEVLOG `📣 Postable:` convention in use (the content feedstock — no separate highlights doc).
 - [ ] Coming-soon page updated to a "nearly on air" note.
 **Tech gate:** the clip must be a continuity-passing segment (not the afternoon-handover bug). No
 other gate — this is warming, not launch.
@@ -175,8 +209,13 @@ they won't fund the project alone.
 - **Community-contribution licensing:** if/when Phase F opens inbound worldbuilding, a **CC BY-SA**
   contributor agreement is the intended model — draft it then; it does not exist yet.
 
-Track each application's status (submitted / approved / declined) in `docs/highlights.md` or a
-short table here, so M2's boxes are auditable.
+**Application status** (keep current here, so M2's boxes are auditable):
+
+| Grant / credit | Status | Date | Notes |
+|---|---|---|---|
+| ElevenLabs Startup Grant | not started | | pull forward to Phase C if it's the launch voice |
+| AWS Activate | not started | | |
+| Anthropic self-serve / promo credits | not started | | live demo (M1) = enough proof |
 
 ---
 
@@ -192,7 +231,7 @@ one-time reach.
   signups, GitHub stars, Ko-fi/Sponsors, launch-day traffic — as *signals*, not gates.
 - **Sustainable solo rhythm:** ~3 short posts/week + 1 longer piece/week + 1 stream-visible
   improvement/week. **Reality check:** during heavy build phases (C, D) protect the build — drop to
-  ~1 post/week from `highlights.md` rather than stalling code. Cadence serves the build, not vice
+  ~1 post/week mined from the DEVLOG rather than stalling code. Cadence serves the build, not vice
   versa.
 
 ---
@@ -228,8 +267,8 @@ re-litigated:
 - **Bluesky, Reddit-as-ongoing-feed, Tumblr, TikTok/Reels, a Discord server** — extra channels to
   feed; the four-channel focus beats spreading thin. (Reddit/Show HN return *once*, as one-time
   launch megaphones at M4 — not as ongoing presences.)
-- **Paid social schedulers (Buffer, etc.)** — overkill for one active feed; batch from
-  `highlights.md` instead.
+- **Paid social schedulers (Buffer, etc.)** — overkill for one active feed; batch from the DEVLOG
+  instead.
 - **The concentric-circles / give-to-get community-cultivation playbook** — still the right instinct
   (contribute value, don't drop links; win one circle, let it carry you to the next), but applied
   through the four channels above, not a sprawling community presence.

@@ -51,6 +51,12 @@ def _wire(monkeypatch, tmp_path, *, depth_hours, rotation, generator):
     monkeypatch.setattr(scheduler.settings, "buffer_depth_hours", depth_hours)
     monkeypatch.setattr(scheduler.settings, "schedule_topup_max_segments", 100)
     monkeypatch.setattr(scheduler.settings, "schedule_failure_max_retries", 1)
+    # Sandbox the segment disk so sidecar writes + the C2.5 prune at the end of a
+    # top-up never touch the real `segments/` dir. A generous retention keeps the
+    # just-generated renders out of the GC's reach in the timing/resilience tests.
+    monkeypatch.setattr(scheduler.settings, "segments_dir", tmp_path)
+    monkeypatch.setattr(scheduler.settings, "segment_retention_hours", 24.0)
+    monkeypatch.setattr(scheduler.settings, "segment_retention_max_gb", None)
     monkeypatch.setattr(
         scheduler.settings, "schedule_state_path", tmp_path / "schedule.json"
     )
@@ -268,6 +274,146 @@ def test_ident_render_failure_does_not_break_the_run(monkeypatch, tmp_path):
 
     assert upcoming, "content should still fill the buffer when the ident fails"
     assert all(e["format"] == "news" for e in upcoming)
+
+
+# --- C2.5: disk retention (prune) -------------------------------------------
+
+
+def _wire_retention(monkeypatch, tmp_path, *, retention_hours=6.0, max_gb=None):
+    """Point the retention dials + state/segments dir at a tmp sandbox."""
+    monkeypatch.setattr(scheduler.settings, "segments_dir", tmp_path)
+    monkeypatch.setattr(
+        scheduler.settings, "schedule_state_path", tmp_path / "schedule.json"
+    )
+    monkeypatch.setattr(scheduler.settings, "segment_retention_hours", retention_hours)
+    monkeypatch.setattr(scheduler.settings, "segment_retention_max_gb", max_gb)
+
+
+def _render(tmp_path, seg_id, *, air_time, duration=120.0, sidecar=True, nbytes=1):
+    """Write a fake `<id>.mp3` (+ optional sidecar) as a one-shot render on disk."""
+    mp3 = tmp_path / f"{seg_id}.mp3"
+    mp3.write_bytes(b"\x00" * nbytes)
+    if sidecar:
+        (tmp_path / f"{seg_id}.json").write_text(
+            json.dumps(
+                {
+                    "id": seg_id,
+                    "format": "news",
+                    "audio_path": str(mp3),
+                    "air_time": air_time.isoformat(),
+                    "actual_duration_sec": duration,
+                    "length_target_sec": 150,
+                }
+            )
+        )
+    return mp3
+
+
+def _set_state(tmp_path, entries):
+    (tmp_path / "schedule.json").write_text(json.dumps({"entries": entries}))
+
+
+def test_prune_removes_aged_unreferenced_render_and_sidecar(monkeypatch, tmp_path):
+    _wire_retention(monkeypatch, tmp_path, retention_hours=6.0)
+    _set_state(tmp_path, [])  # nothing live -> the render is unreferenced
+    # Aired 10h ago: air end (start + 120s) is well past the 6h grace window.
+    mp3 = _render(tmp_path, "news-old", air_time=NOW - timedelta(hours=10))
+
+    result = scheduler.prune(now=NOW)
+
+    assert not mp3.exists()
+    assert not (tmp_path / "news-old.json").exists()
+    assert result["files"] == 1
+
+
+def test_prune_keeps_referenced_upcoming_file(monkeypatch, tmp_path):
+    _wire_retention(monkeypatch, tmp_path)
+    mp3 = _render(tmp_path, "news-live", air_time=NOW - timedelta(hours=10))
+    # Even though it aired long ago by its sidecar, it's still IN the live schedule.
+    _set_state(tmp_path, [{"id": "news-live", "audio_path": str(mp3)}])
+
+    scheduler.prune(now=NOW)
+
+    assert mp3.exists(), "a file still in the live schedule must never be deleted"
+
+
+def test_prune_keeps_file_within_grace_window(monkeypatch, tmp_path):
+    _wire_retention(monkeypatch, tmp_path, retention_hours=6.0)
+    _set_state(tmp_path, [])
+    # Aired only 1h ago — inside the 6h grace window, so it survives.
+    mp3 = _render(tmp_path, "news-recent", air_time=NOW - timedelta(hours=1))
+
+    scheduler.prune(now=NOW)
+
+    assert mp3.exists()
+
+
+def test_prune_protects_shared_disclosure_ident(monkeypatch, tmp_path):
+    _wire_retention(monkeypatch, tmp_path)
+    _set_state(tmp_path, [])
+    # The reused ident clip — no sidecar, very old mtime — must survive by name.
+    ident = tmp_path / "ident-disclosure-kokoro-vell_night.mp3"
+    ident.write_bytes(b"\x00")
+    import os
+
+    old = (NOW - timedelta(days=30)).timestamp()
+    os.utime(ident, (old, old))
+
+    scheduler.prune(now=NOW)
+
+    assert ident.exists(), "the shared disclosure ident must never be GC'd"
+
+
+def test_prune_uses_mtime_when_no_sidecar(monkeypatch, tmp_path):
+    _wire_retention(monkeypatch, tmp_path, retention_hours=6.0)
+    _set_state(tmp_path, [])
+    # A pre-C2.5 render with no sidecar: age falls back to the file's mtime.
+    mp3 = _render(tmp_path, "legacy", air_time=NOW, sidecar=False)
+    import os
+
+    old = (NOW - timedelta(hours=10)).timestamp()
+    os.utime(mp3, (old, old))
+
+    scheduler.prune(now=NOW)
+
+    assert not mp3.exists()
+
+
+def test_prune_max_gb_backstop_evicts_oldest_within_grace(monkeypatch, tmp_path):
+    # Two recent (in-grace) ~1 MB renders. Cap sits between one and two of them, so
+    # the backstop must evict the OLDER even though it's inside the grace window.
+    one_mb = 1_000_000
+    cap_bytes = 1_500_000  # room for one render, not two
+    _wire_retention(
+        monkeypatch, tmp_path, retention_hours=6.0, max_gb=cap_bytes / 1024**3
+    )
+    _set_state(tmp_path, [])
+    older = _render(tmp_path, "a", air_time=NOW - timedelta(hours=2), nbytes=one_mb)
+    newer = _render(tmp_path, "b", air_time=NOW - timedelta(hours=1), nbytes=one_mb)
+
+    scheduler.prune(now=NOW)
+
+    # The oldest is evicted to get under the cap; the newest is kept.
+    assert not older.exists()
+    assert newer.exists()
+
+
+def test_top_up_writes_sidecar_for_each_render(monkeypatch, tmp_path):
+    _wire(
+        monkeypatch,
+        tmp_path,
+        depth_hours=0.05,
+        rotation=["news"],
+        generator=_fake_generator(tmp_path, duration=120.0),
+    )  # _wire already sandboxes segments_dir + retention onto tmp_path
+
+    upcoming = scheduler.top_up(now=NOW)
+
+    for e in upcoming:
+        sidecar = tmp_path / f"{e['id']}.json"
+        assert sidecar.exists(), f"expected a sidecar for {e['id']}"
+        data = json.loads(sidecar.read_text())
+        assert data["air_time"] == e["air_time"]
 
 
 def test_unmeasured_entry_falls_back_to_target_for_timing(tmp_path):

@@ -199,8 +199,8 @@ The full playbook + acceptance checklists live in **`docs/MARKETING.md`**; seque
 `docs/ROADMAP.md`. This phase touches two marketing milestones — work them there, not here:
 
 - **M0 — Seed (do NOW):** you have the continuity-passing conversation clip the whole plan was
-  waiting for. Fire the held "first real post" on X, start `docs/highlights.md`, update the
-  coming-soon page to "nearly on air." (Checklist: MARKETING.md §3 / M0.)
+  waiting for. Fire the held "first real post" on X, flag postable moments in the DEVLOG (`📣
+  Postable:`), update the coming-soon page to "nearly on air." (Checklist: MARKETING.md §3 / M0.)
 - **M1 — Soft launch (only when C9 passes):** "it's alive" post, Ko-fi on, first YouTube clips,
   Plausible on the player. Quiet, to existing followers — the loud launch is Phase D / M4.
   (Checklist: MARKETING.md §3 / M1.)
