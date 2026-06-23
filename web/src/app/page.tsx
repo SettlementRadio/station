@@ -1,5 +1,7 @@
 import Image from "next/image";
 
+import { DISCLOSURE_LINE, DISCLOSURE_TAGLINE } from "@/lib/disclosure";
+
 import SignupForm from "./SignupForm";
 
 // Coming-soon screen (A2-T2): one quiet night-field screen — beacon + wordmark
@@ -43,8 +45,7 @@ export default function Home() {
         <SignupForm />
 
         <p className="max-w-sm text-xs leading-relaxed text-neutral/60">
-          A work of fiction, written and voiced with AI. A tribute to the
-          science fiction that imagined us here.
+          {DISCLOSURE_LINE} {DISCLOSURE_TAGLINE}
         </p>
 
         <nav aria-label="Follow Settlement Radio">

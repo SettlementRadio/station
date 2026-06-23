@@ -57,6 +57,9 @@ def _wire(monkeypatch, tmp_path, *, depth_hours, rotation, generator):
     monkeypatch.setattr(
         scheduler.settings, "schedule_playlist_path", tmp_path / "playlist.txt"
     )
+    # The C2 tests are about timing/resilience; keep the C3 disclosure ident out of
+    # them. The dedicated cadence tests below re-enable it.
+    monkeypatch.setattr(scheduler.settings, "disclosure_enabled", False)
 
 
 def test_top_up_fills_to_depth_in_air_order(monkeypatch, tmp_path):
@@ -164,6 +167,107 @@ def test_total_generation_failure_stalls_without_dead_air(monkeypatch, tmp_path)
 
     assert upcoming == []
     assert (tmp_path / "playlist.txt").read_text() == ""
+
+
+def _fake_ident(tmp_path, *, duration=12.0):
+    """A stand-in `disclosure_ident_segment`: writes a tiny real file per call."""
+    counter = {"n": 0}
+
+    def _gen(now, *, seg_id=None):
+        counter["n"] += 1
+        path = tmp_path / f"ident-{counter['n']:03d}.mp3"
+        path.write_bytes(b"\x00")
+        return Segment(
+            id=seg_id or f"ident-{counter['n']:03d}",
+            format="ident",
+            length_target_sec=15,
+            air_time=now.isoformat(),
+            audio_path=str(path),
+            actual_duration_sec=duration,
+        )
+
+    return _gen
+
+
+def test_disclosure_ident_is_woven_on_cadence(monkeypatch, tmp_path):
+    # C3: a spoken ident every `disclosure_every_n` CONTENT segments, in air order.
+    _wire(
+        monkeypatch,
+        tmp_path,
+        depth_hours=500 / 3600,  # 500s: room for 4 content (120s) + 2 idents (12s)
+        rotation=["news"],
+        generator=_fake_generator(tmp_path, duration=120.0),
+    )
+    monkeypatch.setattr(scheduler.settings, "disclosure_enabled", True)
+    monkeypatch.setattr(scheduler.settings, "disclosure_every_n", 2)
+    monkeypatch.setattr(scheduler, "disclosure_ident_segment", _fake_ident(tmp_path))
+
+    upcoming = scheduler.top_up(now=NOW)
+
+    # Ident lands after every 2 content segments, never at the very start.
+    assert [e["format"] for e in upcoming] == [
+        "news",
+        "news",
+        "ident",
+        "news",
+        "news",
+        "ident",
+    ]
+    # Everything is still placed back-to-back on measured duration (idents included).
+    starts = [datetime.fromisoformat(e["air_time"]) for e in upcoming]
+    assert starts[2] == NOW + timedelta(seconds=240)  # first ident after 2x120s
+    assert starts[3] == NOW + timedelta(seconds=252)  # content resumes after +12s
+
+
+def test_disclosure_cadence_persists_across_top_ups(monkeypatch, tmp_path):
+    # The content-since-ident counter persists, so the cadence doesn't restart each
+    # run: a shallow first run leaves the counter mid-cadence, and the next run still
+    # weaves the ident once the threshold is crossed.
+    monkeypatch.setattr(scheduler, "disclosure_ident_segment", _fake_ident(tmp_path))
+
+    def run(now, depth_hours):
+        _wire(
+            monkeypatch,
+            tmp_path,
+            depth_hours=depth_hours,
+            rotation=["news"],
+            generator=_fake_generator(tmp_path, duration=120.0),
+        )
+        monkeypatch.setattr(scheduler.settings, "disclosure_enabled", True)
+        monkeypatch.setattr(scheduler.settings, "disclosure_every_n", 2)
+        return scheduler.top_up(now=now)
+
+    run(NOW, depth_hours=110 / 3600)  # places 1 content (counter -> 1), no ident yet
+    state = json.loads((tmp_path / "schedule.json").read_text())
+    assert state["content_since_ident"] == 1  # counter carried, not reset
+
+    # 2nd run: a deeper buffer; the carried counter means an ident is woven in.
+    formats = [e["format"] for e in run(NOW + timedelta(seconds=120), depth_hours=0.1)]
+    assert "ident" in formats
+
+
+def test_ident_render_failure_does_not_break_the_run(monkeypatch, tmp_path):
+    # If the ident render raises (TTS down), the run logs it and keeps placing
+    # content rather than crashing or stalling — never dead air for a missing ident.
+    _wire(
+        monkeypatch,
+        tmp_path,
+        depth_hours=0.14,
+        rotation=["news"],
+        generator=_fake_generator(tmp_path, duration=120.0),
+    )
+    monkeypatch.setattr(scheduler.settings, "disclosure_enabled", True)
+    monkeypatch.setattr(scheduler.settings, "disclosure_every_n", 2)
+
+    def _boom(now, *, seg_id=None):
+        raise RuntimeError("simulated TTS failure")
+
+    monkeypatch.setattr(scheduler, "disclosure_ident_segment", _boom)
+
+    upcoming = scheduler.top_up(now=NOW)
+
+    assert upcoming, "content should still fill the buffer when the ident fails"
+    assert all(e["format"] == "news" for e in upcoming)
 
 
 def test_unmeasured_entry_falls_back_to_target_for_timing(tmp_path):

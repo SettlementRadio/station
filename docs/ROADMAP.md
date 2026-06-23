@@ -65,7 +65,8 @@ live-streaming is enabled on the verified channel; make the launch-voice call (C
   not a hardcoded night→dawn handover (the afternoon-collision bug). Land it with/before C0 so the
   new gate isn't fighting a framing bug.
 - **Honest length + a real scheduler (C2).** Measure actual audio duration; a rolling buffer to a
-  configurable depth; regenerate on failure; never run dry.
+  configurable depth; regenerate on failure; never run dry. Plus **retention GC (C2.5)** — delete
+  aired one-shot renders so `segments/` stays bounded on the VPS disk.
 - **Disclosure in the air (C3).** A spoken AI-disclosure ident on a cadence + on the player + in the
   YouTube description.
 - **Never-dead air + health checks (C4).** Fallback chain (scheduled → evergreen → bed → ident) and
@@ -140,11 +141,20 @@ policy (the *tech* is built here, the catalog/clearance is your separate call).
   reads (which show, which DJs, when); a **read-only status console** (what's airing, buffer depth,
   last night's run, the story log); surface **now-playing / program info** to the web player.
   *(The write/management surface — edit the grid, allocate + CRUD DJs — lands in Phase E.)*
-- **Production layer (sound design).** Station idents, jingles, **beds and stings** with proper
-  **ducking** — beds sit *under* speech, a sting fires *before* news; Layer 4 mixing, finally real.
-  Plus **song playout (tech only):** a track pool the scheduler drops into the `music` format's
-  `[SONG]` slot, with intro/back-announce and now-playing. *(Catalog + clearance excluded here — the
-  plumbing is built so a cleared track just plays.)*
+- **Production layer (sound design + media stores).** Three media kinds, three homes: **jingles /
+  idents / stings / beds** — a static curated file-set in `assets/{idents,themes,stings}/`, mixed
+  with **ducking** (a bed under speech, a sting before news); Layer 4 mixing, finally real (the brief
+  + Suno prompts already live in `docs/JINGLE_PROMPTS.md`). **Songs** — tracks in `assets/music/`
+  catalogued by a **`tracks` table** (title, in-world artist, mood, duration, licence note), which the
+  scheduler drops into the `music` format's `[SONG]` slot with intro / back-announce / now-playing.
+  *(Tech only — the catalog + clearance is your separate call; the plumbing makes a cleared track
+  just play.)*
+- **Commercials & sponsorship (new).** An in-world **`commercial`/`promo` format** — Claude writes a
+  short spot for a fictional +600y product, or a station promo, voiced like any segment — plus a
+  scheduler **ad-break cadence** (the dayparts decide when a break airs). Real **"Powered by"** reads
+  — once donations are live (CM) — come from a small **`sponsors` table** (text, optional audio, run
+  window), always "Powered by," never "Sponsored by" (per `docs/MARKETING.md`). Keep it sparse and
+  in-character — texture, not interruption.
 - **Voice & emotion + the DJ roster.** Wire the `emotion` param to the chosen engine — **ElevenLabs
   carries real emotion; Kokoro cannot**, so emotion presumes the flagship path — and add a
   **pronunciation lexicon** so the world's invented names are spoken right. Grow the cast: add / edit

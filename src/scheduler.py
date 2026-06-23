@@ -24,6 +24,11 @@ How a top-up run works (one call to `top_up`, run periodically — cron/systemd 
   6. Persist the schedule and write the ordered playlist
      (`settings.schedule_playlist_path`) of upcoming audio paths, in air order.
 
+As it places content, the scheduler also weaves a spoken AI-disclosure ident
+(src/disclosure.py) into the order every `settings.disclosure_every_n` content
+segments (C3), so the live stream audibly discloses on a regular cadence — the
+ident is just another entry in the ordered playlist, so playout needs no change.
+
 `buffer_depth_hours` is the lead-time dial: a deeper buffer is more resilient to a slow
 or failed generation run; driving it toward ~0 (plus streaming TTS) is what later
 enables near-live (Phase E). The scheduler never airs anything — it only decides and
@@ -40,6 +45,7 @@ from datetime import datetime, timedelta
 from pathlib import Path
 
 from .config import settings
+from .disclosure import disclosure_ident_segment
 from .formats import make_format_segment
 from .logging_setup import get_logger
 from .segment import Segment
@@ -174,6 +180,9 @@ def top_up(now: datetime | None = None) -> list[dict]:
         runway_sec = 0.0
 
     rot_i = state.get("rotation_index", 0)
+    # C3: count CONTENT segments placed since the last disclosure ident, persisted
+    # across runs so the spoken-disclosure cadence is steady regardless of pruning.
+    content_since_ident = state.get("content_since_ident", 0)
     log.info(
         "schedule_topup_start",
         now=now.isoformat(),
@@ -188,6 +197,38 @@ def top_up(now: datetime | None = None) -> list[dict]:
     while (
         runway_sec < depth_target_sec and added < settings.schedule_topup_max_segments
     ):
+        # C3 — weave the spoken AI-disclosure ident on a regular cadence: every
+        # `disclosure_every_n` CONTENT segments, place one ident at the cursor so
+        # the live stream audibly discloses. The ident is static + cached (no
+        # gates, rendered once and reused), so this is cheap. Reset the counter
+        # first so a render failure (logged) skips this ident rather than blocking
+        # content or spinning; the next cadence still fires.
+        if (
+            settings.disclosure_enabled
+            and settings.disclosure_every_n > 0
+            and content_since_ident >= settings.disclosure_every_n
+        ):
+            content_since_ident = 0
+            try:
+                ident = disclosure_ident_segment(air_cursor)
+                ident.air_time = air_cursor.isoformat()
+                entry = _entry(ident)
+                duration = _duration_of(entry)
+                upcoming.append(entry)
+                air_cursor += timedelta(seconds=duration)
+                runway_sec += duration
+                added += 1
+                log.info(
+                    "schedule_ident_added",
+                    seg_id=ident.id,
+                    air_time=entry["air_time"],
+                    duration_sec=round(duration, 1),
+                    runway_sec=round(runway_sec),
+                )
+            except Exception as exc:
+                log.warning("schedule_ident_error", error=str(exc))
+            continue
+
         name = rotation[rot_i % len(rotation)]
         seg = _generate_slot(name, air_cursor)
         if seg is None:
@@ -214,6 +255,7 @@ def top_up(now: datetime | None = None) -> list[dict]:
         runway_sec += duration
         rot_i += 1
         added += 1
+        content_since_ident += 1
         log.info(
             "schedule_slot_added",
             seg_id=seg.id,
@@ -225,6 +267,7 @@ def top_up(now: datetime | None = None) -> list[dict]:
 
     state["entries"] = upcoming
     state["rotation_index"] = rot_i % len(rotation)
+    state["content_since_ident"] = content_since_ident
     _save_state(state)
     playlist_path = _write_playlist(upcoming)
 

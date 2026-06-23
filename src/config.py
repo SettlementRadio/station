@@ -200,6 +200,19 @@ class Settings(BaseSettings):
     )
     schedule_state_path: Path = Field(default=_REPO_ROOT / "segments" / "schedule.json")
 
+    # --- AI disclosure (C3: turn Segment.disclosure into spoken behaviour) -----
+    # CLAUDE.md ("AI disclosure") + EU AI Act Art. 50: a public AI broadcast must
+    # say so. The scheduler weaves a short spoken station ident (src/disclosure.py)
+    # into the playlist every `disclosure_every_n` CONTENT segments, so the live
+    # stream audibly discloses on a regular cadence; the SAME line shows on the web
+    # player and in the YouTube description. `disclosure_enabled=False` drops the
+    # ident from playout (local dev only — production keeps it on). The ident's
+    # text is a named module constant in disclosure.py (intrinsic content, not a
+    # tunable); `disclosure_voice` mirrors `segment_vell_voice` (the night host).
+    disclosure_enabled: bool = True
+    disclosure_every_n: int = 4  # air a spoken ident every N content segments
+    disclosure_voice: str = "vell_night"  # logical voice for the ident (tts.py)
+
     # --- External-call resilience (bounded retry on Claude/TTS) ----------------
     retry_attempts: int = 3  # total attempts, including the first
     retry_backoff_sec: float = 2.0  # base linear backoff between attempts

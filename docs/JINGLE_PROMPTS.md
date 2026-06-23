@@ -6,6 +6,10 @@
 > `jingle` (see `docs/ARCHITECTURE.md` Seam #2; the producer doesn't *write* these — the scheduler
 > just plays the pre-rendered asset). Generated audio lives in `assets/` (gitignored).
 >
+> **Scope:** this pack is **jingles only** — the static sonic-identity set. **Songs** (the music
+> catalogue: `assets/music/` + a `tracks` table) and **commercials** (a generated `commercial`/
+> `promo` format) are separate media with their own stores — see `docs/ARCHITECTURE.md` Layers 1/4/5.
+>
 > **Phase note:** real Layer-4 mixing (beds + stings + ducking) is a **Phase D** workstream
 > (`docs/ROADMAP.md`). It's fine to build the asset library now — it's static, human-curated, and
 > de-risks the phase. **One asset is useful immediately:** the spoken **AI-disclosure ident** (C3)

@@ -157,6 +157,14 @@ make schedule INTERVAL=300    # local: keep topping up every 5 minutes
 near-live later). For Phase C the `music` format is dropped from `BUFFER_ROTATION` (its `[SONG]` slot
 has nothing to fill it until Phase D), so only `talk`/`news` air — no silent gaps.
 
+**AI disclosure on air** ([`src/disclosure.py`](src/disclosure.py), C3). The station must say it's
+AI-generated (CLAUDE.md; EU AI Act Art. 50). As it places content, the scheduler weaves a short
+**spoken disclosure ident** into the playlist every `DISCLOSURE_EVERY_N` content segments (default
+4) — so the live stream audibly discloses on a regular cadence. The ident is static, canon-safe copy
+rendered once and reused (no Claude call), so it's cheap; preview or pre-render it with `make ident`.
+The same written line (`DISCLOSURE_LINE`) is shown on the web player ([`web/src/lib/disclosure.ts`](web/src/lib/disclosure.ts))
+and belongs in the YouTube description (wired in C7).
+
 **5. Secrets.** Copy `.env.example` to `.env`. For a fully local, zero-cost run you only need
 `ANTHROPIC_API_KEY` (the script) and the default `TTS_PROVIDER=kokoro` (the voice);
 `ELEVENLABS_API_KEY` is optional.

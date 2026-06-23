@@ -68,6 +68,39 @@ mixing) are both Phase D, so the slot has nothing to fill it in C. **Default for
 music feel sooner, drop a short royalty-free bed into the slot instead; just never air the empty gap.
 Real song playout returns in D.
 
+## C2.5 — Disk retention: garbage-collect aired segment audio
+**Goal:** bound `segments/` so a 24/7 station can't fill the VPS disk. C2 already prunes the
+*schedule* (aired entries leave the state + playlist), but the **mp3 files themselves are never
+deleted** — at ~1 MB/min of generated audio the 40 GB CX22 fills in a few weeks. C2.5 deletes aired,
+unreferenced one-shot renders, and **nothing else**. (Independent of C3 — pickable any time after C2;
+doing it *after* C3 is ideal, since the shared disclosure ident it must protect already exists, so the
+protection rule is verifiable against real files.)
+**Do:**
+- Add a `prune()` pass — call it at the end of each `scheduler.top_up()` (or as a sibling the same
+  cron runs) — that removes a file in `settings.segments_dir` only when it is ALL of: (a) **not
+  referenced** by any current schedule entry's `audio_path` (reuse the live state in
+  `settings.schedule_state_path`); (b) **older than `settings.segment_retention_hours`** past its air
+  end (a grace window so a just-aired clip Liquidsoap may still be reading isn't yanked, and recent
+  audio stays available for clip-cutting/debug); (c) a **one-shot per-segment render** — its `<id>.mp3`
+  and matching `<id>.json` sidecar.
+- **Protect, never delete** (these are the landmines found in the code):
+  - the **reused disclosure ident** clip `ident-disclosure-{provider}-{voice}.mp3` — many schedule
+    entries share that ONE file (see `src/disclosure.py`); deleting it because one ident slot aged
+    out would break every future ident or force needless re-renders. Exempt it by name pattern.
+  - **anything under `assets/`** (curated jingles/brand kit; later songs) — GC only ever touches
+    `segments/`, never `assets/`.
+  - any path still in the **live schedule/playlist**. (When C4 adds a pre-rendered evergreen pool,
+    keep it at a protected path — under `assets/` or a GC-exempt name — so it's never collected.)
+- Add the dial `settings.segment_retention_hours` (default e.g. 6); optionally a
+  `settings.segment_retention_max_gb` backstop cap. Log each sweep (files + bytes reclaimed) so disk
+  management is auditable.
+**Don't break what exists:** C2's schedule-*entry* pruning stays exactly as is — C2.5 only adds
+*file* deletion keyed off the same "aired + unreferenced" notion. The shared ident clip and every
+in-playlist file MUST survive a sweep; the evergreen/disclosure render-and-reuse paths keep working.
+**Done when:** after segments age past the retention window their `<id>.mp3`/`.json` are gone; the
+disclosure ident, everything under `assets/`, and all upcoming/playlist files remain; `segments/`
+size stabilises across a long run; and nothing in the live playlist is ever deleted.
+
 ## C3 — Disclosure in the air (spoken + on-player)
 **Goal:** turn `Segment.disclosure` from a field into behaviour (EU AI Act Art. 50 + the CLAUDE.md
 rule).
@@ -90,11 +123,15 @@ condition raises an alert.
 ## C5 — Deploy to the VPS (playout + DB + secrets + backups)
 **Goal:** the station runs on the always-on box, not your laptop.
 **Do:** provision Hetzner CX22. Install Postgres on the VPS; point `settings.database_url` at it;
-**nightly `pg_dump` to object storage** (the world-state is the irreplaceable asset). Deploy
-Liquidsoap + Icecast. systemd/cron for services + the nightly batch; services restart on reboot.
-Secrets in env only, non-world-readable, redacted in logs (follow the DB-URL redaction pattern).
-**Done when:** the station runs on the VPS across a reboot, the DB is backed up nightly, and no
-secret is world-readable or logged.
+**nightly `pg_dump` to object storage** (the world-state is the irreplaceable asset). **Back up
+`assets/` too** — curated, NON-regenerable media (jingles, brand kit; later the song catalog) belongs
+in object storage alongside the DB. **`segments/` is NOT backed up** — it's regenerable one-shot
+audio, kept bounded by C2.5's retention GC. Deploy Liquidsoap + Icecast. systemd/cron for services +
+the **periodic scheduler top-up** (which now also prunes — C2.5 — so the disk stays bounded
+unattended); services restart on reboot. Secrets in env only, non-world-readable, redacted in logs
+(DB-URL pattern).
+**Done when:** the station runs on the VPS across a reboot, the DB **and `assets/`** are backed up
+nightly, the segment disk stays bounded across a long run, and no secret is world-readable or logged.
 
 ## C6 — Generation compute + public voice (the honest architecture call) — DECISION
 **Goal:** make a full day's audio render reliably ON THE VPS, and make the public voice a setting.

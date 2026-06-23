@@ -35,7 +35,7 @@ LIQ_LOG    := $(RUN_DIR)/liquidsoap.log
 PLAYER_URL := http://127.0.0.1:8000/
 STREAM_URL := http://127.0.0.1:8000/settlement.mp3
 
-.PHONY: help generate serve air play play-convo stop status seed demo context conversation format buffer schedule
+.PHONY: help generate serve air play play-convo stop status seed demo context conversation format buffer schedule ident
 
 # B5 format default: `make format` builds a talk segment; override with FMT=news
 # or FMT=music. Pass a TOPIC=... to steer canon retrieval.
@@ -65,6 +65,7 @@ help:
 	@echo "  make conversation  generate a two-DJ talk segment (B4)"
 	@echo "  make format FMT=…  generate one B5 format segment (news|talk|music)"
 	@echo "  make buffer    generate ~an hour of varied segments into segments/ (B6)"
+	@echo "  make ident     render the spoken AI-disclosure ident (C3)"
 	@echo "  make schedule  top up the rolling buffer to depth + write the playlist (C2)"
 	@echo "  make air       schedule + serve — the live scheduler-driven stream (C2)"
 
@@ -113,6 +114,14 @@ buffer:
 schedule:
 	@echo "==> Topping up the rolling buffer + writing the playout playlist (C2)…"
 	$(PY) -m src.scheduler $(if $(INTERVAL),--interval $(INTERVAL),)
+
+# C3: render (or reuse) the spoken AI-disclosure ident and print its path +
+# measured length. The scheduler weaves this clip into the playlist every
+# `disclosure_every_n` content segments. Live TTS (no Claude call — text is
+# static); pass FORCE=1 to re-render after editing the ident copy.
+ident:
+	@echo "==> Rendering the AI-disclosure ident (C3)…"
+	$(PY) -m src.disclosure $(if $(FORCE),--force,)
 
 generate:
 	@echo "==> Generating a fresh segment for the current time…"
