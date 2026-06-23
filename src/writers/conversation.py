@@ -349,7 +349,16 @@ def make_conversation_segment(
     log.info("convo_make_segment_start", topic=topic)
 
     ctx = context.assemble(now, topic=topic, speakers=settings.convo_speaker_ids)
-    return compose_segment(ctx, now, length_target_sec=length_target_sec)
+    seg = compose_segment(ctx, now, length_target_sec=length_target_sec)
+    # C2: record the measured render length so this direct B4 path is timed on real
+    # audio too (the format dispatcher stamps the scheduler's path). A probe failure
+    # leaves it None rather than aborting a segment that rendered fine.
+    if seg.audio_path:
+        try:
+            seg.actual_duration_sec = tts.probe_duration(seg.audio_path)
+        except Exception as exc:
+            log.warning("convo_duration_probe_failed", seg_id=seg.id, error=str(exc))
+    return seg
 
 
 def compose_segment(

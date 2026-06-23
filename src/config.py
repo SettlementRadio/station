@@ -174,8 +174,31 @@ class Settings(BaseSettings):
     # `BUFFER_TARGET_SEC=600 make buffer`; `buffer_max_segments` is a hard stop so a
     # tiny per-segment length can't spin an unbounded run.
     buffer_target_sec: int = 3600  # ~an hour of audio; the (pre-Phase-C) buffer depth
-    buffer_rotation: list[str] = ["talk", "news", "music"]  # B5 format names, cycled
+    # C2: `music` is DROPPED from the default rotation for Phase C — its `[SONG]`
+    # slot has nothing to fill it until Phase D (real song pool + Layer 4 bed
+    # mixing), so airing it would mean a silent gap. Only `talk`/`news` air for now;
+    # re-add "music" once Phase D fills the slot. (Both the B6 one-shot buffer and
+    # the C2 scheduler read this one rotation dial.)
+    buffer_rotation: list[str] = ["talk", "news"]  # B5 format names, cycled
     buffer_max_segments: int = 30  # safety cap on segments per run
+
+    # --- Scheduler (C2: the real rolling buffer — Layer 5, replaces one-shot B6) -
+    # The scheduler keeps a rolling buffer of upcoming audio at `buffer_depth_hours`
+    # of measured duration, in air order, and writes an ordered playlist Liquidsoap
+    # re-reads (the Layer 5 <-> playout seam). `buffer_depth_hours` is THE dial that
+    # later enables near-live (drop it toward ~0 + streaming TTS in Phase E). A
+    # periodic top-up job (`python -m src.scheduler`; cron/systemd in C5) refills it
+    # to depth. `schedule_topup_max_segments` caps one top-up run so a tiny per-
+    # segment duration can't spin unbounded; `schedule_failure_max_retries` is how
+    # many times a failed slot is retried before it's skipped (never dead air — the
+    # existing buffer keeps airing). The playlist/state files live in `segments_dir`.
+    buffer_depth_hours: float = 3.0  # rolling buffer depth, in hours of real audio
+    schedule_topup_max_segments: int = 60  # hard stop on segments added per top-up
+    schedule_failure_max_retries: int = 1  # retries of a failing slot before skipping
+    schedule_playlist_path: Path = Field(
+        default=_REPO_ROOT / "segments" / "playlist.txt"
+    )
+    schedule_state_path: Path = Field(default=_REPO_ROOT / "segments" / "schedule.json")
 
     # --- External-call resilience (bounded retry on Claude/TTS) ----------------
     retry_attempts: int = 3  # total attempts, including the first

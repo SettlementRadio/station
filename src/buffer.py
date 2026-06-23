@@ -52,6 +52,10 @@ def _write_manifest(
 ) -> Path:
     """Write the run manifest — the ordered playlist a Phase C scheduler will read."""
     total = sum(s.length_target_sec for s in segments)
+    # C2: also report the MEASURED total (segments are stamped post-render). The
+    # length-target sum over-counts (see PHASE_B_ORIENTATION §5); the real scheduler
+    # in src/scheduler.py times on this measured value, not the target.
+    total_actual = sum(s.actual_duration_sec or 0.0 for s in segments)
     path = settings.segments_dir / f"{run_id}.json"
     manifest = {
         "run_id": run_id,
@@ -59,6 +63,7 @@ def _write_manifest(
         "start_now": now.isoformat(),
         "target_sec": target_sec,
         "total_length_target_sec": total,
+        "total_actual_duration_sec": round(total_actual, 1),
         "count": len(segments),
         "segments": [_segment_to_dict(s) for s in segments],
     }

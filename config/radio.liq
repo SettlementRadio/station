@@ -1,13 +1,18 @@
 #!/usr/bin/env liquidsoap
-# Settlement Radio — local playout (Phase A, T5; ARCHITECTURE.md Layers 5–6).
+# Settlement Radio — local playout (Phase C, C2; ARCHITECTURE.md Layers 5–6).
 #
-# Loops the NEWEST segment in segments/ to a local Icecast mount, with a
-# never-dead FALLBACK so the stream never goes silent: if no segment exists yet
-# (or one ends), a bundled bed (assets/bed.mp3, if present) or a quiet sine tone
-# keeps the mount live. No scheduler yet — that arrives in a later phase; here
-# the "schedule" is simply: always play the latest thing Claude produced.
+# Airs the SCHEDULER's ordered playlist (segments/playlist.txt) to a local Icecast
+# mount, with a never-dead FALLBACK so the stream never goes silent: if the playlist
+# is empty/absent (or a track ends with nothing queued), a bundled bed
+# (assets/bed.mp3, if present) or a quiet sine tone keeps the mount live.
 #
-# Run from the repo root (the Makefile in T6 does this for you):
+# This is the Layer 5 <-> playout seam (C2): `python -m src.scheduler` decides what
+# airs when, on MEASURED durations, and rewrites the playlist; Liquidsoap re-reads it
+# (reload_mode="watch") and plays through it in order. (Phase A/B aired the newest
+# file in segments/; the scheduler now drives the order instead.)
+#
+# Run from the repo root (the Makefile does this for you):
+#   make schedule      # fill the playlist first (live Claude + TTS; needs `make seed`)
 #   liquidsoap config/radio.liq
 # Then open  http://localhost:8000/settlement.mp3  in a browser.
 
@@ -18,43 +23,12 @@ settings.log.file.set(false)
 
 # --- Paths (relative to CWD = repo root) and the Icecast password. ---
 # The password mirrors ICECAST_SOURCE_PASSWORD in .env and the <source-password>
-# in config/icecast.xml; all three default to "hackme".
-segments_dir = "segments"
+# in config/icecast.xml; all three default to "hackme". The playlist path mirrors
+# settings.schedule_playlist_path (SCHEDULE_PLAYLIST_PATH in .env).
+playlist_path = environment.get(default="segments/playlist.txt", "SCHEDULE_PLAYLIST_PATH")
 ice_password = environment.get(default="hackme", "ICECAST_SOURCE_PASSWORD")
 
-# --- Source 1: the newest segment, re-picked every time a track ends. ---
-# Pick by MODIFICATION TIME, not by filename order. Segments now use different
-# prefixes — produce.py writes vell-YYYYmmddTHHMMSS.mp3 (single DJ) and the
-# conversation writes convo-… (two DJs) — which no longer sort by time (a `vell-`
-# always sorts after any `convo-`), so a name sort would wrongly prefer an old
-# Vell clip over a fresh conversation. `file.mtime` is prefix-agnostic. Re-scanning
-# on each request means a segment generated while the stream is up is picked up
-# automatically on the next loop, with no restart. (Phase A/B placeholder: the
-# real scheduler that plays *through* a buffer arrives in Phase C.)
-def newest_segment() =
-  files = file.ls(absolute=true, sorted=true, segments_dir)
-  audio_files = list.filter(
-    fun(f) -> list.mem(file.extension(leading_dot=false, f), [".mp3", "mp3", ".wav", "wav"]),
-    files
-  )
-  if audio_files == [] then
-    log("No segment in #{segments_dir} yet — falling back.")
-    null
-  else
-    newest = list.fold(
-      fun(best, f) ->
-        if best == "" or file.mtime(f) > file.mtime(best) then f else best end,
-      "",
-      audio_files
-    )
-    log("Now playing newest segment: #{newest}")
-    request.create(newest)
-  end
-end
-
-segments = request.dynamic(retry_delay=5., newest_segment)
-
-# --- Source 2: never-dead fallback. A bundled royalty-free bed if the human
+# --- Source 1: never-dead fallback. A bundled royalty-free bed if the human
 # dropped one at assets/bed.mp3, otherwise a quiet sine so the mount stays live
 # (Icecast drops a mount with no source; silence-avoidance keeps listeners on). ---
 fallback_bed =
@@ -66,9 +40,26 @@ fallback_bed =
     sine(amplitude=0.03, 220.)
   end
 
-# track_sensitive=false so the moment a real segment is available we cut back to
+# --- Source 2: the scheduler's ordered playlist (the Layer 5 <-> playout seam). ---
+# `python -m src.scheduler` writes segments/playlist.txt — the upcoming segments in
+# air order, one absolute path per line, on MEASURED durations — and rewrites it on
+# every top-up (pruning aired entries from the front, appending fresh ones). We read
+# it with reload_mode="watch", so each rewrite is picked up live with no restart, and
+# mode="normal" so we play through it IN ORDER (the scheduler's decision, not a name/
+# mtime guess). When the playlist doesn't exist yet (scheduler never run), we air the
+# fallback alone so the mount still comes up; `make schedule` then fills it.
+#
+# track_sensitive=false so the moment the scheduled source has audio we cut back to
 # it instead of waiting for the fallback "track" to end.
-radio = fallback(track_sensitive=false, [segments, fallback_bed])
+radio =
+  if file.exists(playlist_path) then
+    log("Airing scheduler playlist: #{playlist_path}")
+    scheduled = playlist(mode="normal", reload_mode="watch", playlist_path)
+    fallback(track_sensitive=false, [scheduled, fallback_bed])
+  else
+    log("No schedule playlist at #{playlist_path} yet — run `make schedule`. Falling back.")
+    fallback_bed
+  end
 
 # Keep the stream alive even if a source momentarily yields nothing.
 radio = mksafe(radio)

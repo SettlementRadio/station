@@ -22,6 +22,7 @@ from datetime import datetime
 
 from ..config import settings
 from ..logging_setup import get_logger
+from ..providers import tts
 from ..segment import Segment
 from ..world import context
 from ..world.context import AssembledContext
@@ -53,6 +54,24 @@ FORMATS: dict[str, FormatSpec] = {
 }
 
 
+def stamp_duration(seg: Segment) -> Segment:
+    """Record the rendered audio's MEASURED duration on the Segment (C2).
+
+    The single post-render chokepoint: every format (and its evergreen fallback)
+    returns through `make_format_segment`, so stamping here gives the scheduler
+    honest airtime accounting without touching each builder. A probe failure is
+    logged and leaves `actual_duration_sec=None` (unknown) rather than aborting a
+    segment that rendered fine — the scheduler falls back to the length target.
+    """
+    if not seg.audio_path:
+        return seg
+    try:
+        seg.actual_duration_sec = tts.probe_duration(seg.audio_path)
+    except Exception as exc:  # ffprobe missing/unreadable — don't kill the segment
+        log.warning("format_duration_probe_failed", seg_id=seg.id, error=str(exc))
+    return seg
+
+
 def make_format_segment(
     name: str,
     now_iso: str,
@@ -63,7 +82,9 @@ def make_format_segment(
 
     Assembles the world context with the format's cast (so a single-DJ news desk
     gets one card, a two-DJ talk gets both), then runs the template. `topic`
-    steers canon retrieval (see `context.assemble`).
+    steers canon retrieval (see `context.assemble`). The returned Segment carries
+    its measured `actual_duration_sec` (C2) so the scheduler times the playlist on
+    real audio length.
     """
     if name not in FORMATS:
         raise ValueError(f"unknown format {name!r}; expected one of {sorted(FORMATS)}")
@@ -71,7 +92,7 @@ def make_format_segment(
     now = datetime.fromisoformat(now_iso)
     log.info("format_dispatch", name=name, topic=topic)
     ctx = context.assemble(now, topic=topic, speakers=spec.speaker_ids())
-    return spec.build(now, ctx)
+    return stamp_duration(spec.build(now, ctx))
 
 
-__all__ = ["FORMATS", "FormatSpec", "make_format_segment"]
+__all__ = ["FORMATS", "FormatSpec", "make_format_segment", "stamp_duration"]

@@ -133,29 +133,45 @@ make format FMT=music TOPIC="the festival"   # TOPIC steers canon retrieval
 ```
 
 A **light nightly buffer** ([`src/buffer.py`](src/buffer.py)) generates the whole mind at volume in
-one run — the bridge to Phase C, *not* the real 24/7 scheduler. It cycles the three formats (so both
-DJs appear) until their length targets sum to ~an hour of audio, advancing each segment's `air_time`
-so the block plays back-to-back and the world's current events progress across it. Every segment
-lands as `segments/<id>.mp3` **plus** a `segments/<id>.json` metadata sidecar, and the run is
-summarized in a `segments/buffer-<timestamp>.json` manifest — the on-disk shape a Phase C scheduler
-will read. (The real scheduler, the buffer-depth dial, the Batch API, and the content-safety gate
-are deferred to Phase C; with free local Kokoro the Batch-API cost case is now weak.)
+one run — the original B6 bridge. It cycles the formats until their length targets sum to ~an hour of
+audio, advancing each segment's `air_time` so the block plays back-to-back. Every segment lands as
+`segments/<id>.mp3` **plus** a `segments/<id>.json` metadata sidecar, and the run is summarized in a
+`segments/buffer-<timestamp>.json` manifest.
 ```bash
 make buffer                 # ~an hour of varied segments into segments/ (Claude + Kokoro; slow)
 make buffer SECONDS=600     # a shorter run for a quick check (target length in seconds)
 ```
 
+The **rolling scheduler** ([`src/scheduler.py`](src/scheduler.py), C2) is the real 24/7 replacement
+for that one-shot buffer. It keeps a rolling buffer of upcoming audio at `BUFFER_DEPTH_HOURS` of
+**measured** duration (every render is probed with `ffprobe` and the real length recorded on the
+`Segment` — `length_target_sec` is only the writer's word-count goal and runs short of it), decides
+the airing order, retries-then-skips a failed slot without leaving dead air, and writes an **ordered
+playlist** (`segments/playlist.txt`) that Liquidsoap re-reads — so the scheduler's decisions actually
+drive what airs. Run it periodically (cron/systemd lands in C5) to keep the buffer topped up:
+```bash
+make schedule                 # one top-up + (re)write the playout playlist (Claude + Kokoro; slow)
+make schedule INTERVAL=300    # local: keep topping up every 5 minutes
+```
+`BUFFER_DEPTH_HOURS` is the lead-time dial (deeper = more resilient; ~0 + streaming TTS enables
+near-live later). For Phase C the `music` format is dropped from `BUFFER_ROTATION` (its `[SONG]` slot
+has nothing to fill it until Phase D), so only `talk`/`news` air — no silent gaps.
+
 **5. Secrets.** Copy `.env.example` to `.env`. For a fully local, zero-cost run you only need
 `ANTHROPIC_API_KEY` (the script) and the default `TTS_PROVIDER=kokoro` (the voice);
 `ELEVENLABS_API_KEY` is optional.
 
-**6. Generate + play:**
+**6. Program + play.** Playout now airs the **scheduler's playlist**, so fill it first, then serve:
 ```bash
-make play     # write a fresh segment for the current time, then serve it
-make stop     # stop Icecast + Liquidsoap
+make schedule   # top up the rolling buffer + write segments/playlist.txt (Claude + Kokoro)
+make serve      # start Icecast + Liquidsoap; airs the playlist in scheduled order
+make stop       # stop Icecast + Liquidsoap
 ```
-`make play` prints the local player URL (`http://127.0.0.1:8000/`). See the `Makefile` for the
-individual `generate` / `serve` / `status` targets.
+`make serve` prints the local player URL (`http://127.0.0.1:8000/`); Liquidsoap re-reads the
+playlist as later `make schedule` runs top it up, so the stream keeps going with no restart. If the
+playlist doesn't exist yet, the never-dead fallback (a bundled bed or a quiet tone) keeps the mount
+live. `make generate` / `make conversation` still write individual ad-hoc segments for inspection;
+the live stream airs whatever the scheduler has queued. See the `Makefile` for `serve` / `status`.
 
 ## Developing the station backend
 The backend follows the engineering standards in [`CLAUDE.md`](CLAUDE.md). For contributors:

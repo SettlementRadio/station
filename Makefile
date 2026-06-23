@@ -1,9 +1,10 @@
 # Settlement Radio — Phase A run commands (T6).
 #
-#   make generate   Write a fresh segment for the current time (Claude → TTS).
-#   make serve      Start Icecast + Liquidsoap (clean start; backgrounded).
-#   make play       generate (single-DJ) + serve, then print the local stream URL.
-#   make play-convo generate a two-DJ conversation + serve it (B4).
+#   make generate   Write a fresh ad-hoc segment for the current time (Claude → TTS).
+#   make serve      Start Icecast + Liquidsoap; airs the scheduler playlist (C2).
+#   make air        schedule (fill the playlist) + serve — the live path (C2).
+#   make play       generate (single-DJ) + serve (ad-hoc segment; see note below).
+#   make play-convo generate a two-DJ conversation + serve it (B4; see note below).
 #   make stop       Stop Icecast + Liquidsoap (no orphans left behind).
 #   make status     Show what's running and the mount state.
 #   make seed       Load docs/CANON.md into the world-state DB (B1; idempotent).
@@ -12,9 +13,13 @@
 #   make conversation  Generate a two-DJ talk segment (B4; needs seed; Claude+TTS).
 #   make format FMT=…  Generate one B5 format segment (news|talk|music; needs seed).
 #   make buffer        Generate ~an hour of varied segments into segments/ (B6; needs seed).
+#   make schedule      Top up the rolling buffer to depth + write the playout playlist (C2).
 #
-# `generate`/`play` make a live Anthropic + ElevenLabs call (needs a populated
-# .env). `serve` just loops whatever segment already exists.
+# `generate`/`play`/`schedule` make live Anthropic + TTS calls (needs a populated
+# .env). Since C2, `serve` airs the SCHEDULER's playlist (segments/playlist.txt),
+# not the newest file — so `make air` (schedule + serve) is the live path. The
+# `play`/`play-convo` helpers still write a single ad-hoc segment for inspection,
+# but the stream airs whatever the scheduler queued (or the never-dead fallback).
 
 SHELL := /bin/bash
 .NOTPARALLEL:
@@ -30,7 +35,7 @@ LIQ_LOG    := $(RUN_DIR)/liquidsoap.log
 PLAYER_URL := http://127.0.0.1:8000/
 STREAM_URL := http://127.0.0.1:8000/settlement.mp3
 
-.PHONY: help generate serve play play-convo stop status seed demo context conversation format buffer
+.PHONY: help generate serve air play play-convo stop status seed demo context conversation format buffer schedule
 
 # B5 format default: `make format` builds a talk segment; override with FMT=news
 # or FMT=music. Pass a TOPIC=... to steer canon retrieval.
@@ -40,6 +45,11 @@ TOPIC ?=
 # B6 buffer: target audio length in seconds. Default is the configured ~hour;
 # lower it for a quick check, e.g. `make buffer SECONDS=600`.
 SECONDS ?=
+
+# C2 scheduler: optional loop interval in seconds. Empty = one top-up then exit
+# (the cron/systemd shape for C5); e.g. `make schedule INTERVAL=300` to keep the
+# rolling buffer topped up locally every 5 minutes.
+INTERVAL ?=
 
 help:
 	@echo "Settlement Radio (Phase A):"
@@ -55,6 +65,8 @@ help:
 	@echo "  make conversation  generate a two-DJ talk segment (B4)"
 	@echo "  make format FMT=…  generate one B5 format segment (news|talk|music)"
 	@echo "  make buffer    generate ~an hour of varied segments into segments/ (B6)"
+	@echo "  make schedule  top up the rolling buffer to depth + write the playlist (C2)"
+	@echo "  make air       schedule + serve — the live scheduler-driven stream (C2)"
 
 # Seed the world-state DB from docs/CANON.md (the human-editable source). Reads
 # DATABASE_URL via src/config.py; idempotent (re-running reproduces the state).
@@ -94,6 +106,14 @@ buffer:
 	@echo "==> Generating a light nightly buffer (B6)…"
 	$(PY) -m src.buffer $(SECONDS)
 
+# C2: top up the rolling buffer to `buffer_depth_hours` of MEASURED audio and write
+# the ordered playlist Liquidsoap airs (segments/playlist.txt). One-shot by default
+# (the cron/systemd shape for C5); pass INTERVAL=… to loop locally. Live Anthropic +
+# TTS; needs `make seed`. `make serve` then airs whatever the scheduler queued.
+schedule:
+	@echo "==> Topping up the rolling buffer + writing the playout playlist (C2)…"
+	$(PY) -m src.scheduler $(if $(INTERVAL),--interval $(INTERVAL),)
+
 generate:
 	@echo "==> Generating a fresh segment for the current time…"
 	$(PY) -m src.produce
@@ -118,6 +138,11 @@ serve: stop
 	@echo "    ▶  Stream : $(STREAM_URL)"
 	@echo "       Logs   : $(ICE_LOG) , $(LIQ_LOG)"
 	@echo "       Stop   : make stop"
+
+# The live path (C2): fill the scheduler playlist, then serve it. Re-run `make
+# schedule` (or `make schedule INTERVAL=…`) to keep the rolling buffer topped up;
+# Liquidsoap re-reads the playlist with no restart.
+air: schedule serve
 
 play: generate serve
 

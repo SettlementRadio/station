@@ -297,6 +297,37 @@ def _to_mp3(src_path: str, out_path: str) -> str:
     return out_path
 
 
+def probe_duration(path: str) -> float:
+    """Measure an audio file's real duration in seconds via ffprobe.
+
+    C2 — honest length accounting. ffprobe ships with ffmpeg, which lives only in
+    this seam (alongside `_to_mp3`/`concat_audio`), so the duration probe lives here
+    too. The scheduler schedules on this measured value, not the writer's word-count
+    target. Raises (subprocess error / unparseable output) if the file can't be read
+    — callers decide whether a missing duration is fatal.
+    """
+    import subprocess
+
+    result = subprocess.run(
+        [
+            "ffprobe",
+            "-v",
+            "error",
+            "-show_entries",
+            "format=duration",
+            "-of",
+            "default=noprint_wrappers=1:nokey=1",
+            path,
+        ],
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    seconds = float(result.stdout.strip())
+    log.info("tts_probe_duration", path=path, seconds=round(seconds, 2))
+    return seconds
+
+
 def concat_audio(parts: list[str], out_path: str) -> str:
     """Concatenate the per-turn mp3s of a multi-voice segment into one at out_path.
 

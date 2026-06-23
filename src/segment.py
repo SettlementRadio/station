@@ -24,5 +24,10 @@ class Segment:
     lead_time_sec: int = 0  # how long before air it may be generated. The other DIAL.
     script: str | None = None
     audio_path: str | None = None
+    # C2 — the MEASURED render length (ffprobe), set after audio is produced. None
+    # until measured. The scheduler times the playlist on THIS, never on
+    # `length_target_sec` (which is only the writer's word-count goal and runs
+    # well short of it — see PHASE_B_ORIENTATION §5).
+    actual_duration_sec: float | None = None
     disclosure: bool = True  # AI-generation disclosure attached
     meta: dict = field(default_factory=dict)

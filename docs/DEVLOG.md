@@ -33,6 +33,49 @@ A typical *build* session will be short, e.g.:
 
 ---
 
+## 2026-06-22 — Phase C — C2: honest length accounting + a real rolling scheduler
+
+**Focus:** replace the one-shot B6 `build_buffer` with a real Layer-5 scheduler that knows what airs
+when on *measured* durations, and wire Liquidsoap to air its decisions instead of looping the newest
+file. Fixes orientation open-risk #4 ("no scheduler, and `length_target_sec` lies").
+**Decisions:**
+- **Schedule on measured audio, never the target.** New `Segment.actual_duration_sec`, set after
+  render via `tts.probe_duration()` (ffprobe — added next to the other ffmpeg calls in the TTS seam,
+  the only home for ffmpeg). Stamped at the single chokepoint every format returns through
+  (`formats.make_format_segment`, so evergreen fallbacks are covered too) and on the direct B4
+  `make_conversation_segment` path. `length_target_sec` stays the writer's word-count goal only;
+  PHASE_B_ORIENTATION §5 showed it over-counts ~10–45%.
+- **New `src/scheduler.py` (`make schedule`).** A *top-up* job, not a one-shot: load the persisted
+  schedule (`segments/schedule.json`) → prune entries that have fully aired (or whose file vanished)
+  → measure the remaining runway → generate back-to-back until the runway reaches
+  `settings.buffer_depth_hours` of real audio → persist + write the ordered playlist. Idempotent and
+  safe to run on any cadence (the C5 cron/systemd "nightly batch" is just this run on a timer).
+- **`buffer_depth_hours` is THE dial** (default 3h) — the lead-time knob that later enables near-live
+  by dropping toward ~0 + streaming TTS (Phase E). Reused the `buffer_` prefix so it satisfies both
+  the spec's literal name and the config prefix convention (same call as C0's `convo_continuity_*`).
+- **Never dead air on failure.** `make_format_segment` already falls back to evergreen on a *content*
+  flag, so a raise is infra (Claude/TTS/DB): retry the slot (`schedule_failure_max_retries`), then
+  SKIP to the next format; if a whole rotation fails, stop the run and let playout keep airing the
+  existing buffer/fallback. The scheduler never writes a dead slot.
+- **Playout wired to the schedule (the Layer 5 ↔ playout seam).** `config/radio.liq` no longer loops
+  the newest file — it airs `segments/playlist.txt` via `playlist(mode="normal", reload_mode="watch")`,
+  so the scheduler's *order* drives the stream and top-ups are picked up live with no restart; the
+  never-dead fallback (bed/sine) still backs it when the playlist is empty/absent. `make serve` now
+  airs the schedule, so added `make air` (= schedule + serve) as the live path.
+- **Dropped `music` from the default rotation** (`buffer_rotation=["talk","news"]`) per the C2 note:
+  its `[SONG]` slot has nothing to fill it until Phase D, so airing it would be a silent gap.
+**Changed:** `src/segment.py` (+`actual_duration_sec`); `src/providers/tts.py` (+`probe_duration`);
+`src/formats/__init__.py` (+`stamp_duration`, stamps the dispatch result); `src/writers/conversation.py`
+(stamps the direct path); `src/config.py` (+`buffer_depth_hours`, `schedule_*`; rotation default);
+new `src/scheduler.py`; `config/radio.liq` (playlist seam); `src/buffer.py` (manifest reports measured
+total); `Makefile` (`schedule`/`air` + `INTERVAL`); `.env.example`; `README.md`; new
+`tests/test_scheduler.py`. `ruff` clean; **52 tests pass** (46 + 6 new).
+**Why:** an unattended 24/7 stream needs honest airtime accounting (or the playlist mis-times and
+drifts) and a buffer with lead so a slow/failed generation run never starves the air — and the
+scheduler's decisions must actually reach playout, or it's still just a folder of clips.
+**Next:** C3 — disclosure in the air (spoken ident every N segments + on the player/description).
+Commit: <pending>  ·  Clips: —
+
 ## 2026-06-22 — Phase C — C1: time-aware show framing (the afternoon-handover fix)
 
 **Focus:** stop the room hardcoding a night→first-light handover at every hour — the bug that made
