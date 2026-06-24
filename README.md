@@ -1,4 +1,4 @@
-<p align="center"><img src="assets/brand/wordmark-horizontal.png" alt="Settlement Radio" width="420"></p>
+<p align="center"><img src="assets/wordmark-horizontal.svg" alt="Settlement Radio" width="420"></p>
 
 <p align="center"><em>Late-night radio from the far future.</em></p>
 
