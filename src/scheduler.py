@@ -25,8 +25,12 @@ How a top-up run works (one call to `top_up`, run periodically — cron/systemd 
      (`settings.schedule_playlist_path`) of upcoming audio paths, in air order.
   7. PRUNE the disk (C2.5): delete aired, unreferenced one-shot renders whose air
      end is past the `settings.segment_retention_hours` grace window, so a 24/7
-     station can't fill the box. The shared disclosure ident clip and everything
-     under `assets/` are never collected (see `prune()`).
+     station can't fill the box. The shared disclosure ident clip, the C4 evergreen
+     pool, and everything under `assets/` are never collected (see `prune()`).
+
+Each run also (C4) refreshes the never-dead playout fallback assets up front
+(`ensure_fallback_assets` — evergreen pool + ident, rendered while healthy) and
+records a `last_topup_at` heartbeat so `src/health.py` can detect a dead generator.
 
 As it places content, the scheduler also weaves a spoken AI-disclosure ident
 (src/disclosure.py) into the order every `settings.disclosure_every_n` content
@@ -51,6 +55,8 @@ from pathlib import Path
 
 from .config import settings
 from .disclosure import disclosure_ident_segment
+from .evergreen import EVERGREEN_NAME_PREFIX
+from .fallback import ensure_fallback_assets
 from .formats import make_format_segment
 from .logging_setup import get_logger
 from .segment import Segment
@@ -188,6 +194,15 @@ def top_up(now: datetime | None = None) -> list[dict]:
         raise ValueError("buffer_rotation is empty — nothing to schedule")
     depth_target_sec = settings.buffer_depth_hours * 3600
 
+    # C4 — refresh the never-dead playout fallback assets (evergreen pool + ident +
+    # the evergreen playlist Liquidsoap watches) WHILE the system is healthy, so a
+    # clean spoken segment is ready if a later outage drains the buffer. Best-effort
+    # and cached after the first run; a failure here must never block a top-up.
+    try:
+        ensure_fallback_assets()
+    except Exception as exc:  # noqa: BLE001 — fallback prep is housekeeping, not air
+        log.error("fallback_assets_error", error=str(exc))
+
     state = _load_state()
     # 1-2. Keep only entries still ahead of the needle whose audio still exists.
     upcoming = [
@@ -297,6 +312,9 @@ def top_up(now: datetime | None = None) -> list[dict]:
     state["entries"] = upcoming
     state["rotation_index"] = rot_i % len(rotation)
     state["content_since_ident"] = content_since_ident
+    # C4 — heartbeat: record that a top-up ran to completion. `src/health.py`
+    # check_last_run() reads this to detect a generator that has stopped running.
+    state["last_topup_at"] = now.isoformat()
     _save_state(state)
     playlist_path = _write_playlist(upcoming)
 
@@ -323,7 +341,12 @@ def top_up(now: datetime | None = None) -> list[dict]:
 # The shared disclosure ident clip is rendered once and reused by EVERY ident slot
 # (src/disclosure.py), so it must survive even when an ident entry ages out. We
 # exempt it by the stable name prefix `disclosure.render_ident_audio` writes.
+# Likewise the C4 evergreen POOL (src/evergreen.py): render-once, reuse-forever
+# clips for the never-dead playout fallback — exempt by their `evergreen-` prefix.
+# (The C0 on-demand evergreen renders into a slot's <id>.mp3, NOT this prefix, so
+# those are still GC'd like any one-shot.)
 _IDENT_NAME_PREFIX = "ident-disclosure-"
+_GC_EXEMPT_PREFIXES = (_IDENT_NAME_PREFIX, EVERGREEN_NAME_PREFIX)
 
 
 def _referenced_audio(state: dict) -> set[str]:
@@ -366,9 +389,10 @@ def prune(now: datetime | None = None) -> dict:
           window (from the sidecar; mtime if no sidecar);
       (c) it is a per-segment render under `segments_dir` (the glob's scope).
 
-    NEVER touched: the shared disclosure ident clip (`ident-disclosure-*.mp3`,
-    reused across slots), anything under `assets/` (this only ever scans
-    `segments_dir`), and any file still in the live playlist/schedule. An optional
+    NEVER touched: the shared, reused clips — the disclosure ident
+    (`ident-disclosure-*.mp3`) and the C4 evergreen pool (`evergreen-*.mp3`),
+    both render-once/reuse-forever; anything under `assets/` (this only ever scans
+    `segments_dir`); and any file still in the live playlist/schedule. An optional
     `segment_retention_max_gb` backstop then deletes the oldest aired renders —
     ignoring the grace window — if the directory is still over the cap. Returns a
     summary `{files, bytes}` for the caller/log.
@@ -388,9 +412,10 @@ def prune(now: datetime | None = None) -> dict:
     survivors: list[tuple[datetime, Path, Path | None]] = []
 
     for mp3 in sorted(seg_dir.glob("*.mp3")):
-        # Protect the shared, reused disclosure ident — deleting it because one
-        # ident slot aged out would break every future ident (or force re-renders).
-        if mp3.name.startswith(_IDENT_NAME_PREFIX):
+        # Protect the shared, reused clips (the disclosure ident + the C4 evergreen
+        # pool): deleting one because an entry aged out would break a future
+        # fallback/ident or force a needless re-render.
+        if mp3.name.startswith(_GC_EXEMPT_PREFIXES):
             continue
         # Protect anything still in the live schedule/playlist.
         if str(mp3.resolve()) in referenced:

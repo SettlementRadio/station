@@ -66,6 +66,9 @@ def _wire(monkeypatch, tmp_path, *, depth_hours, rotation, generator):
     # The C2 tests are about timing/resilience; keep the C3 disclosure ident out of
     # them. The dedicated cadence tests below re-enable it.
     monkeypatch.setattr(scheduler.settings, "disclosure_enabled", False)
+    # C4 — top_up refreshes the never-dead fallback assets (real TTS). Neutralize it
+    # so the scheduler tests stay free of Claude/TTS; src/fallback has its own tests.
+    monkeypatch.setattr(scheduler, "ensure_fallback_assets", lambda **k: {})
 
 
 def test_top_up_fills_to_depth_in_air_order(monkeypatch, tmp_path):
@@ -414,6 +417,40 @@ def test_top_up_writes_sidecar_for_each_render(monkeypatch, tmp_path):
         assert sidecar.exists(), f"expected a sidecar for {e['id']}"
         data = json.loads(sidecar.read_text())
         assert data["air_time"] == e["air_time"]
+
+
+def test_prune_protects_evergreen_pool(monkeypatch, tmp_path):
+    # C4: the pre-rendered evergreen pool clips are reused render-once fallback
+    # audio (like the ident) — exempt by their `evergreen-` prefix, never GC'd.
+    _wire_retention(monkeypatch, tmp_path)
+    _set_state(tmp_path, [])
+    pool = tmp_path / "evergreen-0-kokoro-vell_night.mp3"
+    pool.write_bytes(b"\x00")
+    import os
+
+    old = (NOW - timedelta(days=30)).timestamp()
+    os.utime(pool, (old, old))
+
+    scheduler.prune(now=NOW)
+
+    assert pool.exists(), "the evergreen fallback pool must never be GC'd"
+
+
+def test_top_up_records_heartbeat(monkeypatch, tmp_path):
+    # C4: every completed top-up stamps `last_topup_at` so health.check_last_run
+    # can detect a generator that has stopped running.
+    _wire(
+        monkeypatch,
+        tmp_path,
+        depth_hours=0.05,
+        rotation=["news"],
+        generator=_fake_generator(tmp_path, duration=120.0),
+    )
+
+    scheduler.top_up(now=NOW)
+
+    state = json.loads((tmp_path / "schedule.json").read_text())
+    assert state["last_topup_at"] == NOW.isoformat()
 
 
 def test_unmeasured_entry_falls_back_to_target_for_timing(tmp_path):

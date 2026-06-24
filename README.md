@@ -187,6 +187,18 @@ rendered once and reused (no Claude call), so it's cheap; preview or pre-render 
 The same written line (`DISCLOSURE_LINE`) is shown on the web player ([`web/src/lib/disclosure.ts`](web/src/lib/disclosure.ts))
 and belongs in the YouTube description (wired in C7).
 
+**Never-dead air + health checks** ([`src/fallback.py`](src/fallback.py) + [`src/health.py`](src/health.py), C4).
+A 24/7 stream must survive any single failure. Playout ([`config/radio.liq`](config/radio.liq)) airs a
+**fallback chain** — `scheduled playlist → evergreen pool → music bed → disclosure ident → tone` —
+so if the generator is down and the rolling buffer drains, the stream degrades to a clean pre-rendered
+spoken segment, never silence. The lower tiers are pre-rendered **while the system is healthy** (so they
+survive a Claude/Kokoro outage): `make fallback` (also run at the top of every `make schedule`) renders
+the **evergreen pool** to GC-exempt clips and writes the playlist Liquidsoap watches. Separately,
+`make health` (cron/systemd in C5) checks the **buffer runway**, the **last scheduler run** (the scheduler
+writes a `last_topup_at` heartbeat), and **stream liveness**, and on any issue logs an alert plus, if
+configured, POSTs a webhook / pings an uptime URL (a healthchecks.io-style dead-man's switch). It exits
+non-zero when unhealthy. Drop an optional `assets/bed.mp3` to give the music-bed tier real audio.
+
 **5. Secrets.** Copy `.env.example` to `.env`. For a fully local, zero-cost run you only need
 `ANTHROPIC_API_KEY` (the script) and the default `TTS_PROVIDER=kokoro` (the voice);
 `ELEVENLABS_API_KEY` is optional.
@@ -199,8 +211,8 @@ make stop       # stop Icecast + Liquidsoap
 ```
 `make serve` prints the local player URL (`http://127.0.0.1:8000/`); Liquidsoap re-reads the
 playlist as later `make schedule` runs top it up, so the stream keeps going with no restart. If the
-playlist doesn't exist yet, the never-dead fallback (a bundled bed or a quiet tone) keeps the mount
-live. `make generate` / `make conversation` still write individual ad-hoc segments for inspection;
+playlist is empty or absent, the never-dead fallback chain (evergreen pool → music bed → ident → tone)
+keeps the mount live. `make generate` / `make conversation` still write individual ad-hoc segments for inspection;
 the live stream airs whatever the scheduler has queued. See the `Makefile` for `serve` / `status`.
 
 ## Developing the station backend

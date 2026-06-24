@@ -35,7 +35,7 @@ LIQ_LOG    := $(RUN_DIR)/liquidsoap.log
 PLAYER_URL := http://127.0.0.1:8000/
 STREAM_URL := http://127.0.0.1:8000/settlement.mp3
 
-.PHONY: help generate serve air play play-convo stop status seed demo context conversation format buffer schedule ident prune
+.PHONY: help generate serve air play play-convo stop status seed demo context conversation format buffer schedule ident prune fallback health
 
 # B5 format default: `make format` builds a talk segment; override with FMT=news
 # or FMT=music. Pass a TOPIC=... to steer canon retrieval.
@@ -67,6 +67,8 @@ help:
 	@echo "  make buffer    generate ~an hour of varied segments into segments/ (B6)"
 	@echo "  make ident     render the spoken AI-disclosure ident (C3)"
 	@echo "  make prune     GC aired segment audio past the retention window (C2.5)"
+	@echo "  make fallback  pre-render the never-dead fallback assets (C4)"
+	@echo "  make health    run the health checks + alert on any issue (C4)"
 	@echo "  make schedule  top up the rolling buffer to depth + write the playlist (C2)"
 	@echo "  make air       schedule + serve — the live scheduler-driven stream (C2)"
 
@@ -130,6 +132,21 @@ ident:
 prune:
 	@echo "==> Pruning aired segment audio past the retention window (C2.5)…"
 	$(PY) -m src.scheduler --prune
+
+# C4: pre-render the never-dead playout fallback assets — the evergreen pool +
+# the AI-disclosure ident — and write the evergreen playlist Liquidsoap watches.
+# Runs automatically at the top of every `make schedule`; this is the standalone
+# prepare + verify. Live TTS (no Claude — the text is static); FORCE=1 re-renders.
+fallback:
+	@echo "==> Preparing never-dead fallback assets (C4)…"
+	$(PY) -m src.fallback $(if $(FORCE),--force,)
+
+# C4: run the health checks (buffer depth / last scheduler run / stream liveness)
+# and alert on any issue (log + optional webhook/uptime ping). Exits non-zero when
+# unhealthy so a cron/systemd timer can act on it. No Claude/TTS — pure reads.
+health:
+	@echo "==> Running health checks (C4)…"
+	$(PY) -m src.health
 
 generate:
 	@echo "==> Generating a fresh segment for the current time…"

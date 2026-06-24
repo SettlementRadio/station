@@ -229,6 +229,40 @@ class Settings(BaseSettings):
     segment_retention_hours: float = 6.0  # grace past air end before a render is GC'd
     segment_retention_max_gb: float | None = None  # optional hard size backstop; off
 
+    # --- Never-dead fallback (C4: the playout fallback chain's lower tiers) -----
+    # config/radio.liq airs scheduled -> evergreen -> music bed -> ident -> tone so
+    # the stream is never silent through any single failure. src/fallback.py
+    # pre-renders the evergreen POOL (src/evergreen.py) WHILE the system is healthy
+    # and writes this playlist for Liquidsoap to watch, so a clean spoken segment is
+    # ready even if Claude/Kokoro are down when the buffer drains.
+    # `ensure_fallback_assets()` runs best-effort at the top of every top-up; the
+    # pool clips are GC-exempt by name (evergreen-*, like the disclosure ident) so
+    # the C2.5 prune never collects them. Liquidsoap reads this path from the env
+    # var FALLBACK_EVERGREEN_PLAYLIST_PATH.
+    fallback_evergreen_playlist_path: Path = Field(
+        default=_REPO_ROOT / "segments" / "evergreen.txt"
+    )
+
+    # --- Health checks + alerts (C4: make a failure visible) -------------------
+    # `python -m src.health` (cron/systemd in C5) reads the live schedule + stream
+    # and alerts when the air is at risk: the rolling-buffer runway has fallen below
+    # `health_min_runway_minutes`; no scheduler top-up has completed within
+    # `health_max_run_age_minutes` (the scheduler writes a `last_topup_at` heartbeat
+    # into the schedule state — this is the "generator stopped running" detector, so
+    # keep it comfortably above the top-up cadence); or the stream mount is
+    # unreachable. On an issue it logs at error and, if set, POSTs to
+    # `health_alert_webhook_url` and pings `health_ping_url` failure; on a clean pass
+    # it pings `health_ping_url` success — a healthchecks.io-style dead-man's switch
+    # that also catches a timer that stops running entirely. All URLs default empty
+    # (log-only); set them in .env on the VPS. `health_stream_url` is the Icecast
+    # mount to liveness-check (empty = skip that check).
+    health_min_runway_minutes: float = 20.0  # alert below this much queued audio
+    health_max_run_age_minutes: float = 90.0  # alert if no top-up completed within
+    health_stream_url: str = ""  # Icecast mount to liveness-check; "" = skip
+    health_ping_url: str = ""  # dead-man's-switch success ping (e.g. healthchecks.io)
+    health_alert_webhook_url: str = ""  # POST alerts here (Slack/Discord/generic)
+    health_request_timeout_sec: float = 10.0
+
     # --- External-call resilience (bounded retry on Claude/TTS) ----------------
     retry_attempts: int = 3  # total attempts, including the first
     retry_backoff_sec: float = 2.0  # base linear backoff between attempts

@@ -38,6 +38,73 @@ A typical *build* session will be short, e.g.:
 
 ---
 
+## 2026-06-24 — Phase C — C4: never-dead air — fallback chain + health checks
+
+**Focus:** make the stream survive any single failure. Two halves: a playout **fallback chain** that
+never goes silent (with a *pre-rendered* evergreen pool that survives a generator outage), and
+**health checks** that make a failure visible (low buffer / dead scheduler / unreachable stream) with
+an alert. Fixes orientation open-risk #6 ("single points of failure with no live fallback").
+**Decisions:**
+- **The full fallback chain lives in Liquidsoap, not the scheduler** (`config/radio.liq`): a single
+  `fallback(track_sensitive=false, [scheduled, evergreen, music_bed, ident, tone])`. Each lower tier is
+  always-available audio, so an empty/absent scheduled playlist (buffer drained) degrades to a clean
+  spoken evergreen, then a bundled music bed, then the disclosure ident, and only as a last resort a
+  quiet sine — never silence. An absent tier is a `source.fail()` (the never-available source), so every
+  tier is built unconditionally and *availability* decides what airs. Keeping the chain in playout (vs.
+  injecting evergreen into the schedule) is the right layer: the scheduler decides programming, playout
+  owns never-dead air. Type-checked with `liquidsoap --check`.
+- **The evergreen POOL is pre-rendered and GC-exempt — the load-bearing choice.** C0's evergreen was
+  render-on-demand into the failed slot's `<id>.mp3` (a one-shot, GC'd like any render) — useless if the
+  outage that needs it is *Kokoro itself*. C4 adds `evergreen.render_evergreen_pool()`: render each
+  static script ONCE to a stable `evergreen-{i}-{provider}-{voice}.mp3` and reuse it, so a clean spoken
+  segment is ready *before* the outage. Exempted from the C2.5 prune by the `evergreen-` name prefix
+  (same render-once/reuse pattern as the disclosure ident; on-demand evergreens keep their `<id>` name
+  and are still GC'd).
+- **New `src/fallback.py` owns "prepare the never-dead assets," called best-effort at the top of every
+  `top_up`.** It renders the pool + ident (cached after first run — cheap) and writes the evergreen
+  playlist Liquidsoap watches. Best-effort + guarded so prep can never raise into a top-up, and a prior
+  healthy run's cached clips remain regardless — the whole point is readiness *before* the failure.
+  Exposed as `make fallback` for a one-off prepare + verify.
+- **Orchestration resilience was already mostly there (C2): a failed slot is retried→skipped, a total
+  failure stops the run and leaves the existing buffer.** C4's addition is that when the buffer
+  *fully* drains, playout has somewhere real to go (the pool) instead of a tone.
+- **New `src/health.py` (`make health`) — three pure-read checks + a two-mode alert.** Buffer runway
+  below `health_min_runway_minutes`; no top-up within `health_max_run_age_minutes` (the scheduler now
+  writes a `last_topup_at` heartbeat into `schedule.json`); stream mount unreachable (optional). The two
+  run-detectors are complementary: the heartbeat catches "the job isn't running," the buffer/stream
+  checks catch "it runs but the air is at risk." On an issue: log error + optional webhook POST + a
+  healthchecks.io-style `/fail` ping; on a clean pass: a success ping (dead-man's switch, so a health
+  timer that dies is itself caught). Exits non-zero when unhealthy for cron/systemd. All alert URLs
+  default empty (log-only). Avoided a circular import by having the scheduler only *write* the heartbeat
+  dict key (health imports the scheduler's state helpers, not vice-versa).
+- **Config:** new `fallback_evergreen_playlist_path` and a `health_*` block (runway floor, max run age,
+  stream URL, ping URL, webhook URL, timeout). Liquidsoap reads the evergreen playlist + ident paths
+  from env (`FALLBACK_EVERGREEN_PLAYLIST_PATH`, `FALLBACK_IDENT_PATH`).
+**Changed:** new `src/fallback.py`, `src/health.py`; `src/evergreen.py` (`render_evergreen_pool` +
+`EVERGREEN_NAME_PREFIX`); `src/scheduler.py` (call `ensure_fallback_assets`, write `last_topup_at`
+heartbeat, exempt `evergreen-*` from prune); `config/radio.liq` (the 5-tier chain); `src/config.py`
+(`fallback_*` + `health_*`); `Makefile` (`make fallback`, `make health`); `.env.example`; `README.md`;
+new `tests/test_fallback.py` (+4) and `tests/test_health.py` (+9), `tests/test_scheduler.py` (+2:
+heartbeat, evergreen-pool exemption; `_wire` neutralizes the fallback prep). `ruff` clean;
+**78 tests pass** (was 62). `liquidsoap --check config/radio.liq` green.
+**Why:** an unattended 24/7 stream cannot go dead or invisibly stop. The fallback chain guarantees the
+air; pre-rendering the evergreen pool while healthy is what makes the chain survive the very outage
+(TTS/Claude/DB down) that drains the buffer; the health checks turn a silent failure into an alert
+before the buffer is gone. All three are hard prerequisites to exposing the stream (C7/C8) and to the
+C9 soak.
+**Verification:** `liquidsoap --check config/radio.liq` passes (the chain type-checks; an empty/absent
+playlist falls through to the pool). `make health` against an empty schedule correctly reports low
+buffer + missing last run and exits 1. The pool-render/playlist-write/idempotence/partial-failure paths,
+the GC exemption, the heartbeat, and the buffer/last-run/stream checks + alert-vs-success-ping control
+flow are covered deterministically by the new tests (no live Claude/TTS/network). Not yet exercised by
+killing the generator against a live `make air` on the seeded stack with a rendered pool — that
+end-to-end "pull the plug, stream keeps talking" check is the remaining human/soak (C9) verification.
+**Next:** C5 — deploy to the Hetzner VPS (Postgres + Liquidsoap + Icecast + the scheduler top-up on
+systemd/cron, `make health` on a timer, nightly `pg_dump` + `assets/` backups, secrets non-world-readable).
+Commit: <pending>  ·  Clips: —
+
+---
+
 ## 2026-06-24 — Marketing (GitHub) — MG3–MG5: README polish, licensing clarity, community health
 
 **Focus:** the GitHub credibility pass from `docs/marketing/github.md` — make the repo read as a

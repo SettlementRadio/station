@@ -17,6 +17,7 @@ night-host register, and name nothing real (CLAUDE.md IP + content-safety rules)
 from __future__ import annotations
 
 from datetime import datetime
+from pathlib import Path
 
 from .config import settings
 from .logging_setup import get_logger
@@ -59,6 +60,57 @@ _EVERGREEN_SCRIPTS: tuple[str, ...] = (
         "the rest of the dark take care of itself."
     ),
 )
+
+
+# C4 — the pre-rendered evergreen POOL (the never-dead PLAYOUT fallback tier).
+# The C0 path above renders an evergreen ON DEMAND into a gate-failed slot's
+# <id>.mp3 — a one-shot render the C2.5 prune GCs like any other. For the
+# never-dead playout fallback CHAIN (config/radio.liq) we instead pre-render each
+# script ONCE to a stable, GC-exempt file and reuse it, so a clean spoken segment
+# is always ready even if Claude/Kokoro/Postgres are down when the rolling buffer
+# drains. The `evergreen-` filename prefix is what exempts these clips from the
+# C2.5 prune (scheduler imports EVERGREEN_NAME_PREFIX) — the same render-once,
+# reuse-forever pattern as the shared disclosure ident.
+EVERGREEN_NAME_PREFIX = "evergreen-"
+
+
+def _pool_audio_path(index: int, voice: str) -> Path:
+    """Stable cache path for pooled evergreen clip `index`, keyed by provider+voice.
+
+    Keyed like the disclosure ident so flipping `tts_provider` or the voice
+    re-renders in the new voice rather than airing a stale clip from the old one.
+    """
+    provider = settings.tts_provider.strip().lower()
+    return (
+        settings.segments_dir / f"{EVERGREEN_NAME_PREFIX}{index}-{provider}-{voice}.mp3"
+    )
+
+
+def render_evergreen_pool(*, force: bool = False) -> list[str]:
+    """Pre-render every evergreen script to its cached clip; return the paths.
+
+    Idempotent: an existing clip for the current (provider, voice) is reused
+    (Kokoro is slow), `force=True` re-renders (e.g. after editing a script).
+    Best-effort per clip — a render failure is logged and that one is skipped, so a
+    partial TTS outage still yields a usable pool from whatever rendered plus
+    whatever a prior healthy run already cached. Returns the existing clip paths.
+    """
+    voice = settings.segment_vell_voice
+    paths: list[str] = []
+    for i, script in enumerate(_EVERGREEN_SCRIPTS):
+        out_path = _pool_audio_path(i, voice)
+        if not force and out_path.exists():
+            log.info("evergreen_pool_cached", index=i, out_path=str(out_path))
+            paths.append(str(out_path))
+            continue
+        try:
+            out_path.parent.mkdir(parents=True, exist_ok=True)
+            tts.synthesize(script, voice=voice, out_path=str(out_path))
+            log.info("evergreen_pool_render", index=i, out_path=str(out_path))
+            paths.append(str(out_path))
+        except Exception as exc:  # noqa: BLE001 — one clip down must not kill the pool
+            log.error("evergreen_pool_render_failed", index=i, error=str(exc))
+    return paths
 
 
 def pick_evergreen_script(now: datetime) -> str:
