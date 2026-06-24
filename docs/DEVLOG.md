@@ -38,6 +38,48 @@ A typical *build* session will be short, e.g.:
 
 ---
 
+## 2026-06-24 — Marketing (GitHub) — MG3–MG5: README polish, licensing clarity, community health
+
+**Focus:** the GitHub credibility pass from `docs/marketing/github.md` — make the repo read as a
+serious, finished thing to a cold visitor (and to Anthropic devrel) without rewriting what already
+works. Three tasks, all no-tech-dependency "do now" items: MG3 (README polish), MG4 (verify the
+code-vs-world license split), MG5 (community health files).
+**Decisions:**
+- **MG3 — polish, not a rewrite.** The README already leads world-first and carries the tribute, so
+  only additive edits: status badges under the wordmark (Apache-2.0 · CC BY-SA 4.0 · Built with
+  Claude Code, with a commented `Live` placeholder for MG6), a one-line italic motto under the
+  tagline, and aligning the disclosure wording to the canonical `DISCLOSURE_LINE` ("a work of fiction,
+  **written and voiced by AI**" — was "generated with AI"). Used centered HTML `<img>` badges to match
+  the README's existing centered-HTML header rather than the playbook's raw-markdown badges.
+- **MG4 — the license split was already correct; only the framing was added.** `LICENSE-CODE`
+  (Apache-2.0) and `LICENSE-CONTENT` (CC BY-SA 4.0) already exist and are right. Added a one-line
+  tribute/original-world boundary to the README License section ("…a tribute to the genre, not derived
+  from any franchise or author's work"). The drift MG4 flagged (MARKETING §4 / ROADMAP implying CC
+  BY-SA is *future*) was already corrected in both docs — they say "already/existing CC BY-SA 4.0" — so
+  no fix needed.
+- **MG5 — net-new community files, deliberately light.** `CONTRIBUTING.md` is short and honest (built
+  in public, **not** yet taking external code contributions, issues/ideas welcome) — keeping the build
+  a clean end-to-end AI-authored artifact is the reason, stated as such. `CODE_OF_CONDUCT.md` is the
+  standard Contributor Covenant v2.1 with contact `hello@settlementradio.com`. This completes the
+  repo's "community profile" without inviting PRs that can't be handled solo.
+**Changed:** `README.md` (badges + motto + disclosure wording + license framing line); new
+`CONTRIBUTING.md`, `CODE_OF_CONDUCT.md`. No code touched.
+**Why:** GitHub is the credibility anchor — the artifact eventually put in front of Anthropic (M4) —
+so it has to read as intentional before the first "built in public" traffic arrives. These are
+front-loaded because none depend on a later phase; only the live-demo link and funding button (MG6)
+wait on C9/M1.
+**📣 Postable:** the polished repo front page itself — the wordmark + three license/build badges +
+world-first premise — is a clean screenshot for a "built in public, here's the repo" X post once the
+launch sequence starts.
+**Verification:** previewed the README (badges render, motto + disclosure read right);
+`grep "written and voiced by AI"` matches README + `src/disclosure.py`, and "generated with AI" is
+gone from the README. Community files present at repo root. GitHub-side items (repo topics, social
+preview, pinning — MG2) are web-UI settings, not in the repo, so unverified here.
+**Next:** MG5's remaining check is web-UI only (confirm repo topics/preview stuck). MG6 (live link +
+FUNDING.yml + release tag) is gated on C9/M1. On the build side, Phase C continues at C4 (never-dead
+air: evergreen pool + fallback chain + health checks).
+Commit: <pending>  ·  Clips: —
+
 ## 2026-06-23 — Phase C — C2.5: disk retention — GC aired segment audio
 
 **Focus:** bound `segments/` so a 24/7 station can't fill the VPS disk. C2 already prunes the

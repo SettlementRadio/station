@@ -1,9 +1,18 @@
 <p align="center"><img src="assets/wordmark-horizontal.svg" alt="Settlement Radio" width="420"></p>
 
+<p align="center">
+  <!-- add at MG6: <a href="LINK"><img src="badge" alt="Live"></a> -->
+  <img src="https://img.shields.io/badge/code-Apache--2.0-blue" alt="Code: Apache-2.0">
+  <img src="https://img.shields.io/badge/world-CC%20BY--SA%204.0-green" alt="World: CC BY-SA 4.0">
+  <img src="https://img.shields.io/badge/built%20with-Claude%20Code-d97757" alt="Built with Claude Code">
+</p>
+
 <p align="center"><em>Late-night radio from the far future.</em></p>
 
+<p align="center"><em>A love letter to 20th-century science fiction — broadcasting from the future it imagined.</em></p>
+
 Settlement Radio is an always-on, AI-voiced radio station that broadcasts from the settled worlds
-of the late 27th century — six hundred years from now. It knows what time it really is, reflects
+of the late 27th century, six hundred years from now. It knows what time it really is, reflects
 it in-universe, and keeps you company across the dark with news from the colonies, music for the
 small hours, and presenters who carry the same conversation night after night. It's a tribute to
 the science-fiction authors who taught a generation to imagine a kinder future.
@@ -229,10 +238,12 @@ The backend follows the engineering standards in [`CLAUDE.md`](CLAUDE.md). For c
   The test suite is deliberately **not** in pre-commit (it would get bypassed).
 
 ## A note on what you're hearing
-Settlement Radio is a **work of fiction, generated with AI**. The presenters are not real people;
+Settlement Radio is a **work of fiction, written and voiced by AI**. The presenters are not real people;
 the news from the future is invented. AI generation is disclosed on the stream and the player.
 
 ## License
+Code is Apache-2.0; the world (canon and generated lore) is original and licensed CC BY-SA 4.0 — a
+tribute to the genre, not derived from any franchise or author's work.
 - **Code:** Apache-2.0 — see [`LICENSE-CODE`](LICENSE-CODE).
 - **Creative world** (lore, scripts, canon): Creative Commons Attribution-ShareAlike 4.0 — see
   [`LICENSE-CONTENT`](LICENSE-CONTENT). Build in this universe; share alike; credit Settlement Radio.
