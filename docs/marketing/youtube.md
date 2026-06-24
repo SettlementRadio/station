@@ -34,9 +34,11 @@ re-validate against the DEVLOG when its C-task lands. **The real YouTube handle 
   fall into the world. Mixed dev + sci-fi.
 - **Lead hook on YouTube:** the **experience** — "a calm sci-fi station you can leave on" — with the
   built-by-Claude-Code story as the reason-to-care underneath. Less technical than X.
-- **The motto (carry it — see `MARKETING.md`):** *"A love letter to 20th-century science fiction —
-  broadcasting from the future it imagined."* Put the tribute in the channel About and the trailer;
-  it's the soul, not a footer.
+- **Lead with the core message (see `MARKETING.md` → core message):** the WHAT is *a living human
+  future you tune into — the one signal holding a scattered humanity together*, not "AI DJs." The
+  experience hook (a calm station you leave on) sits on top of that; the tribute (*"A love letter to
+  20th-century science fiction…"*) is the soul. Vell & Wren are the *voices* that carry it — texture
+  in the About, headliners only in the voice-reveal Short (MY4).
 - **Goal through Phase C:** have the channel + a small Shorts library ready so that when the live
   stream goes public (M1), there's somewhere for discovery to land. **North star: returning viewers
   + watch time**, not subscriber count.
@@ -76,9 +78,9 @@ re-validate against the DEVLOG when its C-task lands. **The real YouTube handle 
 **Do — set these:**
 - **Handle / name:** `@SettlementRadio` / `Settlement Radio` (the existing handle — confirm it).
 - **Description (About):**
-  > Settlement Radio is a 24/7 AI science-fiction radio station broadcasting from the year 2626 — 600 years ahead of now. Two synthetic DJs, Vell and Wren, host an original future world, with every word written by Claude and the whole station built by Claude Code.
+  > Six hundred years from now, humanity is scattered across the settled worlds — and Settlement Radio is the one signal that holds them together, keeping the dark between worlds company with the news, music, and long nights of a living era. Every word is written by Claude and the whole station is built by Claude Code; the broadcast is carried by two voices — Vell on the night shift, Wren at first light.
   >
-  > A love letter to 20th-century science fiction — the golden-age and new-wave authors who imagined the future. An original world, broadcasting from inside it. Settlement Radio is a work of fiction, written and voiced by AI.
+  > A love letter to 20th-century science fiction — the golden-age and new-wave authors who imagined this future. Settlement Radio is a work of fiction, written and voiced by AI.
   >
   > 🌐 settlementradio.com
 - **Links:** website (settlementradio.com), X. (Add Ko-fi at MY6, not before.)
@@ -95,7 +97,7 @@ a one-line premise card at the end. **Source audio exists:** `segments/convo-202
 (the Vell↔Wren talk) — pick 2–3 lines, still needs cutting + the brand still.
 **Title:** `Settlement Radio — live from the year 2626 🛰️`
 **Description:**
-> A 24/7 AI sci-fi radio station broadcasting 600 years in the future. Two synthetic DJs, an original world, every word written by Claude — built entirely by Claude Code. A love letter to 20th-century science fiction.
+> Always-on radio from the human future — the one signal that holds a scattered humanity together across the dark between worlds, carrying the news, music, and long nights of a whole era. Every word written by Claude; the station built entirely by Claude Code. A love letter to 20th-century science fiction.
 >
 > Settlement Radio is a work of fiction, written and voiced by AI. 🌐 settlementradio.com
 **Done-when:** uploaded and set as the **channel trailer** (Customization → Layout → "Video
@@ -146,8 +148,8 @@ the soak.
 **Do — create a persistent live stream and set:**
 - **Title:** `Settlement Radio 🛰️ AI Sci-Fi Radio · Live from 2626 · 24/7`
 - **Description:**
-  > 🛰️ Settlement Radio — live 24/7 from the year 2626.
-  > Two AI DJs, Vell (night) and Wren (first light), hosting an original future world. Every word written by Claude; the station built entirely by Claude Code.
+  > 🛰️ Settlement Radio — live 24/7 from the human future.
+  > Six hundred years from now, humanity is scattered across the settled worlds, and this is the one signal that holds them together — the news, the music, and the long nights of a whole era. Every word written by Claude; the station built entirely by Claude Code. Carried by two voices: Vell on the night shift, Wren at first light.
   >
   > ⚠️ Settlement Radio is a work of fiction, written and voiced by AI.
   > 🌐 settlementradio.com

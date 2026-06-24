@@ -28,10 +28,11 @@ app; `📝 DRAFT` = waits on later tech. Ground truth in `web/`:
 - Current copy: tagline *"Late-night radio from the far future,"* body *"Broadcasting soon…"* — MS1
   updates the body to "nearly on air."
 
-**The motto belongs on the site more than anywhere** (it's the surface you own): *"A love letter to
-20th-century science fiction — broadcasting from the future it imagined."* The current page already
-carries a tribute line ("a tribute to the science fiction that imagined us here") — keep that spirit
-through every stage; the player must never lose the *why* (see `MARKETING.md` → The spirit & motto).
+**Lead with the core message — this is the surface you own** (see `MARKETING.md` → core message): the
+WHAT is *a living human future you tune into — the one signal holding a scattered humanity together
+across the dark between worlds*, **not** "AI DJs." The current page already carries the tribute line
+("a tribute to the science fiction that imagined us here") — keep that *why*; just make sure the
+*what* leads with the living world, and the player never loses either through any stage.
 
 ---
 
@@ -105,10 +106,10 @@ thing: press play — and have a reason to come back.** Support is secondary; em
   YouTube / GitHub links.
 - Keep the email signup as a secondary CTA; the coming-soon copy can retire.
 **Copy (hero):**
-> **Settlement Radio — live now from 2626.**
-> Two AI DJs, an original world, every word written by Claude. ▶ Listen.
+> **Settlement Radio — live now from the human future.**
+> The one signal that holds a scattered humanity together across the dark between worlds. ▶ Listen.
 > *A love letter to 20th-century science fiction — broadcasting from the future it imagined.*
-> *A work of fiction, voiced with AI.*
+> *A work of fiction, written and voiced by AI.*
 **Done-when:** settlementradio.com plays the live stream, shows the disclosure, and offers
 support/follow links — on the existing Vercel app.
 **Result check (1wk):** the **`listen` goal** (play-press rate), time-on-page, **returning visitors**

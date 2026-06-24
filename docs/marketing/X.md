@@ -25,9 +25,11 @@ was unavailable on X. Use `@settlement_ch` in copy that needs the @.
 
 ## Audience, hooks, goals (read once)
 
-- **The motto (carry it — see `MARKETING.md`):** *"A love letter to 20th-century science fiction —
-  broadcasting from the future it imagined."* Even on dev-leaning X, the tribute is *why* the project
-  exists; don't let the build-story bury it.
+- **Lead with the core message (see `MARKETING.md` → core message), even on dev-leaning X:** the WHAT
+  is *a living human future you tune into — the one signal holding a scattered humanity together* —
+  **not** "AI DJs." Then the build-story (HOW), then the motto/tribute (WHY): *"A love letter to
+  20th-century science fiction — broadcasting from the future it imagined."* Don't feature-list, and
+  don't headline the DJs in foundational copy (they shine in the *progress* posts below).
 - **Primary audience on X:** indie devs / AI builders. **Lead with the built-by-agents hook**
   ("an entire 600-years-future station stood up by Claude Code"). They share things that are
   *technically novel and honestly documented* — but pair it with the tribute so it has a soul.
@@ -76,7 +78,7 @@ seconds and looks intentional, so build-in-public posts convert visitors to foll
 **Do — set these fields:**
 - **Handle:** `@settlement_ch` (the existing handle — confirm it, don't make a new one).
 - **Name:** `Settlement Radio`
-- **Bio:** `AI sci-fi radio from 600 years ahead. Synthetic DJs, every word written by Claude, built by Claude Code. A love letter to 20th-century science fiction. 🛰️`
+- **Bio:** `Radio from the human future — the signal holding a scattered humanity together across the dark. By Claude + Claude Code. A love letter to 20th-c sci-fi. 🛰️` *(world-first; the 160-char bio carries WHAT+HOW+a tribute nod — the DJs live in the pinned posts, not here.)*
 - **Location:** `Broadcasting from 2626`
 - **Website:** `settlementradio.com`
 **Done-when:** all four fields + header + avatar are set.
@@ -87,11 +89,11 @@ seconds and looks intentional, so build-in-public posts convert visitors to foll
 **Audience:** dev + sci-fi. **Goal:** state the premise once, openly; start the follow relationship.
 **Asset:** one brand card (or text-only).
 **Post:**
-> We're building a radio station that broadcasts from the year 2626 — 600 years ahead of right now.
+> Six hundred years from now, humanity is scattered across the settled worlds — and one signal keeps them company across the dark between them.
 >
-> Two AI DJs. Every word written by Claude. The whole thing built by Claude Code, in public.
+> We're building that signal: Settlement Radio — always-on radio from the human future, carrying the news, the music, and the long nights of a whole era. Every word written by Claude; the whole station built by Claude Code, in public.
 >
-> It's a love letter to 20th-century science fiction — the authors who taught us to imagine the future. We don't borrow their worlds; we built an original one and broadcast from inside it.
+> A love letter to 20th-century science fiction — broadcasting from the future it imagined.
 >
 > Follow along. 🛰️
 **Done-when:** posted.
@@ -262,7 +264,7 @@ clip, the essay) is Phase D / M4.
 **Post (thread):**
 > 1/ Settlement Radio is live.
 >
-> A 24/7 AI sci-fi station broadcasting from the year 2626. Two synthetic DJs, an original world, every word written by Claude — built entirely by Claude Code, in public, over the last few months.
+> Always-on radio from the human future — the one signal that holds a scattered humanity together across the dark between worlds, 600 years from now. Every word written by Claude, the whole station built entirely by Claude Code, in public, over the last few months.
 >
 > Listen: [YOUTUBE LIVE LINK] 🛰️🧵
 >

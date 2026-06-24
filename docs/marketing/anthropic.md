@@ -92,11 +92,11 @@ you *inside* Anthropic's own docs.
 interesting (built entirely by Claude Code, multi-agent, honest AI), and a soft ask. **Lead with the
 artifact; the ask is the last sentence.** Send once; don't follow up more than once.
 **Template:**
-> Hi — I built Settlement Radio: a 24/7 AI sci-fi radio station broadcasting from 600 years in the
-> future, with two AI DJs and an original world. **Every word is written by Claude and the entire
-> system was built by Claude Code** — a multi-agent writers' room, a world clock, and blocking safety
-> + continuity gates, with on-air AI disclosure throughout. It's been live and unattended for
-> [N weeks] and people are coming back.
+> Hi — I built Settlement Radio: always-on radio from the human future, broadcasting 600 years ahead
+> as the one signal that holds a scattered humanity together across the dark between worlds. **Every
+> word is written by Claude and the entire system was built by Claude Code** — a multi-agent writers'
+> room, a world clock, and blocking safety + continuity gates, with on-air AI disclosure throughout.
+> It's been live and unattended for [N weeks] and people are coming back.
 >
 > Live: [LINK] · How it was built: [CASE STUDY] · I also opened a Cookbook PR with the writers'-room
 > pattern: [PR].

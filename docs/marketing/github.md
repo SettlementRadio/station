@@ -76,10 +76,12 @@ it on the org page.
   <img src="profile/banner.png" alt="Settlement Radio" width="100%" />
 
   # Settlement Radio
-  **An AI sci-fi radio station broadcasting from the year 2626 — 600 years ahead of now.**
+  **Always-on radio from the human future — the one signal that holds a scattered
+  humanity together across the dark between worlds.**
 
-  Two synthetic DJs. An original future world. Every word written by Claude;
-  the whole station built by Claude Code.
+  Six hundred years from now the settled worlds are far apart, and radio is the thread
+  between them. Settlement Radio carries the news, the music, and the long nights of a
+  whole era — every word written by Claude, the entire station built by Claude Code.
 
   <!-- add at MG6: [▶ Listen live](LINK) · -->
   [settlementradio.com](https://settlementradio.com) · [X](LINK)
@@ -133,6 +135,10 @@ tribute. **Don't rewrite it — add three small things and fix one wording drift
    AI**" — change to the canonical **"a work of fiction, written and voiced by AI"** so README, air,
    site, and YouTube all match (`src/disclosure.py` `DISCLOSURE_LINE`).
 **Done-when:** badges + motto line are in, and the disclosure wording matches everywhere.
+**Keep the lead world-first.** The repo README already opens the right way ("…always-on radio that
+broadcasts from the settled worlds… keeps you company across the dark"), which *is* the core message
+(`MARKETING.md` → core message) — don't let any edit regress it into a "two DJs · an AI world" feature
+list.
 **Result check:** hand the README to someone who's never seen the project — can they explain it back?
 
 ### MG4 — Licensing clarity (code vs. world) · `✅ READY — already done, just verify`

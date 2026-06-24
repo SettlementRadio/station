@@ -24,26 +24,51 @@ If you find marketing strategy duplicated anywhere else, it's a bug — delete i
 
 ---
 
-## The spirit & the motto (say this everywhere — it's the soul, not decoration)
+## The core message — what this is (the foundational say; lead with this)
 
-The single thing a stranger must understand: **Settlement Radio is a tribute to 20th- and
-early-21st-century science fiction — the golden-age and new-wave authors whose books taught a
-generation to imagine the future.** We don't borrow their worlds or characters (the IP line); we
-honor their *spirit* by building an **original** world and broadcasting from 600 years ahead — as if
-their dream of the future simply kept going.
+**Settlement Radio is not "a radio station with AI DJs." It's a living human future you can tune
+into — and the radio is the way in.** The mistake to avoid: feature-listing ("two DJs · an AI world ·
+built by Claude"), which flattens a whole civilization into a bullet next to its staff count. No real
+station sells itself that way. **The world is the product; the radio is your window onto it; the DJs
+and the AI are *how*, not *what*.** Three layers, always in this order:
 
-**The motto (one canonical line — use it verbatim across every surface):**
+- **WHAT (leads):** Six hundred years from now, humanity is scattered across the settled worlds — and
+  Settlement Radio is the **one signal that holds them together**, keeping the dark between worlds
+  company with the news, music, and long nights of a living era. *You tune in, and you're there.*
+  (Grounded in canon: the relay "always between, which is why it can talk to everyone"; "radio is the
+  thread that connects them.")
+- **HOW (second):** every word written by Claude, the entire station built and run by Claude Code —
+  always-on and time-aware. The novelty/proof, never the headline.
+- **WHY (third):** a love letter to 20th-century science fiction — the genre that imagined this future.
+
+**The keystone line (one canonical paragraph — the foundational "what is this," use verbatim):**
+> Six hundred years from now, humanity is scattered across the settled worlds — and one signal keeps
+> them company across the dark between them. Settlement Radio is that signal: always-on radio from the
+> human future, carrying the news, the music, and the long nights of a whole era. Written by Claude.
+> Built by Claude Code. A love letter to 20th-century science fiction.
+
+**Short keystone (for bios / tight space):**
+> Always-on radio from the human future — the one signal that holds a scattered humanity together
+> across the dark between worlds. Written by Claude, built by Claude Code; a love letter to
+> 20th-century science fiction.
+
+**The DJs are texture, not a headline.** Vell (night shift) and Wren (first light) are *how the world
+speaks to you* — introduce them as the voices that carry the broadcast, after the world-first lead;
+never as a co-equal feature ("two synthetic DJs"). They get the spotlight in *progress/character*
+content (clips, the voice reveal), not in the foundational say.
+
+## The motto / the WHY (the soul — carry it everywhere too)
+
+We honor the genre's *spirit*, never its IP: an **original** world, broadcasting from 600 years ahead
+as if the authors' dream of the future simply kept going.
+
+**The motto (one canonical line — verbatim across every surface):**
 > **A love letter to 20th-century science fiction — broadcasting from the future it imagined.**
 
-**The fuller "why" (for the site About, the GitHub README, the tribute essay):**
-> Settlement Radio is a love letter to the science fiction of the last century — the golden-age and
-> new-wave authors who dreamed our future first. We honor their spirit, never their work: an original
-> world, broadcasting from 600 years on, the way they taught us to imagine it.
-
-**Rule:** every premise/bio/About across X, YouTube, GitHub, the site, and Ko-fi **must carry the
-motto or the tribute beat** — not just the "built by Claude Code" hook. The tech hook earns the dev
-crowd; the tribute is *why the project exists*, and it's what makes people root for it. If a piece of
-copy doesn't make the tribute legible, it's not finished.
+**Rule:** every foundational premise/bio/About **leads with the core message (WHAT) and carries the
+tribute (WHY)** — not just the "built by Claude Code" hook. If a piece of foundational copy reads as a
+feature list, or buries the living world, it's not finished. *(Progress posts are exempt — they
+legitimately show the mechanics and the DJs.)*
 
 ---
 

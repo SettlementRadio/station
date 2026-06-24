@@ -37,10 +37,11 @@ handle **`SettlementRadio`**, Ko-fi handle **`settlementradio`** — confirm the
   site link).
 - Brand it with the **beacon + wordmark** (same as every other surface); night-field feel.
 - Write the **About** in the station's voice (not "please donate"):
-  > Settlement Radio broadcasts 24/7 from the year 2626 — two AI DJs, an original world, every word
-  > written by Claude. It's a love letter to 20th-century science fiction, the authors who imagined
-  > the future, broadcasting from inside it. It runs on real compute and real voices; if it keeps you
-  > company across the dark, you can help keep the lights on and bring the next DJ on air. 🛰️
+  > Settlement Radio is always-on radio from the human future — the one signal that holds a scattered
+  > humanity together across the dark between worlds, carrying the news, music, and long nights of a
+  > whole era. Every word written by Claude, the whole station built by Claude Code; a love letter to
+  > 20th-century science fiction. It runs on real compute and real voices — if it keeps you company
+  > across the dark, you can help keep the lights on and bring the next DJ on air. 🛰️
 - Set up **GitHub Sponsors** in parallel (the dev-native button; wired via `FUNDING.yml` in MG6).
 - **Leave it unlinked/quiet** — no buttons anywhere until MK1.
 **Done-when:** the page exists, is on-brand, and is *not* yet linked from any channel.
