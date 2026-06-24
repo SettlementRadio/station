@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1800" height="500" viewBox="0 0 1800 500" role="img" aria-label="Settlement Radio Horizontal Wordmark">
+  <title>Settlement Radio Horizontal Wordmark</title>
+  <desc>Beacon symbol with horizontal Settlement Radio wordmark.</desc>
+  <rect width="100%" height="100%" fill="#F4F1EB"/>
+  <g>
+  <g transform="translate(60,40) scale(0.45)"><circle cx="400" cy="400" r="304" fill="none" stroke="#F2C04D" stroke-width="42" stroke-linecap="round" stroke-linejoin="round"/>
+<circle cx="400" cy="274" r="54" fill="#F2C04D"/>
+<path d="M 286.000 386.000 A 125.000 125.000 0 0 0 514.000 386.000" fill="none" stroke="#F2C04D" stroke-width="42" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M 222.000 432.000 A 190.000 190.000 0 0 0 578.000 432.000" fill="none" stroke="#F2C04D" stroke-width="42" stroke-linecap="round" stroke-linejoin="round"/></g>
+  <text x="405" y="286" fill="#081B45" font-family="DejaVu Sans, Arial, Helvetica, sans-serif" font-size="132" font-weight="600">Settlement Radio</text>
+</g>
+</svg>
