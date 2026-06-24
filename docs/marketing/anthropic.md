@@ -29,11 +29,16 @@ impression with devrel too.
 **Audience:** Anthropic devrel + the Claude-ecosystem amplifiers (the people who surface cool Claude
 builds). High-signal, allergic to hype, generous toward genuine contribution.
 
+**Status legend (validated 2026-06-24):** `✅ READY` = actionable now; `📝 DRAFT` = gated on a later
+milestone (M1/M4), validate then. **Only MA0 is live now** — and it's *ongoing groundwork*, not a
+one-time post. Everything else waits, on purpose: cold-pitching before traction (M3) burns your one
+first impression with devrel. The artifact does the work until then.
+
 ---
 
 ## The tasks
 
-### MA0 — Be a good ecosystem citizen (now, quietly)
+### MA0 — Be a good ecosystem citizen (now, quietly) · `✅ READY`
 **Depends on:** nothing — **do now**; runs continuously.
 **Goal:** by the time you approach, the groundwork already says "serious Claude build" — no
 manufactured pitch needed.
@@ -48,7 +53,7 @@ manufactured pitch needed.
 **Result check:** organic signals — a devrel/ecosystem person engaging unprompted is the leading
 indicator that M4 outreach will land.
 
-### MA1 — Apply for Anthropic credits (the soft, early touch)
+### MA1 — Apply for Anthropic credits (the soft, early touch) · `📝 DRAFT`
 **Depends on:** **M1** (a live public demo is enough proof) — part of the M2 funding track.
 **Goal:** the lowest-stakes Anthropic contact — a credits application, not a feature ask.
 **Do:** apply for **Anthropic self-serve / promo credits** with the live station as proof (alongside
@@ -57,8 +62,9 @@ uses Claude for, the live link.
 **Done-when:** the application is submitted.
 **Result check:** submitted ✓; approval = a bonus and a warm early data point, not a gate.
 
-### MA2 — The case study (the artifact devrel actually shares)
-**Depends on:** **Phase D / pre-M4** (Claude drafts, you own and publish).
+### MA2 — The case study (the artifact devrel actually shares) · `📝 DRAFT`
+**Depends on:** **Phase D / pre-M4** (Claude drafts, you own and publish). *(Spine = the DEVLOG read
+oldest-first; it's already accumulating that arc.)*
 **Goal:** the **"I had Claude Code build a 600-year-future civilization"** writeup — the single asset
 Anthropic-adjacent channels reshare.
 **Do:** an honest, technical narrative — the multi-agent writers' room, the world clock, the safety
@@ -67,7 +73,7 @@ Lead with the engineering and the honesty, not the hype.
 **Done-when:** the case study is published and linkable.
 **Result check (2wk):** reshares into dev/AI circles; it becomes the link you hand devrel in MA4.
 
-### MA3 — The Cookbook PR (the one direct door)
+### MA3 — The Cookbook PR (the one direct door) · `📝 DRAFT`
 **Depends on:** **Phase D** (the writers' room is solid + generalizable) + **M4**.
 **Goal:** contribute a **genuinely useful guide** to the **Anthropic Cookbook** — *a multi-agent
 writers' room with the Agent SDK* — extracted from the real station. A contribution, **not** a
@@ -79,7 +85,7 @@ repo's contribution guidelines. Reference the station lightly as the origin, not
 **Result check:** PR engagement/merge; this is the most durable, highest-credibility touch — it puts
 you *inside* Anthropic's own docs.
 
-### MA4 — The devrel note (artifact-first, ask-last)
+### MA4 — The devrel note (artifact-first, ask-last) · `📝 DRAFT`
 **Depends on:** **M4** — only *after* visible traction (the launch spike + M3 retention holding).
 **Goal:** a short, warm note that asks to be *considered* — once.
 **Do:** a brief message to Anthropic devrel with: the live link, the case study, one line on why it's
@@ -101,7 +107,7 @@ artifact; the ask is the last sentence.** Send once; don't follow up more than o
 **Result check:** a reply; a feature is the win (the DM / commercial goal). No reply → the artifact
 keeps working; don't chase.
 
-### MA5 — The amplifier path (indirect, parallel to M4)
+### MA5 — The amplifier path (indirect, parallel to M4) · `📝 DRAFT`
 **Depends on:** **M4** (the hero clip + case study exist).
 **Goal:** reach Anthropic *through* the ecosystem — the AI newsletters and community amplifiers who
 surface Claude builds.
@@ -116,14 +122,14 @@ path to the feature.
 
 ## Dependency map (Anthropic → phases)
 
-| Task | Depends on | Touch type |
-|------|-----------|-----------|
-| MA0 Good citizen | — (now) | ongoing groundwork |
-| MA1 Credits application | **M1** | soft / factual |
-| MA2 Case study | **Phase D / pre-M4** | the shareable artifact |
-| MA3 Cookbook PR | **Phase D + M4** | the direct door |
-| MA4 Devrel note | **M4** | the one ask |
-| MA5 Amplifier path | **M4** | indirect |
+| Task | Depends on | Status | Touch type |
+|------|-----------|--------|-----------|
+| MA0 Good citizen | — (now) | ✅ READY | ongoing groundwork |
+| MA1 Credits application | **M1** | 📝 DRAFT | soft / factual |
+| MA2 Case study | **Phase D / pre-M4** | 📝 DRAFT | the shareable artifact |
+| MA3 Cookbook PR | **Phase D + M4** | 📝 DRAFT | the direct door |
+| MA4 Devrel note | **M4** | 📝 DRAFT | the one ask |
+| MA5 Amplifier path | **M4** | 📝 DRAFT | indirect |
 
 ## What to track (binary, like the M-milestones)
 - [ ] Credits application submitted (MA1)

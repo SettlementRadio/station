@@ -14,6 +14,21 @@ and the *funding button* wait on later phases.
 
 **The in-world year is `real year + 600` → 2626 in 2026.**
 
+**Status legend + the real repo facts (validated 2026-06-23):** `✅ READY` = the copy below is checked
+against the actual repo; `📝 DRAFT` = waits on a later phase. The ground truth:
+- **Org `SettlementRadio`, one repo `station`** at `github.com/SettlementRadio/station` — *already
+  pushed and public*. It's a **monorepo** (folders `src/`, `web/`, `docs/`, `assets/`, …), **not**
+  several repos — fix any copy that implies multiple.
+- **Licenses already in place:** **`LICENSE-CODE` = Apache-2.0**, **`LICENSE-CONTENT` = CC BY-SA 4.0**
+  (the world is *already* share-alike). Badges/copy must say Apache-2.0 + CC BY-SA 4.0 (not MIT / CC BY).
+- **The `README.md` already exists and is strong** (carries the tribute, a "Built in the open with
+  Claude Code" section, the disclosure mechanism, a License section). So MG3 is **polish, not a
+  rewrite**.
+- **Brand art exists** in `assets/brand/` (png + svg + favicon + tokens) — reuse it for avatar /
+  banner / social preview; don't make new marks.
+- **Handle/disclosure:** the canonical on-screen disclosure is `DISCLOSURE_LINE` from
+  `src/disclosure.py`: *"Settlement Radio is a work of fiction, written and voiced by AI."*
+
 ---
 
 ## Audience, goal, what "good" looks like
@@ -32,10 +47,12 @@ and the *funding button* wait on later phases.
 
 ## The tasks
 
-### MG0 — Org visual identity
-**Depends on:** nothing — **do now.**
+### MG0 — Org visual identity · `✅ READY`
+**Depends on:** nothing — **do now.** *(Org `SettlementRadio` already exists with repo `station`
+pushed — this is dressing it, not creating it.)*
 **Goal:** the org page looks like a real outfit, not a personal scratch account.
-**Assets:** org avatar = the beacon mark (same as X/YouTube avatar, square); a profile banner image.
+**Assets:** org avatar = the beacon mark from `assets/brand/` (same as X/YouTube avatar, square); a
+profile banner from the same brand kit.
 **Do — set on the org:**
 - **Display name:** `Settlement Radio`
 - **Avatar:** the beacon mark (consistent across all platforms).
@@ -47,7 +64,7 @@ and the *funding button* wait on later phases.
 **Done-when:** name, avatar, description, verified domain, and URL are all set.
 **Result check:** n/a — confirm the org page reads clearly to a stranger.
 
-### MG1 — Org profile README (the org landing page)
+### MG1 — Org profile README (the org landing page) · `✅ READY`
 **Depends on:** nothing — **do now** (live link added later at MG6).
 **Goal:** the org page itself tells the story — most visitors hit the org before any single repo.
 **How:** create a repo named **`.github`** in the org with **`profile/README.md`** — GitHub renders
@@ -72,78 +89,70 @@ A love letter to 20th-century science fiction — the golden-age and new-wave au
 imagined the future. We honor their *spirit*, never their work: an original world, no
 franchise, no borrowed IP.
 
-### What's here
-- **[station](../station)** — the Python pipeline: the writers' room, the world clock,
-  the safety + continuity gates, playout.
-- **web** — the Next.js site at settlementradio.com.
+### What's here — one repo, [`station`](https://github.com/SettlementRadio/station)
+- **`src/`** — the Python pipeline: the writers' room, the world clock, the safety +
+  continuity gates, the scheduler, playout.
+- **`web/`** — the Next.js site at settlementradio.com.
+- **`docs/`** — the canon, the architecture, and the build log (DEVLOG).
 
-> 🤖 AI-generated fiction, voiced with AI.
+> 🤖 Settlement Radio is a work of fiction, written and voiced by AI.
 ```
 **Done-when:** the org page shows the banner + premise + links.
 **Result check:** load the org page logged-out — does a stranger get it instantly?
 
-### MG2 — Station repo: visuals + metadata
-**Depends on:** nothing — **do now.**
+### MG2 — Station repo: visuals + metadata · `✅ READY`
+**Depends on:** nothing — **do now.** *(One repo: `station`.)*
 **Goal:** the repo looks intentional in search results, when shared, and on the org page.
 **Asset:** a **social preview image** (1280×640) — wordmark + one-line premise; shown whenever the
-repo URL is shared anywhere.
-**Do on the repo:**
+repo URL is shared anywhere. Build it from `assets/brand/`.
+**Do on the `station` repo:**
 - **Description:** `AI sci-fi radio from 2626 — synthetic DJs, an original world, built entirely by Claude Code.`
 - **Website field:** `https://settlementradio.com`
 - **Topics:** `ai`, `claude`, `anthropic`, `generative-ai`, `radio`, `text-to-speech`,
   `science-fiction`, `liquidsoap`, `python`, `agents`.
 - **Social preview:** upload the 1280×640 image (Settings → Social preview).
-- **Pin** the station + web repos on the org page (Customize pinned).
-**Done-when:** description, website, topics, and social preview are set; key repos pinned.
+- **Pin** the `station` repo (and the `.github` repo once MG1 creates it) on the org page.
+**Done-when:** description, website, topics, and social preview are set; the repo is pinned.
 **Result check:** paste the repo URL into X/Slack — does the preview card look sharp?
 
-### MG3 — The README as the story (the artifact's front door)
-**Depends on:** nothing for the rewrite — **do now**; the live badge slots in at MG6.
-**Goal:** the README answers *what / why / is it real / how do I run it* without endless scrolling —
-this is the page Anthropic devrel will actually read.
-**Asset:** a README header image (reuse the social-preview art) + status badges.
-**Do — structure the README top as:**
-```markdown
-<div align="center">
-  <img src=".github/header.png" alt="Settlement Radio" width="100%" />
-
-  # Settlement Radio
-
-  **A 24/7 AI sci-fi radio station broadcasting from the year 2626.**
-  Synthetic DJs · an original world · every word written by Claude · built entirely by Claude Code.
-
-  *A love letter to 20th-century science fiction — broadcasting from the future it imagined.*
-
-  <!-- add at MG6: [![Live](badge)](LINK) -->
-  ![License](https://img.shields.io/badge/code-MIT-blue)
-  ![World](https://img.shields.io/badge/world-CC%20BY%204.0-green)
-  ![Built with Claude Code](https://img.shields.io/badge/built%20with-Claude%20Code-d97757)
-</div>
-```
-Then, in order: **What it is** (the premise + the two hooks) → **How it works** (a 5-line tour: the
-world clock, the writers' room, the safety + continuity gates, playout) → **Run it locally** (the
-existing setup steps) → **The world** (link CANON) → **Disclosure** (AI-generated fiction) →
-**License** (link MG4). Keep the agentic-build story *up top* — it's the differentiator.
-**Done-when:** the README leads with the story + badges and a stranger can follow it to a running
-station.
+### MG3 — README polish (NOT a rewrite — it already exists & is strong) · `✅ READY`
+**Depends on:** nothing — **do now**; the live badge slots in at MG6.
+**Reality:** `README.md` already leads with the wordmark + tagline, the premise, a "Built in the open
+with Claude Code" section, the disclosure mechanism, and a License section. It already carries the
+tribute. **Don't rewrite it — add three small things and fix one wording drift:**
+1. **Status badges** under the title (use the *real* licenses):
+   ```markdown
+   <!-- add at MG6: [![Live](badge)](LINK) -->
+   ![Code: Apache-2.0](https://img.shields.io/badge/code-Apache--2.0-blue)
+   ![World: CC BY-SA 4.0](https://img.shields.io/badge/world-CC%20BY--SA%204.0-green)
+   ![Built with Claude Code](https://img.shields.io/badge/built%20with-Claude%20Code-d97757)
+   ```
+2. **The motto line** under the tagline (one italic line):
+   *A love letter to 20th-century science fiction — broadcasting from the future it imagined.*
+3. **Align the disclosure wording:** the README currently says "work of fiction, **generated with
+   AI**" — change to the canonical **"a work of fiction, written and voiced by AI"** so README, air,
+   site, and YouTube all match (`src/disclosure.py` `DISCLOSURE_LINE`).
+**Done-when:** badges + motto line are in, and the disclosure wording matches everywhere.
 **Result check:** hand the README to someone who's never seen the project — can they explain it back?
 
-### MG4 — Licensing clarity (code vs. world)
-**Depends on:** nothing — **do now** (the repo is already public; this protects the IP boundary).
-**Goal:** make the tribute / original-world boundary legally explicit and signal seriousness.
-**Do:**
-- **Code:** `LICENSE` = **MIT** (simple, expected for indie dev tooling).
-- **The written world (docs/CANON + generated lore):** **CC BY 4.0**, stated in a `LICENSE-CONTENT`
-  or a README "License" section — it's an *original* world offered as tribute. *(Community-contributed
-  worldbuilding later moves to **CC BY-SA** — Phase F; see `docs/MARKETING.md` §4. Don't add that
-  agreement until it triggers.)*
-- One README line: *"Code is MIT. The world (canon and generated lore) is original and licensed
-  CC BY 4.0 — a tribute to the genre, not derived from any franchise or author's work."*
-**Done-when:** `LICENSE` exists and the README states the code/world split.
+### MG4 — Licensing clarity (code vs. world) · `✅ READY — already done, just verify`
+**Reality:** the split **already exists in the repo** and is correct — don't recreate it:
+- **Code:** `LICENSE-CODE` = **Apache-2.0**.
+- **The written world** (canon + generated lore): `LICENSE-CONTENT` = **CC BY-SA 4.0** (already
+  share-alike — *not* "CC BY 4.0 now, share-alike later"; the world is share-alike today).
+- The README License section already names both.
+**Do (just confirm + one tweak):** make sure the README's one-line framing makes the *tribute*
+explicit, e.g.: *"Code is Apache-2.0; the world (canon and generated lore) is original and licensed
+CC BY-SA 4.0 — a tribute to the genre, not derived from any franchise or author's work."*
+**Note — this corrects `docs/MARKETING.md §4` and the ROADMAP Phase-F note**, which still imply the
+CC BY-SA agreement is future; it's already in force. (Flag to fix — see summary.)
+**Done-when:** the README's license line reads as the tribute/original-world boundary, citing the two
+real files.
 **Result check:** the IP boundary is unambiguous to a lawyer-brained reader.
 
-### MG5 — Community health + discoverability
-**Depends on:** nothing — **do now.** Keep it light.
+### MG5 — Community health + discoverability · `✅ READY`
+**Depends on:** nothing — **do now.** Keep it light. *(No `CONTRIBUTING.md`/`CODE_OF_CONDUCT.md` in
+the repo yet — these are net-new.)*
 **Goal:** the repo looks maintained and is findable, without inviting work you can't handle solo.
 **Do:**
 - `CONTRIBUTING.md` — short and honest: *"Settlement Radio is built in public but not yet taking
@@ -154,17 +163,17 @@ station.
 **Done-when:** the two community files exist; the repo's "community profile" looks complete.
 **Result check:** the repo doesn't read as abandoned or as begging for PRs.
 
-### MG6 — Wire the live demo + funding (launch)
+### MG6 — Wire the live demo + funding (launch) · `📝 DRAFT`
 **Depends on:** **C9** (soak passed) → milestone **M1**, coordinated with X **MX10** / YouTube
-**MY6**.
+**MY6**. *(Re-validate against the C9 DEVLOG entry; fill the real live link.)*
 **Goal:** turn the repo from "a build" into "a live thing you can listen to and support."
 **Do:**
 - Add the **▶ Listen live** badge/link (YouTube + settlementradio.com) to the README **and** the org
   profile README (the placeholders left in MG1/MG3).
-- Add **`.github/FUNDING.yml`** so the Sponsor button appears:
+- Add **`.github/FUNDING.yml`** so the Sponsor button appears (org is `SettlementRadio`):
   ```yaml
   ko_fi: settlementradio
-  github: [settlementradio]
+  github: [SettlementRadio]
   ```
 - Tag a **release** (e.g. `v1.0-soft-launch`) with a short note — a public milestone marker and a
   clean point to link.
@@ -172,7 +181,7 @@ station.
 **Result check (1wk):** repo **traffic + referral sources** (Insights → Traffic) around launch —
 where are clicks coming from? Stars are a secondary signal.
 
-### MG7 — Anthropic Cookbook PR *(forward pointer — Phase D / M4)*
+### MG7 — Anthropic Cookbook PR *(forward pointer — Phase D / M4)* · `📝 DRAFT`
 **Depends on:** **DM / M4** — *not* this phase. The one concrete *direct* door to Anthropic: a
 genuinely useful guide (the multi-agent writers'-room with the Agent SDK) contributed to the
 **Anthropic Cookbook**. Full treatment lives in the **Anthropic-outreach** doc (Q6), since it's
@@ -182,16 +191,16 @@ about *how you approach the big guys*, not org hygiene. Listed here only so the 
 
 ## Dependency map (GitHub → phases)
 
-| Task | Depends on | Type |
-|------|-----------|------|
-| MG0 Org identity | — (now) | visual/setup |
-| MG1 Org profile README | — (now) | visual/content |
-| MG2 Repo visuals + metadata | — (now) | visual/setup |
-| MG3 README as story | — (now) | content |
-| MG4 Licensing | — (now) | legal/IP |
-| MG5 Community health | — (now) | hygiene |
-| MG6 Live link + funding | **C9 / M1** | launch wiring |
-| MG7 Cookbook PR | **DM / M4** | → Anthropic doc |
+| Task | Depends on | Status | Type |
+|------|-----------|--------|------|
+| MG0 Org identity | — (now) | ✅ READY | visual/setup |
+| MG1 Org profile README | — (now) | ✅ READY | visual/content |
+| MG2 Repo visuals + metadata | — (now) | ✅ READY | visual/setup |
+| MG3 README polish | — (now) | ✅ READY | content |
+| MG4 Licensing | — (already done) | ✅ READY (verify) | legal/IP |
+| MG5 Community health | — (now) | ✅ READY | hygiene |
+| MG6 Live link + funding | **C9 / M1** | 📝 DRAFT | launch wiring |
+| MG7 Cookbook PR | **DM / M4** | 📝 DRAFT | → Anthropic doc |
 
 ## What to track
 

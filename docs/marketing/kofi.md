@@ -20,11 +20,16 @@ Strategy: `docs/MARKETING.md` (§4 funding, §6 tooling). Sequence: `docs/ROADMA
 **Audience:** existing followers and first listeners who already care — *not* a growth channel. The
 job is conversion of goodwill, framed in the station's voice.
 
+**Status legend (validated 2026-06-24):** `✅ READY` = actionable now; `📝 DRAFT` = gated on the soft
+launch (C9 / M1), validate then. Only **MK0** is actionable now — and even MK0 stays *dark* (built
+but linked nowhere) until M1, by design. GitHub Sponsors pairs with this via `FUNDING.yml` (org
+handle **`SettlementRadio`**, Ko-fi handle **`settlementradio`** — confirm the Ko-fi handle is free).
+
 ---
 
 ## The tasks
 
-### MK0 — Build the page, keep it dark
+### MK0 — Build the page, keep it dark · `✅ READY`
 **Depends on:** nothing — **do now** (but don't link it anywhere yet).
 **Goal:** the page is ready and on-brand so launch day is one switch, not a scramble.
 **Do:**
@@ -41,7 +46,7 @@ job is conversion of goodwill, framed in the station's voice.
 **Done-when:** the page exists, is on-brand, and is *not* yet linked from any channel.
 **Result check:** n/a — confirm it looks intentional next to the site/X/YouTube.
 
-### MK1 — Go live at the soft launch
+### MK1 — Go live at the soft launch · `📝 DRAFT`
 **Depends on:** **C9 / M1** — fires *with* X **MX10**, YouTube **MY6**, site **MS3**.
 **Goal:** turn on support the moment there's a living station to support.
 **Do — light the buttons everywhere at once:**
@@ -57,7 +62,7 @@ job is conversion of goodwill, framed in the station's voice.
 **Result check (1wk):** click-through from each surface (which one converts?), first supporters,
 one-off vs. recurring split. Keep expectations low — *any* support this early is signal, not income.
 
-### MK2 — Milestone-framed asks (ongoing, from M1)
+### MK2 — Milestone-framed asks (ongoing, from M1) · `📝 DRAFT`
 **Depends on:** **M1+** (a live station with milestones to point at).
 **Goal:** make support feel like *funding a specific thing*, not charity — the framing that actually
 converts.
@@ -76,11 +81,11 @@ converts.
 
 ## Dependency map
 
-| Task | Depends on | Job |
-|------|-----------|-----|
-| MK0 Build page, keep dark | — (now) | ready, on-brand, unlinked |
-| MK1 Go live | **C9 / M1** | light all buttons at once |
-| MK2 Milestone asks | **M1+** | fund a *specific thing* |
+| Task | Depends on | Status | Job |
+|------|-----------|--------|-----|
+| MK0 Build page, keep dark | — (now) | ✅ READY | ready, on-brand, unlinked |
+| MK1 Go live | **C9 / M1** | 📝 DRAFT | light all buttons at once |
+| MK2 Milestone asks | **M1+** | 📝 DRAFT | fund a *specific thing* |
 
 ## What to track
 Click-through per surface, supporter count (one-off vs. recurring), and whether recurring support

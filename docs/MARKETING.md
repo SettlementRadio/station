@@ -206,8 +206,9 @@ they won't fund the project alone.
 - **Donations:** Ko-fi + GitHub Sponsors at M1; frame asks in the station's voice, tied to concrete
   milestones ("fund the next DJ"); keep a supporters page and a "Powered by" (not "Sponsored by")
   credit line.
-- **Community-contribution licensing:** if/when Phase F opens inbound worldbuilding, a **CC BY-SA**
-  contributor agreement is the intended model — draft it then; it does not exist yet.
+- **Community-contribution licensing:** the world is **already licensed CC BY-SA 4.0** (the repo's
+  `LICENSE-CONTENT`); code is **Apache-2.0** (`LICENSE-CODE`). Phase F just *opens inbound*
+  contributions under that existing share-alike license — no new agreement to invent.
 
 **Application status** (keep current here, so M2's boxes are auditable):
 

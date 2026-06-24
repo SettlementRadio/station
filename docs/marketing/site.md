@@ -18,6 +18,16 @@ page that asks for an email *and* a play *and* a donation converts on none of th
 **In-world year = `real year + 600` → 2626 in 2026.** The current copy says "late 27th century" —
 consistent; keep it relative, never hardcode a year.
 
+**Status legend + real `/web` facts (validated 2026-06-23):** `✅ READY` = checked against the actual
+app; `📝 DRAFT` = waits on later tech. Ground truth in `web/`:
+- **The C3 disclosure is already wired:** `web/src/lib/disclosure.ts` exports the canonical
+  `DISCLOSURE_LINE` ("…written and voiced by AI") **and** a `DISCLOSURE_TAGLINE` ("A tribute to the
+  science fiction that imagined us here"); `page.tsx` already renders both. → **MS2 is effectively
+  done.**
+- **No analytics installed yet** → MS0 is genuinely net-new.
+- Current copy: tagline *"Late-night radio from the far future,"* body *"Broadcasting soon…"* — MS1
+  updates the body to "nearly on air."
+
 **The motto belongs on the site more than anywhere** (it's the surface you own): *"A love letter to
 20th-century science fiction — broadcasting from the future it imagined."* The current page already
 carries a tribute line ("a tribute to the science fiction that imagined us here") — keep that spirit
@@ -36,8 +46,8 @@ people into the email list before launch.** That's the whole point of Stage 0 �
 
 ## The stages
 
-### MS0 — Instrument it (add analytics)
-**Depends on:** nothing — **do now.**
+### MS0 — Instrument it (add analytics) · `✅ READY`
+**Depends on:** nothing — **do now.** *(Confirmed net-new: no analytics in `web/` today.)*
 **The job:** start measuring *before* there's traffic, so the **returning-visitor** baseline (the
 north-star signal, and the thing M3/retention is judged on) has history by launch.
 **Build delta:** add **Plausible** (lightweight, privacy-friendly, no cookie banner) to the app.
@@ -46,8 +56,9 @@ Define two goals: `signup` (email captured) and later `listen` (play pressed).
 **Result check:** weekly returning-visitor % and referral sources are visible. (Required by M1 at the
 latest — earlier just gives more baseline.)
 
-### MS1 — "Nearly on air" (build anticipation)
-**Depends on:** **C1** (a clean, continuity-passing clip exists) — aligns with milestone **M0**.
+### MS1 — "Nearly on air" (build anticipation) · `✅ READY`
+**Depends on:** **C1** (a clean clip exists). The optional embed uses the real
+`segments/convo-20260622T224629.mp3` (same source as MX2/MY2) — aligns with milestone **M0**.
 **Audience:** the curious who arrive from your first X/YouTube posts. **The job:** convert that
 warmed attention into email signups by proving the station is *real and imminent* — still one job
 (email), just a stronger pitch.
@@ -65,17 +76,22 @@ warmed attention into email signups by proving the station is *real and imminent
 **Result check (2wk):** **signup conversion rate** before vs. after the clip — does hearing it lift
 subscribes?
 
-### MS2 — Match the disclosure to the broadcast
-**Depends on:** **C3** (the spoken disclosure ident is finalized).
+### MS2 — Match the disclosure to the broadcast · `✅ READY — already done, just verify`
+**Depends on:** **C3** (done).
 **The job:** the site's disclosure line and the on-air spoken ident must say the **same thing** —
 one consistent, honest voice (EU AI Act Art. 50 + the CLAUDE.md rule).
-**Build delta (tiny):** align the existing disclosure copy with the final C3 ident wording (e.g.
-"Settlement Radio — a work of fiction, voiced with AI").
-**Done-when:** the site line matches the spoken/on-player/YouTube-description disclosure verbatim.
-**Result check:** the four disclosure surfaces (spoken · player · site · YouTube) are word-identical.
+**Reality:** C3 already did this. `web/src/lib/disclosure.ts` holds `DISCLOSURE_LINE` ("Settlement
+Radio is a work of fiction, written and voiced by AI") — matching the backend `DISCLOSURE_LINE` — and
+`page.tsx` renders it (plus a `DISCLOSURE_TAGLINE` that already carries the tribute). **Nothing to
+build; just keep the two strings mirrored** (they live on opposite sides of the web/backend seam) if
+either ever changes, and reuse `DISCLOSURE_LINE` on the C8 player (MS3).
+**Done-when:** verified the site line == backend `src/disclosure.py` `DISCLOSURE_LINE` (it does today).
+**Result check:** the four disclosure surfaces (spoken · player · site · YouTube) say the same thing.
 
-### MS3 — The live player (the big one) — LAUNCH
-**Depends on:** **C7** (the stream exists) + **C8** (the player is built) + **C9** (soak passed).
+### MS3 — The live player (the big one) — LAUNCH · `📝 DRAFT`
+**Depends on:** **C7** (the stream exists) + **C8** (the player is built) + **C9** (soak passed). *(All
+three pending — re-validate against the C7/C8 DEVLOG entries; reuse `DISCLOSURE_LINE` from
+`web/src/lib/disclosure.ts`.)*
 **This is the site half of milestone M1**, coordinated with X **MX10** / YouTube **MY6** / Ko-fi.
 **Audience:** first real visitors arriving from the soft launch. **The job changes to exactly one new
 thing: press play — and have a reason to come back.** Support is secondary; email stays available.
@@ -98,7 +114,7 @@ support/follow links — on the existing Vercel app.
 **Result check (1wk):** the **`listen` goal** (play-press rate), time-on-page, **returning visitors**
 (north star), and Ko-fi click-through. Log the launch-week baseline — M3 is measured against it.
 
-### MS4 — Surface the living world (depth = retention)
+### MS4 — Surface the living world (depth = retention) · `📝 DRAFT`
 **Depends on:** **Phase D** (the world engine + news desk + the read-only status console).
 **Audience:** returning + first-time listeners deciding whether to come back. **The job: give a
 reason to return** — show that the world is *alive*, not a loop. This is what actually moves the M3
@@ -113,7 +129,7 @@ retention needle.
 **Result check:** **returning-visitor %** trend (does depth lift it?) + time-on-page + Ko-fi
 conversion.
 
-### MS5 — Two-way (listener interaction)
+### MS5 — Two-way (listener interaction) · `📝 DRAFT`
 **Depends on:** **Phase E** (listener interaction + the control surface).
 **Audience:** an engaged returning audience. **The job: let listeners into the world** — the canon's
 "letters between worlds," made real.
@@ -130,13 +146,13 @@ on air.
 
 | Stage | Depends on | The site's one job | Status |
 |-------|-----------|--------------------|--------|
-| Stage 0 coming-soon | — | capture emails | **live** |
-| MS0 Analytics | — (now) | start measuring | |
-| MS1 "Nearly on air" | **C1 / M0** | stronger email pitch (+ clip) | |
-| MS2 Disclosure match | **C3** | one honest voice | |
-| MS3 Live player (M1) | **C7+C8+C9** | **press play + return** | |
-| MS4 Living world | **Phase D** | a reason to come back | |
-| MS5 Two-way | **Phase E** | let listeners in | |
+| Stage 0 coming-soon | — | capture emails | ✅ **live** |
+| MS0 Analytics | — (now) | start measuring | ✅ READY |
+| MS1 "Nearly on air" | **C1 / M0** | stronger email pitch (+ clip) | ✅ READY |
+| MS2 Disclosure match | **C3** | one honest voice | ✅ READY (done) |
+| MS3 Live player (M1) | **C7+C8+C9** | **press play + return** | 📝 DRAFT |
+| MS4 Living world | **Phase D** | a reason to come back | 📝 DRAFT |
+| MS5 Two-way | **Phase E** | let listeners in | 📝 DRAFT |
 
 ## What to track (the site owns the north star)
 

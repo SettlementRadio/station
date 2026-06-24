@@ -14,6 +14,12 @@ until Phase D.
 
 **The in-world year is `real year + 600` → 2626 in 2026.** Bump it if you publish in a later year.
 
+**Status legend (validated 2026-06-23, against C0–C3 + C2.5 done and the DEVLOG):** `✅ READY` = tech
+built + copy checked against reality, safe once the asset is cut. `📝 DRAFT` = tech not built yet;
+re-validate against the DEVLOG when its C-task lands. **The real YouTube handle is `@SettlementRadio`**
+(per the live site); the on-air/written disclosure is the canonical line from `src/disclosure.py`:
+*"Settlement Radio is a work of fiction, written and voiced by AI."* — use it verbatim everywhere.
+
 > **⚠️ Do this on day one, before anything else:** in YouTube Studio, **enable live streaming** on
 > the channel (Settings → Channel → Feature eligibility → "Live stream"). It needs phone
 > verification and there's a **~24h activation delay** — so turn it on now or C7 will stall waiting
@@ -63,16 +69,16 @@ until Phase D.
 
 ## The tasks
 
-### MY0 — Channel foundation
+### MY0 — Channel foundation · `✅ READY`
 **Depends on:** nothing — **do now** (and enable live streaming, see the ⚠️ box).
 **Goal:** a channel that explains itself in one glance and is technically ready to stream.
 **Assets:** avatar (beacon mark, 800×800), banner, a default thumbnail template.
 **Do — set these:**
-- **Handle / name:** `@settlementradio` / `Settlement Radio`
+- **Handle / name:** `@SettlementRadio` / `Settlement Radio` (the existing handle — confirm it).
 - **Description (About):**
   > Settlement Radio is a 24/7 AI science-fiction radio station broadcasting from the year 2626 — 600 years ahead of now. Two synthetic DJs, Vell and Wren, host an original future world, with every word written by Claude and the whole station built by Claude Code.
   >
-  > A love letter to 20th-century science fiction — the golden-age and new-wave authors who imagined the future. An original world, broadcasting from inside it. This channel is AI-generated fiction, voiced with AI.
+  > A love letter to 20th-century science fiction — the golden-age and new-wave authors who imagined the future. An original world, broadcasting from inside it. Settlement Radio is a work of fiction, written and voiced by AI.
   >
   > 🌐 settlementradio.com
 - **Links:** website (settlementradio.com), X. (Add Ko-fi at MY6, not before.)
@@ -81,34 +87,36 @@ until Phase D.
 enabled (or pending the 24h activation).
 **Result check:** n/a — confirm it reads clearly on mobile.
 
-### MY1 — Channel trailer (the "what is this" for non-subscribers)
+### MY1 — Channel trailer (the "what is this" for non-subscribers) · `✅ READY`
 **Depends on:** **C1** (needs a clean, continuity-passing clip).
 **Goal:** a 30–60s loop that hooks a first-time visitor and explains the premise.
 **Asset:** a 30–60s branded video: 2–3 lines of real DJ audio over the brand still, captioned, with
-a one-line premise card at the end.
+a one-line premise card at the end. **Source audio exists:** `segments/convo-20260622T224629.mp3`
+(the Vell↔Wren talk) — pick 2–3 lines, still needs cutting + the brand still.
 **Title:** `Settlement Radio — live from the year 2626 🛰️`
 **Description:**
-> A 24/7 AI sci-fi radio station broadcasting 600 years in the future. Two synthetic DJs, an original world, every word written by Claude — built entirely by Claude Code.
+> A 24/7 AI sci-fi radio station broadcasting 600 years in the future. Two synthetic DJs, an original world, every word written by Claude — built entirely by Claude Code. A love letter to 20th-century science fiction.
 >
-> This is AI-generated fiction, voiced with AI. 🌐 settlementradio.com
+> Settlement Radio is a work of fiction, written and voiced by AI. 🌐 settlementradio.com
 **Done-when:** uploaded and set as the **channel trailer** (Customization → Layout → "Video
 spotlight" for non-subscribers).
 **Result check (1wk):** trailer view count + the subscribe-conversion on the channel page.
 
-### MY2 — Short: the first conversation
-**Depends on:** **C1.** Shares source audio with X task **MX2**.
+### MY2 — Short: the first conversation · `✅ READY`
+**Depends on:** **C1.** Shares source audio with X task **MX2**: `segments/convo-20260622T224629.mp3`
+— cut a 9:16 vertical slice (the *same* source as the MX2 audiogram, different crop). Verify by ear.
 **Audience:** discovery (cold viewers). **Goal:** the personality hook, vertical, for reach.
 **Asset:** 9:16, ≤45s, the best slice of the Vell↔Wren exchange, big captions.
 **Frame-1 hook caption:** `Two AI DJs, talking to each other. In the year 2626.`
 **Title:** `Two AI radio DJs have a real conversation 🛰️ #scifi #ai`
 **Description:**
-> Vell and Wren host Settlement Radio — a 24/7 AI sci-fi station broadcasting from 2626. Every word written by Claude, built by Claude Code. AI-generated fiction. Full station: settlementradio.com
+> Vell and Wren host Settlement Radio — a 24/7 AI sci-fi station broadcasting from 2626. Every word written by Claude, built by Claude Code. A work of fiction, written and voiced by AI. Full station: settlementradio.com
 **Done-when:** published as a Short.
 **Result check (72h):** **views + average view duration** (did they watch past 2s?) + any subs from
 it. This is your benchmark Short — log it.
 
-### MY3 — Short: it knows what year it is
-**Depends on:** **C1.** Shares the idea with X task **MX4**.
+### MY3 — Short: it knows what year it is · `✅ READY`
+**Depends on:** **C1** (framing) + B2 (the relative-time renderer). Shares the idea with X task **MX4**.
 **Goal:** lead with the single most distinctive concept — the most "wait, what?" hook for cold reach.
 **Asset:** 9:16, ≤40s — a line aging "in five days" → "tonight" → "yesterday," or text-animated.
 **Frame-1 hook caption:** `This radio station is living 600 years in the future. In real time.`
@@ -118,8 +126,9 @@ it. This is your benchmark Short — log it.
 **Result check (72h):** views + shares (this is the most shareable concept — watch for it
 outperforming MY2).
 
-### MY4 — Short: meet the voices
-**Depends on:** **C6** (the chosen launch voice). Shares source with X task **MX9**.
+### MY4 — Short: meet the voices · `📝 DRAFT`
+**Depends on:** **C6** (the chosen launch voice). Shares source with X task **MX9**. *(Re-validate
+against the C6 DEVLOG decision — hinges on which voice ships.)*
 **Goal:** humanize Vell + Wren right before launch.
 **Asset:** 9:16, ≤45s — the Vell→Wren handover (night into first light) in the launch voice.
 **Frame-1 hook caption:** `Meet the two voices of a station from the future.`
@@ -128,8 +137,9 @@ outperforming MY2).
 **Done-when:** published.
 **Result check (72h):** view duration vs. MY2 benchmark — voice attachment should lift it.
 
-### MY5 — Build & configure the 24/7 live stream (private dry run)
-**Depends on:** **C7** (the RTMP relay exists) + **C3** (disclosure copy ready).
+### MY5 — Build & configure the 24/7 live stream (private dry run) · `📝 DRAFT`
+**Depends on:** **C7** (the RTMP relay exists — *not built yet*) + **C3** (disclosure copy — ✅ done,
+wording fixed below). *(Re-validate against the C7 DEVLOG entry when the relay lands.)*
 **Goal:** a persistent, correctly-configured live broadcast — running, but **not announced**, during
 the soak.
 **Asset:** the live brand visual (beacon/wordmark on night field, the C7 deliverable); a thumbnail.
@@ -139,9 +149,9 @@ the soak.
   > 🛰️ Settlement Radio — live 24/7 from the year 2626.
   > Two AI DJs, Vell (night) and Wren (first light), hosting an original future world. Every word written by Claude; the station built entirely by Claude Code.
   >
-  > ⚠️ AI-generated fiction, voiced with AI.
+  > ⚠️ Settlement Radio is a work of fiction, written and voiced by AI.
   > 🌐 settlementradio.com
-  > 🐦 Updates: [X LINK]
+  > 🐦 Updates: [X LINK — @settlement_ch]
   >
   > A love letter to 20th-century science fiction — broadcasting from the future it imagined.
 - **Category:** Music (or Science & Technology); **latency:** Normal; **Made for kids:** No;
@@ -152,9 +162,9 @@ disclosed description, and survives the soak unannounced.
 **Result check:** during the soak, confirm zero stream drops, no dead air on the YouTube side, and
 the disclosure is visible in the description.
 
-### MY6 — Go public: the live stream + first clips (soft launch)
+### MY6 — Go public: the live stream + first clips (soft launch) · `📝 DRAFT`
 **Depends on:** **C9** (soak passed). **This is milestone M1**, coordinated with X **MX10** and the
-Ko-fi go-live.
+Ko-fi go-live. *(Re-validate against the C7–C9 DEVLOG entries; fill the real Ko-fi link.)*
 **Goal:** open the doors — quietly, to your warmed audience.
 **Do:**
 - Flip the stream **public**, feature it on the channel, pin a welcome comment with the disclosure +
@@ -162,14 +172,15 @@ Ko-fi go-live.
 - Publish a **first live clip/Short** cut from the actual live broadcast.
 - Keep it soft — no Show HN, no big push (that's Phase D / M4).
 **Welcome-comment copy:**
-> Welcome to Settlement Radio — live 24/7 from the year 2626. AI-generated fiction, every word by Claude, built by Claude Code. 🌐 settlementradio.com · ✦ Support: [KO-FI LINK]
+> Welcome to Settlement Radio — live 24/7 from the year 2626. A work of fiction, written and voiced by AI; every word by Claude, built by Claude Code. 🌐 settlementradio.com · ✦ Support: [KO-FI LINK]
 **Done-when:** stream is public + featured, the welcome comment is pinned, the first live clip is up.
 **Result check (1wk):** **concurrent live viewers**, watch time, **returning viewers** (the
 north-star signal — pairs with Plausible on the site), subs. Log the launch-week baseline; M3
 (retention) is measured against it.
 
-### MY7 — "How it's made" (short explainer)
-**Depends on:** **C9** / soft-launch window (CM).
+### MY7 — "How it's made" (short explainer) · `📝 DRAFT`
+**Depends on:** **C9** / soft-launch window (CM). *(Script spine = the C0–C9 DEVLOG entries read in
+order; build it then.)*
 **Audience:** the curious + dev-adjacent. **Goal:** tell the agentic-build story in long-ish form —
 the *short* version; the full hero case study is Phase D / M4.
 **Asset:** a 3–5 min video — screen + voiceover (or captions): the premise, the world clock, the
@@ -185,16 +196,16 @@ subs + any reshare into dev circles.
 
 ## Dependency map (YouTube → Phase C)
 
-| Task | Depends on | Type | Public? |
-|------|-----------|------|---------|
-| MY0 Channel foundation | — (now) + enable live | setup | — |
-| MY1 Channel trailer | **C1** | video | public |
-| MY2 Short: conversation | **C1** | Short | public |
-| MY3 Short: knows the year | **C1** | Short | public |
-| MY4 Short: the voices | **C6** | Short | public |
-| MY5 Live stream config | **C7** (+C3) | live setup | unlisted (soak) |
-| MY6 Go public (M1) | **C9** | live + clip | **public** |
-| MY7 "How it's made" | **C9** / CM | long video | public |
+| Task | Depends on | Status | Type | Public? |
+|------|-----------|--------|------|---------|
+| MY0 Channel foundation | — (now) + enable live | ✅ READY | setup | — |
+| MY1 Channel trailer | **C1** | ✅ READY (cut clip) | video | public |
+| MY2 Short: conversation | **C1** | ✅ READY (cut clip) | Short | public |
+| MY3 Short: knows the year | **C1** | ✅ READY | Short | public |
+| MY4 Short: the voices | **C6** | 📝 DRAFT | Short | public |
+| MY5 Live stream config | **C7** (+C3) | 📝 DRAFT | live setup | unlisted (soak) |
+| MY6 Go public (M1) | **C9** | 📝 DRAFT | live + clip | **public** |
+| MY7 "How it's made" | **C9** / CM | 📝 DRAFT | long video | public |
 
 ## Running metrics log
 

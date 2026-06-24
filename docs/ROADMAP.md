@@ -221,8 +221,8 @@ some — the commercial goal, *sustained*.
 
 ## Phase F / BEYOND — The wider world (no dates; triggered by signals)
 
-- **Community worldbuilding** — open inbound contributions under a **CC BY-SA** contributor
-  agreement (the intended model; drafted when this triggers — see `docs/MARKETING.md` §4).
+- **Community worldbuilding** — open inbound contributions under the world's existing **CC BY-SA 4.0**
+  license (`LICENSE-CONTENT`; already in force — see `docs/MARKETING.md` §4).
 - **In-universe surfaces** — feeds, portals, new front-ends on the same world-state spine.
 - **The universe beyond one station** — each new surface is a fresh pack → Claude Code; the seams
   mean none of it is a rewrite.
