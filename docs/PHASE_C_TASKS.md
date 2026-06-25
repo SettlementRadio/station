@@ -71,7 +71,7 @@ Real song playout returns in D.
 ## C2.5 — Disk retention: garbage-collect aired segment audio
 **Goal:** bound `segments/` so a 24/7 station can't fill the VPS disk. C2 already prunes the
 *schedule* (aired entries leave the state + playlist), but the **mp3 files themselves are never
-deleted** — at ~1 MB/min of generated audio the 40 GB CX22 fills in a few weeks. C2.5 deletes aired,
+deleted** — at ~1 MB/min of generated audio the 80 GB CX33 fills in a couple of months. C2.5 deletes aired,
 unreferenced one-shot renders, and **nothing else**. (Independent of C3 — pickable any time after C2;
 doing it *after* C3 is ideal, since the shared disclosure ident it must protect already exists, so the
 protection rule is verifiable against real files.)
@@ -122,7 +122,8 @@ condition raises an alert.
 
 ## C5 — Deploy to the VPS (playout + DB + secrets + backups)
 **Goal:** the station runs on the always-on box, not your laptop.
-**Do:** provision Hetzner CX22. Install Postgres on the VPS; point `settings.database_url` at it;
+**Do:** provision the Hetzner VPS — a **CX33** (4 vCPU Intel/AMD, 8 GB RAM, 80 GB SSD, ~€11/mo;
+2026-06 decision, see below). Install Postgres on the VPS; point `settings.database_url` at it;
 **nightly `pg_dump` to object storage** (the world-state is the irreplaceable asset). **Back up
 `assets/` too** — curated, NON-regenerable media (jingles, brand kit; later the song catalog) belongs
 in object storage alongside the DB. **`segments/` is NOT backed up** — it's regenerable one-shot
@@ -132,6 +133,13 @@ unattended); services restart on reboot. Secrets in env only, non-world-readable
 (DB-URL pattern).
 **Done when:** the station runs on the VPS across a reboot, the DB **and `assets/`** are backed up
 nightly, the segment disk stays bounded across a long run, and no secret is world-readable or logged.
+**Box decision (2026-06).** Hetzner retired the old CX22 (2 vCPU / 4 GB / 40 GB, ~€4/mo); its direct
+successor is the **CX23** (same spec, €7.37/mo). We chose the **CX33** (4 vCPU / 8 GB / 80 GB,
+€11.06/mo) instead — pick an **Intel/AMD "CX"** line, not Ampere/ARM "CAX", for the best-tested
+Liquidsoap/ffmpeg/Kokoro support. Why upsize: C6 warns a 2-vCPU box may not finish a full day's
+CPU-only Kokoro render in the nightly window, and 80 GB gives the segment disk real headroom. CPU/RAM
+resize *up* is a few clicks + a reboot (reversible); disk only ever grows — so the larger box is the
+low-regret pick. Wherever older docs say "CX22," read "the CX-line VPS — now CX33."
 
 ## C6 — Generation compute + public voice (the honest architecture call) — DECISION
 **Goal:** make a full day's audio render reliably ON THE VPS, and make the public voice a setting.
@@ -148,7 +156,7 @@ nightly, the segment disk stays bounded across a long run, and no secret is worl
   and that `emotion` still flows through untouched. Re-pick the ElevenLabs voices after a listen if
   they don't match the DJs' cards.
 - **Benchmark Kokoro on the VPS.** Render a full day's buffer on the box; Kokoro is CPU-only and
-  slow, so a 2-vCPU CX22 may not finish in the nightly window.
+  slow, so even the CX33's 4 vCPUs may not finish in the nightly window — benchmark before trusting it.
 - **If it doesn't finish comfortably, scale the box or flip the voice — not the laptop:** either
   (a) a bigger VPS, or (b) `tts_provider=elevenlabs` (or Cartesia) for speed + production quality.
   **If (b) looks likely, pull the ElevenLabs Startup Grant application forward into Phase C** — don't

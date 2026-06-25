@@ -56,7 +56,7 @@ purpose. The detailed pack is `docs/PHASE_C_TASKS.md` (C0–C9); the current-sta
   ElevenLabs voice registry for *both* DJs — is part of the phase, so the public voice can be chosen
   (and changed) by config.
 
-**YOU:** listen to and judge the gated output; provision the Hetzner VPS; confirm YouTube
+**YOU:** listen to and judge the gated output; provision the Hetzner VPS (a **CX33**); confirm YouTube
 live-streaming is enabled on the verified channel; make the launch-voice call (C6).
 **CLAUDE CODE workstreams:**
 - **Gates made real (C0).** Safety + continuity become *blocking* gates: a flagged or
@@ -71,7 +71,7 @@ live-streaming is enabled on the verified channel; make the launch-voice call (C
   YouTube description.
 - **Never-dead air + health checks (C4).** Fallback chain (scheduled → evergreen → bed → ident) and
   alerts on stall / low-buffer / failed nightly run.
-- **Deploy to the VPS (C5).** Postgres + Liquidsoap + Icecast + the nightly batch on Hetzner;
+- **Deploy to the VPS (C5).** Postgres + Liquidsoap + Icecast + the nightly batch on the Hetzner CX33;
   nightly `pg_dump` backups; secrets non-world-readable. Survives a reboot, fully unattended.
 - **Generation compute + voice (C6) — DECISION.** Benchmark a full day's Kokoro buffer ON THE VPS;
   if it can't render in the nightly window, move to a bigger VPS or a paid streaming TTS — never to

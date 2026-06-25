@@ -38,6 +38,21 @@ A typical *build* session will be short, e.g.:
 
 ---
 
+## 2026-06-25 — Phase C — C5 prep: VPS box decision (CX33)
+**Focus:** picked the actual Hetzner box for C5 before provisioning.
+**Decisions:** deploy on a **CX33** (4 vCPU Intel/AMD, 8 GB RAM, 80 GB SSD, €11.06/mo). The old
+CX22 the docs named is retired; its like-for-like successor is the CX23 (2/4/40, €7.37). We upsized
+to the CX33 and stay on the **Intel/AMD "CX"** line (not Ampere/ARM "CAX").
+**Changed:** docs/PHASE_C_TASKS.md (C5 provisioning + box-decision note, C2.5 + C6 spec refs),
+docs/ROADMAP.md (YOU + C5 lines), docs/DEVLOG.md (this entry + superseded note on the original
+planning decision).
+**Why:** C6 warns a 2-vCPU box may not finish a full day's CPU-only Kokoro render overnight, so the
+extra cores buy headroom for ~€4/mo more; 80 GB gives the segment disk room. Resizing CPU/RAM *up* is
+a reversible few-clicks reboot while disk only grows — so the bigger box is the low-regret pick. CX
+over CAX for best-tested Liquidsoap/ffmpeg/Kokoro support.
+**Next:** provision the CX33 (account, location, image, SSH key), then start C5 install.
+Commit: <pending>  ·  Clips: —
+
 ## 2026-06-24 — Phase C — C4: never-dead air — fallback chain + health checks
 
 **Focus:** make the stream survive any single failure. Two halves: a playout **fallback chain** that
@@ -151,7 +166,7 @@ Commit: <pending>  ·  Clips: —
 
 **Focus:** bound `segments/` so a 24/7 station can't fill the VPS disk. C2 already prunes the
 *schedule* (aired entries leave the state + playlist), but the **mp3 files themselves were never
-deleted** — at ~1 MB/min of generated audio the 40 GB CX22 fills in a few weeks. C2.5 deletes aired,
+deleted** — at ~1 MB/min of generated audio the 80 GB CX33 fills in a couple of months. C2.5 deletes aired,
 unreferenced one-shot renders, and nothing else.
 **Decisions:**
 - **`prune()` lives in `src/scheduler.py` and runs at the end of every `top_up()`.** It keys off the
@@ -1145,7 +1160,8 @@ document set that drives the build — before touching Claude Code.
 **Decisions (the durable ones):**
 - **Architecture = hybrid, no hardware bought.** Cheap always-on CPU VPS (Hetzner CX22, ~€4/mo)
   for 24/7 playout; generation via on-demand/serverless GPU or APIs; YouTube Live as the free,
-  unlimited-listener relay. Chosen over buying a Mac Mini.
+  unlimited-listener relay. Chosen over buying a Mac Mini. *(Box superseded 2026-06: CX22 retired by
+  Hetzner; provisioning on a CX33 — see that session's entry.)*
 - **Anthropic angle = "powered by Claude," honestly framed.** Anthropic supplies all
   intelligence + the whole build (Claude Code); voice is the one external piece (no Anthropic
   TTS exists). Realistic Anthropic support is *being featured*, not big credits (those need
