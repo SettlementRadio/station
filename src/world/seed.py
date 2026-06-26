@@ -23,9 +23,38 @@ import sys
 
 from ..config import settings
 from ..logging_setup import get_logger
+from ..providers import embeddings
 from . import canon_source, store
 
 log = get_logger(__name__)
+
+
+def _embed_canon(conn, facts: list[store.CanonFact]) -> int:
+    """Embed the canon facts and store them in the `canon` embeddings corpus (D2.3).
+
+    The vectors are DERIVED (regenerable), so `clear_world` has already dropped the
+    SEED-sourced embeddings for this scope; here we just (re)write them. `embed`
+    batches the whole list in one model call; rows carry `source='seed'` (the §2a
+    provenance) and the fact's tags. Returns how many were written (== len(facts)).
+
+    Scope note (D2.3 decision): we embed CANON only. Events get embedded on write by
+    the world tick (D3, `corpus='event'`) — reusing this same `insert_embeddings`
+    path — so seeding doesn't pre-embed them here.
+    """
+    if not facts:
+        return 0
+    vectors = embeddings.embed([f.text for f in facts])
+    rows = [
+        store.EmbeddingRow(
+            entity_id=f.id,
+            text=f.text,
+            source=store.EVENT_SOURCE_SEED,
+            embedding=vec,
+            tags=f.tags,
+        )
+        for f, vec in zip(facts, vectors, strict=True)
+    ]
+    return store.insert_embeddings(conn, "canon", rows)
 
 
 def _seed(scope: str) -> dict[str, int]:
@@ -53,12 +82,14 @@ def _seed(scope: str) -> dict[str, int]:
         store.init_schema(conn)
         store.clear_world(conn, scope=scope)
         store.insert_canon(conn, facts)
+        embedded = _embed_canon(conn, facts)
         store.insert_cast(conn, cast)
         store.insert_events(conn, events)
         # Provenance state (stable, so re-seeding reproduces it exactly).
         store.set_state(conn, "seed_source", str(source_path))
         store.set_state(conn, "world_years_ahead", str(settings.world_years_ahead))
         result = store.counts(conn)
+        result["embeddings_canon"] = embedded
 
     log.info("seed_done", scope=scope, **result)
     return result
