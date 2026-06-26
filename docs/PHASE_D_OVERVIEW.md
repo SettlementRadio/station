@@ -21,8 +21,12 @@ alive* — the fix for "thin conversations," and what makes it worth featuring. 
 machinery, the `formats` registry + `make_format_segment`, the C2 scheduler, and the stubbed
 `embeddings`/pgvector seam waiting to be switched on.
 
-**Division of labor (from ROADMAP):** **YOU** author the world bible (yours to write), approve
-generated stories/personas, make the voice-engine call, set the music policy. **CLAUDE (chat)**
+**Division of labor (from ROADMAP):** **YOU** author the world bible (yours to write) and approve the
+**bible + the patterns/examples** the generators follow — **NOT every nightly story.** The world tick
+runs **autonomously behind the safety + continuity gates**: accepted generated stories/figures/quotes are
+written straight to the store (no per-story human sign-off). You control the world by controlling the
+bible; a per-story *approval queue* (`pending/approved/rejected`) is a **Phase-E opt-in**, deliberately
+not built now. You also make the voice-engine call and set the music policy. **CLAUDE (chat)**
 sequences the pack, drafts bible scaffolding + story examples. **CLAUDE CODE** builds each sub-pack.
 
 ## 2. Standing principles for the whole phase
@@ -70,6 +74,49 @@ These hold across every sub-pack — restate them at the top of each `_TASKS.md`
   command/file/steps* — while the operations are fresh. The closing capstone **D11** consolidates,
   simplifies, gap-fills, and *verifies* these into one clean operator manual; capturing them per-pack is
   what makes D11 an assembly job, not archaeology.
+- **Migrations, not truncate-reseed, once the world is alive.** Phase D adds many tables + columns. While
+  the world is hand-seeded this is fine via `init_schema` + `clear_world`. But once the tick has written
+  irreplaceable state (and on the VPS), **you cannot add a column by wiping and re-seeding.** So new
+  schema lands via **idempotent migrations / explicit backfill scripts** (additive `CREATE ... IF NOT
+  EXISTS`, `ADD COLUMN ... DEFAULT`, a one-off backfill), never a destructive rebuild. Any sub-pack that
+  adds a table/column ships its migration + backfill, and the seed/reset matrix below says what each
+  destructive command is allowed to clear.
+- **Cost visibility, not just cost levers.** The levers (Batch, caching, routing) keep cost low; *seeing*
+  it keeps it honest. Every generating job logs its **usage** — tick calls, news calls, TTS minutes,
+  embeddings count, gate regenerations/drops, failures — as structured fields, and the D6 status console
+  surfaces a rollup. A run whose cost you can't see is a run you can't trust unattended.
+
+## 2a. State ownership, seed modes & backup — the matrix
+
+The single contract for *who owns each table, what each seed/reset command may touch, and what must be
+backed up.* Every sub-pack that adds a table conforms to a row here; destructive commands clear **only**
+their declared scope. (Confirmed decisions: **`reset-world` wipes world+canon only — never the station
+config/catalog**; **backups cover the tick-generated world + hand-entered sponsors** — everything else is
+recoverable from git/manifests or is regenerable.)
+
+| Table | Owned by | Seed/refresh cmd | Canon refresh (`seed-canon`) | Grid refresh (`seed-grid`) | `reset-world` (destructive) | Backup |
+|---|---|---|---|---|---|---|
+| `canon`, `"cast"` | folder (`docs/canon/`) | `seed-canon` | re-seeded | survives | **cleared + reseeded** | git (folder) |
+| `events` (`source=seed`) | folder | `seed-canon` | replaced | survives | **cleared** | git |
+| `events` (`source=tick`), `stories`, beats | **world tick** | (generated) | **survives** | survives | **cleared** | **YES — irreplaceable** |
+| `figures`/`quotes` (`source=bible`) | folder | `seed-canon` | re-seeded | survives | **cleared** | git |
+| `figures`/`quotes` (`source=tick`) | **world tick** | (generated) | **survives** | survives | **cleared** | **YES — irreplaceable** |
+| `embeddings` (polymorphic, D2) | derived | re-embedded at seed | re-embedded (affected rows) | survives | cleared + re-embedded | no (regenerable) |
+| `news_coverage` (D4) | runtime | (accrues) | survives | survives | **cleared** | optional |
+| `airplay_history` (D5) | runtime (bounded) | (accrues) | survives | survives | **cleared** | no |
+| `programs`/grid (D6) | YAML manifest | `seed-grid` | survives | re-seeded | **survives** (config, not world) | git (YAML) |
+| `tracks` (D7) | music-lore manifest | `seed-tracks` | survives | survives | **survives** (catalog, not world) | git (manifest) + `assets/` backup |
+| `sponsors` (D8) | human-entered | `seed-sponsors`/console | survives | survives | **survives** (config, not world) | **YES — hand-entered** |
+| `state` (kv) | runtime/world | — | by key | by key | mostly cleared | maybe |
+
+**The seed/reset commands** (D1.2 owns the naming; the destructive one is renamed + warned):
+- **`make seed-canon`** — the everyday command: re-load the bible/cast/seed-events + re-embed, **leaving
+  the living world (tick state) and the station config/catalog intact.**
+- **`make seed-grid`** / **`make seed-tracks`** / **`make seed-sponsors`** — refresh one config/catalog
+  area from its manifest, scoped to its own tables only.
+- **`make reset-world`** — the **destructive** full world+canon wipe (loud warning + confirmation). Clears
+  the "cleared" column above; **never** touches grid/tracks/sponsors. (A `reset-all` that also drops
+  config/catalog is an optional future convenience, not the default.)
 
 ## 3. The sub-packs
 
@@ -93,7 +140,8 @@ demand). Order below is roughly the build order; the dependency graph is in §4.
 ### D2 — Semantic Retrieval / RAG (`PHASE_D_RAG_TASKS.md`)
 - **Goal:** activate the stubbed vector seam so the writers' room recalls canon by **meaning**, not
   just date/tag — necessary once the bible (D1) is too big to cache wholesale.
-- **Builds:** pgvector install + `canon_embeddings` table + `search_canon()` in `store.py`; a real
+- **Builds:** pgvector install + a **polymorphic `embeddings(corpus, entity_id, …)` table** + `search()`
+  in `store.py` (multi-corpus from day one, so D3/D10 reuse it — not a canon-only table); a real
   `embeddings.embed()` behind the seam (provider is a **decision** — see the pack); embed canon +
   events on seed; wire `retrieve()` into `context._select_canon`; tag the canon facts.
 - **Docs:** `src/providers/embeddings.py` (the stub + its TRIGGER note), `src/world/store.py` (the
@@ -284,7 +332,7 @@ done and Claude (chat) can generate the `_TASKS.md` now.
 | D4 News Desk | `PHASE_D_NEWS_DESK_TASKS.md` | D3, D2 | ✅ | ☐ | Blocked on D3 build |
 | D5 Freshness / Anti-repetition | `PHASE_D_FRESHNESS_TASKS.md` | D3/D4 | ✅ | ☐ | Blocked on D3/D4 build |
 | D6 Programming + Status Console | `PHASE_D_PROGRAMMING_TASKS.md` | C2 scheduler | ✅ | ☐ | **Ready** (parallel-able) |
-| D7 Production (sound + songs) | `PHASE_D_PRODUCTION_TASKS.md` | D6 | ✅ | ☐ | Blocked on D6 build |
+| D7 Production (sound + songs) | `PHASE_D_PRODUCTION_TASKS.md` | D6 (soft→D10: artist links) | ✅ | ☐ | Blocked on D6 build |
 | D8 Commercials & Sponsorship | `PHASE_D_COMMERCIALS_TASKS.md` | D6, D7 (CM for real sponsors) | ✅ | ☐ | Blocked on D6/D7 build |
 | D9 Voice & Emotion + Roster | `PHASE_D_VOICE_ROSTER_TASKS.md` | D3 (memory); C6 (emotion); D10 (guests) | ✅ | ☐ | Blocked on D3 build (+C6 for emotion) |
 | D10 Figures & Quotes | `PHASE_D_FIGURES_QUOTES_TASKS.md` | D3 (D2 rec.; D9 for soundbites) | ✅ | ☐ | Blocked on D3 build |
@@ -294,6 +342,13 @@ done and Claude (chat) can generate the `_TASKS.md` now.
 stories the news + DJs reference with correct past/now/future framing); conversations draw on a real
 bible via semantic recall; sound design + emotion make it *sound* like a real station; a first-time
 visitor hears enough depth to come back tomorrow.
+
+**Plus an integrated acceptance gate (the D11 capstone runs it).** Beyond each pack's unit tests, Phase D
+must pass one **end-to-end 24–48h simulation** (a runnable harness, accelerated clock): run tick → news →
+freshness → grid → music/commercials across the window and assert — **no dead gaps** in the schedule,
+**no repetition loops** (talk/news/music), **stories evolve** with correct past/now/future framing,
+**cost stays bounded** (the telemetry rollup), and the **schedule output is sane** (durations, ordering,
+program clocks). This is the local, simulated dress rehearsal *before* the C9 live 7-day soak.
 
 ## 5. Relationship to the Phase C server track (C5–C9)
 

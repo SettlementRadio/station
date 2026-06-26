@@ -56,16 +56,26 @@ the task summary + DEVLOG; `.env.example` updated if a key is needed.
 **Do:**
 - Add `CREATE EXTENSION IF NOT EXISTS vector;` to the schema init (the README must document the
   pgvector system install — Homebrew/`pg_*` — so it's reproducible on the CX33).
-- Add the `canon_embeddings(canon_id text references canon(id) on delete cascade, embedding
-  vector(N))` table (N = `settings.embeddings_dim`) + an appropriate vector index (e.g. ivfflat/hnsw
-  with a cosine/L2 opclass — pick per the chosen model's similarity).
-- Add writes: `insert_canon_embeddings(conn, rows)` (canon_id → vector); make `clear_world` / the
-  re-seed flow handle the new table (include it in `_WORLD_TABLES` or cascade).
-- Add the read: `search_canon(conn, query_embedding, *, k) -> list[(CanonFact, score)]` (or a
-  `Retrieved`-shaped result) ordered by similarity. **This is the only place the vector SQL lives**
-  (matches the documented FUTURE note).
-**Done when:** schema init creates the extension + table + index idempotently; insert + `search_canon`
-work against a hand-inserted vector; nothing outside `store.py` writes vector SQL.
+- **Design ONE polymorphic embeddings table from the start — NOT `canon_embeddings` (audit fix).** D3
+  (beats/events) and D10 (figures/quotes) will all need to be searchable; a canon-only table forces each
+  to bolt on its own `*_embeddings` later. So ship a single multi-corpus table now:
+  `embeddings(corpus text, entity_id text, text text, source text, tags text[], embedding vector(N),
+  PRIMARY KEY (corpus, entity_id))` (N = `settings.embeddings_dim`) + an appropriate vector index
+  (ivfflat/hnsw, cosine/L2 opclass per the chosen model). `corpus` ∈ `canon` (now), later `event`/
+  `story`/`figure`/`quote`; `source` carries the `seed`/`tick` split for the §2a matrix. **Tradeoff to
+  document:** `entity_id` is a *soft* reference (a real FK can't span tables), so deletes are cleaned
+  per-corpus in app logic (or a `delete_embeddings(corpus, entity_id)` helper called on entity removal) —
+  cheap price for avoiding a mid-phase refactor.
+- Add writes: `insert_embeddings(conn, corpus, rows)` and `delete_embeddings(conn, corpus, entity_id)`;
+  the table is **derived** (regenerable) — per the §2a matrix it's re-embedded on seed, cleared on
+  `reset-world`, not backed up. Schema changes land via **idempotent migration** (OVERVIEW §2), not a wipe.
+- Add the read: `search(conn, query_embedding, *, corpus=None, k) -> list[(entity_id, text, score)]`
+  ordered by similarity — `corpus=None` searches across all, or scope to one (so D4/D3/D10 can search
+  "canon + events + figures" or just one). Keep a thin `search_canon(...)` convenience (`corpus="canon"`)
+  for D2's own use. **This is the only place the vector SQL lives** (matches the documented FUTURE note).
+**Done when:** schema init creates the extension + the polymorphic `embeddings` table + index
+idempotently; insert/delete + cross-corpus and scoped `search` work against hand-inserted vectors;
+nothing outside `store.py` writes vector SQL.
 
 ## D2.2 — Implement `embeddings.embed()` behind the seam
 **Goal:** real vectors, vendor-isolated, retried, logged.
@@ -83,22 +93,25 @@ embedding SDK/model is imported nowhere else.
 **Goal:** the corpus is vectorised whenever the world is seeded, reproducibly.
 **Do:**
 - In `seed.py`, after inserting canon, embed each fact's text via `embeddings.embed` and store via
-  `store.insert_canon_embeddings`. Re-embed on re-seed (the `clear_world` flow already truncates).
+  `store.insert_embeddings(conn, "canon", rows)` (the polymorphic table; `source` per the §2a split).
+  Re-embed on a `seed-canon` refresh (re-embed only the affected corpus rows; don't touch tick corpora).
 - Decide whether to also embed **events** now or defer to D3 (the world tick will write events
-  continuously and should embed them on write). Recommend: embed events too if the table exists, with
-  a small helper the D3 tick can reuse — but keep D2's scope to canon if events complicate it; note
-  the decision.
+  continuously and should embed them on write into the same table, `corpus="event"`). Recommend: provide
+  the reusable `insert_embeddings` path now so D3/D10 just pass their corpus; keep D2's *seeding* scope to
+  canon if events complicate it; note the decision.
 - Batch the embed calls (don't call per-fact in a tight loop if the provider supports batching) and
   log counts. Consider the Batch path only if volume warrants (small at D2; revisit in D3).
-**Done when:** `make seed` populates `canon_embeddings` for every fact (count matches `canon`);
-re-seed re-embeds cleanly; logs show the embed step.
+**Done when:** `make seed-canon` populates `embeddings` (`corpus="canon"`) for every fact (count matches
+`canon`); a refresh re-embeds the canon corpus cleanly without disturbing other corpora; logs show the
+embed step.
 
 ## D2.4 — Wire `retrieve()` into context assembly (semantic, with clean fallback)
 **Goal:** the writers' room selects canon by meaning, degrading safely when vectors are absent.
 **Do:**
-- Implement `retrieve(query, *, k) -> list[Retrieved]`: `embed([query])` → `store.search_canon` →
-  `Retrieved` rows. Returns `[]` if embeddings/pgvector are unavailable (so callers degrade), per the
-  existing contract.
+- Implement `retrieve(query, *, k, corpus=None) -> list[Retrieved]`: `embed([query])` →
+  `store.search(corpus=…)` → `Retrieved` rows (default `corpus="canon"` for D2's caller; `corpus=None` or
+  a list later lets D3/D4/D10 search across canon + events + figures). Returns `[]` if embeddings/pgvector
+  are unavailable (so callers degrade), per the existing contract.
 - Update `context._select_canon(conn, topic)`: when a `topic` is given, use semantic retrieval
   (top-k by meaning), **unioned with or falling back to** the existing tag-match → `all_canon` path —
   so a topic with no good vector hit still gets the structured fallback, and the writer never loses

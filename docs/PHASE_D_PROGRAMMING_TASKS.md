@@ -158,11 +158,19 @@ chain all still work; a slot with no matching program falls back to the default 
   - **last night's run** — the `last_topup_at` heartbeat + last tick summary (if D3);
   - **the story log** — active stories + recent beats (from D3's store reads), if D3 is built; omit the
     panel gracefully if not.
+  - **cost telemetry** — the usage rollup (OVERVIEW §2: tick/news calls, tokens, TTS minutes, embeddings
+    count, gate regenerations/drops, failures) so cost is *visible*, not just levered. Omit gracefully
+    until the jobs emit it.
 - **Strictly read-only** (the CLI must not mutate state) — the write/management surface is Phase E. Reuse
   the existing seams (`scheduler._load_state`, `health.*`, `store` reads); add no new SQL beyond simple
   reads.
-**Done when:** the console prints current/next programming, buffer runway, last-run heartbeat, and (if
-D3) the story log, all from existing state, mutating nothing.
+- **OPERATOR-ONLY / PRIVATE — never public (audit fix).** The console exposes internal state (the story
+  log, health, buffer internals, cost) and must **not** be internet-reachable. It's CLI/SSH (or, in Phase
+  E, the private VPS-only admin panel) — the *opposite* surface from the public now-playing feed (D6.4).
+  Keep the two strictly separate: internal state → console (private); public-safe subset → feed (D6.4).
+**Done when:** the console prints current/next programming, buffer runway, last-run heartbeat, cost
+rollup, and (if D3) the story log, all from existing state, mutating nothing; it is reachable only
+locally/over SSH, never as a public endpoint.
 
 ## D6.4 — Now-playing / program-info feed for the web player
 **Goal:** the data the C8 web player needs to show what's on — produced read-only by the backend.
@@ -177,8 +185,15 @@ D3) the story log, all from existing state, mutating nothing.
   coming-soon `/web` app is convenient, a minimal now-playing read is fine, but don't build the audio
   player here.
 - Keep AI disclosure correct (CLAUDE.md hard rule): the feed always carries the disclosure line.
+- **PUBLIC-SAFE — a curated subset only (audit fix).** This feed *is* internet-facing (it drives the
+  public player), so it carries **only** what's safe to publish: now-playing + program + disclosure +
+  what's-next. It must **never** leak internal/operator state — no health metrics, no buffer depth, no
+  raw story-log/world internals, no cost telemetry, no schedule innards beyond the public "on now / next."
+  Build it as an explicit allow-list of public fields, not "dump the console as JSON." (Internal state →
+  the operator console, D6.3; this is the public boundary.)
 **Done when:** a now-playing/program-info feed reflects the current schedule + program + disclosure and
-updates as the schedule advances; it's consumable by the (future) C8 player and verifiable on its own.
+updates as the schedule advances; it carries **only** public-safe fields (no internal/operator state);
+it's consumable by the (future) C8 player and verifiable on its own.
 
 ## D6.5 — Tests + verification + docs
 **Goal:** the grid + framing logic is covered, and the programming is demonstrable.

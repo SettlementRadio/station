@@ -66,7 +66,13 @@ GC.
   referenceable, quotable, guest-able; `in_world_artist` is the plain-text fallback when no figure row
   exists yet). `album` / `era` / `story_blurb` are the lore the DJ intro/back-announce + now-playing draw
   on (D7.4). Add row dataclass + writes (`insert_tracks`) and reads (`all_tracks`, `tracks_by_mood`/
-  `tracks_by_tags`, `tracks_by_artist`, `get_track`). Fold into `counts` + the **scoped** `clear_world`.
+  `tracks_by_tags`, `tracks_by_artist`, `get_track`). **Per the §2a matrix, `tracks` is curated
+  config/catalog: it survives `seed-canon` AND `reset-world` (it's not world state), refreshed only by its
+  own `seed-tracks`**; back it up via the manifest (git) + the `assets/` audio.
+- **Staged D7→D10 path (audit fix — D7 depends only on D6, not D10).** `artist_figure_id` is **nullable**,
+  so **D7 ships now with `in_world_artist` (plain text) and a null figure link**; when **D10** is later
+  built, **backfill** `artist_figure_id` to connect tracks to their artist figures (a one-off backfill +
+  new tracks set it going forward). D7 never blocks on D10; everything degrades to the text artist name.
 - **The catalogue is curated lore you own (a mini-bible), not generated.** A human adds a cleared track by
   dropping the file in `assets/music/` **and writing its lore** — recommend a **music-lore manifest** (or
   per-track sidecar) the seeder reads into `tracks` (the canon-folder pattern: human-authored source →

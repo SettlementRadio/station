@@ -62,14 +62,17 @@ only makes the world move and writes the log.
   (stories not yet resolved), `story_beats(story_id)`, and the joins the news desk (D4) will need.
 - **The story log is DYNAMIC, tick-owned state — a canon refresh must NOT wipe it (load-bearing).**
   The `stories`/beats tables and the tick-generated `events` are written by the nightly tick, NOT by the
-  human's folder, so they must **survive a `make seed` canon refresh** (D1.2 split the seed into *full
-  reset* vs *canon refresh* exactly for this). Concretely:
-  - `counts` includes the new tables, but the **scoped** `clear_world` (D1.2) clears them **only** on a
-    *full reset*, **never** on a *canon refresh*. A bible edit + refresh must leave the living world
-    standing.
-  - Honour D1.2's seed-vs-generated `events` split (the `source` column / id-namespace decision): the
-    tick writes `source="tick"` (or the tick id-namespace); a canon refresh replaces only `source="seed"`
-    events. Reuse the same convention D1.2 picked — do not invent a second one.
+  human's folder, so they must **survive a `make seed-canon` refresh** (D1.2 split the seed into
+  `seed-canon` vs `reset-world` exactly for this; see the OVERVIEW §2a ownership matrix). Concretely:
+  - `counts` includes the new tables, but the **scoped** `clear_world` (D1.2) clears them **only** on
+    `reset-world`, **never** on `seed-canon`. A bible edit + `seed-canon` must leave the living world
+    standing. These tables are **backed up** (§2a — irreplaceable).
+  - Honour D1.2's seed-vs-generated `source` split: the tick writes `source="tick"`; `seed-canon` replaces
+    only `source="seed"`. Reuse the same convention D1.2 picked — do not invent a second one.
+  - Embed new beats into the **D2 polymorphic `embeddings` table** (`store.insert_embeddings(conn,
+    "event"/"story", rows)`, `source="tick"`) if D2 is built — reuse, don't add a `*_embeddings` table.
+  - **Schema lands via idempotent migration / backfill, not truncate-reseed** (OVERVIEW §2), since the
+    story log holds irreplaceable state once the tick runs.
   - Keep a **full reset** path that *does* clear the story log (dev / a deliberate world wipe) — the
     point is that the *default canon-edit workflow* doesn't trigger it.
 - Idempotency: schema init creates the new tables idempotently; fold them into `counts`. If D2 embeds
@@ -107,18 +110,31 @@ arced, dated beats — never airing/writing unsafe or contradictory content.
     discipline, applied to world state).
   - Use **RAG recall (D2)** to pull the canon + prior beats most relevant to each proposal, so the
     consistency check and the generation are grounded by meaning, not just recency.
-  - Write accepted stories + beats via the D3.0 store writes; embed new beats (D2 helper) if present.
-- **Cost levers (mandatory here — this is the new high-volume job):** run the proposal/continuity
-  calls through the **Batch API (50% off)** where latency allows (the tick is nightly, not live), and
-  **cache the stable bible/cards** so each call pays full price only for the variable part. Consult
-  the `claude-api` skill for the current Batch + caching APIs and model IDs.
-**Done when:** `run_tick()` writes N new bible-consistent stories with dated, arced beats; a
-deliberately contradictory proposal is regenerated or dropped (nothing contradictory lands in the
-store); the run logs each proposal's gate outcome; calls are batched + cached.
+  - Write accepted stories + beats via the D3.0 store writes; embed new beats on write into the **D2
+    polymorphic `embeddings` table** via `store.insert_embeddings(conn, "event"/"story", rows)` (with
+    `source="tick"`), if D2 is built — so the new world is semantically recall-able like canon.
+- **Build the BATCH path in the `llm` seam FIRST (audit fix — Batch must NOT leak into `world_tick`).**
+  The overview makes Batch mandatory for the tick, but the seam today is single-call streaming only
+  (`llm.generate`). So **extend `providers/llm` with a batch abstraction** — e.g. `llm.generate_batch(
+  requests) -> results` (submit → poll → collect; Batch is async, which is fine for a nightly job) — the
+  **only** place the vendor Batch SDK is imported. `world_tick` calls `llm.generate_batch(...)`; it never
+  touches the vendor batch API directly (seam rule, like `generate`). Consult the `claude-api` skill for
+  the current Batch + caching APIs and model IDs.
+- **Cost levers (mandatory here — this is the new high-volume job):** run the proposal/continuity calls
+  through that **Batch path (50% off)** where latency allows (the tick is nightly, not live), and
+  **cache the stable bible/cards** so each call pays full price only for the variable part.
+- **Cost telemetry (OVERVIEW §2):** the run logs its usage — proposal/continuity calls, tokens,
+  regenerations/drops, embeddings written — as structured fields for the D6 console rollup.
+**Done when:** the **batch path exists behind `providers/llm`** and `world_tick` uses it (no vendor batch
+SDK imported in `world_tick`); `run_tick()` writes N new bible-consistent stories with dated, arced
+beats; a deliberately contradictory proposal is regenerated or dropped (nothing contradictory lands in
+the store); the run logs each proposal's gate outcome **+ a usage summary**; calls are batched + cached.
 **Note — music & culture are valid happenings, but the tick never makes a playable song.** The culture
 domain (D3.3) includes **music**: a new album, an award, a tour, a scene — the tick can generate these as
-*events/stories* (with the artist as a D10 figure, and quotes), and the news/DJs then reference and
-*promote* them, exactly like real radio ("the festival's headline act just dropped a record"). **Hard
+*events/stories*, and the news/DJs then reference and *promote* them, exactly like real radio ("the
+festival's headline act just dropped a record"). **Scope line (audit fix):** before **D10** is built, the
+tick writes **plain story entities only — no figure/quote rows**; *once D10 exists*, the same music
+happening also gets its artist as a D10 figure + quotes. D3 does not create figures/quotes itself. **Hard
 boundary:** the tick invents the *happening + lore*, **never a playable audio file** — only D7's curated
 `tracks` (a human-cleared file + its lore) are *playable*. So the world can have a rich music culture the
 station talks about, while only the cleared subset actually airs. (D7 plays the files; D3 supplies the

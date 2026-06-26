@@ -24,8 +24,14 @@ that hasn't been run is a guess.
 
 **Definition of done for D11:** one `docs/ADMIN_MANUAL.md` covering every admin operation across D1–D10
 (+ the essential C5 run commands), in a terse how-to style, with each how-to verified against the running
-local stack; `HOWTO.md` reconciled (one source, not two); linked from the README; `ruff`/`pytest`
-unaffected (docs only).
+local stack; `HOWTO.md` reconciled (one source, not two); linked from the README; **plus the integrated
+24–48h acceptance simulation (D11.3) passing** (the OVERVIEW §4 Phase-D gate before the C9 live soak);
+`ruff`/`pytest` green (the manual is docs-only; the acceptance harness adds code/tests).
+
+> **Note — D11 has two halves:** the *operator manual* (D11.0–D11.2, D11.4, docs) and the *integrated
+> acceptance simulation* (D11.3, a runnable harness). Both belong here because both can only run once the
+> full D1–D10 surface is built. If you'd rather split them later, the simulation can graduate to its own
+> sub-pack — but it stays gated on "everything built," same as the manual.
 
 ---
 
@@ -82,12 +88,36 @@ reader can answer "how do I X" by scanning headings.
 - **Fill gaps** the per-pack fragments missed — any operator action that exists in the built code but
   isn't documented (grep the Makefile targets + the `python -m src.*` CLIs as a checklist; every operator
   entry point must appear in the manual).
-- Confirm the **dangerous operations are flagged** (full reset wipes the world; removing a DJ; clearing
-  sponsors) with the safe alternative next to them.
+- Confirm the **dangerous operations are flagged** (`make reset-world` wipes the world — vs the safe
+  everyday `make seed-canon`; removing a DJ; clearing sponsors) with the safe alternative next to them.
 **Done when:** every how-to has been executed (or explicitly marked flagship/VPS-only) and corrected; no
 Makefile/CLI operator entry point is undocumented; destructive operations carry a warning + the safe path.
 
-## D11.3 — Link, polish, lock the style
+## D11.3 — Integrated acceptance simulation (the Phase-D gate)
+**Goal:** prove the whole pipeline holds together over time — not just per-pack unit tests — before the
+C9 live soak. (This is the OVERVIEW §4 acceptance gate; D11 is its home since it runs last, on the full
+built surface.)
+**Do:**
+- Build a **runnable 24–48h simulation harness** (an accelerated clock; needs `make seed-canon` + a
+  populated `.env`; mock or budget the live calls): drive **tick → news → freshness → grid →
+  music/commercials** across the window, writing a real schedule + world.
+- **Assert the integration properties** (the things only an end-to-end run catches):
+  - **No dead gaps** — the schedule has continuous audio (the never-dead chain never needed to fire for a
+    *generation* gap);
+  - **No repetition loops** — talk beats, openings, news wording, and song/artist picks don't cycle (D5 +
+    the news coverage + the track selector actually working together);
+  - **Stories evolve** — running stories advance through their arc with correct past/now/future framing
+    across the window (D3 + D4);
+  - **Cost stays bounded** — the telemetry rollup over the window is within an expected envelope (no
+    runaway regeneration / call storms);
+  - **Schedule output is sane** — durations measured, ordering correct, program clocks honoured, idents/
+    breaks placed as configured.
+- Make it a **repeatable check** (a `make` target / test harness) so it can be re-run after changes and
+  before the C9 soak; log a pass/fail summary per property.
+**Done when:** the simulation runs end-to-end and all five properties pass (or fail loudly with a
+specific reason); it's repeatable; the result is logged/summarised.
+
+## D11.4 — Link, polish, lock the style
 **Goal:** the manual is discoverable, consistent, and stays terse.
 **Do:**
 - Link `docs/ADMIN_MANUAL.md` from the `README.md` (and from `docs/PHASE_D_OVERVIEW.md`'s footer) so it's

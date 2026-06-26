@@ -60,7 +60,13 @@ D9) a quote can air as a distinctly-voiced soundbite; all figure/quote content i
   `quotes_for_story(story_id)`/`quotes_near(now)`, `get_figure(id)`. Fold into `counts` and the **scoped**
   `clear_world` (OVERVIEW §2: tick-generated figures/quotes survive a canon refresh; a full reset clears
   them).
-- If D2 is live, embed quotes/figures on write (reuse the D2 helper) so they're recall-able by meaning.
+- If D2 is live, embed quotes/figures on write into the **D2 polymorphic `embeddings` table**
+  (`store.insert_embeddings(conn, "figure"/"quote", rows)`, carrying the `source` split) so they're
+  recall-able by meaning — **reuse the one table, don't add a `*_embeddings` table** (OVERVIEW §2a / D2).
+- **Per the §2a matrix:** `figures`/`quotes` follow the same seed-vs-generated `source` split as `events`
+  — `source=bible` rows are re-seeded by `seed-canon`; `source=tick` rows **survive `seed-canon`** and are
+  **backed up** (irreplaceable), cleared only by `reset-world`. New columns land via idempotent
+  migration, not truncate-reseed (OVERVIEW §2).
 - **Figures include musicians/artists.** A singer or band is just a `figure` with a music `role` — which
   is what makes a song's artist a real person in the world (referenceable, quotable, guest-able), not a
   text label. **D7's `tracks.artist_figure_id` links a song to its artist figure here.** So a back-announce

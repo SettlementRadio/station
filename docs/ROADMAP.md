@@ -113,9 +113,11 @@ for building Phase D is `docs/PHASE_C_ORIENTATION.md` (the as-built C0–C4 code
 workstream→seam map); Phase D runs in parallel with the Phase C server track (C5–C9), which it does
 not depend on.
 
-**YOU:** author the world bible (yours to write); approve generated stories/personas; make the
-voice-engine call (Kokoro at scale vs. a paid flagship — emotion depends on it); set the music
-policy (the *tech* is built here, the catalog/clearance is your separate call).
+**YOU:** author the world bible (yours to write) and approve the **bible + the patterns/examples** the
+generators follow — **not every nightly story** (the world tick runs autonomously behind the safety +
+continuity gates; a per-story approval queue is a Phase-E opt-in, not built now); make the voice-engine
+call (Kokoro at scale vs. a paid flagship — emotion depends on it); set the music policy (the *tech* is
+built here, the catalog/clearance is your separate call).
 **CLAUDE CODE workstreams:**
 
 - **Canon → folder (first task).** Split `docs/canon/` into cornerstone files — history, literature,

@@ -24,9 +24,10 @@ sections (`canon facts` / `cast` / `events`) into rows and keeps the narrative s
 series bible. **No second machine-readable copy.** The bullet-field convention stays
 `- **Field:** value`; section headings stay `## `/`### `.
 
-**Definition of done for D1:** `docs/canon/` is a folder of cornerstone files; `make seed` reads the
-whole folder and loads strictly more canon than the old stub; the series bible assembled into
-`context` is drawn from the folder; re-seed is idempotent; fact ids are globally unique across files;
+**Definition of done for D1:** `docs/canon/` is a folder of cornerstone files; seeding (`make seed-canon`,
++ `make reset-world` for a fresh DB — D1.2) reads the whole folder and loads strictly more canon than the
+old stub; the series bible assembled into `context` is drawn from the folder; re-seed is idempotent; fact
+ids are globally unique across files;
 `ruff` + `pytest` green; README + `.env.example` updated. **Tag *population* is deferred to D2** — D1
 only makes the format *support* per-fact tags.
 
@@ -92,24 +93,33 @@ when present. Unit-tested (`tests/test_canon_source.py` extended).
   is hand-seeded. But once **D3** generates a *living* world (new events + a story log written by the
   nightly tick, directly to the DB — not the folder), a re-seed to pick up a one-line bible edit would
   **destroy everything the tick has generated**. So split the seed now, before that state exists:
-  - **full reset** (dev / first seed) — truncate + rebuild everything from the folder (today's
-    behaviour); and
-  - **canon refresh** (production) — re-load + re-insert ONLY the folder-owned tables (`canon`, `cast`,
-    the bible, and re-embed) **without** truncating the dynamic, tick-owned tables (`events` the tick
-    wrote, and the D3 `stories`/beats). Make `clear_world` take a **scope** (which tables it clears) so
-    a canon refresh leaves generated state untouched. Expose both via the CLI/Makefile (e.g.
-    `make seed` = full reset, `make seed-canon` / a `--canon-only` flag = refresh).
-  - Note the wrinkle: the folder's **seed events** (the hand-authored timeline) and the tick's
-    **generated events** both live in `events`. A canon refresh must replace the seeded ones without
-    touching the generated ones — so distinguish them (e.g. a `source` column `seed` vs `tick`, or
-    separate id namespaces). Decide and document this here; **D3.0 must honour the same split.**
+  - **`make seed-canon`** (the EVERYDAY command) — re-load + re-insert ONLY the folder-owned tables
+    (`canon`, `cast`, the bible, the `source=seed` events, and re-embed) **without** truncating the
+    dynamic, tick-owned tables (`events` the tick wrote, the D3 `stories`/beats, tick figures/quotes) or
+    the config/catalog (grid/tracks/sponsors). This is the **safe default** an operator runs after every
+    bible edit; and
+  - **`make reset-world`** (the DESTRUCTIVE command — loud warning + an explicit confirmation prompt) —
+    truncate + rebuild the **world+canon** set from the folder (the "cleared" column of the OVERVIEW §2a
+    matrix). **Never** touches grid/tracks/sponsors (station config/catalog have their own
+    `seed-grid`/`seed-tracks`/`seed-sponsors`). Used for dev / first seed / a deliberate world wipe.
+  - **Naming matters (audit fix):** the *common* command must be the *safe* one. Do **not** keep
+    `make seed` meaning "full destructive reset" once the world is alive — it's a foot-gun. `seed-canon`
+    is the daily driver; `reset-world` is the one that warns. (Keep a `make seed` alias only if it maps
+    to `seed-canon` or is removed — never to the destructive path.)
+  - Make `clear_world` take a **scope** (which tables it clears) so each command clears exactly its matrix
+    column. The folder's **seed events** and the tick's **generated events** both live in `events`, so
+    distinguish them with a **`source` column (`seed` | `tick`)** (the OVERVIEW §2a convention): a
+    canon refresh replaces only `source=seed`, never `source=tick`. Decide + document the `source`
+    convention here; **D3.0, D10.0, and the §2a matrix all honour the same split.**
+  - **Migrations, not truncate-reseed, for schema changes (OVERVIEW §2):** adding the `source` column (and
+    any later column) lands via an additive, idempotent migration / backfill — never by wiping live state.
 - Update `src/world/context.py` to assemble the cached bible from the folder
   (`load_series_bible_folder(settings.canon_dir)`).
-**Done when:** `make seed` reads `docs/canon/`; `context.assemble` includes the folder's narrative in
-`cached_context`; the config dial selects file-vs-folder; **a canon-only refresh updates the bible/
-cast/facts (and re-embeds) while leaving any non-seed `events` rows intact** (verifiable now by hand:
-insert a fake "generated" event, run a canon refresh, confirm it survives); no SQL moved out of
-`store.py`.
+**Done when:** `make seed-canon` reads `docs/canon/`; `context.assemble` includes the folder's narrative in
+`cached_context`; the config dial selects file-vs-folder; **`make seed-canon` updates the bible/cast/facts
+(and re-embeds) while leaving any `source=tick` `events` rows intact** (verifiable now by hand: insert a
+fake `source=tick` event, run `seed-canon`, confirm it survives); **`make reset-world` warns + confirms
+before wiping, and never touches grid/tracks/sponsors**; no SQL moved out of `store.py`.
 
 ## D1.3 — Migrate the existing stub into the folder
 **Goal:** the world's current content lives in the new structure, losslessly, and the old stub is
