@@ -89,6 +89,32 @@ def load_folder(
     return facts, cast, events
 
 
+def has_canon_folder(canon_dir: Path) -> bool:
+    """True if `canon_dir` holds at least one loadable cornerstone file.
+
+    The file-vs-folder selector (D1.2): an empty or missing folder (e.g. before the
+    stub is migrated in D1.3 — only README.md present) means callers fall back to
+    the single-file path.
+    """
+    return canon_dir.is_dir() and bool(_sorted_canon_files(canon_dir))
+
+
+def load_world(
+    canon_dir: Path, canon_path: Path
+) -> tuple[list[CanonFact], list[CastMember], list[Event]]:
+    """Load (facts, cast, events) from the folder when populated, else the file."""
+    if has_canon_folder(canon_dir):
+        return load_folder(canon_dir)
+    return load(canon_path)
+
+
+def load_bible(canon_dir: Path, canon_path: Path) -> str:
+    """The series bible from the folder when populated, else the single file."""
+    if has_canon_folder(canon_dir):
+        return load_series_bible_folder(canon_dir)
+    return load_series_bible(canon_path)
+
+
 def _guard_unique(seen: dict[str, str], id_: str, file_name: str, kind: str) -> None:
     """Record `id_` for `kind`; raise if it already came from another file."""
     if id_ in seen:

@@ -277,6 +277,17 @@ class Settings(BaseSettings):
 
     # --- Paths (resolved from the repo root) -----------------------------------
     segments_dir: Path = Field(default=_REPO_ROOT / "segments")
+
+    # --- Canon (D1: the world bible — a folder of cornerstone files) -----------
+    # The bible grew from a single docs/CANON.md (Phase A/B) into a docs/canon/
+    # FOLDER of cornerstone files (D1; see docs/canon/README.md). `canon_dir` is
+    # the folder; `canon_path` is the legacy single file, kept for back-compat.
+    # seed/context AUTO-SELECT (canon_source.load_world/load_bible): the FOLDER
+    # wins whenever it holds at least one cornerstone *.md (README.md aside), else
+    # they fall back to the single file. So pointing CANON_DIR at a populated folder
+    # selects folder mode; an empty/missing folder selects CANON_PATH. This is the
+    # file-vs-folder dial — no extra boolean flag.
+    canon_dir: Path = Field(default=_REPO_ROOT / "docs" / "canon")
     canon_path: Path = Field(default=_REPO_ROOT / "docs" / "CANON.md")
 
     def model_id(self, tier: str) -> str:

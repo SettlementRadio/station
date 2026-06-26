@@ -7,7 +7,8 @@
 #   make play-convo generate a two-DJ conversation + serve it (B4; see note below).
 #   make stop       Stop Icecast + Liquidsoap (no orphans left behind).
 #   make status     Show what's running and the mount state.
-#   make seed       Load docs/CANON.md into the world-state DB (B1; idempotent).
+#   make seed-canon Refresh the world from the canon bible (safe; keeps tick state).
+#   make reset-world DESTRUCTIVE full world+canon wipe + rebuild (warns/confirms).
 #   make demo       Show the progressing-event relative-time flip (B2; needs seed).
 #   make context    Print the writer's assembled context for now (B3; needs seed).
 #   make conversation  Generate a two-DJ talk segment (B4; needs seed; Claude+TTS).
@@ -35,7 +36,7 @@ LIQ_LOG    := $(RUN_DIR)/liquidsoap.log
 PLAYER_URL := http://127.0.0.1:8000/
 STREAM_URL := http://127.0.0.1:8000/settlement.mp3
 
-.PHONY: help generate serve air play play-convo stop status seed demo context conversation format buffer schedule ident prune fallback health
+.PHONY: help generate serve air play play-convo stop status seed seed-canon reset-world demo context conversation format buffer schedule ident prune fallback health
 
 # B5 format default: `make format` builds a talk segment; override with FMT=news
 # or FMT=music. Pass a TOPIC=... to steer canon retrieval.
@@ -59,7 +60,8 @@ help:
 	@echo "  make serve     start Icecast + Liquidsoap (loops newest segment)"
 	@echo "  make stop      stop Icecast + Liquidsoap"
 	@echo "  make status    show what's running"
-	@echo "  make seed      load docs/CANON.md into the world-state DB (B1)"
+	@echo "  make seed-canon  refresh the world from docs/canon/ (safe; keeps tick state)"
+	@echo "  make reset-world DESTRUCTIVE full world+canon wipe + rebuild (warns/confirms)"
 	@echo "  make demo      show the progressing-event relative-time flip (B2)"
 	@echo "  make context   print the writer's assembled context for now (B3)"
 	@echo "  make conversation  generate a two-DJ talk segment (B4)"
@@ -72,11 +74,21 @@ help:
 	@echo "  make schedule  top up the rolling buffer to depth + write the playlist (C2)"
 	@echo "  make air       schedule + serve — the live scheduler-driven stream (C2)"
 
-# Seed the world-state DB from docs/CANON.md (the human-editable source). Reads
-# DATABASE_URL via src/config.py; idempotent (re-running reproduces the state).
-seed:
-	@echo "==> Seeding the world-state DB from docs/CANON.md…"
-	$(PY) -m src.world.seed
+# Seed/refresh the world-state DB from the canon bible (docs/canon/ folder, or the
+# legacy docs/CANON.md). Reads DATABASE_URL via src/config.py; idempotent.
+#
+# `seed-canon` is the SAFE everyday command: it reloads the folder-owned
+# canon/cast/SEED-events and leaves any tick-generated world (D3) intact.
+# `reset-world` is DESTRUCTIVE (warns + confirms): it wipes the whole world+canon
+# set and rebuilds it — never touches station config/catalog. `make seed` is a
+# back-compat alias for the SAFE path (never the destructive one).
+seed-canon seed:
+	@echo "==> Refreshing the world from the canon bible (safe — keeps tick state)…"
+	$(PY) -m src.world.seed canon
+
+reset-world:
+	@echo "==> reset-world: DESTRUCTIVE full world+canon wipe…"
+	$(PY) -m src.world.seed reset
 
 # B2 proof: render the Lumen Festival at two `now` values and show the relative
 # phrase flip ("in five days" -> "yesterday"). Needs `make seed` first.

@@ -87,7 +87,7 @@ def assemble(
     ids = [speakers] if isinstance(speakers, str) else list(speakers or [])
     log.info("context_assemble_start", now=now.isoformat(), topic=topic, speakers=ids)
 
-    bible = canon_source.load_series_bible(settings.canon_path)
+    bible = canon_source.load_bible(settings.canon_dir, settings.canon_path)
     iw_now = clock.to_inworld(now)
     window = timedelta(days=settings.context_event_window_days)
 
