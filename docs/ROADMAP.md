@@ -104,7 +104,14 @@ trickling in, and the applications are submitted. *Stay quiet on purpose — the
 Makes the station *deep* and *alive* — the fix for "thin conversations," and what makes it worth
 featuring. The heart of this phase: a world that **moves on its own** and a **news desk that reports
 it like a real station**, all on top of a real bible. (Big phase — Claude (chat) sequences it into
-sub-packs; the order below is roughly the build order.)
+sub-packs; the order below is roughly the build order.) The master plan + the sub-pack map +
+build-order tracker live in **`docs/PHASE_D_OVERVIEW.md`**; each sub-pack has its own detailed task
+pack (`docs/PHASE_D_<NAME>_TASKS.md` — D1 Canon→Folder, D2 RAG, D3 World Engine, D4 News Desk, D5
+Freshness, D6 Programming, D7 Production, D8 Commercials, D9 Voice & Roster, D10 Figures & Quotes,
+D11 Operator/Admin Manual — the closing capstone). The current-state handoff
+for building Phase D is `docs/PHASE_C_ORIENTATION.md` (the as-built C0–C4 code seams + §9's
+workstream→seam map); Phase D runs in parallel with the Phase C server track (C5–C9), which it does
+not depend on.
 
 **YOU:** author the world bible (yours to write); approve generated stories/personas; make the
 voice-engine call (Kokoro at scale vs. a paid flagship — emotion depends on it); set the music
