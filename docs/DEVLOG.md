@@ -38,6 +38,30 @@ A typical *build* session will be short, e.g.:
 
 ---
 
+## 2026-06-26 — Phase D — D2.0: pick the embedding provider (RAG DECISION)
+**Focus:** the first step of D2 (semantic retrieval) — decide what computes the vectors behind
+`providers/embeddings.embed()` and record why, before any code touches pgvector or the seam.
+**Decisions:**
+- **Anthropic has no first-party embeddings endpoint** (confirmed via the `claude-api` skill), so the
+  embedder is a genuine third-party choice, *not* a Claude call. It stays behind the
+  `providers/embeddings.py` seam like `llm`/`tts`.
+- **Local/open over hosted.** Chose **`sentence-transformers/all-MiniLM-L6-v2`** (dim **384**), provider
+  `local`. Free, unlimited, no new secret, no network, CPU-cheap on the CX33 — the Kokoro stance. A
+  hosted path (Voyage) stays switchable behind the seam (`embeddings_provider="voyage"` + a key) but is
+  not the default unless quality demands it.
+- **`embeddings_dim` is load-bearing config, never a literal.** It is the N in the pgvector `vector(N)`
+  column (D2.1); a model swap = re-embed + column migration. MiniLM vectors are L2-normalised → the
+  vector index will use the **cosine** opclass (D2.1).
+**Changed:** `src/config.py` — new `# --- Embeddings (D2) ---` section (`embeddings_provider`,
+`embeddings_model`, `embeddings_dim`). No `.env.example` change (local backend needs no key). `ruff`
+clean; settings import verified.
+**Why:** the bible is now big and multi-file (D1), so both embeddings triggers fire (context outgrows
+the cache *and* we want meaning-based recall); local matches the project's local/free ethos and keeps
+text cost near-trivial (TTS, not embedding, is the ceiling).
+**Next:** D2.1 — enable pgvector + the ONE polymorphic `embeddings(corpus, entity_id, …)` table + the
+vector search query in `store.py`.
+Commit: (pending)  ·  Clips: (none)
+
 ## 2026-06-26 — Phase D — D1: Canon → Folder (the static substrate)
 **Focus:** turned the single `docs/CANON.md` stub into a real, growable `docs/canon/` **folder** bible
 the seeder reads whole — folder layout + conventions, a folder-loading parser, config/seed/context

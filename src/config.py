@@ -290,6 +290,29 @@ class Settings(BaseSettings):
     canon_dir: Path = Field(default=_REPO_ROOT / "docs" / "canon")
     canon_path: Path = Field(default=_REPO_ROOT / "docs" / "CANON.md")
 
+    # --- Embeddings (D2: semantic retrieval / RAG) -----------------------------
+    # Activates the stubbed vector seam (providers/embeddings.py) so the writers'
+    # room recalls canon by MEANING, not just date/tag. ALL of this lives behind
+    # that seam; the vector SQL lives only in world/store.py.
+    #
+    # Provider choice (D2.0 DECISION): Anthropic has NO first-party text-embedding
+    # endpoint, so the embedder is a genuine third-party pick, not a Claude call.
+    # We default to a LOCAL open model (sentence-transformers) — free, unlimited,
+    # no new secret, no network, runs on the CX33 (embedding is far cheaper than
+    # TTS, the real cost ceiling). This mirrors the Kokoro stance (CLAUDE.md).
+    # A hosted option (e.g. Voyage AI) stays switchable behind the seam by setting
+    # `embeddings_provider="voyage"` + an `embeddings_*_api_key` — don't make it the
+    # default unless quality demands it.
+    #
+    # `embeddings_dim` is LOAD-BEARING: it is the N in the pgvector `vector(N)`
+    # column (D2.1), so it MUST match the chosen model's output (all-MiniLM-L6-v2 =
+    # 384). Changing the model means a re-embed + a column migration — never a bare
+    # literal, always this dial. MiniLM vectors are L2-normalised, so the vector
+    # index uses the COSINE opclass (set in store.py, D2.1).
+    embeddings_provider: str = "local"  # local (sentence-transformers) | voyage
+    embeddings_model: str = "sentence-transformers/all-MiniLM-L6-v2"
+    embeddings_dim: int = 384  # == the model's output dim; the pgvector vector(N)
+
     def model_id(self, tier: str) -> str:
         """Map a logical tier ("haiku"|"sonnet"|"opus") to its real model id."""
         ids = {
