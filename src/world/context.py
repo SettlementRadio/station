@@ -1,10 +1,11 @@
 """Context assembly for the writers' room (PHASE_B_TASKS.md B3).
 
 The job: hand the writer the *right slice* of the world for `now`, cheaply and
-fast — without standing up vector search before it earns its keep. Retrieval here
-is structured (date / status / tag queries over the DB), which is the correct tool
-while the canon is small and date/tag recall is enough. The semantic seam lives in
-`providers/embeddings.py`, documented and unused (see its TRIGGER note).
+fast. Event/status retrieval is structured (date / status queries over the DB); for
+a topic, canon is selected by a hybrid of **semantic** recall (`embeddings.retrieve`,
+top-k by meaning — live since D2.4) and the **structured** tag-match, falling back to
+the whole canon when neither hits or vectors are unavailable. All embedding work
+stays behind `providers/embeddings.py`; all SQL behind the store seam.
 
 `assemble(now, *, topic, speaker)` splits the world into two parts, matching the
 two seams in CLAUDE.md:
@@ -31,6 +32,7 @@ from datetime import datetime, timedelta
 
 from ..config import settings
 from ..logging_setup import get_logger
+from ..providers import embeddings
 from . import canon_source, clock, store
 from . import events as events_mod
 from .store import CanonFact, CastMember, Event
@@ -133,19 +135,42 @@ def assemble(
 
 
 def _select_canon(conn, topic: str | None) -> list[CanonFact]:
-    """Canon facts for the prompt: tag-matched to `topic`, else all of them.
+    """Canon facts for the prompt: hybrid semantic + tag recall for a `topic`, else all.
 
-    With no topic we include the whole (small) canon. With a topic we try a
-    tag-match and fall back to the full set when nothing matches — which is the
-    case today, since seeded facts carry no tags yet (the seam is ready for when
-    they do; see `store.canon_by_tags`). The writer thus never loses the core
-    facts, while the retrieval narrows automatically once canon is tagged.
+    With no topic we include the whole (still small) canon. With a topic we combine
+    two retrievals (D2.4):
+
+    * **semantic** — `embeddings.retrieve` returns the top-k canon by MEANING (so a
+      topic like "loneliness" finds the right facts even when nothing is tagged that
+      word), ranked by similarity;
+    * **structured** — `store.canon_by_tags` adds any tag-matched facts the vectors
+      missed (the complement; it earns its keep once facts are tagged in D2.5).
+
+    The union is semantic-first (preserving meaning-rank), then any tag-only extras.
+    If BOTH come back empty — no vector hit AND no tag match, or vectors unavailable
+    (pgvector off / embeddings backend down, where `retrieve` returns `[]`) — we fall
+    back to the whole canon, so the writer never loses the core facts.
     """
-    if topic:
-        hits = store.canon_by_tags(conn, _topic_tags(topic))
-        if hits:
-            return hits
-        log.debug("context_canon_topic_fallback", topic=topic)
+    if not topic:
+        return store.all_canon(conn)
+
+    k = settings.context_canon_top_k
+    semantic = embeddings.retrieve(topic, k=k, corpus="canon")
+    sem_ids = [r.id for r in semantic]
+    tag_ids = [f.id for f in store.canon_by_tags(conn, _topic_tags(topic))]
+
+    seen = set(sem_ids)
+    union_ids = sem_ids + [i for i in tag_ids if not (i in seen or seen.add(i))]
+    if union_ids:
+        log.debug(
+            "context_canon_hybrid",
+            topic=topic,
+            semantic=len(sem_ids),
+            tag_only=len(union_ids) - len(sem_ids),
+        )
+        return store.canon_by_ids(conn, union_ids)
+
+    log.debug("context_canon_topic_fallback", topic=topic)
     return store.all_canon(conn)
 
 

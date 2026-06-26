@@ -438,6 +438,25 @@ def canon_by_tags(conn: psycopg.Connection, tags: Iterable[str]) -> list[CanonFa
     return [CanonFact(id, text, list(tags)) for id, text, tags in rows]
 
 
+def canon_by_ids(conn: psycopg.Connection, ids: Iterable[str]) -> list[CanonFact]:
+    """Canon facts for `ids`, returned in the SAME order as `ids` (rank-preserving).
+
+    Used by `context._select_canon` to resolve semantic-search hits (entity ids,
+    ranked by similarity) back to full `CanonFact` rows — keeping their meaning-rank
+    order via `array_position`. Unknown ids are skipped (a lingering embedding for a
+    deleted fact won't error). Empty `ids` returns no rows.
+    """
+    id_list = list(ids)
+    if not id_list:
+        return []
+    rows = conn.execute(
+        "SELECT id, text, tags FROM canon WHERE id = ANY(%s) "
+        "ORDER BY array_position(%s, id)",
+        (id_list, id_list),
+    ).fetchall()
+    return [CanonFact(id, text, list(tags)) for id, text, tags in rows]
+
+
 def all_cast(conn: psycopg.Connection) -> list[CastMember]:
     """All cast members, ordered by id."""
     rows = conn.execute(

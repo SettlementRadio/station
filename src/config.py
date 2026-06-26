@@ -104,6 +104,12 @@ class Settings(BaseSettings):
     # so an upcoming festival or a just-passed one reaches the writer. Widen it to
     # give the DJs a longer horizon; it is a date query, not a cost driver.
     context_event_window_days: int = 14
+    # D2.4: how many canon facts semantic recall (`embeddings.retrieve`) pulls for a
+    # topic — the top-k by MEANING. `_select_canon` unions these with the structured
+    # tag-match, falling back to all canon when neither hits (so the writer never
+    # loses the core facts). Raise it to give the writer more relevant canon per
+    # topic; it is a retrieval breadth dial, not a cost driver while the bible is small.
+    context_canon_top_k: int = 6
 
     # --- Conversation (B4: two-DJ dialogue — the writers' room) ----------------
     # The cast ids (cards from the DB) who hold the conversation, in handover

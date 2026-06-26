@@ -16,9 +16,9 @@ but is not built unless quality demands it.
 Status:
   * `embed()` — IMPLEMENTED (D2.2): real vectors, model loaded once per process,
     retried + logged, output dimension validated against `settings.embeddings_dim`.
-  * `retrieve()` — still the no-op contract stub; it is wired to
-    `store.search` + `context._select_canon` in D2.4. Until then it returns `[]`, so
-    a caller degrades cleanly to structured retrieval.
+  * `retrieve()` — IMPLEMENTED (D2.4): `embed([query])` -> `store.search` ->
+    `Retrieved`; used by `context._select_canon`. Degrades to `[]` on any backend
+    failure so callers fall back to structured retrieval.
 """
 
 from __future__ import annotations
@@ -87,16 +87,37 @@ def embed(texts: Sequence[str]) -> list[list[float]]:
 
 
 def retrieve(query: str, *, k: int = 5, corpus: str | None = None) -> list[Retrieved]:
-    """Semantic search — the vector seam, NOT yet wired (lands in D2.4).
+    """Semantic search: embed `query`, return the `k` nearest stored rows by meaning.
 
-    Returns `[]` today (no embed-then-search path here yet), so a caller that unions
-    structured hits with semantic ones degrades cleanly to structured-only. D2.4
-    implements this as `embed([query])` -> `store.search(corpus=…)` -> `Retrieved`
-    rows, with `corpus` defaulting to canon for D2's caller and `None`/a list later
-    letting D3/D4/D10 search across corpora.
+    `embed([query])` -> `store.search` -> `Retrieved`. `corpus=None` searches across
+    ALL corpora (D3/D4/D10); pass a name (e.g. "canon") to scope to one — D2's caller
+    does. Manages its own short read connection so it stays a clean self-contained
+    contract.
+
+    Degrades to `[]` on ANY failure (embeddings backend missing, pgvector disabled,
+    DB unreachable) — logged at warning, never raised — so the writers' room falls
+    back to structured retrieval rather than going dead. This is the "vectors absent"
+    safety the callers rely on.
     """
-    log.debug("embeddings_retrieve_noop", query=query, k=k, corpus=corpus)
-    return []
+    # Imported here (not at module top) to keep the embeddings seam from importing
+    # the store at load time, and to mirror the lazy-dependency style of the SDK call.
+    from ..world import store
+
+    try:
+        vector = embed([query])[0]
+        with store.connect() as conn:
+            rows = store.search(conn, vector, corpus=corpus, k=k)
+        hits = [Retrieved(id=eid, text=text, score=score) for eid, text, score in rows]
+        log.debug("embeddings_retrieve", k=k, corpus=corpus, hits=len(hits))
+        return hits
+    except Exception as exc:  # noqa: BLE001 — degrade to structured retrieval, never die
+        log.warning(
+            "embeddings_retrieve_unavailable",
+            query=query,
+            corpus=corpus,
+            error=str(exc),
+        )
+        return []
 
 
 # --- Local provider (sentence-transformers) — the only embedding SDK import ---
