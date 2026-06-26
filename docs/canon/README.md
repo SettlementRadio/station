@@ -26,27 +26,36 @@ The prefix can be **any width** — `2`, `20`, `100`, `250` all work, and they o
 files as you like;** the only rule is that each file's *stem* (the name after the prefix, see §4) is
 unique across the folder. A new `100-alien-races.md` is exactly the intended way to grow the world.
 
-| File | Domain | Contains |
-|---|---|---|
-| `00-station.md` | The station's identity | bible prose + `## Canon facts` |
-| `01-time.md` | The +600y time concept | bible prose + `## Canon facts` |
-| `10-history.md` | History of the settled worlds | bible prose + `## Canon facts` |
-| `20-nations.md` | Nations / polities / powers | bible prose + `## Canon facts` |
-| `25-peoples.md` | Peoples & aliens | bible prose + `## Canon facts` |
-| `30-geography.md` | Worlds, routes, the relay-space between | bible prose + `## Canon facts` |
-| `40-war.md` | Conflicts, treaties, the military | bible prose + `## Canon facts` |
-| `50-finance.md` | Economy, trade, currency | bible prose + `## Canon facts` |
-| `60-religion.md` | Faiths, rites, the sacred | bible prose + `## Canon facts` |
-| `70-culture.md` | Daily life, customs, festivals | bible prose + `## Canon facts` |
-| `75-literature.md` | Letters, stories, the genre tribute | bible prose + `## Canon facts` |
-| `80-tech.md` | Technology, the relays, travel | bible prose + `## Canon facts` |
-| `90-cast.md` | **The DJs** | `## Cast` (projects to `cast` rows) |
-| `95-events.md` | **The world timeline** | `## Events` (projects to `events` rows) |
+The folder ships with a full set of cornerstone files. **Four are authored** (the migrated stub);
+the rest are **scaffolds** — header + authoring guidance only, no world content yet, so they seed
+nothing until you fill them (see §7).
 
-**You do not need every file to exist** — the seeder loads whatever `*.md` files are present. Start
-with the migrated stub (D1.3 fills `00`, `01`, `90`, `95`) and grow the cornerstone files over the
-phase. The two **structured** files — `90-cast.md` and `95-events.md` — keep their own files because
-their whole purpose is to project to rows; keep cast in cast and events in events.
+| File | Domain | State |
+|---|---|---|
+| `00-station.md` | The station's identity + premise facts | **authored** |
+| `01-time.md` | The +600y time concept | **authored** |
+| `05-worlds.md` | The settled worlds & the dark between (the "map") | scaffold |
+| `10-history.md` | Deep time: Earth, the diaspora, the ages | scaffold |
+| `20-peoples.md` | The branches of humanity | scaffold |
+| `25-other-minds.md` | Aliens, machine minds, the unknown (your call) | scaffold |
+| `30-polities.md` | Governance & nations across distance | scaffold |
+| `35-economy.md` | Trade, scarcity, currency | scaffold |
+| `40-law.md` | Law & justice at a distance | scaffold |
+| `45-conflict.md` | War & peace across weeks | scaffold |
+| `50-daily-life.md` | The texture of ordinary life | scaffold |
+| `55-language.md` | Tongues, drift & fossil-words | scaffold |
+| `60-faith.md` | The sacred & the search for meaning | scaffold |
+| `65-arts.md` | Story, image & the cultural memory (the tribute's home) | scaffold |
+| `70-music.md` | Music as a living culture (song lore → D7) | scaffold |
+| `75-technology.md` | The made world & its limits | scaffold |
+| `78-communication.md` | The relays & how word travels (premise-critical) | scaffold |
+| `80-cosmos.md` | The universe & the wonder (science, the sublime) | scaffold |
+| `90-cast.md` | **The DJs** | `## Cast` → `cast` rows |
+| `95-events.md` | **The world timeline** | `## Events` → `events` rows |
+
+This set is a *suggestion*, not a schema — rename, drop, merge, or add files freely (only the stem
+must be unique). The two **structured** files (`90-cast.md`, `95-events.md`) keep their own files
+because their whole purpose is to project to rows; keep cast in cast and events in events.
 
 > The world's *moving present* (generated stories/events from the nightly tick, arriving in D3) is
 > **not** authored here — it's dynamic DB state you never hand-edit. This folder is the *static
@@ -189,3 +198,26 @@ everywhere in the bible — one `- **Field:** value` convention for facts, cast,
 - After editing, run **`make seed-canon`** (the safe, everyday reload). It refreshes this folder's
   canon/cast/bible and leaves the living, tick-generated world untouched. Use **`make reset-world`**
   (destructive, warns + confirms) only for a deliberate full world wipe.
+
+---
+
+## 7. Scaffold files — how to fill one in
+
+Most cornerstone files ship as **scaffolds**: a header plus authoring guidance (what the domain is
+for, building blocks to consider, the tone/tribute), but **no world content yet**. A scaffold is
+deliberately *invisible to the seeder* — all its guidance sits **above the first `## ` heading**, and
+its only section is an empty `## Canon facts`. Since the series bible is "every `## ` section that
+isn't structured" (§2) and content before the first `## ` is dropped, a scaffold contributes **zero
+rows and zero bible prose**. It's a brief for you, not world data.
+
+To bring one to life, author *below* the guidance:
+
+1. Add one or more narrative `## <Topic>` sections — these become cached **series-bible** prose the
+   DJs read (the moment you add a real `## ` section, it starts flowing into context).
+2. Fill the `## Canon facts` numbered list with the file's hard, queryable facts (`canon-<stem>-N`).
+3. Optionally tag facts (§5).
+4. Run `make seed-canon` and confirm the counts grew.
+
+You can leave the guidance block in place (it stays invisible) or delete it once the file is written —
+either is fine. **Don't fabricate a whole world in one sitting;** grow the cornerstones over time, and
+keep new facts consistent with what's already authored.

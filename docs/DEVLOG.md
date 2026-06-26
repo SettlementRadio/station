@@ -38,6 +38,41 @@ A typical *build* session will be short, e.g.:
 
 ---
 
+## 2026-06-26 — Phase D — D1: Canon → Folder (the static substrate)
+**Focus:** turned the single `docs/CANON.md` stub into a real, growable `docs/canon/` **folder** bible
+the seeder reads whole — folder layout + conventions, a folder-loading parser, config/seed/context
+wired to the folder, the migrated stub, and a full scaffold set.
+**Decisions:**
+- **Folder = source of truth; one parser, two read paths.** `canon_source.load_folder`/
+  `load_series_bible_folder` merge `*.md` in **integer**-prefix order (`2 < 20 < 100`); single-file
+  `load()` kept for back-compat/tests. Fact ids namespaced `canon-<file-stem>-<n>` (globally unique,
+  re-seed-stable); duplicate cast/event slugs **and** duplicate file stems fail loud.
+- **Series bible = "every `## ` section that isn't structured"** (`canon facts`/`cast`/`events`), so
+  new cornerstone prose is picked up automatically — no registration.
+- **Tag affordance** parsed now (`- **Tags:**` child bullet → `CanonFact.tags`), population deferred to
+  D2.
+- **File-vs-folder auto-select** (`settings.canon_dir` + `canon_path`): folder wins when it has
+  content, else the legacy file — no extra flag.
+- **Seed split (load-bearing):** `make seed-canon` (SAFE everyday — reloads folder-owned
+  canon/cast/`source='seed'` events, leaves `source='tick'` intact) vs `make reset-world` (DESTRUCTIVE,
+  warns+confirms). New `events.source` column lands via an **idempotent migration**, not a
+  truncate-reseed; `clear_world(scope=…)` clears exactly its matrix column. `make seed` → safe alias.
+- **Scaffolds don't leak:** the 16 new cornerstone files keep guidance *above the first `## `* + an
+  empty `## Canon facts`, so they seed zero rows and zero bible prose until authored.
+**Changed:** `src/world/canon_source.py`, `src/world/store.py` (source column + migration + scoped
+clear), `src/world/seed.py` (seed_canon/reset_world + CLI), `src/world/context.py`, `src/config.py`
+(Canon section), `Makefile` (seed-canon/reset-world), `tests/test_canon_source.py` (+folder/selection
+cases); migrated `docs/CANON.md` → `docs/canon/` (00-station, 01-time, 90-cast, 95-events) + retired
+the stub to a pointer; added `docs/canon/README.md` + 16 scaffold cornerstone files; updated
+`README.md`, `.env.example`, new `docs/ADMIN_MANUAL.md`. Verified: tick event survives `seed-canon`,
+cleared by `reset-world`; counts lossless (7/2/1); `ruff` + `pytest` (85) green.
+**Why:** everything else in Phase D stands on the bible — RAG (D2) needs a canon worth embedding, the
+world engine (D3) needs a substrate, the news desk/DJs draw on it; and the seed split must exist
+*before* D3 writes irreplaceable tick state, or a one-line bible edit would nuke the living world.
+**Next:** D1 complete — flip the overview tracker; begin D2 (semantic retrieval / RAG) or D6
+(programming backbone), per the parallel tracks.
+Commit: (uncommitted)  ·  Clips: (none)
+
 ## 2026-06-26 — Phase D — planning: full task-pack set + external-audit tightening (Claude chat)
 **Focus:** prepped the *entire* Phase D ("The Living World") as a master plan + per-sub-pack task packs,
 written against the as-built C0–C4 seams, then ran an external audit over it and tightened the result —

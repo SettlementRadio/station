@@ -167,11 +167,11 @@ _EVENTS = """\
 """
 
 
-def _make_folder(tmp_path, files: dict[str, str]):
-    folder = tmp_path / "canon"
-    folder.mkdir()
-    for name, text in files.items():
-        (folder / name).write_text(text)
+def _make_folder(tmp_path, files: dict[str, str], name: str = "canon"):
+    folder = tmp_path / name
+    folder.mkdir(parents=True, exist_ok=True)
+    for fname, text in files.items():
+        (folder / fname).write_text(text)
     return folder
 
 
@@ -265,3 +265,53 @@ def test_duplicate_file_stem_raises(tmp_path):
     )
     with pytest.raises(ValueError, match="duplicate canon file stem 'history'"):
         canon_source.load_folder(folder)
+
+
+def test_file_stem_strips_numeric_prefix(tmp_path):
+    from pathlib import Path
+
+    assert canon_source._file_stem(Path("10-history.md")) == "history"
+    assert canon_source._file_stem(Path("100-alien-races.md")) == "alien-races"
+    assert canon_source._file_stem(Path("CANON.md")) == "canon"  # no prefix
+
+
+# --- File-vs-folder selection (D1.2) ----------------------------------------
+# seed/context auto-select the folder when it has cornerstone files, else fall
+# back to the single CANON.md. A silent bug here would seed the wrong source.
+
+
+def test_has_canon_folder_ignores_readme_and_missing(tmp_path):
+    missing = tmp_path / "nope"
+    assert canon_source.has_canon_folder(missing) is False
+
+    only_readme = _make_folder(tmp_path, {"README.md": "# just the guide"}, name="r")
+    assert canon_source.has_canon_folder(only_readme) is False
+
+    populated = _make_folder(tmp_path, {"10-history.md": _HISTORY}, name="p")
+    assert canon_source.has_canon_folder(populated) is True
+
+
+def test_load_world_prefers_folder_when_populated_else_file(tmp_path):
+    folder = _make_folder(tmp_path, {"10-history.md": _HISTORY}, name="canon")
+    single = tmp_path / "CANON.md"
+    single.write_text(_DOC)
+
+    # Populated folder wins: ids are namespaced (folder scheme), not legacy canon-N.
+    facts, _, _ = canon_source.load_world(folder, single)
+    assert [f.id for f in facts] == ["canon-history-1", "canon-history-2"]
+
+    # Empty/missing folder falls back to the single file (legacy canon-N ids).
+    empty = _make_folder(tmp_path, {}, name="empty")
+    facts, _, _ = canon_source.load_world(empty, single)
+    assert [f.id for f in facts] == ["canon-1", "canon-2", "canon-3"]
+
+
+def test_load_bible_prefers_folder_when_populated_else_file(tmp_path):
+    folder = _make_folder(tmp_path, {"10-history.md": _HISTORY}, name="canon")
+    single = tmp_path / "CANON.md"
+    single.write_text(_DOC)
+
+    assert "long quiet" in canon_source.load_bible(folder, single)  # folder prose
+
+    empty = _make_folder(tmp_path, {}, name="empty")
+    assert "## The station" in canon_source.load_bible(empty, single)  # file prose

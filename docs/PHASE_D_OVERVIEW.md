@@ -326,9 +326,9 @@ done and Claude (chat) can generate the `_TASKS.md` now.
 
 | Sub-pack | File | Depends on | Pack written? | Built? | Status |
 |---|---|---|---|---|---|
-| D1 Canon → Folder | `PHASE_D_CANON_FOLDER_TASKS.md` | — | ✅ | ☐ | **Ready** |
-| D2 Semantic Retrieval / RAG | `PHASE_D_RAG_TASKS.md` | D1 | ✅ | ☐ | Blocked on D1 build |
-| D3 World Engine (keystone) | `PHASE_D_WORLD_ENGINE_TASKS.md` | D1 (D2 recommended) | ✅ | ☐ | Blocked on D1 build |
+| D1 Canon → Folder | `PHASE_D_CANON_FOLDER_TASKS.md` | — | ✅ | ✅ | **Built** (D1.0–D1.4) |
+| D2 Semantic Retrieval / RAG | `PHASE_D_RAG_TASKS.md` | D1 | ✅ | ☐ | **Ready** |
+| D3 World Engine (keystone) | `PHASE_D_WORLD_ENGINE_TASKS.md` | D1 (D2 recommended) | ✅ | ☐ | **Ready** (D2 recommended first) |
 | D4 News Desk | `PHASE_D_NEWS_DESK_TASKS.md` | D3, D2 | ✅ | ☐ | Blocked on D3 build |
 | D5 Freshness / Anti-repetition | `PHASE_D_FRESHNESS_TASKS.md` | D3/D4 | ✅ | ☐ | Blocked on D3/D4 build |
 | D6 Programming + Status Console | `PHASE_D_PROGRAMMING_TASKS.md` | C2 scheduler | ✅ | ☐ | **Ready** (parallel-able) |

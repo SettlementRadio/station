@@ -79,7 +79,7 @@ cloud voice; needs `ELEVENLABS_API_KEY` + credits) and `say` (macOS built-in; of
 Kokoro won't install).
 
 **4. World-state database (Postgres).** From Phase B the world (canon, cast, events) lives in a
-local PostgreSQL database, seeded from `docs/CANON.md`. Install and start it with Homebrew, then
+local PostgreSQL database, seeded from the **canon bible**. Install and start it with Homebrew, then
 create the database:
 ```bash
 brew install postgresql@14
@@ -87,11 +87,19 @@ brew services start postgresql@14      # run it now and at login
 createdb settlement_radio              # the default DB in DATABASE_URL
 ```
 The connection string is `DATABASE_URL` (default `postgresql://localhost/settlement_radio`); set it
-in `.env` only if your Postgres differs. Seed the database from the canon — idempotent, so re-run it
-any time you edit `docs/CANON.md`:
+in `.env` only if your Postgres differs.
+
+The bible is the [`docs/canon/`](docs/canon/) folder of cornerstone files (`00-station.md`,
+`90-cast.md`, … — see [`docs/canon/README.md`](docs/canon/README.md) for the authoring contract;
+`CANON_DIR` overrides the location). Seeding reads the whole folder; it auto-selects the folder when
+it holds content and otherwise falls back to the legacy single `docs/CANON.md`. Two commands, split so
+a routine bible edit never destroys the living, tick-generated world (Phase D / D1):
 ```bash
-make seed        # loads canon facts, both DJ cards, and the dated Lumen Festival event
+make seed-canon  # SAFE everyday reload: refresh canon/cast/seed-events; keep source=tick events
+make reset-world # DESTRUCTIVE full world+canon wipe + rebuild (warns + confirms)
 ```
+Both are idempotent; re-run `make seed-canon` any time you edit a file under `docs/canon/`. (`make
+seed` is a back-compat alias for the safe path.)
 The station knows what time it is. The world clock ([`src/world/clock.py`](src/world/clock.py)) maps
 real time to the in-world `year + 600`, and event progression ([`src/world/events.py`](src/world/events.py))
 turns a stored event date into a live status and the phrase a DJ would say. See it flip:
@@ -230,8 +238,9 @@ The backend follows the engineering standards in [`CLAUDE.md`](CLAUDE.md). For c
   rather than silently producing nothing.
 - **One place for SQL.** All world-state reads/writes go through
   [`src/world/store.py`](src/world/store.py) — the same seam discipline as `providers/`. Nothing
-  else imports `psycopg` or writes SQL. `docs/CANON.md` is the human-editable source; the parser
-  ([`src/world/canon_source.py`](src/world/canon_source.py)) and `make seed` project it into the DB,
+  else imports `psycopg` or writes SQL. The [`docs/canon/`](docs/canon/) bible folder is the
+  human-editable source; the parser
+  ([`src/world/canon_source.py`](src/world/canon_source.py)) and `make seed-canon` project it into the DB,
   and the writer reads its world back out through [`src/world/context.py`](src/world/context.py),
   never the raw file.
 - **Lint + format.** [`ruff`](https://docs.astral.sh/ruff/) is configured in `pyproject.toml`:
