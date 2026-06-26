@@ -14,9 +14,16 @@ soundfile>=0.12
 
 # World-state database (B1): the queryable store behind src/world/store.py.
 # psycopg 3 (the modern Postgres driver); [binary] ships prebuilt wheels so no
-# local libpq/compiler is needed. pgvector is intentionally NOT added yet —
-# vector search is deferred to B3 (see store.py / README).
+# local libpq/compiler is needed. The pgvector EXTENSION is a Postgres-side install
+# (see README), not a Python dep — store.py binds vectors as text literals (%s::vector),
+# so no pgvector Python adapter is needed.
 psycopg[binary]>=3.1
+
+# Semantic retrieval (D2): the LOCAL embedding model behind src/providers/embeddings.py.
+# sentence-transformers runs the chosen model (settings.embeddings_model, default
+# all-MiniLM-L6-v2, 384-d) on CPU — free, no key, no quota. It pulls in torch +
+# huggingface_hub; the model downloads once on first embed, then caches locally.
+sentence-transformers>=3.0
 
 # Foundation (B0.5): typed settings + structured logging.
 # pydantic-settings backs the single src/config.py module (env/.env -> typed

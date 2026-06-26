@@ -89,6 +89,19 @@ createdb settlement_radio              # the default DB in DATABASE_URL
 The connection string is `DATABASE_URL` (default `postgresql://localhost/settlement_radio`); set it
 in `.env` only if your Postgres differs.
 
+**pgvector (Phase D / D2 — semantic retrieval).** The world store uses the
+[pgvector](https://github.com/pgvector/pgvector) extension for meaning-based canon recall;
+`init_schema` runs `CREATE EXTENSION vector` and fails loudly if it isn't installed. The Homebrew
+bottle currently covers postgresql@17/@18 (`brew install pgvector`); for **postgresql@14** (the
+version above) build it from source against pg14's `pg_config`:
+```bash
+# postgresql@14: bottle unavailable — compile + install the extension for pg14
+git clone --branch v0.8.3 --depth 1 https://github.com/pgvector/pgvector.git
+cd pgvector && PG_CONFIG=/opt/homebrew/opt/postgresql@14/bin/pg_config make && \
+  PG_CONFIG=/opt/homebrew/opt/postgresql@14/bin/pg_config make install
+```
+No DB restart needed — `make seed-canon` (next) creates the extension and the `embeddings` table.
+
 The bible is the [`docs/canon/`](docs/canon/) folder of cornerstone files (`00-station.md`,
 `90-cast.md`, … — see [`docs/canon/README.md`](docs/canon/README.md) for the authoring contract;
 `CANON_DIR` overrides the location). Seeding reads the whole folder; it auto-selects the folder when
@@ -114,14 +127,14 @@ canon — all by structured DB query). Inspect exactly what the writer will send
 ```bash
 make context     # prints the cached core and the dynamic (events/canon) slice for now
 ```
-> **pgvector is intentionally not installed.** Phase B uses structured queries (by date /
-> status / tag) over the `events` and `canon` tables — the fast, right retrieval while the canon is
-> small. Semantic vector search stays a **documented seam, unused**: the interface lives in
-> [`src/providers/embeddings.py`](src/providers/embeddings.py) (a no-op `retrieve()` + a
-> `NotImplementedError` `embed()`), and when its trigger fires it slots into
-> [`src/world/store.py`](src/world/store.py) (a `CREATE EXTENSION vector` + a `canon_embeddings`
-> table). The trigger — context outgrowing the cache, or needing meaning-based recall — is spelled
-> out at the top of both files.
+> **Semantic retrieval is live (Phase D / D2).** Structured queries (by date / status / tag) still
+> serve the fast path, but the canon is now also recalled by **meaning** via pgvector. The vector SQL
+> lives only in [`src/world/store.py`](src/world/store.py) — `CREATE EXTENSION vector` plus ONE
+> polymorphic `embeddings(corpus, entity_id, …)` table (multi-corpus so D3 events and D10 figures reuse
+> it) with an HNSW cosine index — and the embedding model lives only behind
+> [`src/providers/embeddings.py`](src/providers/embeddings.py). The model is a **local** open
+> sentence-transformer (`settings.embeddings_*`; 384-d, free, no key — D2.0 decision); `embeddings_dim`
+> is the `vector(N)` width, so a model change means a re-embed + a column migration.
 
 Two DJs hold a conversation, not two monologues. The conversation orchestrator
 ([`src/writers/conversation.py`](src/writers/conversation.py)) runs a light writers' room over the

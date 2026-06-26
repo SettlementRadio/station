@@ -21,20 +21,23 @@ here. Connection details come from `settings.database_url` (B0.5) — never a
 hardcoded string.
 
 ------------------------------------------------------------------------------
-FUTURE — vector search (a documented, UNUSED seam as of B3; see PHASE_B_TASKS.md):
-Structured queries over `events`/`canon` (by date / status / tag) are the right,
-fast retrieval for now, so pgvector is intentionally NOT enabled yet. The seam
-contract lives stubbed in `providers/embeddings.py`. When the assembled context
-outgrows the prompt cache or needs semantic (not date/tag) recall, it slots in
-HERE: `CREATE EXTENSION vector`, add a `canon_embeddings(canon_id, embedding
-vector(N))` table joined to `canon`, and a `search_canon()` query — driven by that
-seam. Nothing outside this module should need to change.
+Vector search (LIVE as of D2.1; the seam this module reserved in B3 is now built):
+pgvector is enabled in `init_schema` and the embeddings live in ONE polymorphic
+table — `embeddings(corpus, entity_id, text, source, tags, embedding vector(N))`
+— NOT a canon-only table, so D3 (events/stories) and D10 (figures/quotes) reuse it
+by passing their own `corpus`. `N` is `settings.embeddings_dim`; the index uses the
+COSINE opclass (the chosen model emits L2-normalised vectors). The embedding model
+itself lives ONLY behind `providers/embeddings.py`; the vector SQL lives ONLY here
+(`insert_embeddings`/`delete_embeddings`/`search`). `entity_id` is a *soft* cross-
+table reference (a real FK can't span corpora), so per-entity cleanup is app logic
+(`delete_embeddings`), not a cascade. The table is DERIVED/regenerable: re-embedded
+on seed, cleared on `reset-world`, not backed up (§2a matrix).
 ------------------------------------------------------------------------------
 """
 
 from __future__ import annotations
 
-from collections.abc import Iterable, Iterator
+from collections.abc import Iterable, Iterator, Sequence
 from contextlib import contextmanager
 from dataclasses import dataclass, field
 from datetime import datetime
@@ -97,8 +100,29 @@ class Event:
 # An event's provenance (the `events.source` column). A canon refresh replaces only
 # SEED rows; TICK rows are the living world the world tick (D3) generates and must
 # survive a re-seed. The same split is honoured by D3.0, D10.0 and the §2a matrix.
+# The `embeddings.source` column (D2) reuses these SAME values: a canon refresh
+# re-embeds the SEED-sourced rows and leaves TICK-sourced embeddings intact.
 EVENT_SOURCE_SEED = "seed"
 EVENT_SOURCE_TICK = "tick"
+
+
+@dataclass(frozen=True)
+class EmbeddingRow:
+    """One row to write into the polymorphic `embeddings` table (D2).
+
+    `corpus` is NOT a field — it is the per-batch argument to `insert_embeddings`
+    (every row in a batch shares one corpus, e.g. "canon"). `source` is the same
+    seed/tick provenance as `events.source` (see EVENT_SOURCE_*). `embedding` is the
+    N-float vector; its length MUST equal `settings.embeddings_dim` (the producer
+    behind `providers/embeddings.py` validates that — a wrong-dim insert will also
+    fail loudly against the `vector(N)` column).
+    """
+
+    entity_id: str
+    text: str
+    source: str
+    embedding: list[float]
+    tags: list[str] = field(default_factory=list)
 
 
 # --- Schema -----------------------------------------------------------------
@@ -150,8 +174,37 @@ CREATE INDEX IF NOT EXISTS events_source_idx ON events (source);
 """
 
 # The four world tables, in FK-safe order (none today, but keep it stable for a
-# single TRUNCATE that reproduces the world cleanly on re-seed).
+# single TRUNCATE that reproduces the world cleanly on re-seed). `embeddings` is
+# handled separately (it is DERIVED, not source-of-truth world state — see below).
 _WORLD_TABLES = ("canon", '"cast"', "events", "state")
+
+# --- Vector schema (D2.1: pgvector + the ONE polymorphic embeddings table) ---
+# Run in init_schema AFTER the base schema. `CREATE EXTENSION vector` needs the
+# pgvector system package installed (README documents the Homebrew step) and fails
+# LOUDLY if it isn't — the right behaviour, not a silent skip. The table is multi-
+# corpus from day one so D3/D10 reuse it (corpus ∈ canon now; event/story/figure/
+# quote later). `vector(N)` interpolates `settings.embeddings_dim` (cast to int —
+# config, never user input); a later model change means a re-embed + a column
+# migration (this CREATE ... IF NOT EXISTS won't resize an existing column). The
+# index uses the COSINE opclass (HNSW; needs pgvector >= 0.5.0) because the chosen
+# model emits L2-normalised vectors. A btree on `corpus` speeds the scoped search.
+_VECTOR_SCHEMA_SQL = f"""
+CREATE EXTENSION IF NOT EXISTS vector;
+
+CREATE TABLE IF NOT EXISTS embeddings (
+    corpus    text NOT NULL,
+    entity_id text NOT NULL,
+    text      text NOT NULL,
+    source    text NOT NULL,
+    tags      text[] NOT NULL DEFAULT '{{}}',
+    embedding vector({int(settings.embeddings_dim)}) NOT NULL,
+    PRIMARY KEY (corpus, entity_id)
+);
+
+CREATE INDEX IF NOT EXISTS embeddings_corpus_idx ON embeddings (corpus);
+CREATE INDEX IF NOT EXISTS embeddings_vec_idx
+    ON embeddings USING hnsw (embedding vector_cosine_ops);
+"""
 
 
 # --- Connection -------------------------------------------------------------
@@ -203,6 +256,7 @@ def init_schema(conn: psycopg.Connection) -> None:
     log.info("db_init_schema")
     conn.execute(_SCHEMA_SQL)
     conn.execute(_MIGRATIONS_SQL)
+    conn.execute(_VECTOR_SCHEMA_SQL)
 
 
 def clear_world(conn: psycopg.Connection, *, scope: str = "world") -> None:
@@ -223,12 +277,19 @@ def clear_world(conn: psycopg.Connection, *, scope: str = "world") -> None:
     keys survive); the full wipe clears it.
     """
     if scope == "canon":
-        log.info("db_clear_world", scope=scope, tables="canon,cast,events[seed]")
+        log.info("db_clear_world", scope=scope, tables="canon,cast,events+emb[seed]")
         conn.execute('TRUNCATE canon, "cast"')
         conn.execute("DELETE FROM events WHERE source = %s", (EVENT_SOURCE_SEED,))
+        # Drop only the folder-derived (SEED) embeddings so the refresh re-embeds
+        # them; TICK-sourced embeddings (D3/D10's living world) survive — mirrors
+        # the events split above and the §2a "re-embedded affected rows" rule.
+        conn.execute("DELETE FROM embeddings WHERE source = %s", (EVENT_SOURCE_SEED,))
     elif scope == "world":
-        log.info("db_clear_world", scope=scope, tables=_WORLD_TABLES)
+        log.info("db_clear_world", scope=scope, tables=(*_WORLD_TABLES, "embeddings"))
         conn.execute(f"TRUNCATE {', '.join(_WORLD_TABLES)}")
+        # embeddings is DERIVED — cleared wholesale on the destructive wipe, then
+        # rebuilt by the re-seed (§2a: cleared + re-embedded on reset-world).
+        conn.execute("TRUNCATE embeddings")
     else:
         raise ValueError(
             f"unknown clear_world scope {scope!r} (expected 'canon'|'world')"
@@ -283,6 +344,68 @@ def set_state(conn: psycopg.Connection, key: str, value: str) -> None:
         (key, value),
     )
     log.debug("db_set_state", key=key)
+
+
+# --- Embeddings (D2.1: the ONLY place vector SQL lives) ---------------------
+
+
+def _vector_literal(vec: Sequence[float]) -> str:
+    """Format a float vector as a pgvector text literal, e.g. ``[0.1,0.2,0.3]``.
+
+    Bound as a plain text parameter and cast in SQL with ``%s::vector``, so this
+    module needs NO pgvector Python adapter — the cast runs pgvector's own input
+    function. ``repr(float(...))`` keeps full round-trip precision.
+    """
+    return "[" + ",".join(repr(float(x)) for x in vec) + "]"
+
+
+def insert_embeddings(
+    conn: psycopg.Connection, corpus: str, rows: Iterable[EmbeddingRow]
+) -> int:
+    """Upsert embedding rows for one `corpus`; return how many were written.
+
+    Upsert (ON CONFLICT on the (corpus, entity_id) PK) so re-embedding an entity
+    replaces it cleanly — a canon refresh can re-insert without a prior delete, and
+    a half-finished embed run is safely re-runnable.
+    """
+    params = [
+        (corpus, r.entity_id, r.text, r.source, r.tags, _vector_literal(r.embedding))
+        for r in rows
+    ]
+    conn.cursor().executemany(
+        "INSERT INTO embeddings (corpus, entity_id, text, source, tags, embedding) "
+        "VALUES (%s, %s, %s, %s, %s, %s::vector) "
+        "ON CONFLICT (corpus, entity_id) DO UPDATE SET "
+        "text = EXCLUDED.text, source = EXCLUDED.source, "
+        "tags = EXCLUDED.tags, embedding = EXCLUDED.embedding",
+        params,
+    )
+    log.info("db_insert_embeddings", corpus=corpus, count=len(params))
+    return len(params)
+
+
+def delete_embeddings(
+    conn: psycopg.Connection, corpus: str, entity_id: str | None = None
+) -> int:
+    """Delete embeddings for a `corpus` — one entity, or the whole corpus.
+
+    `entity_id` set → remove that single soft-referenced row (call this when its
+    backing entity is deleted, since no FK cascades across corpora — D10). `entity_id`
+    None → clear the entire corpus (used to refresh a corpus on re-seed). Returns the
+    row count deleted.
+    """
+    if entity_id is None:
+        cur = conn.execute("DELETE FROM embeddings WHERE corpus = %s", (corpus,))
+        n = cur.rowcount
+        log.info("db_delete_embeddings", corpus=corpus, scope="corpus", count=n)
+    else:
+        cur = conn.execute(
+            "DELETE FROM embeddings WHERE corpus = %s AND entity_id = %s",
+            (corpus, entity_id),
+        )
+        n = cur.rowcount
+        log.debug("db_delete_embeddings", corpus=corpus, entity_id=entity_id, count=n)
+    return n
 
 
 # --- Reads ------------------------------------------------------------------
@@ -388,3 +511,53 @@ def counts(conn: psycopg.Connection) -> dict[str, int]:
         n = conn.execute(f"SELECT count(*) FROM {table}").fetchone()[0]
         out[table.strip('"')] = n
     return out
+
+
+def search(
+    conn: psycopg.Connection,
+    query_embedding: Sequence[float],
+    *,
+    corpus: str | None = None,
+    k: int = 5,
+) -> list[tuple[str, str, float]]:
+    """Nearest embeddings to `query_embedding`, closest first — the vector read.
+
+    `corpus=None` searches across ALL corpora (so D3/D4/D10 can recall over "canon +
+    events + figures" at once); pass a corpus name to scope to one (D2's own use via
+    `search_canon`). Returns ``(entity_id, text, score)`` where `score` is cosine
+    similarity in ``[-1, 1]``, HIGHER = closer (matches the `Retrieved.score`
+    contract) — derived as ``1 - <=>`` (pgvector's cosine *distance*). Ordering is by
+    the distance operator so the HNSW cosine index is used.
+    """
+    qv = _vector_literal(query_embedding)
+    log.debug("db_search", corpus=corpus or "*", k=k)
+    if corpus is None:
+        rows = conn.execute(
+            "SELECT entity_id, text, 1 - (embedding <=> %s::vector) AS score "
+            "FROM embeddings ORDER BY embedding <=> %s::vector LIMIT %s",
+            (qv, qv, k),
+        ).fetchall()
+    else:
+        rows = conn.execute(
+            "SELECT entity_id, text, 1 - (embedding <=> %s::vector) AS score "
+            "FROM embeddings WHERE corpus = %s "
+            "ORDER BY embedding <=> %s::vector LIMIT %s",
+            (qv, corpus, qv, k),
+        ).fetchall()
+    return [(eid, text, float(score)) for eid, text, score in rows]
+
+
+def search_canon(
+    conn: psycopg.Connection, query_embedding: Sequence[float], *, k: int = 5
+) -> list[tuple[str, str, float]]:
+    """`search` scoped to the canon corpus — the convenience D2's `retrieve` calls."""
+    return search(conn, query_embedding, corpus="canon", k=k)
+
+
+def embeddings_count(conn: psycopg.Connection, *, corpus: str | None = None) -> int:
+    """How many embeddings exist (optionally for one corpus) — seed verification."""
+    if corpus is None:
+        return conn.execute("SELECT count(*) FROM embeddings").fetchone()[0]
+    return conn.execute(
+        "SELECT count(*) FROM embeddings WHERE corpus = %s", (corpus,)
+    ).fetchone()[0]
