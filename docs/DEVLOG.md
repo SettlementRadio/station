@@ -38,6 +38,42 @@ A typical *build* session will be short, e.g.:
 
 ---
 
+## 2026-06-26 — Phase D — D2: Semantic retrieval / RAG goes live (D2.0–D2.6)
+**Focus:** activated the stubbed vector seam so the writers' room recalls canon by **meaning**, not
+just date/tag — the bible is multi-file after D1, so both embeddings triggers fire.
+**Decisions:**
+- **Embedding provider (D2.0):** Anthropic has NO first-party embeddings endpoint (confirmed via the
+  `claude-api` skill), so the embedder is a real third-party pick. Chose a **local** open
+  sentence-transformer — `all-MiniLM-L6-v2`, **dim 384**, provider `local` — free, no key, no network,
+  CPU-cheap on the CX33 (the Kokoro stance). Hosted (Voyage) stays switchable behind the seam. `dim` is
+  load-bearing config (the pgvector `vector(N)` width) → a model swap = re-embed + column migration.
+- **ONE polymorphic table, not canon-only (audit fix):** `embeddings(corpus, entity_id, text, source,
+  tags, embedding vector(384))` + HNSW **cosine** index — multi-corpus from day one so D3 events / D10
+  figures reuse `insert_embeddings`/`search` by passing their own `corpus`. `source` carries the
+  seed/tick split; `entity_id` is a soft cross-table ref (cleanup is app logic, no FK cascade).
+- **Seam discipline held:** vector SQL only in `store.py` (bound as `%s::vector` text literals — no
+  pgvector *Python* dep); the embedding model only behind `providers/embeddings.py`; `context._select_canon`
+  calls the `retrieve()` contract. `retrieve` **degrades to `[]`** on any backend failure → the room
+  falls back to structured retrieval, never dies.
+- **Hybrid selection:** `_select_canon` unions semantic top-k (`context_canon_top_k=6`) with the
+  tag-match, semantic-first, falling back to all canon when neither hits.
+**Changed:** `config.py` (`embeddings_*`, `context_canon_top_k`); `store.py` (pgvector schema +
+`embeddings` table/index, `insert_/delete_embeddings`, `search`/`search_canon`, `canon_by_ids`,
+`embeddings_count`, `clear_world` honours the §2a matrix); `providers/embeddings.py` (`embed` via
+sentence-transformers, model cached once, retried, dim-validated; real `retrieve`); `seed.py` (embed
+canon on seed); `docs/canon/00-station.md`+`01-time.md` (facts tagged, D2.5); `requirements.txt`
+(sentence-transformers; pgvector is a Postgres-side install, README-documented); tests
+(`test_embeddings.py` + hybrid `_select_canon` in `test_context.py` — provider mocked, one skip-guarded
+SQL-ordering test); README/.env.example/ADMIN_MANUAL.
+**Why:** local matches the project ethos and keeps text cost near-trivial (TTS, not embedding, is the
+ceiling); the polymorphic table avoids a mid-phase refactor when D3/D10 need to be searchable.
+**📣 Postable:** "Taught the AI radio station to remember its own lore by *meaning* — ask it about
+'loneliness' and it surfaces the right canon even though nothing is tagged that word." (commit + a
+`make context TOPIC=…`-style clip.)
+**Next:** D3 — the World Engine (the nightly generative tick), which embeds its events on write into
+this same table (`corpus='event'`).
+Commit: (pending)  ·  Clips: (none)
+
 ## 2026-06-26 — Phase D — D2.0: pick the embedding provider (RAG DECISION)
 **Focus:** the first step of D2 (semantic retrieval) — decide what computes the vectors behind
 `providers/embeddings.embed()` and record why, before any code touches pgvector or the seam.

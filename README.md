@@ -112,7 +112,9 @@ make seed-canon  # SAFE everyday reload: refresh canon/cast/seed-events; keep so
 make reset-world # DESTRUCTIVE full world+canon wipe + rebuild (warns + confirms)
 ```
 Both are idempotent; re-run `make seed-canon` any time you edit a file under `docs/canon/`. (`make
-seed` is a back-compat alias for the safe path.)
+seed` is a back-compat alias for the safe path.) Seeding also **embeds** every canon fact into the
+`embeddings` table (`corpus='canon'`) so the writers' room can recall canon by meaning (D2); a
+refresh re-embeds the canon corpus cleanly and leaves tick-generated vectors untouched.
 The station knows what time it is. The world clock ([`src/world/clock.py`](src/world/clock.py)) maps
 real time to the in-world `year + 600`, and event progression ([`src/world/events.py`](src/world/events.py))
 turns a stored event date into a live status and the phrase a DJ would say. See it flip:
@@ -123,7 +125,8 @@ The writers' room is fed the right slice of that world by
 [`src/world/context.py`](src/world/context.py): `assemble(now)` returns a **cached stable core**
 (the series bible + the speaking DJ's card → sent as a prompt-cache breakpoint) plus the **dynamic
 now** (events near the current time, with live status and relative phrasing, and topic-relevant
-canon — all by structured DB query). Inspect exactly what the writer will send:
+canon — events by structured date query, canon by a hybrid of semantic recall + tag match). Inspect
+exactly what the writer will send:
 ```bash
 make context     # prints the cached core and the dynamic (events/canon) slice for now
 ```

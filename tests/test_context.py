@@ -2,16 +2,18 @@
 
 `assemble()` itself needs the DB, so it is exercised by `make context`. Here we
 test the brittle, DB-free bits a silent bug would hurt: the topic→tags tokenizer
-that drives canon retrieval, and the dynamic-block renderer (the time-aware slice
-the writer actually sees — it must surface the relative phrase and the facts, and
-collapse to empty when there is nothing).
+that drives canon retrieval, the dynamic-block renderer (the time-aware slice the
+writer actually sees), and the D2.4 hybrid `_select_canon` (semantic + tag union,
+with a clean fallback) — with the embedding provider and the store mocked, so no
+model or DB is touched.
 """
 
 from __future__ import annotations
 
 from datetime import datetime, timedelta
 
-from src.world import clock, context
+from src.providers import embeddings
+from src.world import clock, context, store
 from src.world import events as events_mod
 from src.world.store import CanonFact, Event
 
@@ -42,3 +44,56 @@ def test_render_dynamic_surfaces_relative_phrase_and_facts():
 
 def test_render_dynamic_is_empty_with_no_world():
     assert context._render_dynamic([], [], datetime(2026, 6, 19)) == ""
+
+
+# --- _select_canon: the D2.4 hybrid (semantic + tag), DB/model mocked -------
+
+
+def test_select_canon_no_topic_returns_all(monkeypatch):
+    sentinel = [CanonFact("all-1", "x", [])]
+    monkeypatch.setattr(store, "all_canon", lambda conn: sentinel)
+    assert context._select_canon(object(), None) is sentinel
+
+
+def test_select_canon_hybrid_unions_semantic_then_tag(monkeypatch):
+    # semantic returns 2 ranked ids; the tag path adds one the vectors missed and
+    # repeats one already found -> union is semantic-first, then the tag-only extra.
+    monkeypatch.setattr(
+        embeddings,
+        "retrieve",
+        lambda topic, *, k, corpus: [
+            embeddings.Retrieved("c-sem1", "", 0.9),
+            embeddings.Retrieved("c-sem2", "", 0.5),
+        ],
+    )
+    monkeypatch.setattr(
+        store,
+        "canon_by_tags",
+        lambda conn, tags: [
+            CanonFact("c-tag1", "", ["x"]),
+            CanonFact("c-sem2", "", []),
+        ],
+    )
+    captured: dict[str, list[str]] = {}
+
+    def fake_by_ids(conn, ids):
+        captured["ids"] = list(ids)
+        return [CanonFact(i, "", []) for i in ids]
+
+    monkeypatch.setattr(store, "canon_by_ids", fake_by_ids)
+
+    out = context._select_canon(object(), "loneliness")
+
+    # off-tag-safe: semantic hits lead (meaning-rank preserved), tag-only de-duped in.
+    assert captured["ids"] == ["c-sem1", "c-sem2", "c-tag1"]
+    assert [f.id for f in out] == ["c-sem1", "c-sem2", "c-tag1"]
+
+
+def test_select_canon_falls_back_to_all_when_no_hits(monkeypatch):
+    # vectors unavailable (retrieve -> []) AND no tag match -> whole canon, no error.
+    monkeypatch.setattr(embeddings, "retrieve", lambda topic, *, k, corpus: [])
+    monkeypatch.setattr(store, "canon_by_tags", lambda conn, tags: [])
+    sentinel = [CanonFact("all-1", "x", [])]
+    monkeypatch.setattr(store, "all_canon", lambda conn: sentinel)
+
+    assert context._select_canon(object(), "loneliness") is sentinel

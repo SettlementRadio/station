@@ -12,3 +12,4 @@ the morning, settlement time") and references the in-world date naturally.
 ## Canon facts
 
 1. "Settlement time" is the shared clock everyone tunes to.
+   - **Tags:** time, clock, synchrony, settlements, ritual, rhythm, shared, simultaneity, unity

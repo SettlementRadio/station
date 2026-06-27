@@ -51,3 +51,45 @@ make demo                # event progression: "in five days" -> "yesterday"
 ```
 To confirm tick-safety by hand: insert a `source='tick'` event, run `make seed-canon`, confirm it
 survives; `make reset-world` clears it.
+
+---
+
+## D2 — Semantic retrieval / RAG (canon recalled by meaning)
+
+**What it is.** The writers' room recalls canon by **meaning** (not just date/tag) via pgvector. The
+embedding model is **local** (sentence-transformers, free, no key); all vector SQL is in `store.py`,
+the model only behind `providers/embeddings.py`. Canon facts are embedded automatically on every seed.
+
+### One-time setup (per machine)
+1. **Python deps** (includes `sentence-transformers`): `pip install -r requirements.txt`. The model
+   (`all-MiniLM-L6-v2`, ~80 MB) downloads once on first embed, then caches locally.
+2. **pgvector extension** (Postgres-side; `init_schema` runs `CREATE EXTENSION vector` and fails loud
+   without it). postgresql@17/@18: `brew install pgvector`. postgresql@14: build from source against
+   pg14's `pg_config` — see README step 4.
+
+### Use it / verify
+```bash
+make seed-canon   # embeds every canon fact into embeddings(corpus='canon'); logs embeddings_canon=N (== canon)
+make context      # the dynamic slice now includes canon chosen by meaning (hybrid semantic + tag)
+```
+Manual meaning-recall check (returns canon ranked by meaning even for an off-tag topic):
+```bash
+python -c "from datetime import datetime; from src.world import context; \
+print(context.assemble(datetime.now(), topic='loneliness', speakers='vell').dynamic)"
+```
+
+### Tag canon facts (sharpens the structured half of the hybrid)
+In a `## Canon facts` item, add a child bullet `   - **Tags:** a, b, c` (lowercase single words — the
+query side lowercases + splits on non-alphanumerics, so `Lumen-Festival` won't match `lumen`). Re-run
+`make seed-canon`. Tags also let `store.canon_by_tags` narrow by topic.
+
+### Config knobs (`.env`; defaults sane)
+`EMBEDDINGS_PROVIDER` (`local`|`voyage`), `EMBEDDINGS_MODEL`, `EMBEDDINGS_DIM` (must match the model —
+it's the `vector(N)` column; a change means re-embed + migration), `CONTEXT_CANON_TOP_K` (facts pulled
+per topic). **Switching model:** change model+dim together, then `make seed-canon` to re-embed.
+
+### Notes
+- If pgvector/embeddings are unavailable, `retrieve()` returns `[]` and the room **degrades to
+  structured retrieval** — no crash; check logs for `embeddings_retrieve_unavailable`.
+- `make reset-world` clears the embeddings table (re-embedded on the rebuild); `make seed-canon`
+  re-embeds only the `source='seed'` (canon) rows and leaves tick-generated vectors intact.
