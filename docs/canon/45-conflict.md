@@ -26,4 +26,9 @@ optimism tempered by hard questions — never glorified.
 
 ## Canon facts
 
-<!-- none yet — add a numbered list here when you author this cornerstone. -->
+1. War at this distance is slow, ruinously costly, and rare; force measured in seasons seldom repays what it destroys, so the worlds mostly keep an uneasy long peace.
+   - **Tags:** war, peace, distance, conflict, cost
+2. Disputes are settled far more often by blockade, embargo, and patient mediation than by fast force.
+   - **Tags:** conflict, blockade, mediation, peace, distance
+3. Piracy and raiding shadow the long routes — the chief danger of the between — and the relays double as the worlds' shared early warning.
+   - **Tags:** piracy, danger, between, route, conflict

@@ -26,4 +26,9 @@ cosmos, the sacred examined rather than dismissed.
 
 ## Canon facts
 
-<!-- none yet — add a numbered list here when you author this cornerstone. -->
+1. Old faiths carried from Earth survived the diaspora by changing in the crossing; new faiths were born among the worlds — of travel, of light, of the long dark.
+   - **Tags:** faith, belief, sacred, diaspora, change
+2. Many rites mark distance itself: departures, the dead sent into the dark, and the long wait for word from far away.
+   - **Tags:** faith, rite, mourning, distance, ritual
+3. The Lumen Festival is the nearest thing to a shared holy day — every world kindling its lamps at the same hour, a rite of light against the dark.
+   - **Tags:** faith, festival, light, ritual, hope

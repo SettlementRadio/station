@@ -223,6 +223,29 @@ def test_folder_sorts_by_numeric_prefix_not_string(tmp_path):
     assert [f.id for f in facts] == ["canon-a-1", "canon-b-1", "canon-c-1"]
 
 
+def test_folder_skips_non_prefixed_authoring_guides(tmp_path):
+    # README / TAGS / SPIRIT and any non-numeric-prefixed .md are authoring guides,
+    # not world content: they must NEVER contribute facts or leak into the cached
+    # bible. (A guide that names real authors reaching the DJs would breach the IP
+    # rule — so this is a hard boundary, not a nicety.)
+    guide = (
+        "# TAGS.md — authoring guide\n\n"
+        "## The palette\n\nGUIDE_PROSE_MARKER tag vocabulary.\n\n"
+        "## Canon facts\n\n1. GUIDE_FACT_MARKER must never seed.\n"
+    )
+    folder = _make_folder(
+        tmp_path,
+        {"10-history.md": _HISTORY, "TAGS.md": guide, "SPIRIT.md": "## Spirit\n\nx\n"},
+    )
+    facts, _, _ = canon_source.load_folder(folder)
+    bible = canon_source.load_series_bible_folder(folder)
+
+    assert all("GUIDE_FACT_MARKER" not in f.text for f in facts)
+    assert all(not f.id.startswith("canon-tags") for f in facts)
+    assert "GUIDE_PROSE_MARKER" not in bible
+    assert "## Spirit" not in bible
+
+
 def test_series_bible_folder_concatenates_new_cornerstone_prose(tmp_path):
     folder = _make_folder(
         tmp_path,

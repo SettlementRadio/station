@@ -26,4 +26,9 @@ ordinary made luminous. Wonder found in small things, not just big ones.
 
 ## Canon facts
 
-<!-- none yet — add a numbered list here when you author this cornerstone. -->
+1. A settled day is built around shared "settlement time," so distant worlds wake, work, and rest to the same clock even when their skies disagree.
+   - **Tags:** daily, time, ritual, work, community
+2. A shared meal is the small sacrament of settled life — the gesture that turns strangers into neighbours and an outpost into a home.
+   - **Tags:** food, ritual, hospitality, home, kinship
+3. Raising children far from anywhere is a communal act; a household is rarely just one family, and a neighbour is a kind of kin.
+   - **Tags:** family, community, kinship, home, generations

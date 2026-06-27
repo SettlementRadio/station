@@ -27,4 +27,9 @@ up to the human. *Keep the wall intact:* the station itself being AI is an out-o
 
 ## Canon facts
 
-<!-- none yet — add a numbered list here when you author this cornerstone. -->
+1. No confirmed non-human intelligence has ever been met; so far as the settled worlds know they are alone, and the silence of the dark is itself a standing question.
+   - **Tags:** mystery, solitude, cosmos, silence, wonder
+2. Machine minds are capable and common as tools, but by settled custom they are not held to be persons — a line the worlds debate but have not crossed.
+   - **Tags:** machines, technology, law, ethics, identity
+3. Rumours of other minds drift in from the frontier and the unmapped dark; none have ever held up, but the worlds keep listening.
+   - **Tags:** mystery, frontier, dark, rumour, wonder

@@ -26,4 +26,9 @@ moral seriousness rather than as set-dressing.
 
 ## Canon facts
 
-<!-- none yet — add a numbered list here when you author this cornerstone. -->
+1. Because a shipment takes weeks, only the precious or the irreplaceable crosses between worlds; most of daily life is made and consumed locally.
+   - **Tags:** trade, scarcity, distance, resources, local
+2. Value is reckoned in a shared unit honoured across worlds, but real wealth is local and uneven — the geography of fortune follows the routes.
+   - **Tags:** currency, trade, fortune, distance, scarcity
+3. Abundance is real but unequal: some worlds want for nothing while others ration, and the gap is a standing moral question the station does not ignore.
+   - **Tags:** abundance, scarcity, fortune, justice, inequality

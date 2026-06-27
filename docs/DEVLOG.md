@@ -38,6 +38,54 @@ A typical *build* session will be short, e.g.:
 
 ---
 
+## 2026-06-27 — Phase D — SPIRIT.md brief + canon-loader guide-skip fix
+**Focus:** wrote the world's creative brief for the (human) canon writer, and fixed a loader bug that
+authoring docs surfaced.
+**Decisions:**
+- **`docs/canon/SPIRIT.md`** — the spirit & tribute brief: the idea (a love letter to 20th-century SF
+  at its best), the **IP firewall** (name authors *here*, never in canon — take the spirit, leave the
+  stuff), "good old SF, no modern-AI tropes," the authors we draw on (Asimov/Clarke/Heinlein/Bradbury/
+  Cordwainer Smith/Stapledon · Le Guin/Lem/Strugatskys/Miller/Brunner/Butler/Delany/Russ/Tiptree) with
+  a TAKE/AVOID line each, the 9 core themes mapped to cornerstone files, the house tone, and worked
+  "influence → original canon" examples. Linked from `docs/canon/README.md`.
+- **Bug fix (load-bearing):** `canon_source._sorted_canon_files` loaded **every `*.md` except
+  README** — so `TAGS.md` (and any brief) **leaked into the cached series bible the DJs read**, and
+  `SPIRIT.md` (which names real authors) would have put author names *on air* — an IP-rule breach.
+  Fixed the rule to the actual convention: **a cornerstone carries a numeric prefix**; non-prefixed
+  files (README/TAGS/SPIRIT/notes) are authoring guides and are skipped. Locked with a regression test
+  (`test_folder_skips_non_prefixed_authoring_guides`).
+**Changed:** new `docs/canon/SPIRIT.md`; `canon_source._sorted_canon_files` (prefix filter + docstring);
+`tests/test_canon_source.py` (+1 test, 99 green); `docs/canon/README.md` (start-here pointer + the
+skip rule). Verified: guides not loaded, no author name in the DJ bible, canon still 55 facts.
+**Why:** the writer needs a single creative north star; and an authoring doc reaching the broadcast is
+exactly the silent failure the IP rule can't afford — the prefix rule makes the folder safe for briefs.
+**Next:** D3 — the World Engine (the human can now script canon against SPIRIT.md + TAGS.md).
+Commit: (pending)  ·  Clips: (none)
+
+## 2026-06-27 — Phase D — D2.7: tag vocabulary + filled the scaffold canon
+**Focus:** gave the human a documented tag **palette** and grew the RAG corpus from 7 facts to **55**
+by authoring tagged canon facts across all 16 previously-empty cornerstone scaffolds. Added at the
+human's request (content, not code).
+**Decisions:**
+- **Tags are free-form, not a code enum.** New `docs/canon/TAGS.md` is a *recommended* palette + the
+  two hard rules (lowercase single words — the query side tokenises on non-alphanumerics; the
+  contiguous `- **Tags:**` child bullet). Linked from `docs/canon/README.md` §5. The fear of "breaking
+  code with tags" is unfounded: worst case is a malformed bullet, which **fails loud** at seed.
+- **Filled all scaffolds (3 atomic facts each), consistent with the established world** — sublight
+  travel / weeks of distance, Earth a fondly-remembered origin, settlement time, the Lumen Festival,
+  the drifting relay station — and the IP boundary (tradition/themes only). Fixed the one open
+  worldbuilding choice in `25-other-minds`: humans are **alone** (only rumour); machine minds are
+  tools, not persons (kept distinct from the out-of-fiction AI disclosure).
+**Changed:** new `docs/canon/TAGS.md`; `## Canon facts` authored in `05-worlds`…`80-cosmos` (16 files);
+`docs/canon/README.md` §5 (links TAGS.md, drops the stale "D2's job" line); D2.7 added to
+`PHASE_D_RAG_TASKS.md`. Re-seeded: canon 7→55, embeddings_canon=55 (match); `ruff`+`pytest` green (98).
+**Why:** the original 7-fact corpus was too thin for semantic recall to shine; a controlled vocabulary
+keeps future tagging consistent. Both paths now demonstrably work — e.g. "are we alone" misses on tags
+(nothing tagged that word) but the semantic half still finds the right fact.
+**Next:** the new world content is a **first draft to review/refine** (all git-reversible, re-seedable);
+then D3 — the World Engine.
+Commit: (pending)  ·  Clips: (none)
+
 ## 2026-06-26 — Phase D — D2: Semantic retrieval / RAG goes live (D2.0–D2.6)
 **Focus:** activated the stubbed vector seam so the writers' room recalls canon by **meaning**, not
 just date/tag — the bible is multi-file after D1, so both embeddings triggers fire.

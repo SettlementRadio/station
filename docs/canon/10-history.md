@@ -28,4 +28,9 @@ optimism tempered by loss. Reference the strain, never specific works or names.
 
 ## Canon facts
 
-<!-- none yet — add a numbered list here when you author this cornerstone. -->
+1. Humanity left Earth in a long, uneven diaspora across centuries; the leaving is remembered less as one event than as a slow tide outward.
+   - **Tags:** history, diaspora, origins, earth, memory
+2. The ages since the diaspora run in long swings of expansion and contraction — worlds founded, lost, and sometimes refound generations later.
+   - **Tags:** history, era, change, loss, past
+3. Earth endures as distant origin, spoken of fondly and visited rarely; what every settled child learns of it is half record, half founding myth.
+   - **Tags:** earth, origins, memory, history, home

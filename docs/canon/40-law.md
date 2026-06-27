@@ -26,4 +26,9 @@ duties reasoned through rather than assumed.
 
 ## Canon facts
 
-<!-- none yet — add a numbered list here when you author this cornerstone. -->
+1. With courts and help weeks away, justice is mostly local and immediate, resting on shared compacts every settled person is taught to honour.
+   - **Tags:** law, justice, compact, local, custom
+2. Certain rights are held to be owed to every settled person regardless of world; their limits are argued, but the core is common ground.
+   - **Tags:** law, rights, justice, freedom, custom
+3. The ships and the between answer to no single world, so the law of transit is old custom and mutual need — and exile into the dark is among the gravest sentences.
+   - **Tags:** law, ship, between, exile, custom

@@ -12,6 +12,12 @@ convention, the fact-id scheme, and the per-fact tag affordance. The parser
 prose loads cleanly; if you break them the seed fails loud (a missing required field raises, rather
 than silently dropping content).
 
+> **Writing the world? Start with [`SPIRIT.md`](SPIRIT.md)** — the creative brief: the idea, the
+> 20th-century SF tradition we honour, the authors we draw on, and the core themes to build (plus the
+> hard IP rule: tribute, never derivative). Then this README for *format*, and [`TAGS.md`](TAGS.md)
+> for the tag palette. These three are **authoring guides, not world content** — the seeder skips
+> them (they carry no numeric prefix), so they never reach the DJs.
+
 ---
 
 ## 1. The folder layout (cornerstone files)
@@ -20,6 +26,9 @@ The bible is split into **cornerstone files**, one per domain of the world. Each
 **numeric prefix** that sets the *reading order* — the seeder loads `*.md` sorted by that prefix **as
 an integer**, so the assembled series bible reads top-to-bottom the way these are numbered. Leave gaps
 in the numbering (00, 01, 10, 20…) so you can slot new files between existing ones without renumbering.
+**Only numeric-prefixed files are loaded** — a file without a prefix (`README.md`, `SPIRIT.md`,
+`TAGS.md`) is an authoring *guide*, not world content, and the seeder skips it. So you can keep notes
+and briefs in this folder freely; just don't give them a number.
 
 The prefix can be **any width** — `2`, `20`, `100`, `250` all work, and they order numerically
 (`2 < 20 < 100`), *not* as strings, so a wide number never sorts to the wrong place. **Add as many
@@ -159,9 +168,10 @@ seed time, not silently merged.
 
 ## 5. The per-fact tag affordance
 
-Facts may carry **tags** so D2 (semantic retrieval) can match canon by topic. The format **supports**
-tags now; **populating** them is D2's job — until then most facts will have none, and an untagged fact
-parses to an empty tag list (`[]`), never an error.
+Facts may carry **tags** so the writers' room can match canon by topic (D2 — they complement
+semantic recall). The **recommended tag vocabulary** (the palette to pick from + the lowercase
+single-word naming rule) lives in [`TAGS.md`](TAGS.md) — read it before tagging. Tags are optional:
+an untagged fact parses to an empty tag list (`[]`), never an error.
 
 A tagged fact uses an indented `- **Tags:**` child bullet directly under the numbered item, reusing
 the same field-bullet convention as cast/events:

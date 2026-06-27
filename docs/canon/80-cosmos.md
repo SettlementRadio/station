@@ -26,4 +26,9 @@ and humility, awe without despair. Reference the *strain*, never specific works 
 
 ## Canon facts
 
-<!-- none yet — add a numbered list here when you author this cornerstone. -->
+1. The worlds understand their cosmos well but not wholly; the great open questions — what the dark holds, whether anyone else is in it — remain unanswered and much argued.
+   - **Tags:** cosmos, science, mystery, wonder, dark
+2. From every settled world the same deep sky is a shared inheritance, and a settled child looks up at a night far wider and stranger than Earth's.
+   - **Tags:** cosmos, sky, stars, wonder, home
+3. The era meets the sublime with optimism rather than dread — awe at a vast indifferent universe, held alongside the warmth of a human voice on the radio.
+   - **Tags:** cosmos, sublime, wonder, awe, hope

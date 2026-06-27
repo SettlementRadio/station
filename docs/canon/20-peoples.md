@@ -26,4 +26,9 @@ a `## Canon facts` list of standing facts (`canon-peoples-N`). Optionally tag fa
 
 ## Canon facts
 
-<!-- none yet — add a numbered list here when you author this cornerstone. -->
+1. After centuries apart, humanity has branched: each world's gravity, light, and air shaped its settlers, so "human" now spans a wide spectrum.
+   - **Tags:** peoples, humanity, identity, adaptation, worlds
+2. The worlds regard one another with a mix of kinship and wariness — fascination across distance, prejudice up close, and a shared word that strains to hold them all.
+   - **Tags:** peoples, identity, kinship, strangers, belonging
+3. The people of the ships and the relays, born or raised in the between, are a culture of their own — at home in transit.
+   - **Tags:** peoples, between, ship, migration, identity

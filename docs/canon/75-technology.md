@@ -27,4 +27,9 @@ magic. The wonder is in the rigour.
 
 ## Canon facts
 
-<!-- none yet — add a numbered list here when you author this cornerstone. -->
+1. Travel remains sublight and slow by deliberate fact of the world: there is no casual faster-than-light crossing, which is why neighbouring worlds lie weeks apart.
+   - **Tags:** technology, travel, limits, distance, science
+2. Radio and the relays carry word far faster than any ship, which is why a broadcast — not a voyage — is the thread that binds the worlds.
+   - **Tags:** technology, radio, relay, communication, connection
+3. Everyday machines are capable and quietly ubiquitous, but the worlds prize the reliable over the marvellous, since help and spare parts are weeks away.
+   - **Tags:** technology, machines, limits, daily, reliability

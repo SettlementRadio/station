@@ -26,4 +26,9 @@ mere flavour. Reference the tradition, never a constructed language anyone owns.
 
 ## Canon facts
 
-<!-- none yet — add a numbered list here when you author this cornerstone. -->
+1. A common tongue carries across the worlds, but centuries and weeks of distance drift it apart, so neighbours can share a word and not quite a meaning.
+   - **Tags:** language, dialect, drift, distance, words
+2. The worlds are full of fossil-words like "settlement" — terms that outlived their meanings and survive as small acts of memory.
+   - **Tags:** language, words, fossil, memory, naming
+3. The relays slow the drift of speech apart: a civilisation that keeps hearing the same broadcasts keeps, roughly, the same tongue.
+   - **Tags:** language, relay, broadcast, drift, connection

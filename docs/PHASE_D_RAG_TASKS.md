@@ -149,6 +149,32 @@ selection (semantic + tag) is exercised by a test.
 **Done when:** `ruff` + `pytest` green; README/`.env.example`/DEVLOG updated; a manual
 `context.assemble(topic=…)` shows meaning-based recall.
 
+## D2.7 — Tag vocabulary + fill the scaffold canon (content, added on request)
+**Goal:** give the human a documented tag **palette** so they know what tags to use, and grow the
+RAG corpus beyond the original 7 facts by authoring tagged canon facts in the (previously empty)
+cornerstone scaffolds — so semantic + tag retrieval has a real world to draw on. (Added after D2.6 at
+the human's request; content/authoring, not code.)
+**Do:**
+- Write **`docs/canon/TAGS.md`** — the recommended tag vocabulary: the two hard rules (lowercase
+  single words — the query side tokenises on non-alphanumerics; the contiguous `- **Tags:**` child
+  bullet), a themed palette grouped by domain (place, time, people, feeling, communication, governance,
+  economy, conflict, daily-life, language/arts/music, faith, technology/cosmos), and how to coin a new
+  tag. Cross-link it from `docs/canon/README.md` §5. **Tags are free-form — there is no enforced
+  allow-list in code; this is a *recommended* palette for consistency, not a schema.**
+- Author a small `## Canon facts` list (≈3 atomic facts each, tagged from the palette) in every
+  scaffold cornerstone (`05-worlds` … `80-cosmos`), **consistent with the established world**
+  (sublight travel / weeks of distance, Earth a fondly-remembered origin, humans alone, settlement
+  time, the Lumen Festival, the drifting relay station) and the IP boundary (tradition/themes only,
+  never real authors/works). Fix the one standing open choice — `25-other-minds`: humans are **alone**
+  (only rumour); machine minds are tools, not persons (kept distinct from the out-of-fiction AI
+  disclosure).
+- Re-seed and verify the corpus grew and tags match: `make seed-canon` (counts up from 7), and
+  `store.canon_by_tags` returns sensible facts for palette topics.
+**Done when:** `TAGS.md` exists + is linked from the authoring README; every scaffold seeds tagged
+facts; `make seed-canon` count climbs and embeddings count == canon count; `ruff` + `pytest` green;
+the human has a clear, reusable tag palette. **The new world content is a first draft to review/refine
+(all git-reversible, re-seedable).**
+
 ---
 
 ## Explicitly NOT in D2 (→ later sub-packs)

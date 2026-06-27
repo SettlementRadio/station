@@ -26,4 +26,9 @@ between. (Real-world tracks/clearance are a separate human call — this file is
 
 ## Canon facts
 
-<!-- none yet — add a numbered list here when you author this cornerstone. -->
+1. Music is cultural memory in the settled worlds — eras and scenes that each "sound like" their time, shaped by the particular worlds that birthed them.
+   - **Tags:** music, memory, era, tradition, worlds
+2. Scenes diverge when worlds can't hear each other in time, so a song can begin under one sky and become beloved under another a season later.
+   - **Tags:** music, drift, distance, song, scene
+3. The station's playlist is a thread of shared listening across the dark — the same songs heard light-weeks apart, holding a scattered audience together.
+   - **Tags:** music, song, broadcast, connection, listeners

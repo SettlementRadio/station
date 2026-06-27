@@ -30,4 +30,9 @@ Optionally tag facts (`- **Tags:** …`).
 
 ## Canon facts
 
-<!-- none yet — add a numbered list here when you author this cornerstone. -->
+1. The settled worlds fall loosely into a dense core of long-established worlds and a thin frontier at the settled edge, with the unmapped dark beyond.
+   - **Tags:** worlds, core, frontier, dark, scale, settlements
+2. Neighbouring worlds lie a journey of weeks apart; the dark between is treated as a place in its own right, not mere empty space.
+   - **Tags:** distance, between, dark, travel, scale, isolation
+3. The station holds no fixed world but drifts along the relay routes, which is why it can speak to all of them and belong to none.
+   - **Tags:** station, relay, between, neutrality, route

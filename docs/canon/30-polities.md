@@ -26,4 +26,9 @@ the sociology of the possible. Reference the *tradition*, never real polities or
 
 ## Canon facts
 
-<!-- none yet — add a numbered list here when you author this cornerstone. -->
+1. No authority can rule quickly across weeks of distance, so power is deliberately decentralised: worlds govern themselves and coordinate through slow councils carried on the relays.
+   - **Tags:** governance, polity, autonomy, distance, council
+2. Worlds bind themselves by honoured compacts rather than enforced command; legitimacy rests on a consent that cannot be compelled at a gun's speed.
+   - **Tags:** governance, compact, law, autonomy, legitimacy
+3. The relays — and the station on them — are quietly part of public life: the shared channel through which distant worlds argue, decide, and stay one civilisation.
+   - **Tags:** governance, relay, station, connection, community

@@ -27,4 +27,9 @@ characters (the IP boundary is a hard rule).
 
 ## Canon facts
 
-<!-- none yet — add a numbered list here when you author this cornerstone. -->
+1. The settled worlds revere story above all other arts, and keep a living tradition of wondering, speculative tales — a civilisation imagining itself outward.
+   - **Tags:** art, story, tradition, wonder, memory
+2. Art travels slowly between worlds, so scenes diverge and a shared canon always runs a generation behind — yet a handful of works are known on every world.
+   - **Tags:** art, distance, drift, tradition, memory
+3. Artists are remembered as figures the worlds argue over, and the station is itself a keeper of cultural memory, carrying the arts across the dark.
+   - **Tags:** art, story, memory, station, performance

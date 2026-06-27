@@ -128,13 +128,17 @@ def _guard_unique(seen: dict[str, str], id_: str, file_name: str, kind: str) -> 
 
 
 def _sorted_canon_files(canon_dir: Path) -> list[Path]:
-    """The bible's `*.md` files in numeric-prefix order (README.md excluded).
+    """The bible's cornerstone `*.md` files in numeric-prefix order.
 
-    Sorted by the leading integer prefix (`2 < 20 < 100`, NOT string order), so a
-    wide prefix never sorts to the wrong place; unprefixed files sort last by name.
-    `README.md` is the authoring guide, not world content, so it is skipped.
+    A **cornerstone carries a numeric prefix** (`00-station.md`, `95-events.md`) — that
+    is the authoring convention (README §1), and it is what distinguishes world content
+    from the folder's authoring GUIDES (`README.md`, `TAGS.md`, `SPIRIT.md`, …). Only
+    prefixed files are loaded; everything else is a brief for the human author and is
+    skipped, so a guide dropped in the folder never leaks into the DJs' bible. Sorted by
+    the leading integer (`2 < 20 < 100`, NOT string order) so a wide prefix never sorts
+    to the wrong place.
     """
-    files = [p for p in canon_dir.glob("*.md") if p.name.lower() != "readme.md"]
+    files = [p for p in canon_dir.glob("*.md") if re.match(r"^\d", p.name)]
     return sorted(files, key=_file_sort_key)
 
 

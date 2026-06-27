@@ -28,4 +28,9 @@ the thing love and news must overcome.
 
 ## Canon facts
 
-<!-- none yet — add a numbered list here when you author this cornerstone. -->
+1. A network of relays threads the settled worlds; a signal hops relay to relay across the dark, reaching far further and faster than any ship.
+   - **Tags:** communication, relay, signal, broadcast, connection
+2. Distance still rules: even by relay, word between far worlds can take days or weeks, so conversations are measured in patience and letters are answered long after they were sent.
+   - **Tags:** communication, lag, delay, distance, letters
+3. Some worlds at the settled edge lie in dark zones the relays barely reach; for them the station's signal is a thin and precious thread.
+   - **Tags:** communication, signal, frontier, dark, isolation
