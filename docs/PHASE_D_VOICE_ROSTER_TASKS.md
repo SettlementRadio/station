@@ -5,8 +5,10 @@
 > principles (OVERVIEW §2). Written against the **as-built code**: the TTS seam `providers/tts.py`
 > (`synthesize(text, *, voice, emotion=None, out_path)` — **`emotion` is accepted but ignored on every
 > backend today**; the logical-voice registries `_ELEVENLABS_VOICE_IDS` / `_KOKORO_VOICES` /
-> `_SAY_VOICES` map a logical voice → a vendor id, with **both DJs mapped on all three backends** per
-> C6), the conversation `Turn(speaker, voice, text)` + `_render_turns` (each turn voiced separately),
+> `_SAY_VOICES` map a logical voice → a vendor id — **as of the 90-cast.md audit (2026-06-28) the roster
+> is 10 DJs and all 10 logical voices are mapped on all three backends, but 9 are PLACEHOLDERS aliasing
+> onto the two real presets; see the D9.2 note**), the conversation `Turn(speaker, voice, text)` +
+> `_render_turns` (each turn voiced separately),
 > the cast model in `store.py` (`"cast"` table: id, name, card_text, logical_voice, tags;
 > `insert_cast`/`all_cast`/`get_cast_member`), `settings.convo_speaker_ids=["vell","wren"]`, and the
 > story log (D3).
@@ -87,6 +89,17 @@ the seam.
 
 ## D9.2 — Grow the roster (N DJs, bible-authored, fully wired)
 **Goal:** a DJ defined in the bible with a voice gets fully wired — beyond the two hardcoded hosts.
+
+> **Heads-up — state as of the `90-cast.md` audit (2026-06-28).** The roster was already grown to **10
+> bible-authored DJs** (Vell, Wren + 8 new: Joss, Kael, Mira, Thorn, Sera, The Archivist, Orin, Zhe) in
+> `docs/canon/90-cast.md`, so this task's "add ≥1 new example DJ" is satisfied by real content. **But the
+> 9 new logical voices are PLACEHOLDERS** in `tts.py`: they alias onto the two real presets
+> (Adam/Rachel · Daniel/Samantha · `bm_george`/`af_heart`), so several DJs currently share a voice.
+> This task therefore still owes: **(a)** give each new voice a **distinct** real preset (the D9.0/C6
+> voice work), and **(b)** when making the registry **data-driven**, migrate these ~11 entries and
+> **drop the aliasing** (search `tts.py` for "PLACEHOLDERS (D-cast)"). Also note
+> `settings.convo_speaker_ids=["vell","wren"]` + the two-host framing are **still hardcoded**, so the 8
+> new DJs are **seeded but not yet on air** until this task (cast-from-table) + **D6** (grid) wire them in.
 **Do:**
 - Generalise the roster beyond `settings.convo_speaker_ids=["vell","wren"]` and the hardcoded two-host
   framing: the **set of DJs comes from the `"cast"` table** (seeded from the D1 `docs/canon/` cast

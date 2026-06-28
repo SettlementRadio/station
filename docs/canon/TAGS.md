@@ -46,11 +46,12 @@ the shared vocabulary.
 `station`, `relay`, `ship`, `route`, `orbit`, `home`, `earth`, `place`, `distance`, `scale`,
 `isolation`, `journey`, `neutrality`
 
-**Time & history** — `time`, `clock`, `history`, `past`, `era`, `age`, `memory`, `origins`,
-`diaspora`, `change`, `loss`, `anniversary`, `rhythm`, `synchrony`, `simultaneity`, `scattered`
+**Time & history** — `time`, `clock`, `calendar`, `reckoning`, `founding`, `history`, `past`, `era`,
+`age`, `memory`, `origins`, `diaspora`, `change`, `loss`, `anniversary`, `rhythm`, `synchrony`,
+`simultaneity`, `scattered`
 
 **People & society** — `humanity`, `peoples`, `identity`, `kinship`, `family`, `community`,
-`belonging`, `generations`, `migration`, `adaptation`, `strangers`, `neighbours`
+`belonging`, `generations`, `migration`, `adaptation`, `strangers`, `neighbours`, `djs`
 
 **Feeling & theme** (the emotional palette) — `loneliness`, `solitude`, `longing`, `hope`, `wonder`,
 `awe`, `grief`, `mourning`, `comfort`, `warmth`, `nostalgia`, `companionship`, `melancholy`, `joy`,
@@ -71,16 +72,17 @@ the shared vocabulary.
 
 **Daily life & ritual** — `daily`, `food`, `rest`, `sleep`, `morning`, `leisure`, `ritual`,
 `hospitality`, `festival`, `celebration`, `tradition`, `lamps`, `lumen`, `lights`, `annual`,
-`togetherness`, `unity`, `shared`
+`togetherness`, `unity`, `shared`, `midnight`, `newyear`
 
 **Language, arts & music** — `language`, `dialect`, `drift`, `words`, `naming`, `fossil`, `habit`,
 `story`, `art`, `performance`, `scene`, `music`, `song`, `poetry`, `instrument`, `genre`
 
-**Faith & meaning** — `faith`, `belief`, `sacred`, `rite`, `meaning`, `light`, `doubt`, `pilgrimage`
+**Faith & meaning** — `faith`, `belief`, `sacred`, `rite`, `religion`, `meaning`, `light`, `doubt`,
+`pilgrimage`
 
 **Technology & cosmos** — `technology`, `travel`, `limits`, `machines`, `automation`, `energy`,
-`medicine`, `reliability`, `ethics`, `science`, `cosmos`, `stars`, `sky`, `mystery`, `sublime`,
-`discovery`, `rumour`
+`medicine`, `reliability`, `ethics`, `science`, `physics`, `fusion`, `cosmos`, `stars`, `sky`,
+`mystery`, `sublime`, `discovery`, `rumour`
 
 ---
 

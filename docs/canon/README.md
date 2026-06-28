@@ -27,8 +27,8 @@ The bible is split into **cornerstone files**, one per domain of the world. Each
 an integer**, so the assembled series bible reads top-to-bottom the way these are numbered. Leave gaps
 in the numbering (00, 01, 10, 20…) so you can slot new files between existing ones without renumbering.
 **Only numeric-prefixed files are loaded** — a file without a prefix (`README.md`, `SPIRIT.md`,
-`TAGS.md`) is an authoring *guide*, not world content, and the seeder skips it. So you can keep notes
-and briefs in this folder freely; just don't give them a number.
+`TAGS.md`, `AUDIT.md`) is an authoring *guide*, not world content, and the seeder skips it. So you can
+keep notes and briefs in this folder freely; just don't give them a number.
 
 The prefix can be **any width** — `2`, `20`, `100`, `250` all work, and they order numerically
 (`2 < 20 < 100`), *not* as strings, so a wide number never sorts to the wrong place. **Add as many

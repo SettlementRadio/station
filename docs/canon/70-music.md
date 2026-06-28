@@ -2,33 +2,70 @@
 
 > **Cornerstone file — the lore behind the songs the station plays.** See `docs/canon/README.md`
 > for the authoring conventions.
->
-> **STATUS: scaffold (metadata only — not yet authored).** Everything below sits *above* the
-> first `##` heading on purpose, so the seeder treats this file as empty until you author real
-> `## Section` prose and `## Canon facts`. It is a brief for *you*, the author.
 
-**What this covers** — music as a culture, not just audio: genres, eras, scenes, and what people across
-the worlds actually listen to. The station *plays* music, so this file is the cultural backing for it —
-the lore a DJ draws on to tell a song's story (this is what D7's "songs as artifacts" will lean on).
+## Music as memory
 
-**Building blocks to consider**
-- The genres and eras of settled-worlds music; what a given era "sounds like."
-- Signature instruments, sounds, and traditions shaped by particular worlds.
-- How music spreads across distance — and how scenes diverge when they can't hear each other.
-- Legendary artists, movements, and scenes — leave room for D10 figures to name them.
-- What the station's own playlist *means* to listeners across the dark.
+Music in the settled worlds is not merely entertainment. It is memory, identity, and the thread that binds people to their history. Every world has its own acoustic fingerprint — the particular resonance of its atmosphere, the materials available for instrument-making, the rhythms of its days and seasons. A song born on a world with a thin atmosphere and long nights carries a different weight than one composed under a dense sky with brief, urgent summers.
 
-**The tribute** — music as cultural memory; the station as a keeper and carrier of it across the
-between. (Real-world tracks/clearance are a separate human call — this file is the *fiction*.)
+The genres that emerge reflect these conditions. The Void Ballads of the outer stations are slow, spare, built around single voices and the drone of life-support machinery that forms their background. The Core Harmonies of the dense core are layered, complex, orchestral — the product of abundance and proximity, of musicians who can rehearse together without the lag. The Frontier Reels are fast, rhythmic, danceable — music for people who work hard and celebrate harder, who need songs that can be played on instruments carved from local wood and strung with wire salvaged from broken machinery.
 
-**When you author this file:** add narrative `## <Topic>` sections (cached bible prose) and a
-`## Canon facts` list (`canon-music-N`).
+Each era has its sound. The early settlement period produced the Exodus Hymns — solemn, hopeful, carrying the weight of departure and the dream of arrival. The expansion era brought the Drift Songs, music made for the long crossings, songs that stretch and loop and reward patience. The consolidation era, when the worlds turned inward and the core grew distant from the frontier, produced the Divergence — a thousand local scenes flowering in isolation, each convinced they were the true inheritors of the musical tradition.
+
+## Instruments and the material world
+
+The instruments of the settled worlds are shaped by what can be carried, what can be made, what can be repaired. A violin on the frontier might have a body of compressed cellulose rather than spruce, strings of synthetic polymer rather than gut. It sounds different — thinner, brighter, more prone to strange overtones — but it is still a violin, still capable of the same emotional range.
+
+Some worlds have developed signature sounds. Forge is known for its resonance pipes — long tubes of alloy that produce deep, organ-like tones when struck or bowed, originally built as signalling devices in its industrial sprawl, later adapted for music. Concordance favours the synth-harpsichord, a keyboard instrument that plucks electronic rather than metal strings, producing a sound that is both ancient and new. The Freeholds are famous for their percussion ensembles — music made from the materials of survival: drums of empty oxygen tanks, chimes of stripped wire, the rhythm of human hands on metal and plastic.
+
+The scarcity of certain materials has driven invention. Real wood is precious on worlds without forests; musicians learn to work with engineered composites that mimic the acoustic properties of old timber. Animal-derived materials — gut strings, horsehair bows — are rare and expensive, luxuries of the core. The frontier has learned to substitute, to adapt, to find music in what is available rather than what is ideal.
+
+## The drift of scenes
+
+Music does not travel instantly across the settled worlds. A song released in the core might take weeks to reach the frontier, arriving as a signal that must be decoded, a recording pressed to physical media or broadcast on local frequencies. By the time a frontier listener hears a core hit, it may already be old news in its birthplace — or it may have evolved, been remixed, been claimed by a local scene that has never heard the original.
+
+This lag creates strange echoes. A genre can die in the core and be reborn on the frontier, preserved by listeners who never got the memo that it was over. A local scene can develop in isolation, producing music that sounds like nothing else in the settled worlds, only to be "discovered" by the core generations later and celebrated as a rediscovery of something that never stopped existing. The Outer Revival was exactly this — core musicians "discovering" a style that had been evolving on the outer stations for generations, repackaging it for audiences who had never heard the originals.
+
+The station complicates this drift. When Settlement Radio plays a song, it crosses the dark at the speed of its signal — not instantly, but reaching the scattered worlds together in a way that ships and pressed recordings never can. A song played on the station becomes shared property, a common reference point for listeners who may never meet but who have heard the same voice, the same melody, at the same moment relative to the broadcast. This is part of what makes the station precious: it is a force against the drift, a way of keeping the scattered worlds in something like musical conversation.
+
+## Legendary figures and movements
+
+The settled worlds remember their great musicians the way earlier ages remembered saints and revolutionaries — names invoked across generations, argued over, claimed by one world or another. Some are remembered for a single towering work; some for a lifetime spent on one lonely station, emerging with music that redefined what isolation could express; some are collectives whose members never met in person, composing entirely by relay across the dark.
+
+Movements rise and fall. The Purists held that only acoustic instruments were legitimate, that electronic sound was a corruption of the tradition. The Synthesists embraced what technology made possible, music that could exist in no other form. The Localists argued that each world should grow its own musical language, independent of the core — a philosophy still alive on the frontier, where isolation makes it less a choice than a fact.
+
+These figures and movements are the vocabulary of the station's DJs. When a DJ plays a song they do not just announce the title; they tell its story, place it in the larger tapestry, connect it to what came before. And the listeners who call in do not just request songs — they argue lineage and legacy, debate the movements, share where they were when they first heard a piece that mattered.
+
+## The station's playlist as cultural memory
+
+The music Settlement Radio plays is not random. It is curated, selected to create a particular mood, to tell a particular story about the settled worlds. The playlist includes the hits of the core, the anthems of the frontier, the obscure local scenes that deserve wider attention. It includes new releases and ancient recordings, music weeks old and music centuries old, all treated as part of a continuous tradition.
+
+For listeners on isolated stations, the playlist is a lifeline. It tells them what is happening in the wider world, what people are listening to, what they are thinking about. It provides a shared cultural reference point, a way of feeling connected to the larger human community despite the vast distances. A listener on a frontier station might never visit the core, but they can know the same songs, feel the same emotions, take part in the same conversation.
+
+The playlist is also an argument. By choosing certain songs and not others, the station's programmers make claims about what matters, what is worth remembering, what the settled worlds should sound like. A sudden run of Frontier Reels is a statement of solidarity with the outer worlds. A retrospective on the Outer Revival is a comment on the relationship between core and frontier. The music is never just music; it is always also meaning.
 
 ## Canon facts
 
-1. Music is cultural memory in the settled worlds — eras and scenes that each "sound like" their time, shaped by the particular worlds that birthed them.
-   - **Tags:** music, memory, era, tradition, worlds
-2. Scenes diverge when worlds can't hear each other in time, so a song can begin under one sky and become beloved under another a season later.
-   - **Tags:** music, drift, distance, song, scene
-3. The station's playlist is a thread of shared listening across the dark — the same songs heard light-weeks apart, holding a scattered audience together.
-   - **Tags:** music, song, broadcast, connection, listeners
+1. **Music in the settled worlds is cultural memory — each era and scene "sounds like" its time, shaped by the particular worlds that birthed it.**
+   - **Tags:** music, memory, era, tradition, worlds, identity, nostalgia
+2. **Scenes diverge when worlds cannot hear each other in time: a song can begin under one sky and become beloved under another a season later, changed in the crossing.**
+   - **Tags:** music, drift, distance, song, scene, lag
+3. **The station's playlist is a thread of shared listening across the dark — the same songs reaching scattered worlds within the lag, holding together an audience that may never meet.**
+   - **Tags:** music, song, broadcast, connection, listeners, shared
+4. **The Void Ballads of the outer stations are slow and spare, built around single voices and the drone of life-support machinery.**
+   - **Tags:** music, genre, void, station, voice, minimalism, melancholy
+5. **The Core Harmonies of the dense core are layered and orchestral, the product of abundance and of musicians who can rehearse together without the lag.**
+   - **Tags:** music, genre, core, abundance, complexity, orchestra
+6. **The Frontier Reels are fast, rhythmic, and danceable — music for hard work and harder celebration, playable on salvaged and improvised instruments.**
+   - **Tags:** music, genre, frontier, dance, improvisation, salvage, joy
+7. **Instruments are shaped by what can be carried, made, and repaired: real wood and animal-derived materials are luxuries of the core, while the frontier works with engineered composites and substitutes.**
+   - **Tags:** music, instruments, materials, scarcity, adaptation, frontier
+8. **Forge is known for its resonance pipes — long alloy tubes that produce deep, organ-like tones, first built as signalling devices and later adapted for music.**
+   - **Tags:** music, instruments, forge, signature, adaptation, sound
+9. **Some celebrated works were composed by collectives whose members never met in person, collaborating entirely by relay across the dark.**
+   - **Tags:** music, collaboration, radio, distance, scene, legacy, loneliness
+10. **Movements rise and fall: the Purists held that only acoustic instruments were legitimate, the Synthesists embraced electronic sound, and the Localists argued each world should grow its own musical language.**
+    - **Tags:** music, movements, philosophy, technology, identity, history
+11. **Scenes preserved in isolation are sometimes "rediscovered" by the core generations later and celebrated as new — the Outer Revival was exactly this, a frontier style the core had simply never heard.**
+    - **Tags:** music, drift, core, frontier, revival, rediscovery
+12. **The station's playlist is never random but curated — a claim about what matters and what the settled worlds should sound like, as much argument as entertainment.**
+    - **Tags:** music, curation, meaning, broadcast, intention, culture

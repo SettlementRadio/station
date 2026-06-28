@@ -38,6 +38,58 @@ A typical *build* session will be short, e.g.:
 
 ---
 
+## 2026-06-28 — Phase D — full canon audit campaign: the bible authored (18 cornerstones, ~7→193 facts) + RAG emotional-tag pass
+**Focus:** ran `docs/canon/AUDIT.md` end-to-end on **every cornerstone an external writer expanded** —
+validate → fix → overwrite → re-seed, file by file — taking the world from a handful of scaffold facts
+to a complete, internally-consistent bible. Then closed a retrieval gap by enriching emotional tags.
+**The campaign — 18 files audited & merged** (each scaffold/stub → 5 prose sections + 9–12 facts):
+`00-station`, `05-worlds`, `10-history`, `20-peoples`, `25-other-minds`, `30-polities`, `35-economy`,
+`40-law`, `45-conflict`, `50-daily-life`, `55-language`, `60-faith`, `65-arts`, `70-music`,
+`75-technology`, `78-communication`, `80-cosmos`, plus structured `90-cast` (2→**10 DJs**) and
+`95-events` (1→**9 events**). Canon grew **~7 → 193 facts** (01-time pre-authored).
+**Decisions / recurring fixes:**
+- **The no-FTL / compact-sublight premise was the spine.** Submissions kept reaching for FTL — "jump
+  drives" (35/05/10), "shrink the distance between worlds" (30/10), light-years / "years to cross"
+  (80/05), time-dilation + cryo "suspended animation" (70/60/55/10). All reframed to the established
+  sublight / weeks-apart / compact-cluster premise (`75`). `05-worlds` (the scale-defining file) now
+  *affirms* it; `35`'s fuel economy was flipped to match `75` (fuel cheap, **machines** scarce).
+- **"The Silence" is now defined.** `65/60/55/45` all referenced it; `10-history` defines it (the
+  relay-network collapse), so the term is coherent bible-wide.
+- **Two operator calls held everywhere:** **humanity stays alone** — alien *cast* (`90`) and alien
+  *prose* (`80`) reworked to humans per `25-other-minds`; and **real religions → strains, not names**
+  (`60/55` keep impermanence / covenant / absorptive-cosmology, naming no real faith).
+- **`70-music` Part B deferred to D7** (contemporary bands built on interstellar/relativistic physics +
+  an AI gag + dystopian tone); `70` kept thematic.
+- **Mechanical constants across all files:** stripped leaked-chat preambles + `STATUS:` lines;
+  `core worlds` → `the core` (the Star-Wars echo); real names → invented/canon (New Geneva→**Concordance**,
+  Titan's Landing→**Forge**; Lunar/Venera/Proxima/Kepler/Uniform-Commercial-Code gone); hardcoded
+  future-dated "past" years → relative; **reformatted inline `Tags:` facts → numbered + `- **Tags:**`
+  child bullets** (40/35/30/25/20/10/05 wouldn't have parsed otherwise — one had its whole first section
+  un-`##`'d and would have seeded nothing); British spelling; em-dashes. **Zero non-conforming tags**
+  corpus-wide.
+- **Cast voices (operator call: keep full cast, wire placeholders):** 9 of 10 logical voices were
+  missing from `tts.py`; added as placeholders aliasing the two real presets (all resolve/seed), with a
+  `D9.2` heads-up — DJs share voices until the D9 voice pass (grep `tts.py` for "PLACEHOLDERS (D-cast)").
+- **RAG emotional-tag pass:** the structured (tag) path was blind to feeling (loneliness=1 fact;
+  grief/joy/melancholy/courage/kindness=0). Used the corpus's *own* semantic index to find the facts
+  nearest each emotion, curated out the small-model cross-valence noise, applied **51 tag-additions**
+  across 15 files. Every palette emotion now resolves to **2–9 on-target facts**; semantic recall was
+  already solid (spot-checked: Lumen 0.78, machine-minds 0.66, war 0.63).
+**Changed:** all 18 `docs/canon/*.md` cornerstones (audited overwrites + emotional tags);
+`docs/canon/TAGS.md` (+`djs`, `midnight`, `newyear`, `physics`, `fusion`, `religion`);
+`src/providers/tts.py` (9 placeholder voices ×3 backends); `docs/PHASE_D_VOICE_ROSTER_TASKS.md` (D9.2
+heads-up). Two memories saved: `keep-world-consistent-with-spirit`, `rework-aliens-keep-alone-premise`.
+Final seed: **canon 193, cast 10, events 9; embeddings_canon 193 (in sync); 0 non-conforming tags.**
+**Why:** the audit gates caught real breakers an unattended station would have aired — FTL contradicting
+the load-bearing premise, real author/franchise/place echoes, floating-year staleness, dropped-figure
+dangling refs, fact blocks that wouldn't parse, and the aliens-vs-alone-premise contradiction. The world
+is now consistent end to end; the static substrate is "enough" (the moving *present* comes from the D3
+tick, not more canon), and the structured RAG path can finally *see emotion*.
+**Next:** D3 (World Engine) for the moving present; D9 for distinct DJ voices; ops-harden by pinning the
+local embedding model on the VPS so semantic recall survives offline. A `make buffer` would confirm DJs
+now spread across the full event calendar + richer canon.
+Commit: (pending)  ·  Clips: (none)
+
 ## 2026-06-27 — Phase D — SPIRIT.md brief + canon-loader guide-skip fix
 **Focus:** wrote the world's creative brief for the (human) canon writer, and fixed a loader bug that
 authoring docs surfaced.

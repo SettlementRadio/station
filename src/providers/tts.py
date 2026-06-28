@@ -27,9 +27,25 @@ log = get_logger(__name__)
 #                 distinct from Vell so a two-voice talk segment reads as two
 #                 people. Rachel leans calm; swap for a brighter prebuilt (e.g.
 #                 "Elli" MF3mGyEYCl7XYWbV9V6O) after a listen if Wren feels flat.
+# PLACEHOLDERS (D-cast): the expanded cast (90-cast.md) defines 10 logical voices,
+# but only two real prebuilts are chosen so far. Until each DJ gets a distinct
+# voice (the D9 voice pass), the extra logical names alias onto the two real
+# presets — male-leaning cards onto "Adam", bright/female-leaning onto "Rachel" —
+# so every card resolves and the cast can be voiced. Repoint these to real ids
+# one at a time as voices are picked; the logical names never change.
 _ELEVENLABS_VOICE_IDS = {
     "vell_night": "pNInz6obpgDQGcFmaJgB",  # ElevenLabs prebuilt "Adam"
     "dj_two": "21m00Tcm4TlvDq8ikWAM",  # ElevenLabs prebuilt "Rachel"
+    # placeholders aliasing onto the two real presets:
+    "wren_dawn": "21m00Tcm4TlvDq8ikWAM",
+    "joss_bridge": "pNInz6obpgDQGcFmaJgB",
+    "kael_sports": "21m00Tcm4TlvDq8ikWAM",
+    "mira_culture": "21m00Tcm4TlvDq8ikWAM",
+    "thorn_news": "pNInz6obpgDQGcFmaJgB",
+    "sera_field": "21m00Tcm4TlvDq8ikWAM",
+    "archivist_deep": "pNInz6obpgDQGcFmaJgB",
+    "orin_music": "pNInz6obpgDQGcFmaJgB",
+    "zhe_observer": "21m00Tcm4TlvDq8ikWAM",
 }
 
 # macOS `say` voice names (list them with: say -v '?'). "Daniel" is a warm
@@ -42,6 +58,16 @@ _ELEVENLABS_VOICE_IDS = {
 _SAY_VOICES = {
     "vell_night": "Daniel",
     "dj_two": "Samantha",
+    # placeholders aliasing onto the two real presets (see _ELEVENLABS note):
+    "wren_dawn": "Samantha",
+    "joss_bridge": "Daniel",
+    "kael_sports": "Samantha",
+    "mira_culture": "Samantha",
+    "thorn_news": "Daniel",
+    "sera_field": "Samantha",
+    "archivist_deep": "Daniel",
+    "orin_music": "Daniel",
+    "zhe_observer": "Samantha",
 }
 
 # Kokoro (self-hosted, open-weight, free/unlimited) voice presets. List the full
@@ -57,6 +83,16 @@ _SAY_VOICES = {
 _KOKORO_VOICES = {
     "vell_night": "bm_george",
     "dj_two": "af_heart",
+    # placeholders aliasing onto the two real presets (see _ELEVENLABS note):
+    "wren_dawn": "af_heart",
+    "joss_bridge": "bm_george",
+    "kael_sports": "af_heart",
+    "mira_culture": "af_heart",
+    "thorn_news": "bm_george",
+    "sera_field": "af_heart",
+    "archivist_deep": "bm_george",
+    "orin_music": "bm_george",
+    "zhe_observer": "af_heart",
 }
 
 # Kokoro render settings (sample rate, speed, repo id) now live in `settings`;
