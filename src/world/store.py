@@ -194,6 +194,37 @@ class Story:
 
 
 @dataclass(frozen=True)
+class NewsCoverage:
+    """One record of the news desk covering a story in a bulletin (D4.0).
+
+    The desk's *per-story coverage memory*: "how have I been telling this story?"
+    One row per (story, bulletin) the desk airs — what arc stage it reported, the
+    latest beat it reached (`last_beat_id`), and the short handle/angle it used, so
+    successive bulletins can repeat, evolve (a new beat since `last_beat_id`), and
+    name the story consistently (D4.1–D4.3).
+
+    `covered_at` is the bulletin's IN-WORLD air time (a naive `timestamp`, the same
+    timeline as `events.in_world_datetime`), so "since I last covered it" lines up
+    with the story's beats rather than wall-clock. The caller passes it (the
+    producer's `now`); it is NOT a DB default.
+
+    DISTINCT from D5's anti-repetition memory: this is news-specific and per-story
+    ("which stage/beat/angle did the desk reach on story X?"); D5 is broad,
+    output-level freshness across ALL formats ("don't reuse this opening/phrasing").
+    D5 layers on top of this — it does not duplicate it.
+
+    `id` is the DB-assigned row id (read-only; ignored on insert).
+    """
+
+    story_id: str
+    covered_at: datetime
+    arc_stage: str
+    last_beat_id: str | None = None
+    angle: str = ""
+    id: int | None = None
+
+
+@dataclass(frozen=True)
 class EmbeddingRow:
     """One row to write into the polymorphic `embeddings` table (D2).
 
@@ -255,6 +286,23 @@ CREATE TABLE IF NOT EXISTS stories (
     created_at         timestamptz NOT NULL DEFAULT now()
 );
 
+-- The news desk's per-story coverage memory (D4.0): one row per (story, bulletin)
+-- the desk aired — what stage + latest beat it reported and the angle/handle it used,
+-- so bulletins can repeat / evolve / stay consistent (D4.1–D4.3). `covered_at` is the
+-- bulletin's in-world air time (same naive `timestamp` timeline as the beats). Runtime
+-- accrual: it survives a `seed-canon` refresh and is cleared on `reset-world` (§2a).
+-- `story_id` CASCADEs (no orphan coverage if a seed story is replaced); a removed beat
+-- nulls `last_beat_id` rather than deleting the coverage. DISTINCT from D5's broad
+-- anti-repetition memory (see the NewsCoverage docstring) — D5 layers on, not dupes.
+CREATE TABLE IF NOT EXISTS news_coverage (
+    id           bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    story_id     text NOT NULL REFERENCES stories(id) ON DELETE CASCADE,
+    covered_at   timestamp NOT NULL,
+    arc_stage    text NOT NULL,
+    last_beat_id text REFERENCES events(id) ON DELETE SET NULL,
+    angle        text NOT NULL DEFAULT ''
+);
+
 CREATE TABLE IF NOT EXISTS state (
     key   text PRIMARY KEY,
     value text NOT NULL
@@ -265,6 +313,9 @@ CREATE INDEX IF NOT EXISTS events_status_idx   ON events (status);
 CREATE INDEX IF NOT EXISTS events_datetime_idx ON events (in_world_datetime);
 CREATE INDEX IF NOT EXISTS stories_stage_idx   ON stories (arc_stage);
 CREATE INDEX IF NOT EXISTS stories_source_idx  ON stories (source);
+-- The desk reads coverage by story, newest first (`last_coverage`).
+CREATE INDEX IF NOT EXISTS news_coverage_story_idx
+    ON news_coverage (story_id, covered_at DESC);
 """
 
 # Additive, idempotent migrations applied on every `init_schema`, AFTER the schema
@@ -289,10 +340,12 @@ CREATE INDEX IF NOT EXISTS events_story_idx ON events (story_id);
 """
 
 # The world tables, in a stable order for a single TRUNCATE that reproduces the world
-# cleanly on a full reset. `events` references `stories`, but both are truncated in
-# one statement so the FK is satisfied. `embeddings` is handled separately (it is
-# DERIVED, not source-of-truth world state — see below).
-_WORLD_TABLES = ("canon", '"cast"', "events", "stories", "state")
+# cleanly on a full reset. `events` references `stories` and `news_coverage` references
+# both, but all are truncated in one statement so the FKs are satisfied. `news_coverage`
+# (D4.0) is runtime accrual, not source-of-truth world state, but it IS cleared on the
+# destructive `reset-world` (§2a) and counted — so it lives here. `embeddings` is
+# handled separately (it is DERIVED, regenerable — see below).
+_WORLD_TABLES = ("canon", '"cast"', "events", "stories", "news_coverage", "state")
 
 # --- Vector schema (D2.1: pgvector + the ONE polymorphic embeddings table) ---
 # Run in init_schema AFTER the base schema. `CREATE EXTENSION vector` needs the
@@ -576,6 +629,33 @@ def set_state(conn: psycopg.Connection, key: str, value: str) -> None:
     log.debug("db_set_state", key=key)
 
 
+def record_coverage(conn: psycopg.Connection, coverage: NewsCoverage) -> None:
+    """Record that a bulletin covered a story (D4.0). `id` is DB-assigned (ignored).
+
+    Append-only: each call adds a row, building the per-story coverage history the
+    desk reads back via `last_coverage` / `coverage_since`. The caller supplies
+    `covered_at` (the bulletin's in-world air time); `last_beat_id` may be NULL when
+    a story is covered without a concrete beat yet (e.g. a rumour with no event row).
+    """
+    conn.execute(
+        "INSERT INTO news_coverage (story_id, covered_at, arc_stage, last_beat_id, "
+        "angle) VALUES (%s, %s, %s, %s, %s)",
+        (
+            coverage.story_id,
+            coverage.covered_at,
+            coverage.arc_stage,
+            coverage.last_beat_id,
+            coverage.angle,
+        ),
+    )
+    log.info(
+        "db_record_coverage",
+        story_id=coverage.story_id,
+        arc_stage=coverage.arc_stage,
+        last_beat_id=coverage.last_beat_id,
+    )
+
+
 # --- Embeddings (D2.1: the ONLY place vector SQL lives) ---------------------
 
 
@@ -826,6 +906,53 @@ def story_beats(conn: psycopg.Connection, story_id: str) -> list[Event]:
         (story_id,),
     ).fetchall()
     return [_event_from_row(r) for r in rows]
+
+
+# --- News coverage reads (D4.0: the desk reads its own history) -------------
+
+_COVERAGE_COLUMNS = "id, story_id, covered_at, arc_stage, last_beat_id, angle"
+
+
+def _coverage_from_row(row: tuple) -> NewsCoverage:
+    """Build a `NewsCoverage` from a row selected with `_COVERAGE_COLUMNS`."""
+    return NewsCoverage(
+        id=row[0],
+        story_id=row[1],
+        covered_at=row[2],
+        arc_stage=row[3],
+        last_beat_id=row[4],
+        angle=row[5],
+    )
+
+
+def last_coverage(conn: psycopg.Connection, story_id: str) -> NewsCoverage | None:
+    """The most recent coverage of a story, or None if never covered (D4.0).
+
+    "How did I last tell this story?" — the stage/beat/angle the desk reached, so the
+    next bulletin can decide repeat vs evolve (a beat newer than `last_beat_id`) and
+    reuse consistent naming (D4.1–D4.3). Newest by in-world `covered_at`, then `id` to
+    break ties within one bulletin time.
+    """
+    row = conn.execute(
+        f"SELECT {_COVERAGE_COLUMNS} FROM news_coverage WHERE story_id = %s "
+        "ORDER BY covered_at DESC, id DESC LIMIT 1",
+        (story_id,),
+    ).fetchone()
+    return None if row is None else _coverage_from_row(row)
+
+
+def coverage_since(conn: psycopg.Connection, t: datetime) -> list[NewsCoverage]:
+    """All coverage rows aired at or after in-world time `t`, newest first (D4.0).
+
+    The recent-coverage window the desk reads to balance the hour (what it has already
+    aired lately, across all stories), e.g. since the previous bulletin's `now`.
+    """
+    rows = conn.execute(
+        f"SELECT {_COVERAGE_COLUMNS} FROM news_coverage WHERE covered_at >= %s "
+        "ORDER BY covered_at DESC, id DESC",
+        (t,),
+    ).fetchall()
+    return [_coverage_from_row(r) for r in rows]
 
 
 def get_state(conn: psycopg.Connection, key: str) -> str | None:
