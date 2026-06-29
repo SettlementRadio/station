@@ -131,11 +131,13 @@ class Settings(BaseSettings):
     # order: the night host then the first-light host. Their logical voices come
     # from each card's `logical_voice`, mapped to a preset in providers/tts.py.
     convo_speaker_ids: list[str] = ["vell", "wren"]
-    # Spoken-length guidance for the whole exchange (both DJs combined). Kept
-    # shorter than a single-DJ segment so iteration is fast and TTS time is low; a
-    # two-voice exchange feels longer than its word count. Retune as needed.
-    convo_words_low: int = 450
-    convo_words_high: int = 600
+    # Spoken-length guidance for the whole exchange (both DJs combined). A two-voice
+    # exchange feels longer than its word count, but too tight a budget forces clipped,
+    # unnatural compression — so the range gives the conversation room to breathe at a
+    # natural rhythm (the orchestrate prompt says rhythm matters more than the number).
+    # Retune as needed; higher = longer segments + more TTS time (free on Kokoro).
+    convo_words_low: int = 550
+    convo_words_high: int = 750
     # Per-step model tiers + output caps. The orchestrator (the dialogue) and the
     # showrunner (beat pick) run on the default writing brain; continuity runs on
     # sonnet and ESCALATES to opus only when the sonnet pass flags trouble.

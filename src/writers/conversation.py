@@ -111,11 +111,13 @@ def showrunner(
         f"({frame.part_of_day}).\n"
         f"On air right now: {situation}.\n\n"
         f"What's true right now:\n{ctx.dynamic or '(nothing notable)'}\n\n"
-        "Pick exactly ONE current event or world fact for them to glance off, and "
-        "an angle that suits both hosts AND the time of day above — do not assume "
+        "Pick exactly ONE current event or world fact for them to glance off, and a "
+        "HUMAN angle — a feeling, a small concrete detail, a gentle disagreement, "
+        "something one of them can't stop thinking about — not just a fact to report. "
+        "The angle should suit both hosts AND the time of day above; do not assume "
         "night, morning, or a handover unless the time and the on-air note say so. "
-        "Reply with a SHORT brief (2-4 sentences): the topic, the angle, and who "
-        "opens. Do not write any dialogue."
+        "Reply with a SHORT brief (2-4 sentences): the topic, the human angle, and "
+        "who opens. Do not write any dialogue."
     )
     beat = llm.generate(
         "Pick tonight's beat.",
@@ -174,6 +176,14 @@ def orchestrate(
         if frame.is_handover
         else "A real time check ('settlement time') belongs near the open."
     )
+    # --- Delivery register lives HERE (the on-air "way they speak"); the persona
+    # itself lives in the cast cards (docs/canon/90-cast.md). Future Phase D packs
+    # SLOT THEIR INPUTS INTO this prompt — they don't replace it — so keep the
+    # showrunner→orchestrate→continuity structure intact as their injection points:
+    #   * D5 (freshness): a "don't circle topics/openings aired recently: …" line
+    #     from the recent-airplay memory, woven in beside the beat.
+    #   * D9 (DJ memory): each host's history from the event log, joined to their card.
+    #   * D10 (figures/quotes): an attributable quote a host can reference.
     system = (
         "You are the writers' room for Settlement Radio, scripting a SPOKEN "
         f"on-air exchange between two hosts — {names}. Write the dialogue ONLY.\n\n"
@@ -184,17 +194,26 @@ def orchestrate(
         "the on-air note says so.\n\n"
         f"Tonight's beat (from the showrunner):\n{beat}\n\n"
         f"What's true right now:\n{ctx.dynamic or '(nothing notable)'}\n\n"
-        "Write it as a real conversation between two distinct people who know each "
-        "other well: short, natural turns; they react to and build on what the "
-        "other just said; warmth and a little wit. Each must sound like THEMSELVES "
-        "per their character card (in the cached context above) — not "
-        "interchangeable.\n\n"
-        "CRUCIAL — do not info-dump. The world facts and the event are their "
-        "SHARED knowledge: reference them naturally and glancingly, the way "
-        "colleagues do. NEVER explain canon to each other, never recite it, never "
-        f"narrate the setting. {time_check}\n\n"
-        f"Target {settings.convo_words_low}-{settings.convo_words_high} words "
-        "total, across both voices.\n\n"
+        "Write a REAL conversation — two people who've shared this booth for years "
+        "and are easy with each other, NOT two narrators taking turns. Make it sound "
+        "spoken, not written:\n"
+        "- Use contractions and plain, everyday phrasing; let lines run on or trail "
+        "off the way real speech does.\n"
+        "- Vary the rhythm: some turns are a quick reaction or half a sentence, some "
+        "longer; they interrupt, agree, tease, think out loud, leave small silences "
+        "implied.\n"
+        "- They genuinely react to and build on what the other JUST said — pick up a "
+        "word, push back gently, finish each other's thought.\n"
+        "- Each sounds unmistakably like THEMSELVES: lean on the verbal tics, habits, "
+        "and cadence in their character card (cached above), matching the feel of "
+        "that card's sample lines. They are NOT interchangeable.\n\n"
+        "The world facts and the event are their SHARED knowledge — reference them "
+        "the way colleagues do: a glance, an in-joke, an assumption, a half-finished "
+        "reference. Don't explain or recite canon to each other, and don't narrate "
+        f"the setting. {time_check}\n\n"
+        "Let it breathe — a natural rhythm matters more than an exact length; aim "
+        f"roughly for {settings.convo_words_low}-{settings.convo_words_high} words "
+        "total across both voices.\n\n"
         f"{revision}"
         f"{backbone}"
         "FORMAT (strict): every line is one turn, prefixed with the speaker's name "

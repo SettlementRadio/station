@@ -38,6 +38,34 @@ A typical *build* session will be short, e.g.:
 
 ---
 
+## 2026-06-29 — Phase D — naturalness pass on the talk prompts (route A)
+**Focus:** the DJs sounded official/stiff and segments mirrored each other — fix the *register* (how
+they speak), which is separate from the persona (the cast cards) and from the looping problem (D5).
+**Decisions:**
+- **Persona vs delivery are two layers.** Who a DJ *is* lives in `docs/canon/90-cast.md` (cards, verbal
+  tics, sample lines — already good); *how they talk on air* is shaped by the format/writer **prompts**.
+  The stiffness was in the prompts + tight word budgets, not the personas.
+- **Route A = talk only, wording-only.** Rewrote `writers/conversation.py` `orchestrate` to be
+  natural-first and POSITIVE (contractions, varied rhythm, react-and-build, lean on each card's
+  voice/tics) instead of a wall of "NEVER…" constraints; nudged the `showrunner` to pick a HUMAN angle
+  (a feeling/detail/disagreement), not just a fact; loosened `convo_words_*` (450-600 → 550-750) so it
+  can breathe. Left the showrunner→orchestrate→continuity **structure**, the framing/speaker logic
+  (D6), and the gate seams untouched.
+- **News stays for D4.** Its stiffness ("a trusted settlement desk" + rigid "exactly N headlines") is
+  in `news.py`, which D4 rewrites — so I left a note in the D4 pack to carry these same principles in
+  rather than patch a desk that's about to be replaced.
+- **Marked the injection points.** Added comments in `orchestrate` (and notes in the D5/D9 packs)
+  reserving where future inputs slot in WITHOUT conflicting: D5's "avoid recently-aired topics" line,
+  D9's per-host event-log memory, D10's attributable quotes. They compose with route A, don't replace it.
+**Changed:** `src/writers/conversation.py` (showrunner + orchestrate prompts), `src/config.py`
+(`convo_words_*`), `docs/PHASE_D_{NEWS_DESK,FRESHNESS,VOICE_ROSTER}_TASKS.md` (notes), this DEVLOG.
+**Why:** models go stiff when a prompt is mostly *don'ts* and the budget forces compression; leading
+with the character's own cadence + positive guidance + room to breathe is what reads as human.
+**Verify:** `make conversation` (or `make format FMT=talk`) — the exchange should use contractions,
+uneven turn lengths, and each host's tics; `ruff` + `pytest tests/test_conversation.py` green (4).
+**Next:** D4 (news desk, with the naturalness principles baked in) — or D5 for the on-air anti-repeat.
+Commit: (this session) · Clips: (none yet)
+
 ## 2026-06-29 — Phase D — D3: the World Engine (the keystone) — D3.0–D3.5
 **Focus:** make the +600y world *move on its own* — a nightly world tick that invents and advances
 bible-consistent, arced stories, behind the same safety/continuity gates as the writers' room.

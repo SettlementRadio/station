@@ -8,6 +8,12 @@
 > `orchestrate` writes the opening; `meta` carries `beat`/`part_of_day`), the news desk
 > `formats/news.py` (post-D4: story-log-driven with per-story coverage memory), and `context.assemble`.
 >
+> **Injection point already marked.** `writers/conversation.py` `orchestrate` carries a comment block
+> reserving where D5's input goes: a "don't circle topics/openings aired recently: …" line woven in
+> beside the beat — and the `showrunner` picks that beat, so steer it off recent ground there too. The
+> route-A naturalness pass (2026-06-29) deliberately kept the showrunner→orchestrate→continuity structure
+> intact for exactly this.
+>
 > **Read first:** `docs/PHASE_D_OVERVIEW.md` §3 (D5 brief); `docs/ROADMAP.md` (Phase D "freshness /
 > anti-repetition" bullet); `src/scheduler.py` (the `schedule.json` upcoming state + the placement loop
 > + `prune`); `src/writers/conversation.py` (`showrunner`/`orchestrate` — the read sites); `docs/

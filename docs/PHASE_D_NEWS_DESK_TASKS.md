@@ -8,6 +8,14 @@
 > `events.relative_phrase`/`status_of`/`progressed` (the temporal framing), `clock.to_inworld`, the
 > safety gate (`safety.safety_check`/`generate_safe`), and `embeddings.retrieve` (D2).
 >
+> **Naturalness — carry the route-A pass into the desk.** The talk prompts got a "natural register"
+> pass (2026-06-29, `writers/conversation.py`): lead with the host's card voice + verbal tics, use
+> POSITIVE style guidance (contractions, varied rhythm, react-and-build), and treat canon as shared
+> knowledge. Do the same here: the old `news.py` `_build_system` ("clear, measured… a trusted settlement
+> desk" + a rigid "exactly N headlines" skeleton) is exactly the stiffness to drop. News is reportage —
+> state things plainly — but in the **anchor's actual voice**, not officialese; loosen the word budget if
+> it reads clipped.
+>
 > **Read first:** `docs/PHASE_D_OVERVIEW.md` §3 (D4 brief); `docs/ROADMAP.md` (Phase D "news desk"
 > bullet — the canonical spec); `src/formats/news.py` (the one-shot desk to replace — **keep its
 > `generate_safe` + evergreen pattern and its `Segment` shape**); `src/world/events.py`

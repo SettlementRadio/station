@@ -13,6 +13,12 @@
 > `insert_cast`/`all_cast`/`get_cast_member`), `settings.convo_speaker_ids=["vell","wren"]`, and the
 > story log (D3).
 >
+> **Injection point already marked.** `writers/conversation.py` `orchestrate` reserves where DJ memory
+> goes: each host's history from the event log (D3) joined to their character card. The route-A
+> naturalness pass (2026-06-29) leans on each card's voice/tics, so richer per-host memory composes
+> directly with it — and the persona/"way of speaking" itself is authored in `docs/canon/90-cast.md`,
+> the right home for any roster edits.
+>
 > **Read first:** `docs/PHASE_D_OVERVIEW.md` §3 (D9 brief); `docs/ROADMAP.md` (Phase D "voice & emotion +
 > the DJ roster" bullet); `src/providers/tts.py` (the inert `emotion` param + the voice registries —
 > **the only TTS importer; all of D9's voice work stays behind this seam**); `src/world/store.py`
