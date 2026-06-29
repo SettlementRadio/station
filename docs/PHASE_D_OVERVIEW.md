@@ -328,14 +328,14 @@ done and Claude (chat) can generate the `_TASKS.md` now.
 |---|---|---|---|---|---|
 | D1 Canon → Folder | `PHASE_D_CANON_FOLDER_TASKS.md` | — | ✅ | ✅ | **Built** (D1.0–D1.4) |
 | D2 Semantic Retrieval / RAG | `PHASE_D_RAG_TASKS.md` | D1 | ✅ | ✅ | **Built** (D2.0–D2.6) |
-| D3 World Engine (keystone) | `PHASE_D_WORLD_ENGINE_TASKS.md` | D1 (D2 recommended) | ✅ | ☐ | **Ready** (D1+D2 built) |
-| D4 News Desk | `PHASE_D_NEWS_DESK_TASKS.md` | D3, D2 | ✅ | ☐ | Blocked on D3 build |
-| D5 Freshness / Anti-repetition | `PHASE_D_FRESHNESS_TASKS.md` | D3/D4 | ✅ | ☐ | Blocked on D3/D4 build |
+| D3 World Engine (keystone) | `PHASE_D_WORLD_ENGINE_TASKS.md` | D1 (D2 recommended) | ✅ | ✅ | **Built** (D3.0–D3.5) |
+| D4 News Desk | `PHASE_D_NEWS_DESK_TASKS.md` | D3, D2 | ✅ | ☐ | **Ready** (D3 built) |
+| D5 Freshness / Anti-repetition | `PHASE_D_FRESHNESS_TASKS.md` | D3/D4 | ✅ | ☐ | **Ready** (D3 built; rides D4) |
 | D6 Programming + Status Console | `PHASE_D_PROGRAMMING_TASKS.md` | C2 scheduler | ✅ | ☐ | **Ready** (parallel-able) |
 | D7 Production (sound + songs) | `PHASE_D_PRODUCTION_TASKS.md` | D6 (soft→D10: artist links) | ✅ | ☐ | Blocked on D6 build |
 | D8 Commercials & Sponsorship | `PHASE_D_COMMERCIALS_TASKS.md` | D6, D7 (CM for real sponsors) | ✅ | ☐ | Blocked on D6/D7 build |
-| D9 Voice & Emotion + Roster | `PHASE_D_VOICE_ROSTER_TASKS.md` | D3 (memory); C6 (emotion); D10 (guests) | ✅ | ☐ | Blocked on D3 build (+C6 for emotion) |
-| D10 Figures & Quotes | `PHASE_D_FIGURES_QUOTES_TASKS.md` | D3 (D2 rec.; D9 for soundbites) | ✅ | ☐ | Blocked on D3 build |
+| D9 Voice & Emotion + Roster | `PHASE_D_VOICE_ROSTER_TASKS.md` | D3 (memory); C6 (emotion); D10 (guests) | ✅ | ☐ | **Ready** (D3 built; +C6 for emotion) |
+| D10 Figures & Quotes | `PHASE_D_FIGURES_QUOTES_TASKS.md` | D3 (D2 rec.; D9 for soundbites) | ✅ | ☐ | **Ready** (D3 built) |
 | D11 Operator/Admin Manual (capstone) | `PHASE_D_ADMIN_MANUAL_TASKS.md` | D1–D10 built | ✅ | ☐ | Do last (re-verify at CM) |
 
 **Done-when for Phase D (from ROADMAP):** the world visibly progresses on its own (fresh, evolving

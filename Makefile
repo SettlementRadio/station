@@ -15,6 +15,7 @@
 #   make format FMT=…  Generate one B5 format segment (news|talk|music; needs seed).
 #   make buffer        Generate ~an hour of varied segments into segments/ (B6; needs seed).
 #   make schedule      Top up the rolling buffer to depth + write the playout playlist (C2).
+#   make world-tick    Run one world tick: invent + advance world stories (D3; needs seed).
 #
 # `generate`/`play`/`schedule` make live Anthropic + TTS calls (needs a populated
 # .env). Since C2, `serve` airs the SCHEDULER's playlist (segments/playlist.txt),
@@ -36,7 +37,7 @@ LIQ_LOG    := $(RUN_DIR)/liquidsoap.log
 PLAYER_URL := http://127.0.0.1:8000/
 STREAM_URL := http://127.0.0.1:8000/settlement.mp3
 
-.PHONY: help generate serve air play play-convo stop status seed seed-canon reset-world demo context conversation format buffer schedule ident prune fallback health
+.PHONY: help generate serve air play play-convo stop status seed seed-canon reset-world demo context conversation format buffer schedule ident prune fallback health world-tick
 
 # B5 format default: `make format` builds a talk segment; override with FMT=news
 # or FMT=music. Pass a TOPIC=... to steer canon retrieval.
@@ -72,6 +73,7 @@ help:
 	@echo "  make fallback  pre-render the never-dead fallback assets (C4)"
 	@echo "  make health    run the health checks + alert on any issue (C4)"
 	@echo "  make schedule  top up the rolling buffer to depth + write the playlist (C2)"
+	@echo "  make world-tick run one world tick: invent + advance world stories (D3)"
 	@echo "  make air       schedule + serve — the live scheduler-driven stream (C2)"
 
 # Seed/refresh the world-state DB from the canon bible (docs/canon/ folder, or the
@@ -89,6 +91,17 @@ seed-canon seed:
 reset-world:
 	@echo "==> reset-world: DESTRUCTIVE full world+canon wipe…"
 	$(PY) -m src.world.seed reset
+
+# D3: run ONE world tick — invent new bible-consistent stories + advance running ones
+# in the world-state DB (gated, batched, cached). This is the nightly WORLD-STATE job
+# the C5 cron/systemd timer runs; it is SEPARATE from `make schedule` (the tick WRITES
+# world state, the scheduler READS it to make audio — don't fold them). Prints a
+# summary + exits non-zero on failure (store left untouched). Live Anthropic (Batch)
+# calls; needs `make seed` + .env. For a quick synchronous local run with no async
+# batch wait: `LLM_BATCH_ENABLED=false make world-tick`.
+world-tick:
+	@echo "==> Running one world tick (D3)…"
+	$(PY) -m src.world.world_tick
 
 # B2 proof: render the Lumen Festival at two `now` values and show the relative
 # phrase flip ("in five days" -> "yesterday"). Needs `make seed` first.

@@ -38,6 +38,47 @@ A typical *build* session will be short, e.g.:
 
 ---
 
+## 2026-06-29 — Phase D — D3: the World Engine (the keystone) — D3.0–D3.5
+**Focus:** make the +600y world *move on its own* — a nightly world tick that invents and advances
+bible-consistent, arced stories, behind the same safety/continuity gates as the writers' room.
+**Decisions:**
+- **Story log = stories + beats-as-events** (D3.0). A new `stories` table holds the narrative spine;
+  each beat is an `events` row linked by `story_id` (+ `beat_kind`), so beats keep their in-world
+  datetime and the B2 clock frames them for free — reuse, not a parallel beats table. **Arc stage**
+  (`rumoured→upcoming→happening→developing→past`) is a documented module constant with forward-only
+  legal transitions, kept distinct from `events.status_of`'s temporal status.
+- **The story log is tick-owned, persists forever.** `source='tick'` (reusing D1.2's split): a
+  `seed-canon` refresh leaves stories/beats/tick-events standing; only `reset-world` clears them.
+  Schema landed via idempotent migration (`ADD COLUMN IF NOT EXISTS`), never truncate-reseed.
+- **Batch built FIRST, behind the seam** (audit fix). `providers/llm.generate_batch` is the only place
+  the vendor batch SDK is imported; `world_tick` calls it like `generate`. `LLM_BATCH_ENABLED=false`
+  runs synchronously for a fast local check. Gate calls are batched (50% off) + the bible is cached.
+- **Gate every proposal; never write flagged/contradictory content** — safety + a world-continuity
+  check (against canon *and* the story's own prior beats); regenerate-once-then-drop for new stories,
+  skip-this-tick for advancements (the story stays, retried next tick).
+- **Variety is engineered, not hoped for** (D3.3): domain balancing (spotlight quiet domains),
+  similarity de-dup (semantic via D2 over the `story` corpus + a structural Jaccard fallback so it
+  degrades cleanly without D2), and a new-vs-advance pacing cap on the living-world size.
+- **Separate jobs** (D3.4): the tick WRITES world state; the C2 scheduler READS it for audio. The tick
+  is the nightly C5 batch (`make world-tick`), one-shot, transactional, loud-on-failure (exit non-zero,
+  store rolled back) — explicitly NOT folded into `scheduler.top_up`.
+**Changed:** `src/world/store.py` (story log: `stories`/beat link, arc constants + `can_transition`,
+`insert_story`/`insert_beats`/`advance_story`/`active_stories`/`recent_stories`/`story_beats`/`get_story`,
+scoped `clear_world`); `src/world/world_tick.py` (new — `run_tick` + the propose/advance/gate/dedup
+pipeline + CLI `main()`); `src/providers/llm.py` (`generate_batch` + `BatchRequest`/`BatchResult`);
+`src/config.py` + `.env.example` (`LLM_BATCH_*`, `WORLD_TICK_*`); `Makefile` (`make world-tick`);
+`tests/test_story_log.py` + `tests/test_world_tick.py` (30 new tests, LLM mocked, DB tests roll back);
+README world-tick section; `docs/ADMIN_MANUAL.md` D3 how-tos; PHASE_D_OVERVIEW tracker.
+**Why:** the world tick is what fixes "thin conversations" — a moving present on top of the static
+bible is what makes the station worth coming back to. Building Batch behind the seam first (the audit's
+call) keeps the cost lever from leaking into the tick and makes the nightly volume affordable.
+**📣 Postable:** "Settlement Radio's world now writes its own news overnight" — a two-tick run showing a
+story appear (`upcoming`) then advance (`happening`) with correct past/now/future framing.
+**Next:** D4 (the news desk that *reports* this log on air) — now unblocked.
+**Verify:** `make seed` then `LLM_BATCH_ENABLED=false make world-tick` twice — tick 1 creates stories,
+tick 2 prints `advanced N running stories` with beats appended + stages moved. `pytest` green (129).
+Commit: (this session) · Clips: (none yet)
+
 ## 2026-06-28 — Phase D — full canon audit campaign: the bible authored (18 cornerstones, ~7→193 facts) + RAG emotional-tag pass
 **Focus:** ran `docs/canon/AUDIT.md` end-to-end on **every cornerstone an external writer expanded** —
 validate → fix → overwrite → re-seed, file by file — taking the world from a handful of scaffold facts

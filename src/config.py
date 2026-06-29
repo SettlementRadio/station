@@ -71,6 +71,21 @@ class Settings(BaseSettings):
     llm_max_tokens: int = 4000
     llm_timeout_sec: float = 120.0
 
+    # --- LLM Batch API (D3: the nightly world tick's cost lever) ----------------
+    # The Batch API runs many requests asynchronously at 50% of standard price —
+    # the right fit for the nightly world tick (D3), which is not latency-sensitive.
+    # It lives ONLY behind `providers/llm.generate_batch` (the vendor batch SDK is
+    # imported nowhere else); callers like the tick never touch it directly.
+    # `llm_batch_enabled=False` makes `generate_batch` run each request SYNCHRONOUSLY
+    # via the normal `generate` path instead — no async wait, full price — so a local
+    # `make world-tick` finishes immediately for a quick check; leave it True on the
+    # box so the nightly run takes the discount. The poll interval + max wait bound
+    # the submit→poll→collect loop (a batch usually finishes within an hour, may take
+    # up to 24h — hence the generous default ceiling; a run that exceeds it fails loud).
+    llm_batch_enabled: bool = True
+    llm_batch_poll_interval_sec: float = 30.0
+    llm_batch_max_wait_sec: float = 86_400.0  # 24h — the Batch API's own max lifetime
+
     # --- TTS seam --------------------------------------------------------------
     # Which implementation tts.py selects: kokoro (default, local/free) |
     # elevenlabs (flagship cloud) | say (macOS offline fallback). The vendor
@@ -318,6 +333,61 @@ class Settings(BaseSettings):
     embeddings_provider: str = "local"  # local (sentence-transformers) | voyage
     embeddings_model: str = "sentence-transformers/all-MiniLM-L6-v2"
     embeddings_dim: int = 384  # == the model's output dim; the pgvector vector(N)
+
+    # --- World tick (D3: the generative world engine) --------------------------
+    # The nightly tick (src/world/world_tick.py) invents new bible-consistent
+    # happenings as arced, dated stories and writes them to the story log (D3.0).
+    # It proposes a bounded number of new stories each run — a MIX of large
+    # (a political shift, a festival) and small (a liner goes missing) — then GATES
+    # every proposal through safety + a world-continuity check before writing
+    # (flagged proposals are regenerated once, then dropped; never written).
+    #
+    # `*_new_stories_min/max` bound how many new happenings one tick proposes;
+    # `*_large_ratio` is the share aimed to be "large" (the rest small). The
+    # generation runs on the `sonnet` writing brain (`opus` only for gnarly world
+    # calls — not the default here); the continuity check also on `sonnet`.
+    # `*_max_attempts` is the C0 regenerate-then-drop budget (2 = draft + one retry).
+    # `*_beat_horizon_days` caps how far from "today" (in-world now) a generated beat
+    # may be dated, so the clock frames new beats within a believable window.
+    world_tick_new_stories_min: int = 2
+    world_tick_new_stories_max: int = 4
+    world_tick_large_ratio: float = 0.34  # ~1 in 3 new stories aims to be "large"
+    world_tick_propose_tier: str = "sonnet"  # the writing brain (CLAUDE.md routing)
+    # Headroom for a JSON array of several stories × up to 3 beats each — too small a
+    # cap truncates the array mid-object (the parser salvages complete objects, but a
+    # tight cap still loses the tail). ~4k tokens fits the default 2-4 story batch.
+    world_tick_propose_max_tokens: int = 4000
+    world_tick_continuity_tier: str = "sonnet"
+    world_tick_continuity_max_tokens: int = 300
+    world_tick_max_attempts: int = 2  # draft + one regenerate before dropping a story
+    world_tick_beat_horizon_days: int = 21  # max |days| from now for a generated beat
+    world_tick_active_context_limit: int = 30  # active stories shown for dedup/context
+    # D3.2 — advancing running stories so the world has day-to-day continuity.
+    # `*_advance_max` caps how many running stories one tick moves on (the least-
+    # recently-advanced first, so attention spreads and nothing starves);
+    # `*_resolve_after_ticks` is the pacing pressure that keeps the world from
+    # accumulating forever — a story older than this many ticks is steered toward
+    # resolution (arc stage `past`, after which it stops advancing but stays in the
+    # log as history). A flagged advancement is skipped this tick (the story stays
+    # active and is retried next tick), never written.
+    world_tick_advance_max: int = 3
+    world_tick_resolve_after_ticks: int = 5
+    # D3.3 — keep the GENERATED world varied, balanced, and non-repetitive (distinct
+    # from D5's on-air anti-repetition). `*_max_active_stories` is the new-vs-advance
+    # PACING dial: a soft cap on the living world's size — when this many stories are
+    # already running the tick proposes NO new ones (only advances/resolves), so the
+    # world neither churns (all new) nor stagnates. `*_domain_window_ticks` is how many
+    # recent ticks count toward DOMAIN BALANCE, and `*_quiet_domains` how many of the
+    # least-used domains the tick is steered to favour (the world-gen analog of D5's
+    # airplay memory). De-dup rejects a proposed story too close to an existing one:
+    # `*_dedup_threshold` is the SEMANTIC cosine cutoff (via D2 recall over the `story`
+    # corpus), `*_dedup_jaccard` the STRUCTURAL title/summary token-overlap cutoff used
+    # for within-batch siblings and as the fallback when D2 is unavailable.
+    world_tick_max_active_stories: int = 24
+    world_tick_domain_window_ticks: int = 7
+    world_tick_quiet_domains: int = 4
+    world_tick_dedup_threshold: float = 0.86
+    world_tick_dedup_jaccard: float = 0.6
 
     def model_id(self, tier: str) -> str:
         """Map a logical tier ("haiku"|"sonnet"|"opus") to its real model id."""

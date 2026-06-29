@@ -139,6 +139,30 @@ make context     # prints the cached core and the dynamic (events/canon) slice f
 > sentence-transformer (`settings.embeddings_*`; 384-d, free, no key — D2.0 decision); `embeddings_dim`
 > is the `vector(N)` width, so a model change means a re-embed + a column migration.
 
+The world moves on its own (Phase D / D3). A nightly **world tick**
+([`src/world/world_tick.py`](src/world/world_tick.py)) invents plausible new happenings consistent
+with the bible and models each as a **story with an arc** — `rumoured → upcoming → happening →
+developing → past` — whose individual developments are dated `events` rows (its *beats*), so the world
+clock frames them future/now/past for free. Each run also **advances** a bounded set of running stories
+(a new beat, sometimes a stage change) and steers old ones to resolution, so the world has real
+day-to-day continuity. Every proposal passes the **safety + a world-continuity gate** (against canon
+*and* the story's own prior beats) before it's written — flagged content is regenerated once, then
+dropped, never written — and the run stays varied via domain balancing, similarity de-duplication, and
+a new-vs-advance pacing cap. The story log lives in [`src/world/store.py`](src/world/store.py)
+(`stories` + beat-linked `events`, `source='tick'`) and **persists forever** — a canon refresh
+(`make seed-canon`) never wipes it; only `make reset-world` does.
+```bash
+make world-tick                       # run one tick: invent + advance world stories (Claude Batch)
+LLM_BATCH_ENABLED=false make world-tick  # quick local run, synchronous (no async batch wait)
+```
+Cost levers are mandatory here (this is the high-volume job): the gate calls go through the **Batch API**
+(50% off, behind [`llm.generate_batch`](src/providers/llm.py) — the only place the vendor batch SDK is
+imported) and the stable bible is **prompt-cached**. The tick writes **world state**; the C2 scheduler
+reads it to make audio — they're **separate jobs** on the box's timer (the C5 cron/systemd runs the tick
+nightly; don't fold it into `make schedule`). A run is transactional, so a failure rolls back and exits
+non-zero (loud) without corrupting the store. A fresh DB has no running stories yet — run a couple of
+ticks after seeding to give the world a living "now".
+
 Two DJs hold a conversation, not two monologues. The conversation orchestrator
 ([`src/writers/conversation.py`](src/writers/conversation.py)) runs a light writers' room over the
 assembled context: a **showrunner** picks one beat from the current events, an **orchestrator**

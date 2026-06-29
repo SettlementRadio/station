@@ -93,3 +93,71 @@ per topic). **Switching model:** change model+dim together, then `make seed-cano
   structured retrieval** — no crash; check logs for `embeddings_retrieve_unavailable`.
 - `make reset-world` clears the embeddings table (re-embedded on the rebuild); `make seed-canon`
   re-embeds only the `source='seed'` (canon) rows and leaves tick-generated vectors intact.
+
+---
+
+## D3 — The world engine (the nightly world tick)
+
+**What it is.** A nightly job that makes the world *move on its own*: it invents new
+bible-consistent **stories** (each an arc of dated **beats**) and **advances** running ones over
+successive runs. All world state lives in `stories` + beat-linked `events` (`source='tick'`) in
+[`src/world/store.py`](../src/world/store.py); the job is [`src/world/world_tick.py`](../src/world/world_tick.py).
+It is the nightly batch the C5 cron/systemd timer runs — a **separate job** from `make schedule` (the
+tick *writes* world state; the scheduler *reads* it to make audio).
+
+### Run one tick
+```bash
+make world-tick                          # one tick: invent + advance world stories (Claude Batch)
+LLM_BATCH_ENABLED=false make world-tick  # quick local run, synchronous (no async batch wait)
+```
+Prints a summary (proposed / accepted / dropped / duplicates; advanced / resolved) and the new +
+advanced story ids. Needs `make seed` + a populated `.env`. One-shot by design; exits **non-zero** on
+failure with the store left untouched (a tick is one transaction — it rolls back on any error).
+
+### Warm up a fresh world (give it a living "now")
+A freshly-seeded DB has no running stories. Run the tick a few times so there's a moving present for
+the news/DJs (and for the C9 soak) to draw on:
+```bash
+make seed
+LLM_BATCH_ENABLED=false make world-tick   # tick 1 — creates stories
+LLM_BATCH_ENABLED=false make world-tick   # tick 2 — advances some of them (watch the summary)
+```
+
+### Schedule it (the box)
+Run `make world-tick` (i.e. `python -m src.world.world_tick`) **nightly** from cron/systemd, independent
+of the scheduler's top-up timer. Leave `LLM_BATCH_ENABLED=true` on the box for the 50% Batch discount.
+
+### What survives a re-seed
+Tick-generated stories/beats/events are the living world: `make seed-canon` (a bible edit) leaves them
+**intact**; only `make reset-world` clears them. They are the irreplaceable asset C5 backs up.
+
+### Config knobs (`.env`; defaults sane)
+- **Counts/mix:** `WORLD_TICK_NEW_STORIES_MIN/MAX`, `WORLD_TICK_LARGE_RATIO`,
+  `WORLD_TICK_BEAT_HORIZON_DAYS` (how far from "now" a beat may be dated).
+- **Continuity/pacing:** `WORLD_TICK_ADVANCE_MAX` (running stories advanced per tick),
+  `WORLD_TICK_RESOLVE_AFTER_TICKS` (steer old stories to resolution),
+  `WORLD_TICK_MAX_ACTIVE_STORIES` (soft cap → propose no new stories when full).
+- **Variety:** `WORLD_TICK_DOMAIN_WINDOW_TICKS`, `WORLD_TICK_QUIET_DOMAINS` (domain balance),
+  `WORLD_TICK_DEDUP_THRESHOLD` (semantic) + `WORLD_TICK_DEDUP_JACCARD` (structural) de-dup.
+- **Cost/model:** `WORLD_TICK_PROPOSE_TIER`/`_CONTINUITY_TIER`, `WORLD_TICK_MAX_ATTEMPTS`
+  (regenerate-then-drop), and `LLM_BATCH_ENABLED` / `LLM_BATCH_POLL_INTERVAL_SEC` /
+  `LLM_BATCH_MAX_WAIT_SEC` (the Batch path).
+
+### Verify / inspect
+```bash
+LLM_BATCH_ENABLED=false make world-tick   # run twice; the 2nd should report advanced > 0
+```
+Inspect the story log the tick just wrote:
+```bash
+python -c "
+from src.world import store
+with store.connect() as c:
+    s = store.active_stories(c)
+    print([(x.arc_stage, x.title) for x in s])
+    if s:
+        print('beats:', [(b.beat_kind, b.in_world_datetime.isoformat())
+                          for b in store.story_beats(c, s[0].id)])
+"
+```
+Gate behaviour (a contradictory/unsafe proposal is regenerated once then dropped, never written) is
+covered by `tests/test_world_tick.py`; run `pytest -q`.
