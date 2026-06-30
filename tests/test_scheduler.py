@@ -69,6 +69,11 @@ def _wire(monkeypatch, tmp_path, *, depth_hours, rotation, generator):
     # C4 — top_up refreshes the never-dead fallback assets (real TTS). Neutralize it
     # so the scheduler tests stay free of Claude/TTS; src/fallback has its own tests.
     monkeypatch.setattr(scheduler, "ensure_fallback_assets", lambda **k: {})
+    # D5.1 — top_up records each placed segment in the airplay memory + sweeps it
+    # (both hit the DB). Neutralize here so the scheduler tests stay hermetic and never
+    # commit fabricated rows to a dev DB; src/freshness has its own tests.
+    monkeypatch.setattr(scheduler, "record_airplay_features", lambda seg: False)
+    monkeypatch.setattr(scheduler, "sweep_airplay", lambda now: 0)
 
 
 def test_top_up_fills_to_depth_in_air_order(monkeypatch, tmp_path):

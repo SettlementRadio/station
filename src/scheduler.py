@@ -58,6 +58,8 @@ from .disclosure import disclosure_ident_segment
 from .evergreen import EVERGREEN_NAME_PREFIX
 from .fallback import ensure_fallback_assets
 from .formats import make_format_segment
+from .freshness import record_segment as record_airplay_features
+from .freshness import sweep as sweep_airplay
 from .logging_setup import get_logger
 from .segment import Segment
 
@@ -292,6 +294,11 @@ def top_up(now: datetime | None = None) -> list[dict]:
         # has aired out of the live schedule (C2.5). Written with the pinned slot
         # air_time already set on the segment by `_generate_slot`.
         _write_sidecar(seg)
+        # D5.1 — record this placed segment's salient features in the airplay memory
+        # (anti-repetition): one chokepoint sees every content slot, so producers don't
+        # each need wiring. Best-effort + filters static idents/evergreen internally;
+        # the memory persists past the C2.5 disk GC (the point — freshness.py).
+        record_airplay_features(seg)
         entry = _entry(seg)
         duration = _duration_of(entry)
         upcoming.append(entry)
@@ -333,6 +340,11 @@ def top_up(now: datetime | None = None) -> list[dict]:
         prune(now)
     except Exception as exc:  # noqa: BLE001 — housekeeping must not break playout
         log.error("prune_error", error=str(exc))
+
+    # D5.1 — bound the airplay memory the same way: drop rows older than its (much
+    # wider) keep window. This is NOT the disk GC above — the freshness memory must
+    # OUTLIVE the audio it describes; it just can't grow forever on a 24/7 station.
+    sweep_airplay(now)
 
     return upcoming
 
