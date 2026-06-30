@@ -391,6 +391,38 @@ class Settings(BaseSettings):
     world_tick_dedup_threshold: float = 0.86
     world_tick_dedup_jaccard: float = 0.6
 
+    # --- News desk (D4: the story-log-driven bulletin) -------------------------
+    # The desk (src/formats/news.py) no longer asks for N flat headlines; it SELECTS
+    # which running stories (D3 log) this hour reports (D4.1), tags each from the
+    # coverage memory (D4.0) as new/repeat/evolve, and frames them by their arc + beat
+    # date (D4.2). These dials tune the SELECTION mix.
+    #
+    # `news_story_count` is the bounded set per bulletin (the old
+    # `format_news_headline_count` analog). The desk aims for a MIX, with soft per-kind
+    # quotas (filled by rank, never exceeding the count): `news_target_breaking`
+    # (a beat at/near now), `news_target_trailed` (a notable upcoming beat to preview),
+    # `news_target_ongoing` (a covered-before story still developing). A beat counts as
+    # BREAKING when within `news_breaking_window_hours` of in-world now; an upcoming
+    # beat is TRAILED when within `news_trail_horizon_days` ahead. A REPEAT (covered
+    # before, no new beat) older than `news_repeat_max_stale_hours` is dropped as too
+    # cold to re-air (a story with a genuinely new beat is tagged `evolve`, not stale).
+    # Canon grounding (D2 recall): each candidate is scored against the bible via
+    # `news_canon_recall_k` nearest canon facts, weighted by `news_canon_weight`, so
+    # the bulletin connects to canon, not just the calendar — degrading to pure
+    # temporal ranking when embeddings/pgvector are unavailable. `news_breaking_bonus`
+    # / `news_evolve_bonus` lift breaking + freshly-developed stories in the ranking.
+    news_story_count: int = 3
+    news_target_breaking: int = 2
+    news_target_trailed: int = 1
+    news_target_ongoing: int = 1
+    news_breaking_window_hours: float = 18.0
+    news_trail_horizon_days: int = 7
+    news_repeat_max_stale_hours: float = 18.0
+    news_canon_recall_k: int = 8
+    news_canon_weight: float = 0.5
+    news_breaking_bonus: float = 1.0
+    news_evolve_bonus: float = 0.5
+
     def model_id(self, tier: str) -> str:
         """Map a logical tier ("haiku"|"sonnet"|"opus") to its real model id."""
         ids = {
