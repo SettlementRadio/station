@@ -477,6 +477,167 @@ def test_pacing_cap_blocks_new_stories(tick_db, monkeypatch):
     assert result.story_ids == []
 
 
+# --- D10.1: the tick peoples its stories (figures + quotes) -----------------
+
+
+def _proposal_json_people(figure: str = "Mira Voss") -> str:
+    """A proposal carrying one figure + a beat that quotes them, plus a junk quote."""
+    return json.dumps(
+        [
+            {
+                "title": "The Relay Holds",
+                "summary": "An orbital relay survives a solar storm.",
+                "scale": "small",
+                "domain": "technology",
+                "arc_stage": "happening",
+                "figures": [
+                    {"name": figure, "role": "relay-keeper", "bio": "Steady hand."}
+                ],
+                "beats": [
+                    {
+                        "title": "It held",
+                        "body": "The relay rode out the storm.",
+                        "beat_kind": "development",
+                        "day_offset": 0,
+                        "hour": 20,
+                        "quotes": [
+                            {
+                                "figure": figure,
+                                "text": "We are not going dark.",
+                                "stance": "reassuring",
+                            },
+                            {"figure": "Nobody At All", "text": "ignore me"},
+                        ],
+                    }
+                ],
+            }
+        ]
+    )
+
+
+def _advance_json_people(stage: str = "developing", figure: str = "Mira Voss") -> str:
+    return json.dumps(
+        {
+            "arc_stage": stage,
+            "new_figures": [],
+            "beat": {
+                "title": "Aftermath",
+                "body": "The keeper assesses the damage.",
+                "beat_kind": "consequence",
+                "day_offset": 1,
+                "hour": 9,
+                "quotes": [
+                    {
+                        "figure": figure,
+                        "text": "Two panels to replace.",
+                        "stance": "matter-of-fact",
+                    }
+                ],
+            },
+        }
+    )
+
+
+def test_coerce_story_parses_figures_and_caps_quotes(monkeypatch):
+    monkeypatch.setattr(settings, "world_tick_quotes_per_story_max", 1)
+    p = wt._parse_proposals(_proposal_json_people())[0]
+    assert [f.name for f in p.figures] == ["Mira Voss"]
+    assert p.figures[0].role == "relay-keeper"
+    # Two quotes proposed, but the per-story cap trims to 1 (a few voices, not a crowd).
+    assert sum(len(b.quotes) for b in p.beats) == 1
+
+
+def test_materialise_people_links_quotes_and_drops_unattributed():
+    p = wt._parse_proposals(_proposal_json_people())[0]
+    story, beats = wt._materialise(p, tick_no=1, ctx=_ctx(), index=0)
+    figures, quotes = wt._materialise_people(p, story, beats, tick_no=1)
+
+    assert [f.name for f in figures] == ["Mira Voss"]
+    assert all(f.source == store.FIGURE_SOURCE_TICK for f in figures)
+    # The quote to "Nobody At All" (an undeclared figure) is dropped; only Mira's lands.
+    assert len(quotes) == 1
+    assert quotes[0].figure_id == figures[0].id
+    assert quotes[0].beat_id == beats[0].id
+    assert quotes[0].in_world_datetime == beats[0].in_world_datetime  # from the beat
+
+
+def test_figures_disabled_yields_no_people(monkeypatch):
+    monkeypatch.setattr(settings, "world_tick_figures_enabled", False)
+    p = wt._parse_proposals(_proposal_json_people())[0]
+    assert p.figures == []
+    story, beats = wt._materialise(p, tick_no=1, ctx=_ctx(), index=0)
+    assert wt._materialise_people(p, story, beats, tick_no=1) == ([], [])
+
+
+def test_run_tick_writes_figures_and_quotes(tick_db, monkeypatch):
+    monkeypatch.setattr(llm, "generate", lambda prompt, **kw: _proposal_json_people())
+    monkeypatch.setattr(
+        llm,
+        "generate_batch",
+        lambda reqs, **kw: [llm.BatchResult(r.custom_id, "OK", ok=True) for r in reqs],
+    )
+
+    result = wt.run_tick(now=_NOW)
+    sid = result.story_ids[0]
+
+    figs = store.figures_for_story(tick_db, sid)
+    assert [f.name for f in figs] == ["Mira Voss"]
+    quotes = store.quotes_for_story(tick_db, sid)
+    assert len(quotes) == 1  # the unattributed second quote was dropped
+    assert quotes[0].figure_id == figs[0].id
+    assert result.usage.get("figures_written") == 1
+    assert result.usage.get("quotes_written") == 1
+
+
+def test_run_tick_advance_reuses_existing_figure(tick_db, monkeypatch):
+    monkeypatch.setattr(llm, "generate", lambda prompt, **kw: _proposal_json_people())
+
+    def smart(reqs, **kw):
+        out = []
+        for r in reqs:
+            if "next beat as a JSON object" in r.prompt:
+                out.append(
+                    llm.BatchResult(r.custom_id, _advance_json_people(), ok=True)
+                )
+            else:
+                out.append(llm.BatchResult(r.custom_id, "OK", ok=True))
+        return out
+
+    monkeypatch.setattr(llm, "generate_batch", smart)
+
+    sid = wt.run_tick(now=_NOW).story_ids[0]
+    second = wt.run_tick(now=_NOW)  # advances the story; quote reuses Mira by name
+
+    assert sid in second.advanced_ids
+    figs = store.figures_for_story(tick_db, sid)
+    assert [f.name for f in figs] == ["Mira Voss"]  # NO duplicate figure created
+    quotes = store.quotes_for_story(tick_db, sid)
+    assert len(quotes) == 2  # the original + the advancement's, both attributed to Mira
+    assert {q.figure_id for q in quotes} == {figs[0].id}
+    assert any(q.beat_id and q.beat_id.endswith("-a2") for q in quotes)  # advance beat
+
+
+def test_run_tick_flagged_quote_drops_whole_story(tick_db, monkeypatch):
+    # A figure/quote rides the story's gate: one flag drops the lot — nothing written.
+    monkeypatch.setattr(settings, "world_tick_max_attempts", 1)
+    monkeypatch.setattr(llm, "generate", lambda prompt, **kw: _proposal_json_people())
+    monkeypatch.setattr(
+        llm,
+        "generate_batch",
+        lambda reqs, **kw: [
+            llm.BatchResult(r.custom_id, "ISSUES: a quote names a real person", ok=True)
+            for r in reqs
+        ],
+    )
+
+    result = wt.run_tick(now=_NOW)
+    assert result.accepted == 0
+    assert result.story_ids == []
+    # Nothing bad written: no stray figures/quotes left behind.
+    assert store.counts(tick_db)["figures"] == 0
+    assert store.counts(tick_db)["quotes"] == 0
+
+
 # --- D3.4: the CLI job (loud failure, non-zero exit, store untouched) --------
 
 

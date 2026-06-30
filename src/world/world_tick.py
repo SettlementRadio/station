@@ -18,13 +18,21 @@ keeps the generated world varied (domain balance + de-duplication + new/advance
 pacing); D3.4 exposes `run_tick` as a one-shot CLI job (`make world-tick` /
 `python -m src.world.world_tick`, see `main()`) — the nightly WORLD-STATE batch the
 C5 cron/systemd timer runs, kept SEPARATE from the C2 scheduler's audio top-up.
+
+D10.1 PEOPLES the world: each proposed story (and each advancement) also carries
+invented FIGURES — the people it is about — and attributable, dated QUOTES of what they
+said. These are generated INSIDE the same proposal/advancement call, so they ride the
+same safety + continuity gate and the Batch + caching cost levers: a flagged figure or
+quote regenerates/drops with its story, and a continuing story REUSES its existing
+figures (matched by name) rather than spawning a new person each beat. The figure/quote
+SQL lives only in `world/store` (D10.0); voicing a quote as a soundbite is D9/D10.3.
 """
 
 from __future__ import annotations
 
 import json
 import re
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import datetime, timedelta
 
 from ..config import settings
@@ -63,12 +71,46 @@ _TICK_LAST_AT_KEY = "world_tick_last_at"
 
 
 @dataclass(frozen=True)
+class ProposedFigure:
+    """One invented in-world person a proposed story is about (D10.1), pre-gate.
+
+    The people the world *speaks through* — an official, an artist, a witness. `name`
+    is how a quote references them (resolved by name at materialise time, so the same
+    person reused across beats maps to ONE figure row). `role` is their in-world title;
+    `bio` a short card the writers/news read. Invented people ONLY (CLAUDE.md IP
+    boundary) — the gate checks this with the rest of the story.
+    """
+
+    name: str
+    role: str
+    bio: str
+    tags: list[str] = field(default_factory=list)
+
+
+@dataclass(frozen=True)
+class ProposedQuote:
+    """One attributable statement a figure makes in a beat (D10.1), pre-gate.
+
+    `figure` names the speaker (must resolve to one of the story's figures — declared
+    or already-existing for a continuing story); an unresolved name is dropped at
+    materialise time (we never attribute to a person who doesn't exist). The quote
+    inherits its beat's in-world datetime, so the clock frames it (said yesterday/now).
+    `stance` is an optional free-form tone hint ("defiant", "reassuring").
+    """
+
+    figure: str
+    text: str
+    stance: str | None = None
+
+
+@dataclass(frozen=True)
 class ProposedBeat:
     """One beat of a proposed story, before it becomes an `events` row.
 
     `day_offset` is whole in-world days from the tick's "today" (negative = already
     happened, 0 = today, positive = upcoming); `hour` is 0–23. These anchor the beat
-    in in-world time so the B2 clock frames it future/now/past.
+    in in-world time so the B2 clock frames it future/now/past. `quotes` are the
+    attributable statements made *in* this beat (D10.1) — they inherit its datetime.
     """
 
     title: str
@@ -76,11 +118,16 @@ class ProposedBeat:
     beat_kind: str
     day_offset: int
     hour: int
+    quotes: list[ProposedQuote] = field(default_factory=list)
 
 
 @dataclass(frozen=True)
 class ProposedStory:
-    """One happening the tick proposes, before gating + materialising to the store."""
+    """One happening the tick proposes, before gating + materialising to the store.
+
+    `figures` (D10.1) are the invented people this story introduces; its beats' quotes
+    attribute statements to them by name.
+    """
 
     title: str
     summary: str
@@ -88,6 +135,7 @@ class ProposedStory:
     domain: str
     arc_stage: str
     beats: list[ProposedBeat]
+    figures: list[ProposedFigure] = field(default_factory=list)
 
 
 @dataclass(frozen=True)
@@ -95,14 +143,17 @@ class ProposedAdvance:
     """The next beat the tick proposes for a running story (D3.2), before gating.
 
     Carries the story being advanced + its prior beats (the history the gate checks
-    against), the new arc stage (validated forward-only at write time), and the new
-    beat itself.
+    against), the new arc stage (validated forward-only at write time), the new beat
+    itself, and any NEW figures it introduces (D10.1 — a continuing story mostly REUSES
+    its existing figures, matched by name at materialise time; `new_figures` is the few
+    fresh people this beat brings in, bounded by `*_advance_new_figures_max`).
     """
 
     story: store.Story
     prior_beats: list[store.Event]
     new_stage: str
     beat: ProposedBeat
+    new_figures: list[ProposedFigure] = field(default_factory=list)
 
 
 @dataclass(frozen=True)
@@ -165,6 +216,9 @@ def run_tick(now: datetime | None = None) -> TickResult:
         )
         candidates = active[: settings.world_tick_advance_max]
         prior_beats = {s.id: store.story_beats(conn, s.id) for s in candidates}
+        # D10.1 — the figures each candidate already has, so an advancement REUSES them
+        # (by name) instead of spawning a new person for the same role each beat.
+        prior_figures = {s.id: store.figures_for_story(conn, s.id) for s in candidates}
         # D3.3 — recent stories (any stage) drive domain balance + de-duplication.
         recent = store.recent_stories(
             conn,
@@ -193,13 +247,17 @@ def run_tick(now: datetime | None = None) -> TickResult:
 
     # Part 2 — ADVANCE running stories (D3.2). Independent of whether new stories were
     # proposed, so the world keeps moving even on a quiet night.
-    advances = _advance_and_gate(candidates, prior_beats, ctx, tick_no, result)
+    advances = _advance_and_gate(
+        candidates, prior_beats, prior_figures, ctx, tick_no, result
+    )
 
     with store.connect() as conn:
         for i, p in enumerate(accepted):
             story, beats = _materialise(p, tick_no, ctx, i)
             store.insert_story(conn, story)
             store.insert_beats(conn, beats)
+            figures, quotes = _materialise_people(p, story, beats, tick_no)
+            _write_people(conn, figures, quotes, result)
             result.usage["embeddings_written"] = (
                 result.usage.get("embeddings_written", 0)
                 + _embed_story(conn, story)
@@ -212,6 +270,10 @@ def run_tick(now: datetime | None = None) -> TickResult:
             beat = _beat_event(adv.story.id, f"a{tick_no}", adv.beat, ctx)
             store.insert_beats(conn, [beat])
             store.advance_story(conn, adv.story.id, adv.new_stage, tick=tick_no)
+            figures, quotes = _advance_people(
+                adv, beat, prior_figures.get(adv.story.id, []), tick_no
+            )
+            _write_people(conn, figures, quotes, result)
             result.usage["embeddings_written"] = result.usage.get(
                 "embeddings_written", 0
             ) + _embed_beats(conn, [beat])
@@ -287,6 +349,17 @@ def _propose(ctx: _TickContext) -> list[ProposedStory]:
         if ctx.quiet_domains
         else ""
     )
+    people = (
+        "PEOPLE: give each story a FEW invented in-world figures (the people it is "
+        f"about — at most {settings.world_tick_figures_per_story_max}: an official, an "
+        "artist, a witness) and attach one or more attributable QUOTES to its beats — "
+        "what a figure said (a reaction, an announcement, a denial). Each quote's "
+        "`figure` MUST be the exact name of one of that story's figures. A short, "
+        "in-character line, not a speech. No more than "
+        f"{settings.world_tick_quotes_per_story_max} quotes per story.\n\n"
+        if settings.world_tick_figures_enabled
+        else ""
+    )
     system = (
         "You are the world-simulation engine for Settlement Radio, a tribute "
         f"science-fiction radio station broadcasting from the year {ctx.iw_now.year} "
@@ -306,12 +379,17 @@ def _propose(ctx: _TickContext) -> list[ProposedStory]:
         "day_offset is whole in-world days from today (negative = already happened, "
         "0 = today, positive = upcoming), within "
         f"±{settings.world_tick_beat_horizon_days} days; hour is 0-23.\n\n"
+        f"{people}"
         "Return ONLY a JSON array (no prose, no code fence). Each element:\n"
         '{"title": str, "summary": str, "scale": "large"|"small", "domain": str, '
-        '"arc_stage": str, "beats": [{"title": str, "body": str, "beat_kind": str, '
-        '"day_offset": int, "hour": int}]}\n\n'
+        '"arc_stage": str, '
+        '"figures": [{"name": str, "role": str, "bio": str, "tags": [str]}], '
+        '"beats": [{"title": str, "body": str, "beat_kind": str, '
+        '"day_offset": int, "hour": int, '
+        '"quotes": [{"figure": str, "text": str, "stance": str}]}]}\n\n'
         "Stay entirely inside the fiction: original world only — never real "
-        "franchises, real people, or trademarks."
+        "franchises, real people, or trademarks. The FIGURES are invented in-world "
+        "people too — never a real or trademarked person."
     )
     raw = llm.generate(
         "Generate tonight's new happenings as a JSON array.",
@@ -345,8 +423,9 @@ def _regenerate(
         f"Currently-running stories:\n{ctx.active_summary or '(none yet)'}\n\n"
         f"Rejected drafts and why:\n{notes}\n\n"
         "Return ONLY a JSON array in the SAME schema as before (title, summary, scale, "
-        "domain, arc_stage, beats[title, body, beat_kind, day_offset, hour]). Original "
-        "world only — never real franchises, people, or trademarks."
+        "domain, arc_stage, figures[name, role, bio, tags], beats[title, body, "
+        "beat_kind, day_offset, hour, quotes[figure, text, stance]]). Original world "
+        "only — never real franchises, people, or trademarks (figures included)."
     )
     raw = llm.generate(
         "Rewrite the rejected happenings as a JSON array.",
@@ -453,6 +532,7 @@ def _continuity_system(ctx: _TickContext) -> str:
 def _advance_and_gate(
     candidates: list[store.Story],
     prior_beats: dict[str, list[store.Event]],
+    prior_figures: dict[str, list[store.Figure]],
     ctx: _TickContext,
     tick_no: int,
     result: TickResult,
@@ -467,7 +547,7 @@ def _advance_and_gate(
     if not candidates:
         return []
 
-    proposed = _advance_generate(candidates, prior_beats, ctx, tick_no)
+    proposed = _advance_generate(candidates, prior_beats, prior_figures, ctx, tick_no)
     if not proposed:
         return []
 
@@ -494,6 +574,7 @@ def _advance_and_gate(
 def _advance_generate(
     candidates: list[store.Story],
     prior_beats: dict[str, list[store.Event]],
+    prior_figures: dict[str, list[store.Figure]],
     ctx: _TickContext,
     tick_no: int,
 ) -> list[ProposedAdvance]:
@@ -502,7 +583,9 @@ def _advance_generate(
         llm.BatchRequest(
             custom_id=str(i),
             prompt="Write the story's next beat as a JSON object.",
-            system=_advance_system(s, prior_beats.get(s.id, []), ctx, tick_no),
+            system=_advance_system(
+                s, prior_beats.get(s.id, []), prior_figures.get(s.id, []), ctx, tick_no
+            ),
             cached_context=ctx.bible,
             model=settings.world_tick_propose_tier,
             max_tokens=settings.world_tick_continuity_max_tokens
@@ -528,7 +611,11 @@ def _advance_generate(
 
 
 def _advance_system(
-    story: store.Story, beats: list[store.Event], ctx: _TickContext, tick_no: int
+    story: store.Story,
+    beats: list[store.Event],
+    figures: list[store.Figure],
+    ctx: _TickContext,
+    tick_no: int,
 ) -> str:
     """Instructions to advance ONE running story by its next beat (shares the bible)."""
     age = tick_no - (story.created_tick or tick_no)
@@ -538,6 +625,27 @@ def _advance_system(
         "with a concluding beat."
         if age >= settings.world_tick_resolve_after_ticks
         else "Move the stage forward only when the story earns it; a beat may keep it."
+    )
+    people = (
+        "PEOPLE: the beat's `quotes` are attributable statements (what someone said "
+        "about this development). REUSE this story's EXISTING figures — quote them by "
+        "their EXACT name:\n"
+        f"{_figures_text(figures)}\n"
+        "Only introduce a NEW person if the beat truly needs one, then list them in "
+        f"`new_figures` (at most {settings.world_tick_advance_new_figures_max}). A "
+        f"quote's `figure` must be an existing name or a new one you declare.\n\n"
+        if settings.world_tick_figures_enabled
+        else ""
+    )
+    schema = (
+        '{"arc_stage": str, '
+        '"new_figures": [{"name": str, "role": str, "bio": str, "tags": [str]}], '
+        '"beat": {"title": str, "body": str, "beat_kind": str, '
+        '"day_offset": int, "hour": int, '
+        '"quotes": [{"figure": str, "text": str, "stance": str}]}}'
+        if settings.world_tick_figures_enabled
+        else '{"arc_stage": str, "beat": {"title": str, "body": str, '
+        '"beat_kind": str, "day_offset": int, "hour": int}}'
     )
     return (
         "You are the world-simulation engine for Settlement Radio, a tribute "
@@ -549,14 +657,14 @@ def _advance_system(
         f"STORY: {story.title} — {story.summary}\n"
         f"Current arc stage: {story.arc_stage}\n"
         f"Prior beats (oldest first):\n{_beats_text(beats)}\n\n"
+        f"{people}"
         f"{resolve_hint}\n"
         f"Choose the new arc_stage: keep it the same or move FORWARD (one of: "
         f"{forward or 'past'}) — NEVER backward; 'past' resolves the story. day_offset "
         "is whole in-world days from today (within "
         f"±{settings.world_tick_beat_horizon_days}); hour is 0-23.\n\n"
         "Return ONLY a JSON object (no prose, no code fence):\n"
-        '{"arc_stage": str, "beat": {"title": str, "body": str, "beat_kind": str, '
-        '"day_offset": int, "hour": int}}'
+        f"{schema}"
     )
 
 
@@ -598,8 +706,15 @@ def _parse_advance(
         story.arc_stage, new_stage
     ):
         new_stage = story.arc_stage  # illegal/backward -> stay put, just add a beat
+    new_figures = _coerce_figures(
+        obj.get("new_figures"), settings.world_tick_advance_new_figures_max
+    )
     return ProposedAdvance(
-        story=story, prior_beats=prior, new_stage=new_stage, beat=beat
+        story=story,
+        prior_beats=prior,
+        new_stage=new_stage,
+        beat=beat,
+        new_figures=new_figures,
     )
 
 
@@ -657,6 +772,172 @@ def _beat_event(
         beat_kind=b.beat_kind,
     )
     return events_mod.progressed(beat, ctx.now)
+
+
+def _materialise_people(
+    p: ProposedStory, story: store.Story, beats: list[store.Event], tick_no: int
+) -> tuple[list[store.Figure], list[store.Quote]]:
+    """Turn a new story's proposed figures + per-beat quotes into rows (D10.1).
+
+    Figures are created once (id `{story}-fig{n}`), so a person quoted across several
+    beats maps to ONE figure row. Quotes resolve their `figure` name against the story's
+    declared figures and inherit their beat's in-world datetime (clock-frameable); a
+    quote naming an undeclared figure is dropped (no attributing to a non-existent one).
+    """
+    if not settings.world_tick_figures_enabled:
+        return [], []
+    figures = [
+        store.Figure(
+            id=f"{story.id}-fig{n}",
+            name=f.name,
+            role=f.role,
+            card_text=f.bio,
+            tags=f.tags,
+            source=store.FIGURE_SOURCE_TICK,
+        )
+        for n, f in enumerate(p.figures)
+    ]
+    name_to_id = {f.name.strip().lower(): f.id for f in figures}
+    quotes = _quote_rows(story.id, beats, p.beats, name_to_id)
+    return figures, quotes
+
+
+def _advance_people(
+    adv: ProposedAdvance,
+    beat: store.Event,
+    existing: list[store.Figure],
+    tick_no: int,
+) -> tuple[list[store.Figure], list[store.Quote]]:
+    """Build the NEW figures + quotes an advancement adds (D10.1).
+
+    A continuing story REUSES its existing figures: a quote naming one resolves to the
+    stored figure id (no new row). Only genuinely new names declared in `new_figures`
+    become new figure rows (id `{story}-fig-a{tick}-{n}`), and only if they don't
+    collide with an existing name. Quotes attach to the new advancement `beat`.
+    """
+    if not settings.world_tick_figures_enabled:
+        return [], []
+    name_to_id = {f.name.strip().lower(): f.id for f in existing}
+    new_figures: list[store.Figure] = []
+    for n, f in enumerate(adv.new_figures):
+        key = f.name.strip().lower()
+        if not key or key in name_to_id:
+            continue  # blank, or already exists -> reuse, don't duplicate
+        fig = store.Figure(
+            id=f"{adv.story.id}-fig-a{tick_no}-{n}",
+            name=f.name,
+            role=f.role,
+            card_text=f.bio,
+            tags=f.tags,
+            source=store.FIGURE_SOURCE_TICK,
+        )
+        new_figures.append(fig)
+        name_to_id[key] = fig.id
+    quotes = _quote_rows(adv.story.id, [beat], [adv.beat], name_to_id)
+    return new_figures, quotes
+
+
+def _quote_rows(
+    story_id: str,
+    beats: list[store.Event],
+    proposed: list[ProposedBeat],
+    name_to_id: dict[str, str],
+) -> list[store.Quote]:
+    """Resolve proposed quotes to `Quote` rows, dropping any with an unknown figure.
+
+    `beats` (the materialised `events`) and `proposed` (their `ProposedBeat` sources)
+    are parallel; a quote takes its beat's `in_world_datetime` so the clock frames it.
+    """
+    rows: list[store.Quote] = []
+    for beat, pb in zip(beats, proposed, strict=True):
+        for m, q in enumerate(pb.quotes):
+            figure_id = name_to_id.get(q.figure.strip().lower())
+            if figure_id is None:
+                log.warning(
+                    "world_tick_quote_unattributed", figure=q.figure[:80], beat=beat.id
+                )
+                continue
+            rows.append(
+                store.Quote(
+                    id=f"{beat.id}-q{m}",
+                    story_id=story_id,
+                    figure_id=figure_id,
+                    text=q.text,
+                    in_world_datetime=beat.in_world_datetime,
+                    beat_id=beat.id,
+                    stance=q.stance,
+                    source=store.FIGURE_SOURCE_TICK,
+                )
+            )
+    return rows
+
+
+def _write_people(
+    conn, figures: list[store.Figure], quotes: list[store.Quote], result: TickResult
+) -> None:
+    """Write a story's figures + quotes, embed them (D10.1); update usage counters."""
+    if figures:
+        store.insert_figures(conn, figures)
+        result.usage["figures_written"] = result.usage.get("figures_written", 0) + len(
+            figures
+        )
+    if quotes:
+        store.insert_quotes(conn, quotes)
+        result.usage["quotes_written"] = result.usage.get("quotes_written", 0) + len(
+            quotes
+        )
+    result.usage["embeddings_written"] = (
+        result.usage.get("embeddings_written", 0)
+        + _embed_figures(conn, figures)
+        + _embed_quotes(conn, quotes)
+    )
+
+
+def _embed_figures(conn, figures: list[store.Figure]) -> int:
+    """Embed figures into the D2 `figure` corpus (source='tick'); degrade on failure."""
+    if not figures:
+        return 0
+    try:
+        texts = [f"{f.name}. {f.role}. {f.card_text}" for f in figures]
+        vecs = embeddings.embed(texts)
+        rows = [
+            store.EmbeddingRow(
+                entity_id=f.id,
+                text=t,
+                source=store.FIGURE_SOURCE_TICK,
+                embedding=vec,
+                tags=f.tags,
+            )
+            for f, t, vec in zip(figures, texts, vecs, strict=True)
+        ]
+        return store.insert_embeddings(conn, "figure", rows)
+    except Exception as exc:  # noqa: BLE001 — D2 is a recall aid, not a hard dep
+        log.warning(
+            "world_tick_embed_figures_failed", count=len(figures), error=str(exc)
+        )
+        return 0
+
+
+def _embed_quotes(conn, quotes: list[store.Quote]) -> int:
+    """Embed quotes into the D2 `quote` corpus (source='tick'); degrade on failure."""
+    if not quotes:
+        return 0
+    try:
+        vecs = embeddings.embed([q.text for q in quotes])
+        rows = [
+            store.EmbeddingRow(
+                entity_id=q.id,
+                text=q.text,
+                source=store.FIGURE_SOURCE_TICK,
+                embedding=vec,
+                tags=q.tags,
+            )
+            for q, vec in zip(quotes, vecs, strict=True)
+        ]
+        return store.insert_embeddings(conn, "quote", rows)
+    except Exception as exc:  # noqa: BLE001 — D2 is a recall aid, not a hard dep
+        log.warning("world_tick_embed_quotes_failed", count=len(quotes), error=str(exc))
+        return 0
 
 
 def _embed_beats(conn, beats: list[store.Event]) -> int:
@@ -785,18 +1066,29 @@ def _jaccard(a: set[str], b: set[str]) -> float:
 
 
 def _story_text(p: ProposedStory) -> str:
-    """The gate's view of a proposal: title, summary, and each beat."""
+    """The gate's view of a proposal: title, summary, figures, beats, and quotes.
+
+    Figures + quotes are included so the SAME safety + continuity gate that vets the
+    story also vets its people and what they say (D10.1) — a flagged figure or quote
+    flags (then regenerates/drops) the whole proposal; nothing bad is written.
+    """
     lines = [f"{p.title} — {p.summary}"]
-    lines += [f"  [{b.beat_kind}] {b.title}: {b.body}" for b in p.beats]
+    lines += [f"  PERSON {f.name} ({f.role}): {f.bio}" for f in p.figures]
+    for b in p.beats:
+        lines.append(f"  [{b.beat_kind}] {b.title}: {b.body}")
+        lines += [f'    {q.figure} said: "{q.text}"' for q in b.quotes]
     return "\n".join(lines)
 
 
 def _advance_text(adv: ProposedAdvance) -> str:
-    """The gate's view of an advancement: the story + its proposed next beat."""
-    return (
-        f"Advancing: {adv.story.title} (-> {adv.new_stage})\n"
-        f"Next beat [{adv.beat.beat_kind}] {adv.beat.title}: {adv.beat.body}"
-    )
+    """The gate's view of an advancement: story, next beat, new people + quotes."""
+    lines = [
+        f"Advancing: {adv.story.title} (-> {adv.new_stage})",
+        f"Next beat [{adv.beat.beat_kind}] {adv.beat.title}: {adv.beat.body}",
+    ]
+    lines += [f"  NEW PERSON {f.name} ({f.role}): {f.bio}" for f in adv.new_figures]
+    lines += [f'  {q.figure} said: "{q.text}"' for q in adv.beat.quotes]
+    return "\n".join(lines)
 
 
 def _beats_text(beats: list[store.Event]) -> str:
@@ -804,6 +1096,13 @@ def _beats_text(beats: list[store.Event]) -> str:
     if not beats:
         return "  (none yet)"
     return "\n".join(f"  [{b.beat_kind or 'beat'}] {b.title}: {b.body}" for b in beats)
+
+
+def _figures_text(figures: list[store.Figure]) -> str:
+    """Render a story's existing figures (name — role) for the advance reuse prompt."""
+    if not figures:
+        return "  (none yet)"
+    return "\n".join(f"  {f.name} — {f.role}" for f in figures)
 
 
 def _is_ok(note: str) -> bool:
@@ -915,13 +1214,17 @@ def _coerce_story(item: object) -> ProposedStory | None:
     scale = scale if scale in ("large", "small") else "small"
     domain = str(item.get("domain", "")).strip().lower() or "culture"
     arc_stage = str(item.get("arc_stage", "")).strip().lower()
+    figures = _coerce_figures(
+        item.get("figures"), settings.world_tick_figures_per_story_max
+    )
     return ProposedStory(
         title=title,
         summary=summary,
         scale=scale,
         domain=domain,
         arc_stage=arc_stage,
-        beats=beats,
+        beats=_cap_story_quotes(beats, settings.world_tick_quotes_per_story_max),
+        figures=figures,
     )
 
 
@@ -933,13 +1236,70 @@ def _coerce_beat(item: object) -> ProposedBeat | None:
     body = str(item.get("body", "")).strip()
     if not title or not body:
         return None
+    quotes = [
+        q for q in (_coerce_quote(rq) for rq in _as_list(item.get("quotes"))) if q
+    ]
     return ProposedBeat(
         title=title,
         body=body,
         beat_kind=str(item.get("beat_kind", "development")).strip() or "development",
         day_offset=_as_int(item.get("day_offset"), 0),
         hour=_as_int(item.get("hour"), 12),
+        quotes=quotes,
     )
+
+
+def _coerce_figure(item: object) -> ProposedFigure | None:
+    """Validate/normalise one parsed figure dict into a `ProposedFigure`, or None."""
+    if not isinstance(item, dict):
+        return None
+    name = str(item.get("name", "")).strip()
+    role = str(item.get("role", "")).strip()
+    if not name or not role:
+        return None  # a figure needs a name to be quoted and a role to be placed
+    tags = [str(t).strip() for t in _as_list(item.get("tags")) if str(t).strip()]
+    return ProposedFigure(
+        name=name, role=role, bio=str(item.get("bio", "")).strip(), tags=tags
+    )
+
+
+def _coerce_figures(raw: object, cap: int) -> list[ProposedFigure]:
+    """Coerce + cap a list of proposed figures (drops junk, bounds the volume)."""
+    if not settings.world_tick_figures_enabled:
+        return []
+    figs = [f for f in (_coerce_figure(r) for r in _as_list(raw)) if f]
+    return figs[:cap]
+
+
+def _coerce_quote(item: object) -> ProposedQuote | None:
+    """Validate/normalise one parsed quote dict into a `ProposedQuote`, or None."""
+    if not settings.world_tick_figures_enabled or not isinstance(item, dict):
+        return None
+    figure = str(item.get("figure", "")).strip()
+    text = str(item.get("text", "")).strip()
+    if not figure or not text:
+        return None  # an unattributed or empty quote is unusable
+    stance = str(item.get("stance", "")).strip() or None
+    return ProposedQuote(figure=figure, text=text, stance=stance)
+
+
+def _cap_story_quotes(beats: list[ProposedBeat], cap: int) -> list[ProposedBeat]:
+    """Bound a story's TOTAL quotes to `cap`, trimming across beats (oldest kept first).
+
+    The per-story dial is a whole-story budget, but quotes live under beats; this spends
+    the budget beat-by-beat and drops the overflow so a story has a FEW voices, not a
+    crowd.
+    """
+    remaining = cap
+    out: list[ProposedBeat] = []
+    for b in beats:
+        if remaining <= 0:
+            out.append(replace(b, quotes=[]))
+            continue
+        kept = b.quotes[:remaining]
+        remaining -= len(kept)
+        out.append(replace(b, quotes=kept))
+    return out
 
 
 def _as_int(value: object, default: int) -> int:
@@ -948,6 +1308,11 @@ def _as_int(value: object, default: int) -> int:
         return int(value)  # type: ignore[arg-type]
     except (TypeError, ValueError):
         return default
+
+
+def _as_list(value: object) -> list:
+    """A list as-is, else empty — for optional array fields the model may omit."""
+    return value if isinstance(value, list) else []
 
 
 # --- CLI (D3.4): the nightly job C5's cron/systemd runs ---------------------

@@ -361,8 +361,9 @@ class Settings(BaseSettings):
     world_tick_propose_tier: str = "sonnet"  # the writing brain (CLAUDE.md routing)
     # Headroom for a JSON array of several stories × up to 3 beats each — too small a
     # cap truncates the array mid-object (the parser salvages complete objects, but a
-    # tight cap still loses the tail). ~4k tokens fits the default 2-4 story batch.
-    world_tick_propose_max_tokens: int = 4000
+    # tight cap still loses the tail). Bumped for D10.1: each story now also carries its
+    # figures + per-beat quotes, so the array is larger; ~6k fits the default batch.
+    world_tick_propose_max_tokens: int = 6000
     world_tick_continuity_tier: str = "sonnet"
     world_tick_continuity_max_tokens: int = 300
     world_tick_max_attempts: int = 2  # draft + one regenerate before dropping a story
@@ -394,6 +395,19 @@ class Settings(BaseSettings):
     world_tick_quiet_domains: int = 4
     world_tick_dedup_threshold: float = 0.86
     world_tick_dedup_jaccard: float = 0.6
+    # D10.1 — the tick also peoples its stories: invented FIGURES (the people a story is
+    # about) and their attributable, dated QUOTES, generated INSIDE the same proposal /
+    # advancement call (so they ride the same safety + continuity gate and the Batch +
+    # caching cost levers — a flagged figure/quote drops/regenerates with its story).
+    # `*_figures_enabled` is the master toggle (off => stories stay people-less, as
+    # before D10). `*_figures_per_story_max` / `*_quotes_per_story_max` bound the volume
+    # — a story needs a FEW named voices, not a crowd. `*_advance_new_figures_max` is
+    # the reuse-vs-new preference: a continuing story should mostly REUSE its existing
+    # figures (by name), introducing at most this many new people per advancement.
+    world_tick_figures_enabled: bool = True
+    world_tick_figures_per_story_max: int = 3
+    world_tick_quotes_per_story_max: int = 4
+    world_tick_advance_new_figures_max: int = 1
 
     # --- News desk (D4: the story-log-driven bulletin) -------------------------
     # The desk (src/formats/news.py) no longer asks for N flat headlines; it SELECTS
