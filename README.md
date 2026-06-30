@@ -180,6 +180,25 @@ make format FMT=news     # one voiced bulletin on demand (Claude + TTS)
 `make news-demo` is deterministic and token-free: it seeds a tiny story log in a rolled-back transaction
 (never touches your world) and prints the desk's selection + framing for four bulletins across a day.
 
+The world's people speak (Phase D / D10). A story is no longer just a fact: the tick
+peoples it with invented **figures** (the relay-keeper, the engineer, the moon-president's son) and
+their attributable, dated **quotes** — `figures` + `quotes` tables behind the store seam
+([`src/world/store.py`](src/world/store.py)), generated **inside the same gated, batched tick call** as
+the story (so a flagged or off-canon figure/quote regenerates/drops with it; a continuing story **reuses**
+its figures by name rather than spawning a new person each beat). The news desk then **attributes** them —
+"Mira Voss, the relay-keeper, said yesterday: …" — with correct temporal framing
+([`events.phrase_for_datetime`](src/world/events.py)), and the writers' room surfaces a **"what people are
+saying"** slice (recalled by meaning via D2 when a topic is in play) so the DJs can react to an opinion in
+character. **Hard rule: invented in-world people only — never a real or trademarked person** (the gate
+checks it). Voicing a quote as a distinct **soundbite** is the D10×D9 bridge (lands with D9's guest voice);
+until then attribution is textual.
+```bash
+make figures-demo   # seed one peopled story; show the news attribution + the DJ "what people are saying"
+make world-tick      # the GENERATED path: a tick invents figures + quotes for its stories
+```
+`make figures-demo` is deterministic and token-free (seeds + rolls back). Dials live under `WORLD_TICK_FIGURES_*`
+(volume + reuse) and `NEWS_QUOTES_PER_STORY` / `CONTEXT_QUOTES_LIMIT` (how many reach each surface).
+
 Two DJs hold a conversation, not two monologues. The conversation orchestrator
 ([`src/writers/conversation.py`](src/writers/conversation.py)) runs a light writers' room over the
 assembled context: a **showrunner** picks one beat from the current events, an **orchestrator**

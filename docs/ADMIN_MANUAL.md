@@ -208,3 +208,50 @@ with store.connect() as c:
 Selection tagging, temporal framing, the safety + continuity gates (regenerate-then-evergreen), and
 coverage recording are covered by `tests/test_news_select.py` + `tests/test_news_desk.py`; run
 `pytest -q`.
+
+---
+
+## D10 — Figures & quotes (the world's people speak)
+
+**What it does.** The world tick peoples each story with invented **figures** (the people it's about) and
+their attributable, dated **quotes**. The news desk attributes them ("X, the relay-keeper, said
+yesterday: …") and the writers' room surfaces a "what people are saying" slice the DJs react to. Stored in
+the `figures` + `quotes` tables (behind `src/world/store.py`); generated inside the gated, batched tick, so
+a flagged or off-canon figure/quote drops with its story. **Hard rule: invented in-world people only.**
+
+### See it (no tokens)
+```bash
+make figures-demo        # seed one peopled story; print the news attribution + the DJ "what people
+                         # are saying" slice. Deterministic, rolled back — never touches your world.
+```
+The GENERATED path is the tick itself — figures + quotes come out of `make world-tick` (above); a voiced
+bulletin that attributes them is `make format FMT=news`.
+
+### Config knobs (`.env`; defaults sane)
+- **Generation (the tick):** `WORLD_TICK_FIGURES_ENABLED` (master toggle; false => people-less stories),
+  `WORLD_TICK_FIGURES_PER_STORY_MAX` (3), `WORLD_TICK_QUOTES_PER_STORY_MAX` (4),
+  `WORLD_TICK_ADVANCE_NEW_FIGURES_MAX` (reuse-vs-new: max new people an advancement adds, 1).
+- **Attribution surfaces:** `NEWS_QUOTES_PER_STORY` (quotes per story in a bulletin brief; 0 disables),
+  `CONTEXT_QUOTES_LIMIT` (quotes shown to the DJs; 0 disables), `CONTEXT_QUOTES_TOP_K` (semantic breadth).
+
+### What survives a re-seed
+Like the rest of the living world: **tick-generated** figures/quotes (`source=tick`) survive
+`make seed-canon` and are cleared only by `make reset-world`; **bible-authored** ones (`source=bible`) are
+re-seeded by `seed-canon`. (Bible-authored figures arrive via the canon folder — the seed path that loads
+them is future work; the schema + split are in place now.)
+
+### Inspect / verify
+Show a story's people + what they said:
+```bash
+python -c "
+from src.world import store
+with store.connect() as c:
+    s = store.active_stories(c)
+    if s:
+        for q, f in store.attributed_quotes_for_story(c, s[0].id):
+            print(f'{f.name} ({f.role}) — {q.in_world_datetime:%Y-%m-%d}: {q.text}')
+"
+```
+The schema/split, the tick's reuse + drop-the-flagged behaviour, and the news/talk attribution are covered
+by `tests/test_figures_quotes.py` + additions to `test_world_tick.py` / `test_context.py` /
+`test_news_desk.py`; run `pytest -q`.

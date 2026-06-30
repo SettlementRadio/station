@@ -37,7 +37,7 @@ LIQ_LOG    := $(RUN_DIR)/liquidsoap.log
 PLAYER_URL := http://127.0.0.1:8000/
 STREAM_URL := http://127.0.0.1:8000/settlement.mp3
 
-.PHONY: help generate serve air play play-convo stop status seed seed-canon reset-world demo context conversation format buffer schedule ident prune fallback health world-tick news-demo
+.PHONY: help generate serve air play play-convo stop status seed seed-canon reset-world demo context conversation format buffer schedule ident prune fallback health world-tick news-demo figures-demo
 
 # B5 format default: `make format` builds a talk segment; override with FMT=news
 # or FMT=music. Pass a TOPIC=... to steer canon retrieval.
@@ -75,6 +75,7 @@ help:
 	@echo "  make schedule  top up the rolling buffer to depth + write the playlist (C2)"
 	@echo "  make world-tick run one world tick: invent + advance world stories (D3)"
 	@echo "  make news-demo show the news desk reframe stories across a simulated day (D4)"
+	@echo "  make figures-demo show the world's people speak — attributed quotes (D10)"
 	@echo "  make air       schedule + serve — the live scheduler-driven stream (C2)"
 
 # Seed/refresh the world-state DB from the canon bible (docs/canon/ folder, or the
@@ -112,6 +113,15 @@ world-tick:
 news-demo:
 	@echo "==> News-desk simulated day (D4)…"
 	$(PY) -m src.formats.news_demo
+
+# D10: show the world's PEOPLE speak — seed one peopled story (figures + dated quotes)
+# and print the news desk ATTRIBUTING a quote (with temporal framing) and the writers'-
+# room "what people are saying" slice the DJs reference. Deterministic + token-free;
+# seeds its own demo rows in a transaction that is ROLLED BACK. Needs a reachable
+# Postgres. For the GENERATED path (the tick inventing them): `make world-tick`.
+figures-demo:
+	@echo "==> Figures & quotes demo (D10)…"
+	$(PY) -m src.formats.figures_demo
 
 # B2 proof: render the Lumen Festival at two `now` values and show the relative
 # phrase flip ("in five days" -> "yesterday"). Needs `make seed` first.

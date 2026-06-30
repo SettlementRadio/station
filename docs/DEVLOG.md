@@ -38,6 +38,47 @@ A typical *build* session will be short, e.g.:
 
 ---
 
+## 2026-06-30 — Phase D — D10: Figures & Quotes (the world speaks) — D10.0–D10.2 + D10.4
+**Focus:** model the invented PEOPLE a story is about and their attributable, dated quotes, then have
+the news desk + DJs reference them — turning "a fact happened" into "people in a living world saying
+things."
+**Decisions:**
+- **Two tables behind the store seam** (D10.0). `figures(id, name, role, card_text, voice_id?, tags,
+  source)` and `quotes(id, story_id, beat_id?, figure_id, text, in_world_datetime, stance?, tags,
+  source)`; a quote inherits its beat's datetime so the B2 clock frames it for free. `source` is the
+  seed-vs-generated split, but the seed value is **`bible`** (per the §2a matrix, not `seed`): a
+  `seed-canon` refresh clears bible figures/quotes and **leaves tick ones standing**; `reset-world`
+  clears both. New tables land additively (`CREATE … IF NOT EXISTS`), not truncate-reseed.
+- **Generated INSIDE the tick call** (D10.1), not a parallel pass. Each proposal/advancement JSON carries
+  its figures + per-beat quotes, so they ride the SAME safety + continuity gate and Batch + caching levers
+  — a flagged/off-canon figure or quote regenerates-then-drops **with its story**, no second gate engine.
+  A continuing story **reuses** its figures by name (the advance prompt is fed the existing roster);
+  unattributed quotes (naming an undeclared person) are dropped. IP rule enforced in prompt + gate.
+- **Attribution rides the existing seams** (D10.2). News: `SelectedStory` carries the story's newest
+  attributed quotes; the brief renders "X, the relay-keeper, said yesterday: …" via a new
+  `events.phrase_for_datetime` (a quote isn't an `Event`). Talk: `context.assemble` adds a "what people
+  are saying" slice — **semantic recall over the `quote` corpus when a topic is in play, structured
+  date-window read otherwise** — so the DJs react in character with NO change to the writers (they already
+  weave `ctx.dynamic`).
+- **D10.3 (voiced soundbite) deferred to D9** — it's the D10×D9 guest-voice bridge; textual attribution
+  stands alone, as the pack specifies.
+**Changed:** `src/world/store.py` (figures/quotes tables + dataclasses + reads incl. the attributed-quote
+JOINs + scoped `clear_world`), `src/world/world_tick.py` (figure/quote generation, reuse, gating, embed),
+`src/world/events.py` (`phrase_for_datetime`), `src/world/context.py` + `src/formats/news_select.py` +
+`src/formats/news.py` (attribution surfaces), `src/config.py` + `.env.example` (`WORLD_TICK_FIGURES_*`,
+`NEWS_QUOTES_PER_STORY`, `CONTEXT_QUOTES_*`), `src/formats/figures_demo.py` + Makefile (`make
+figures-demo`), tests (`test_figures_quotes.py` + additions to `test_world_tick.py`/`test_context.py`/
+`test_news_desk.py`), README, `docs/ADMIN_MANUAL.md`, PHASE_D_OVERVIEW tracker (D10 ✅).
+**Why:** figures + quotes are the single biggest lever for *rich* content, and folding them into the
+gated tick (not a new pipeline) means the IP/continuity guarantees and cost levers come for free; the
+seed-vs-generated split is what lets the human keep editing the bible without wiping the living world.
+**📣 Postable:** `make figures-demo` — the world's people speak: "Mira Voss, the relay-keeper, said
+yesterday: 'We are not going dark tonight.'" attributed off the living world (token-free).
+**Next:** D5 (broad anti-repetition) or the D6 programming backbone; D10.3 soundbites land with D9.
+Commit: (this session) · Clips: (optional — capture `make figures-demo` output)
+
+---
+
 ## 2026-06-30 — Phase D — news register/length tuning + sequencing call (D9 anchor, D10 next)
 **Focus:** reviewed a real `make format FMT=news` bulletin against three asks — named people, plainer
 tone, ~5-min length — and decided what to fix now vs which pack owns what.
