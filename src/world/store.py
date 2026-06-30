@@ -40,7 +40,7 @@ from __future__ import annotations
 from collections.abc import Iterable, Iterator, Sequence
 from contextlib import contextmanager
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timedelta
 
 import psycopg
 
@@ -239,6 +239,44 @@ class NewsCoverage:
 
 
 @dataclass(frozen=True)
+class AirplayRecord:
+    """One record of WHAT a generated segment aired — features only, never audio (D5.0).
+
+    The station's broad, cross-format anti-repetition memory: per placed CONTENT
+    segment, the salient features — a `topic`/beat handle, an `opening` fingerprint, and
+    a few `features` (key phrases / structural beats) — so the writers' room can steer
+    the next segment off recently-used ground (D5.2). Features only: the audio is GC'd
+    by C2.5; this memory must OUTLIVE it.
+
+    `aired_at` is the segment's IN-WORLD air time (a naive `timestamp`, the SAME
+    timeline as `events.in_world_datetime` / `news_coverage.covered_at`), so "recently
+    on air" lines up with the buffer's air order rather than wall-clock; the caller
+    passes it (the segment's pinned `air_time`).
+
+    DISTINCT from `NewsCoverage` (D4): that is news-specific and per-story — INTENDED
+    recurrence (which story to re-report and how it evolves); this is broad and
+    output-level — UNINTENDED repetition (don't reuse this opening/phrasing across ANY
+    format). D5 layers on top of D4; it does not duplicate it.
+
+    Runtime accrual, but PERSISTENT + BOUNDED: it survives a `seed-canon` refresh and
+    the C2.5 audio prune, is bounded by `prune_airplay` (its OWN sweep, not the audio
+    GC), and is cleared only by the destructive `reset-world` (§2a matrix). Static
+    idents/evergreen/disclosure segments are NOT recorded (they are MEANT to repeat —
+    the D5.1 chokepoint filters them).
+
+    `id` is the DB-assigned row id (read-only; ignored on insert).
+    """
+
+    seg_id: str
+    format: str
+    aired_at: datetime
+    topic: str | None = None
+    opening: str | None = None
+    features: list[str] = field(default_factory=list)
+    id: int | None = None
+
+
+@dataclass(frozen=True)
 class Figure:
     """One invented in-world person — the people a story is *about* (a `figures` row).
 
@@ -372,6 +410,27 @@ CREATE TABLE IF NOT EXISTS news_coverage (
     angle        text NOT NULL DEFAULT ''
 );
 
+-- The on-air anti-repetition memory (D5.0): one row per placed CONTENT segment — its
+-- salient features (a topic/beat handle, an opening fingerprint, a few key phrases),
+-- NOT the audio — so the writers' room (D5.2) can avoid looping the same beat / opening
+-- / phrasing across 24/7 output. `aired_at` is the segment's in-world air time (same
+-- naive `timestamp` timeline as events / news_coverage). Runtime accrual, but
+-- PERSISTENT + BOUNDED: it survives a `seed-canon` refresh AND the C2.5 audio prune
+-- (the point — it must outlive the audio), is bounded by `prune_airplay` (its OWN
+-- sweep), and is cleared only on `reset-world` (it is in `_WORLD_TABLES`). DISTINCT
+-- from `news_coverage` (D4): that is per-story INTENDED recurrence; this is broad
+-- output-phrasing freshness (see the AirplayRecord docstring). No FK to a segment — the
+-- audio is GC'd, this memory deliberately is not.
+CREATE TABLE IF NOT EXISTS airplay_history (
+    id       bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    seg_id   text NOT NULL,
+    format   text NOT NULL,
+    aired_at timestamp NOT NULL,
+    topic    text,
+    opening  text,
+    features text[] NOT NULL DEFAULT '{}'
+);
+
 -- The world's invented PEOPLE (D10.0): the figures a story is *about* — officials,
 -- artists, witnesses, musicians. Distinct from the `cast` (the DJs/presenters): a
 -- figure is a world SUBJECT, not a host. `role` is their in-world title/role,
@@ -422,6 +481,10 @@ CREATE INDEX IF NOT EXISTS stories_source_idx  ON stories (source);
 -- The desk reads coverage by story, newest first (`last_coverage`).
 CREATE INDEX IF NOT EXISTS news_coverage_story_idx
     ON news_coverage (story_id, covered_at DESC);
+-- D5.0: the freshness reads pull the recent window newest-first, all formats or one.
+CREATE INDEX IF NOT EXISTS airplay_aired_idx ON airplay_history (aired_at DESC);
+CREATE INDEX IF NOT EXISTS airplay_format_aired_idx
+    ON airplay_history (format, aired_at DESC);
 -- Figures/quotes (D10.0): the canon refresh deletes by `source`; the desk/tick read
 -- quotes by story, by figure, and by date window.
 CREATE INDEX IF NOT EXISTS figures_source_idx  ON figures (source);
@@ -455,10 +518,11 @@ CREATE INDEX IF NOT EXISTS events_story_idx ON events (story_id);
 # The world tables, in a stable order for a single TRUNCATE that reproduces the world
 # cleanly on a full reset. The FKs criss-cross (events→stories; news_coverage→both;
 # quotes→stories/events/figures), but all truncate in one statement so each
-# referenced table goes with its referrers. `news_coverage` (D4.0) is runtime accrual,
-# not source-of-truth world state, but it IS cleared on the destructive `reset-world`
-# (§2a) and counted — so it lives here. `embeddings` is handled separately (it is
-# DERIVED, regenerable — see below).
+# referenced table goes with its referrers. `news_coverage` (D4.0) and `airplay_history`
+# (D5.0) are runtime accrual, not source-of-truth world state, but BOTH are cleared on
+# the destructive `reset-world` (§2a) and counted — so they live here. (They are NOT in
+# the `scope="canon"` refresh, so a bible edit leaves them standing — §2a: "survives".)
+# `embeddings` is handled separately (it is DERIVED, regenerable — see below).
 _WORLD_TABLES = (
     "canon",
     '"cast"',
@@ -467,6 +531,7 @@ _WORLD_TABLES = (
     "figures",
     "quotes",
     "news_coverage",
+    "airplay_history",
     "state",
 )
 
@@ -839,6 +904,53 @@ def record_coverage(conn: psycopg.Connection, coverage: NewsCoverage) -> None:
         arc_stage=coverage.arc_stage,
         last_beat_id=coverage.last_beat_id,
     )
+
+
+def record_airplay(conn: psycopg.Connection, record: AirplayRecord) -> None:
+    """Record a placed segment's salient features in the airplay memory (D5.0).
+
+    Append-only: one row per CONTENT segment, written at the scheduler chokepoint
+    (D5.1, next to `_write_sidecar`). `id` is DB-assigned (ignored). `aired_at` is the
+    segment's in-world air time (the caller passes the pinned slot `air_time`). Static
+    idents/evergreen/disclosure segments are NOT recorded — the caller filters them
+    (they are MEANT to repeat). DISTINCT from `record_coverage` (D4, per-story
+    recurrence): this is the broad output-phrasing freshness memory (see AirplayRecord).
+    """
+    conn.execute(
+        "INSERT INTO airplay_history (seg_id, format, aired_at, topic, opening, "
+        "features) VALUES (%s, %s, %s, %s, %s, %s)",
+        (
+            record.seg_id,
+            record.format,
+            record.aired_at,
+            record.topic,
+            record.opening,
+            record.features,
+        ),
+    )
+    log.info(
+        "db_record_airplay",
+        seg_id=record.seg_id,
+        format=record.format,
+        topic=record.topic,
+    )
+
+
+def prune_airplay(conn: psycopg.Connection, now: datetime, *, keep: timedelta) -> int:
+    """Drop airplay rows older than `keep` before in-world `now`; return rows removed.
+
+    The bound that keeps a 24/7 station's airplay memory from growing forever (D5.0).
+    `keep` is the retention window (the freshness window × a margin — see
+    `settings.freshness_retention_margin`), wide enough that `recent_airplay` never
+    misses a row. This is the airplay memory's OWN sweep — deliberately NOT the C2.5
+    audio `prune` (that GCs files; this memory must OUTLIVE the audio). Folded into the
+    scheduler housekeeping at the chokepoint (D5.1).
+    """
+    cutoff = now - keep
+    cur = conn.execute("DELETE FROM airplay_history WHERE aired_at < %s", (cutoff,))
+    n = cur.rowcount
+    log.info("db_prune_airplay", removed=n, cutoff=cutoff.isoformat())
+    return n
 
 
 # --- Embeddings (D2.1: the ONLY place vector SQL lives) ---------------------
@@ -1306,6 +1418,79 @@ def coverage_since(conn: psycopg.Connection, t: datetime) -> list[NewsCoverage]:
         (t,),
     ).fetchall()
     return [_coverage_from_row(r) for r in rows]
+
+
+# --- Airplay history reads (D5.0: the writers' room reads its own recent output) ---
+
+_AIRPLAY_COLUMNS = "id, seg_id, format, aired_at, topic, opening, features"
+
+
+def _airplay_from_row(row: tuple) -> AirplayRecord:
+    """Build an `AirplayRecord` from a row selected with `_AIRPLAY_COLUMNS`."""
+    return AirplayRecord(
+        id=row[0],
+        seg_id=row[1],
+        format=row[2],
+        aired_at=row[3],
+        topic=row[4],
+        opening=row[5],
+        features=list(row[6]),
+    )
+
+
+def recent_airplay(
+    conn: psycopg.Connection,
+    now: datetime,
+    *,
+    within: timedelta,
+    limit: int | None = None,
+) -> list[AirplayRecord]:
+    """Airplay records within `within` of in-world `now`, newest first (D5.0).
+
+    The recency window the writers' room reads (D5.2) to avoid looping — across ALL
+    formats. The window is anchored at `now` (`aired_at >= now - within`) with NO upper
+    bound, because the upcoming buffer holds segments placed AHEAD of `now`: with
+    `within` kept above `buffer_depth_hours` (settings.freshness_window_hours) the whole
+    buffer counts as "recent", which is exactly what we want to steer the next segment
+    off. `limit` caps how many rows return (newest first). Degrades to an empty list on
+    a cold start (no rows yet) — callers must handle that.
+    """
+    sql = (
+        f"SELECT {_AIRPLAY_COLUMNS} FROM airplay_history WHERE aired_at >= %s "
+        "ORDER BY aired_at DESC, id DESC"
+    )
+    params: tuple = (now - within,)
+    if limit is not None:
+        sql += " LIMIT %s"
+        params = (now - within, limit)
+    rows = conn.execute(sql, params).fetchall()
+    return [_airplay_from_row(r) for r in rows]
+
+
+def recent_by_format(
+    conn: psycopg.Connection,
+    now: datetime,
+    fmt: str,
+    *,
+    within: timedelta,
+    limit: int | None = None,
+) -> list[AirplayRecord]:
+    """`recent_airplay` scoped to one `format` (e.g. just `talk` or `news`), D5.0.
+
+    The format-specific read: a producer can avoid reusing openings within its OWN
+    format without being constrained by another format's wording. Same window semantics
+    as `recent_airplay`.
+    """
+    sql = (
+        f"SELECT {_AIRPLAY_COLUMNS} FROM airplay_history "
+        "WHERE format = %s AND aired_at >= %s ORDER BY aired_at DESC, id DESC"
+    )
+    params: tuple = (fmt, now - within)
+    if limit is not None:
+        sql += " LIMIT %s"
+        params = (fmt, now - within, limit)
+    rows = conn.execute(sql, params).fetchall()
+    return [_airplay_from_row(r) for r in rows]
 
 
 def get_state(conn: psycopg.Connection, key: str) -> str | None:

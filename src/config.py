@@ -464,6 +464,27 @@ class Settings(BaseSettings):
     # …, said yesterday") with correct temporal framing. 0 disables quote attribution.
     news_quotes_per_story: int = 2
 
+    # --- Freshness / anti-repetition (D5: the on-air recency memory) ------------
+    # A small, persistent record of WHAT aired recently — features only (a topic/beat
+    # handle, an opening fingerprint, a few key phrases), never the audio (D5.0) — so
+    # 24/7 output doesn't loop: the showrunner avoids re-picking a recent beat, and
+    # producers avoid reusing an opening/phrasing (D5.2). DISTINCT from D4's per-story
+    # coverage memory, which drives INTENDED recurrence — this is broad, cross-format,
+    # output-phrasing freshness (see store.airplay_history / AirplayRecord).
+    #
+    # `freshness_window_hours` is THE dial: the in-world look-back window (anchored at
+    # the generation `now`, on the segment `air_time` timeline) the reads use for
+    # "recently on air". Keep it comfortably above `buffer_depth_hours` so the WHOLE
+    # upcoming buffer (segments placed AHEAD of now) counts as recent.
+    # `freshness_retention_margin` bounds the table for a 24/7 station: `prune_airplay`
+    # keeps rows for `freshness_window_hours × freshness_retention_margin` then drops
+    # older ones — wide enough that the reads never miss a row, bounded enough that the
+    # table can't grow forever. This memory SURVIVES `seed-canon` AND the C2.5 audio
+    # prune (that is the whole point — it must outlive the audio it describes) and is
+    # cleared only by the destructive `reset-world` (§2a matrix).
+    freshness_window_hours: float = 6.0  # in-world look-back for "recently on air"
+    freshness_retention_margin: float = 4.0  # keep window × this before sweeping
+
     def model_id(self, tier: str) -> str:
         """Map a logical tier ("haiku"|"sonnet"|"opus") to its real model id."""
         ids = {
