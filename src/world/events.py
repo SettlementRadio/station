@@ -86,11 +86,21 @@ def relative_phrase(event: Event, now: datetime) -> str:
     Examples: "tomorrow", "in five days", "tonight", "yesterday", "last week".
     Granularity is whole calendar days; same-day events use a time-of-day phrase.
     """
+    return phrase_for_datetime(event.in_world_datetime, now)
+
+
+def phrase_for_datetime(in_world_datetime: datetime, now: datetime) -> str:
+    """`relative_phrase` for a bare in-world datetime — anything dated, not just events.
+
+    D10.1 quotes carry an `in_world_datetime` (inherited from their beat) but are not
+    `Event`s, so the news desk (D10.2) frames a quote — "said yesterday" — through this.
+    Pure; the same calendar-day thresholds as `relative_phrase`.
+    """
     iw_now = clock.to_inworld(now)
-    day_delta = (event.in_world_datetime.date() - iw_now.date()).days
+    day_delta = (in_world_datetime.date() - iw_now.date()).days
 
     if day_delta == 0:
-        return _same_day_phrase(event.in_world_datetime)
+        return _same_day_phrase(in_world_datetime)
 
     future = day_delta > 0
     n = abs(day_delta)

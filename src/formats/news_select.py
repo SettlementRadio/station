@@ -31,7 +31,7 @@ records coverage after a successful render, D4.2). All SQL stays behind `world.s
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
 from typing import TYPE_CHECKING
 
@@ -39,7 +39,7 @@ from ..config import settings
 from ..logging_setup import get_logger
 from ..providers import embeddings
 from ..world import clock, store
-from ..world.store import Event, NewsCoverage, Story
+from ..world.store import Event, Figure, NewsCoverage, Quote, Story
 
 if TYPE_CHECKING:  # type-only: psycopg stays behind the world.store seam at runtime
     from psycopg import Connection
@@ -89,6 +89,9 @@ class SelectedStory:
     prior_coverage: NewsCoverage | None
     canon_score: float
     score: float
+    # D10.2 — the story's newest attributable quotes (paired with their figure), for
+    # the anchor to attribute; bounded by `news_quotes_per_story`, empty when none.
+    quotes: list[tuple[Quote, Figure]] = field(default_factory=list)
 
 
 # --- Candidate assembly (one story -> a scored, tagged candidate) -----------
@@ -186,6 +189,16 @@ def _build_candidate(
     """
     beats = store.story_beats(conn, story.id)
     prior = store.last_coverage(conn, story.id)
+    # D10.2 — the story's newest attributable quotes (with their figure), so the brief
+    # can attribute them. Bounded; empty (no extra read cost beyond the JOIN) for a
+    # people-less story.
+    quotes = (
+        store.attributed_quotes_for_story(
+            conn, story.id, limit=settings.news_quotes_per_story
+        )
+        if settings.news_quotes_per_story > 0
+        else []
+    )
 
     coverage_tag, new_beat = _classify_coverage(story, beats, prior)
     temporal_kind, lead_beat = _classify_temporal(beats, new_beat, iw_now)
@@ -214,6 +227,7 @@ def _build_candidate(
         prior_coverage=prior,
         canon_score=canon,
         score=score,
+        quotes=quotes,
     )
 
 

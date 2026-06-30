@@ -167,6 +167,42 @@ def test_quotes_near_windows_by_in_world_time(db):
     assert "d100-old" not in near_ids  # outside the window
 
 
+def test_attributed_quotes_for_story_pairs_and_orders_newest_first(db):
+    store.insert_story(db, _story("d102-s1"))
+    store.insert_figures(db, [_figure("d102-f1"), _figure("d102-f2")])
+    store.insert_quotes(
+        db,
+        [
+            _quote("d102-old", "d102-s1", "d102-f1", when=datetime(2626, 6, 1, 9, 0)),
+            _quote("d102-new", "d102-s1", "d102-f2", when=datetime(2626, 6, 24, 9, 0)),
+        ],
+    )
+
+    pairs = store.attributed_quotes_for_story(db, "d102-s1")
+    assert [q.id for q, _f in pairs] == ["d102-new", "d102-old"]  # newest first
+    # Each quote is paired with the RIGHT figure (the JOIN), and figures round-trip.
+    by_quote = {q.id: f.id for q, f in pairs}
+    assert by_quote == {"d102-new": "d102-f2", "d102-old": "d102-f1"}
+    assert store.attributed_quotes_for_story(db, "d102-s1", limit=1)[0][0].id == (
+        "d102-new"
+    )
+
+
+def test_attributed_quotes_by_ids_preserves_rank_order(db):
+    store.insert_story(db, _story("d102-s2"))
+    store.insert_figures(db, [_figure("d102-fa")])
+    store.insert_quotes(
+        db,
+        [
+            _quote("d102-qa", "d102-s2", "d102-fa"),
+            _quote("d102-qb", "d102-s2", "d102-fa"),
+        ],
+    )
+    # Pass ids in a deliberate (non-chronological) rank order — it must be preserved.
+    pairs = store.attributed_quotes_by_ids(db, ["d102-qb", "d102-qa", "missing"])
+    assert [q.id for q, _f in pairs] == ["d102-qb", "d102-qa"]  # unknown id skipped
+
+
 def test_seed_canon_keeps_tick_figures_quotes_full_reset_clears_them(db):
     # A bible-authored figure/quote vs a tick-generated one: a canon refresh replaces
     # only the bible rows, leaving the living world standing; a full reset clears all.

@@ -35,7 +35,7 @@ from ..logging_setup import get_logger
 from ..providers import embeddings
 from . import canon_source, clock, store
 from . import events as events_mod
-from .store import CanonFact, CastMember, Event
+from .store import CanonFact, CastMember, Event, Figure, Quote
 
 log = get_logger(__name__)
 
@@ -58,6 +58,9 @@ class AssembledContext:
     speakers: list[CastMember] = field(default_factory=list)
     events: list[Event] = field(default_factory=list)
     canon: list[CanonFact] = field(default_factory=list)
+    # D10.2 — recent/relevant attributable quotes (paired with their figure), so the DJs
+    # can reference what someone in the world said. Empty when there are no figures yet.
+    quotes: list[tuple[Quote, Figure]] = field(default_factory=list)
 
     @property
     def speaker(self) -> CastMember | None:
@@ -104,18 +107,20 @@ def assemble(
             cards.append(card)
         raw_events = store.events_in_range(conn, iw_now - window, iw_now + window)
         canon = _select_canon(conn, topic)
+        quotes = _select_quotes(conn, topic, iw_now, window)
 
     # Recompute each event's status live so the writer never sees a stale snapshot.
     near_events = [events_mod.progressed(e, now) for e in raw_events]
 
     cached_context = _render_core(bible, cards)
-    dynamic = _render_dynamic(near_events, canon, now)
+    dynamic = _render_dynamic(near_events, canon, quotes, now)
 
     log.info(
         "context_assemble_done",
         speakers=[c.id for c in cards],
         events=len(near_events),
         canon=len(canon),
+        quotes=len(quotes),
         cached_chars=len(cached_context),
         dynamic_chars=len(dynamic),
     )
@@ -125,6 +130,7 @@ def assemble(
         speakers=cards,
         events=near_events,
         canon=canon,
+        quotes=quotes,
     )
 
 
@@ -179,6 +185,33 @@ def _topic_tags(topic: str) -> list[str]:
     return [t for t in re.split(r"[^a-z0-9]+", topic.lower()) if t]
 
 
+def _select_quotes(
+    conn, topic: str | None, iw_now: datetime, window: timedelta
+) -> list[tuple[Quote, Figure]]:
+    """Attributable quotes for the writers' room (D10.2): semantic on topic else recent.
+
+    With a `topic`, recall the most relevant quotes by MEANING (`embeddings.retrieve`
+    over the `quote` corpus, D2) and resolve them to rows with their speaker — so a DJ
+    can react to an on-topic opinion. With no topic (or when recall returns nothing /
+    vectors are unavailable), fall back to the newest quotes in the same event window —
+    the structured, story-linked read that always works. Bounded by
+    `settings.context_quotes_limit`; the section is off when that is 0.
+    """
+    limit = settings.context_quotes_limit
+    if limit <= 0:
+        return []
+    if topic:
+        hits = embeddings.retrieve(
+            topic, k=settings.context_quotes_top_k, corpus="quote"
+        )
+        attributed = store.attributed_quotes_by_ids(conn, [h.id for h in hits])
+        if attributed:
+            return attributed[:limit]
+    return store.attributed_quotes_near(
+        conn, iw_now - window, iw_now + window, limit=limit
+    )
+
+
 # --- Rendering --------------------------------------------------------------
 
 
@@ -189,7 +222,12 @@ def _render_core(bible: str, cards: list[CastMember]) -> str:
     return "\n\n".join(p for p in parts if p).strip()
 
 
-def _render_dynamic(events: list[Event], canon: list[CanonFact], now: datetime) -> str:
+def _render_dynamic(
+    events: list[Event],
+    canon: list[CanonFact],
+    quotes: list[tuple[Quote, Figure]],
+    now: datetime,
+) -> str:
     """The per-call dynamic block: what is true right now, for the system prompt."""
     sections: list[str] = []
 
@@ -199,6 +237,19 @@ def _render_dynamic(events: list[Event], canon: list[CanonFact], now: datetime) 
             for e in events
         ]
         header = "Current events (reference naturally, don't recite):\n"
+        sections.append(header + "\n".join(lines))
+
+    if quotes:
+        lines = [
+            f"- {fig.name} ({fig.role}) said "
+            f"{events_mod.phrase_for_datetime(q.in_world_datetime, now)}: "
+            f'"{q.text}"'
+            for q, fig in quotes
+        ]
+        header = (
+            "What people are saying (you may reference or react to an opinion in "
+            "character — don't recite it):\n"
+        )
         sections.append(header + "\n".join(lines))
 
     if canon:

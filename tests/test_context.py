@@ -15,7 +15,7 @@ from datetime import datetime, timedelta
 from src.providers import embeddings
 from src.world import clock, context, store
 from src.world import events as events_mod
-from src.world.store import CanonFact, Event
+from src.world.store import CanonFact, Event, Figure, Quote
 
 
 def test_topic_tags_tokenizes_freetext():
@@ -34,7 +34,7 @@ def test_render_dynamic_surfaces_relative_phrase_and_facts():
     )
     facts = [CanonFact("canon-1", "Radio connects the worlds.", [])]
 
-    out = context._render_dynamic([event], facts, now)
+    out = context._render_dynamic([event], facts, [], now)
 
     assert "Lumen Festival" in out
     assert "in five days" in out
@@ -42,8 +42,29 @@ def test_render_dynamic_surfaces_relative_phrase_and_facts():
     assert "Radio connects the worlds." in out
 
 
+def test_render_dynamic_surfaces_attributed_quote():
+    # D10.2 — a quote with its figure becomes a "what people are saying" line, framed.
+    now = datetime(2026, 6, 19, 23, 0)
+    said_dt = clock.to_inworld(now) - timedelta(days=1)  # -> "yesterday"
+    quote = Quote(
+        id="q1",
+        story_id="s1",
+        figure_id="f1",
+        text="The relay held.",
+        in_world_datetime=said_dt,
+    )
+    figure = Figure(id="f1", name="Mira Voss", role="relay-keeper", card_text="Steady.")
+
+    out = context._render_dynamic([], [], [(quote, figure)], now)
+
+    assert "Mira Voss (relay-keeper)" in out
+    assert "yesterday" in out
+    assert "The relay held." in out
+    assert "What people are saying" in out
+
+
 def test_render_dynamic_is_empty_with_no_world():
-    assert context._render_dynamic([], [], datetime(2026, 6, 19)) == ""
+    assert context._render_dynamic([], [], [], datetime(2026, 6, 19)) == ""
 
 
 # --- _select_canon: the D2.4 hybrid (semantic + tag), DB/model mocked -------

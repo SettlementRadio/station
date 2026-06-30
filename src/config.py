@@ -125,6 +125,13 @@ class Settings(BaseSettings):
     # loses the core facts). Raise it to give the writer more relevant canon per
     # topic; it is a retrieval breadth dial, not a cost driver while the bible is small.
     context_canon_top_k: int = 6
+    # D10.2: how many attributable figure quotes the writers' room sees ("what people
+    # are saying"), so the DJs can reference and react to an opinion in character. With
+    # a topic, they're recalled by MEANING (D2 over the `quote` corpus); with none, the
+    # newest quotes in the event window. 0 disables it. `context_quotes_top_k` is the
+    # semantic breadth pulled before bounding to the limit.
+    context_quotes_limit: int = 4
+    context_quotes_top_k: int = 8
 
     # --- Conversation (B4: two-DJ dialogue — the writers' room) ----------------
     # The cast ids (cards from the DB) who hold the conversation, in handover
@@ -452,6 +459,10 @@ class Settings(BaseSettings):
     news_continuity_tier: str = "sonnet"  # the editor pass (CLAUDE.md routing)
     news_continuity_escalation_tier: str = "opus"  # confirm a flag before re-rolling
     news_continuity_max_tokens: int = 300
+    # D10.2 — attribution: each selected story carries up to this many of its newest
+    # figure quotes in the brief, so the anchor can attribute them ("X, the relay-keeper
+    # …, said yesterday") with correct temporal framing. 0 disables quote attribution.
+    news_quotes_per_story: int = 2
 
     def model_id(self, tier: str) -> str:
         """Map a logical tier ("haiku"|"sonnet"|"opus") to its real model id."""

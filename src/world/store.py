@@ -1183,6 +1183,84 @@ def quotes_near(
     return [_quote_from_row(r) for r in rows]
 
 
+def attributed_quotes_for_story(
+    conn: psycopg.Connection, story_id: str, *, limit: int | None = None
+) -> list[tuple[Quote, Figure]]:
+    """A story's quotes paired with their speaking figure, NEWEST first (D10.2).
+
+    One JOIN so the news desk / writers' room can attribute ("X, the relay-keeper,
+    said …") without a second per-quote read. Newest first (the most recent statement
+    leads), and `limit` caps how many a brief carries — a story needs a couple of
+    voices, not all. Each quote keeps its own in-world datetime for temporal framing
+    (`events.phrase_for_datetime`).
+    """
+    q_cols = ", ".join("q." + c for c in _QUOTE_COLUMNS.split(", "))
+    f_cols = ", ".join("f." + c for c in _FIGURE_COLUMNS.split(", "))
+    sql = (
+        f"SELECT {q_cols}, {f_cols} FROM quotes q JOIN figures f ON f.id = q.figure_id "
+        "WHERE q.story_id = %s ORDER BY q.in_world_datetime DESC, q.id DESC"
+    )
+    params: tuple = (story_id,)
+    if limit is not None:
+        sql += " LIMIT %s"
+        params = (story_id, limit)
+    rows = conn.execute(sql, params).fetchall()
+    n = len(_QUOTE_COLUMNS.split(", "))
+    return [(_quote_from_row(r[:n]), _figure_from_row(r[n:])) for r in rows]
+
+
+def attributed_quotes_near(
+    conn: psycopg.Connection,
+    start: datetime,
+    end: datetime,
+    *,
+    limit: int | None = None,
+) -> list[tuple[Quote, Figure]]:
+    """Quotes in [start, end] paired with their figure, NEWEST first (D10.2).
+
+    The structured "what was said around now" read the writers' room uses when no topic
+    is in play (the date-window analog of `attributed_quotes_for_story`). `limit` bounds
+    how many reach the prompt.
+    """
+    q_cols = ", ".join("q." + c for c in _QUOTE_COLUMNS.split(", "))
+    f_cols = ", ".join("f." + c for c in _FIGURE_COLUMNS.split(", "))
+    sql = (
+        f"SELECT {q_cols}, {f_cols} FROM quotes q JOIN figures f ON f.id = q.figure_id "
+        "WHERE q.in_world_datetime BETWEEN %s AND %s "
+        "ORDER BY q.in_world_datetime DESC, q.id DESC"
+    )
+    params: tuple = (start, end)
+    if limit is not None:
+        sql += " LIMIT %s"
+        params = (start, end, limit)
+    rows = conn.execute(sql, params).fetchall()
+    n = len(_QUOTE_COLUMNS.split(", "))
+    return [(_quote_from_row(r[:n]), _figure_from_row(r[n:])) for r in rows]
+
+
+def attributed_quotes_by_ids(
+    conn: psycopg.Connection, ids: Iterable[str]
+) -> list[tuple[Quote, Figure]]:
+    """Quotes for `ids` paired with their figure, in the SAME order as `ids` (D10.2).
+
+    Resolves semantic-recall hits (quote ids ranked by meaning, `embeddings.retrieve`
+    over the `quote` corpus) back to full rows with their speaker, preserving the
+    meaning-rank via `array_position`. Unknown ids skipped; empty `ids` returns none.
+    """
+    id_list = list(ids)
+    if not id_list:
+        return []
+    q_cols = ", ".join("q." + c for c in _QUOTE_COLUMNS.split(", "))
+    f_cols = ", ".join("f." + c for c in _FIGURE_COLUMNS.split(", "))
+    rows = conn.execute(
+        f"SELECT {q_cols}, {f_cols} FROM quotes q JOIN figures f ON f.id = q.figure_id "
+        "WHERE q.id = ANY(%s) ORDER BY array_position(%s, q.id)",
+        (id_list, id_list),
+    ).fetchall()
+    n = len(_QUOTE_COLUMNS.split(", "))
+    return [(_quote_from_row(r[:n]), _figure_from_row(r[n:])) for r in rows]
+
+
 # --- News coverage reads (D4.0: the desk reads its own history) -------------
 
 _COVERAGE_COLUMNS = "id, story_id, covered_at, arc_stage, last_beat_id, angle"

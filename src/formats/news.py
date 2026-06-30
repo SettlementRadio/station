@@ -83,7 +83,24 @@ def _story_brief(sel: SelectedStory, now: datetime) -> str:
             "  - (no new development since you last reported this — keep it brief, a "
             "'still developing' touch; don't re-read it word for word)"
         )
+    lines += _quote_lines(sel, now)
     return "\n".join(lines)
+
+
+def _quote_lines(sel: SelectedStory, now: datetime) -> list[str]:
+    """Attributable quotes for a story's brief (D10.2) — who said what, when.
+
+    Each quote is framed by its own in-world datetime (`events.phrase_for_datetime`), so
+    the anchor can say "X, the relay-keeper, said yesterday: …". These are OPTIONAL
+    colour: the anchor attributes one or two where they sharpen the report, not all.
+    """
+    if not sel.quotes:
+        return []
+    out = ["  - quotes you may attribute (use the ones that sharpen the report):"]
+    for quote, figure in sel.quotes:
+        phrase = events_mod.phrase_for_datetime(quote.in_world_datetime, now)
+        out.append(f'    · {figure.name} ({figure.role}) said {phrase}: "{quote.text}"')
+    return out
 
 
 def _briefs_block(selected: list[SelectedStory], now: datetime) -> str:
@@ -167,7 +184,10 @@ def _build_system(
         "  - An UPDATE item is exactly that: lead it as 'an update on …' and give the "
         "new development, don't re-read the whole story. A 'still developing' item "
         "stays a brief touch. Weight the stories — lead with the biggest, let smaller "
-        "ones be shorter.\n\n"
+        "ones be shorter.\n"
+        "  - Where a story lists quotes, ATTRIBUTE one or two by name and role and "
+        "frame them in time ('the relay-keeper said yesterday: …') — quote the words "
+        "given, don't invent new ones; skip quotes that don't add to the report.\n\n"
         "Shape: a short desk open (this is the settlement news) → the items above, in "
         "a natural order → a brief sign-off back to the studio. Keep every item INSIDE "
         "the fiction — never real-world places, brands, franchises, people, or events; "

@@ -63,6 +63,7 @@ def _sel(
     new_beat=None,
     latest_beat=None,
     prior_coverage=None,
+    quotes=None,
 ) -> news_select.SelectedStory:
     return news_select.SelectedStory(
         story=story,
@@ -74,6 +75,7 @@ def _sel(
         prior_coverage=prior_coverage,
         canon_score=0.0,
         score=1.0,
+        quotes=quotes or [],
     )
 
 
@@ -124,6 +126,33 @@ def test_brief_plain_item_reports_lead_beat_with_phrase():
     assert "the mb development" in brief
     assert "this afternoon" in brief  # same-day midday phrase
     assert "UPDATE" not in brief  # a fresh item, not an update
+
+
+def test_brief_includes_attributed_quotes_with_temporal_framing():
+    # D10.2 — a story's quotes become attribution lines, each framed by its own date.
+    story = _story("relay")
+    lead = _beat("rb", "relay", datetime(2626, 6, 24, 9, 0))
+    quote = store.Quote(
+        id="rq",
+        story_id="relay",
+        figure_id="rf",
+        text="We are not going dark.",
+        in_world_datetime=datetime(2626, 6, 23, 20, 0),  # yesterday vs NOW
+    )
+    figure = store.Figure(
+        id="rf", name="Mira Voss", role="relay-keeper", card_text="Steady."
+    )
+    sel = _sel(
+        story,
+        coverage_tag=news_select.COVERAGE_NEW,
+        temporal_kind=news_select.KIND_BREAKING,
+        lead_beat=lead,
+        quotes=[(quote, figure)],
+    )
+    brief = news._story_brief(sel, NOW)
+    assert "Mira Voss (relay-keeper)" in brief
+    assert "yesterday" in brief  # the quote's own date, framed
+    assert "We are not going dark." in brief
 
 
 def test_empty_selection_gives_the_quiet_day_instruction():
