@@ -329,7 +329,7 @@ done and Claude (chat) can generate the `_TASKS.md` now.
 | D1 Canon → Folder | `PHASE_D_CANON_FOLDER_TASKS.md` | — | ✅ | ✅ | **Built** (D1.0–D1.4) |
 | D2 Semantic Retrieval / RAG | `PHASE_D_RAG_TASKS.md` | D1 | ✅ | ✅ | **Built** (D2.0–D2.6) |
 | D3 World Engine (keystone) | `PHASE_D_WORLD_ENGINE_TASKS.md` | D1 (D2 recommended) | ✅ | ✅ | **Built** (D3.0–D3.5) |
-| D4 News Desk | `PHASE_D_NEWS_DESK_TASKS.md` | D3, D2 | ✅ | ☐ | **Ready** (D3 built) |
+| D4 News Desk | `PHASE_D_NEWS_DESK_TASKS.md` | D3, D2 | ✅ | ✅ | **Built** (D4.0–D4.4) |
 | D5 Freshness / Anti-repetition | `PHASE_D_FRESHNESS_TASKS.md` | D3/D4 | ✅ | ☐ | **Ready** (D3 built; rides D4) |
 | D6 Programming + Status Console | `PHASE_D_PROGRAMMING_TASKS.md` | C2 scheduler | ✅ | ☐ | **Ready** (parallel-able) |
 | D7 Production (sound + songs) | `PHASE_D_PRODUCTION_TASKS.md` | D6 (soft→D10: artist links) | ✅ | ☐ | Blocked on D6 build |

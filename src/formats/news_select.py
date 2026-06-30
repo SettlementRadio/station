@@ -175,15 +175,22 @@ def _canon_score(story: Story) -> float:
     return max((h.score for h in hits), default=0.0)
 
 
-def _build_candidate(conn: Connection, story: Story, iw_now: datetime) -> SelectedStory:
-    """Assemble one scored, tagged `SelectedStory` for a story (pre-selection)."""
+def _build_candidate(
+    conn: Connection, story: Story, iw_now: datetime, *, ground: bool = True
+) -> SelectedStory:
+    """Assemble one scored, tagged `SelectedStory` for a story (pre-selection).
+
+    `ground=False` skips the canon-recall step (no embedding model load) — the pure
+    temporal/structured ranking, used by the offline demo and any caller that doesn't
+    want RAG in the loop.
+    """
     beats = store.story_beats(conn, story.id)
     prior = store.last_coverage(conn, story.id)
 
     coverage_tag, new_beat = _classify_coverage(story, beats, prior)
     temporal_kind, lead_beat = _classify_temporal(beats, new_beat, iw_now)
     latest_beat = beats[-1] if beats else None  # story_beats is chronological
-    canon = _canon_score(story)
+    canon = _canon_score(story) if ground else 0.0
 
     # Recency: a lead beat near now scores ~1, decaying over days; canon grounding
     # and the kind/coverage bonuses lift the most newsworthy items in the ranking.
@@ -262,19 +269,24 @@ def _assemble_mix(candidates: list[SelectedStory], count: int) -> list[SelectedS
 
 
 def select_for(
-    conn: Connection, now: datetime, *, count: int | None = None
+    conn: Connection,
+    now: datetime,
+    *,
+    count: int | None = None,
+    ground: bool = True,
 ) -> list[SelectedStory]:
     """`select_stories` against a caller-supplied connection (the testable core).
 
     Pure reads, so it is safe to share a connection; `select_stories` is the
     convenience that opens its own short read transaction (never held across the
-    producer's later LLM/TTS work).
+    producer's later LLM/TTS work). `ground=False` skips canon recall (the offline
+    demo's fast path).
     """
     n = settings.news_story_count if count is None else count
     iw_now = clock.to_inworld(now)
 
     active = store.active_stories(conn)
-    candidates = [_build_candidate(conn, s, iw_now) for s in active]
+    candidates = [_build_candidate(conn, s, iw_now, ground=ground) for s in active]
     fresh = [c for c in candidates if not _is_cold_repeat(c, iw_now)]
     selected = _assemble_mix(fresh, n)
 
@@ -289,7 +301,9 @@ def select_for(
     return selected
 
 
-def select_stories(now: datetime, *, count: int | None = None) -> list[SelectedStory]:
+def select_stories(
+    now: datetime, *, count: int | None = None, ground: bool = True
+) -> list[SelectedStory]:
     """Choose + tag the running stories this hour's bulletin reports (D4.1).
 
     Reads the D3 active story log, tags each story new/repeat/evolve from the D4.0
@@ -300,4 +314,4 @@ def select_stories(now: datetime, *, count: int | None = None) -> list[SelectedS
     successful render (D4.2), so no DB transaction is held across generation.
     """
     with store.connect() as conn:
-        return select_for(conn, now, count=count)
+        return select_for(conn, now, count=count, ground=ground)

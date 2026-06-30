@@ -192,6 +192,9 @@ def test_coverage_since_windows_by_inworld_time(db):
 def test_coverage_counted_and_cleared_by_reset_kept_by_canon_refresh(db):
     # A seed story + a tick story, each covered. A canon refresh keeps tick coverage
     # (and CASCADE-drops the replaced seed story's coverage); a full reset clears all.
+    # Delta-count, not absolute: a real dev DB may already hold coverage from aired
+    # bulletins (a rolled-back txn hides this test's writes, not pre-committed rows).
+    base = store.counts(db)["news_coverage"]
     store.insert_story(db, _story("d40-seed", source=store.EVENT_SOURCE_SEED))
     store.insert_story(db, _story("d40-tick", source=store.EVENT_SOURCE_TICK))
     when = datetime(2626, 6, 24, 12, 0)
@@ -202,7 +205,7 @@ def test_coverage_counted_and_cleared_by_reset_kept_by_canon_refresh(db):
         db, _coverage("d40-tick", when=when, stage=store.ARC_UPCOMING, beat_id=None)
     )
 
-    assert store.counts(db)["news_coverage"] == 2  # folded into counts
+    assert store.counts(db)["news_coverage"] == base + 2  # folded into counts
 
     store.clear_world(db, scope="canon")  # SAFE refresh
     assert store.last_coverage(db, "d40-tick") is not None  # living coverage stands

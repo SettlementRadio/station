@@ -161,3 +161,50 @@ with store.connect() as c:
 ```
 Gate behaviour (a contradictory/unsafe proposal is regenerated once then dropped, never written) is
 covered by `tests/test_world_tick.py`; run `pytest -q`.
+
+---
+
+## D4 — The news desk (reports the living world)
+
+The `news` format no longer reads N flat headlines; it reads the **story log** (D3) and broadcasts it
+like a real station — selecting a tagged mix of running stories each hour, recurring + evolving them
+across the day with correct past/now/future framing, and staying self-consistent. Per-story **coverage
+memory** (`news_coverage`) is what makes recurrence work; it survives `seed-canon` and is cleared by
+`reset-world` (§2a). Nothing new to operate — the desk runs inside the normal scheduler/`make format`
+path — but here is how to see it and tune it.
+
+### See it (no tokens)
+```bash
+make news-demo     # a simulated day: one story goes breaking → repeated → evolved → past,
+                   # another is steadily trailed. Deterministic; seeds + rolls back its own demo
+                   # stories, so it never touches your world. Needs a reachable Postgres.
+```
+For a single **voiced** bulletin from the real world: `make format FMT=news` (Claude + TTS; needs
+`make seed` + a couple of `make world-tick` runs so there are running stories to report).
+
+### Config knobs (`.env`; defaults sane)
+- **Selection mix:** `NEWS_STORY_COUNT` (stories per bulletin), `NEWS_TARGET_BREAKING/_TRAILED/_ONGOING`
+  (soft per-kind quotas).
+- **Timing windows:** `NEWS_BREAKING_WINDOW_HOURS` (a beat this close to now is "breaking"),
+  `NEWS_TRAIL_HORIZON_DAYS` (how far ahead is still "trailed"), `NEWS_REPEAT_MAX_STALE_HOURS` (drop a
+  repeat with no new beat older than this).
+- **Canon grounding (D2):** `NEWS_CANON_RECALL_K`, `NEWS_CANON_WEIGHT` (degrades to temporal-only when
+  RAG is off); rank lifts `NEWS_BREAKING_BONUS`, `NEWS_EVOLVE_BONUS`.
+- **Continuity (D4.3):** `NEWS_CONTINUITY_MAX_ATTEMPTS` (drafts before evergreen), `NEWS_CONTINUITY_TIER`
+  / `NEWS_CONTINUITY_ESCALATION_TIER`, `NEWS_CONTINUITY_MAX_TOKENS`.
+
+### Inspect / verify
+Show what the desk has covered (its memory):
+```bash
+python -c "
+from src.world import store
+with store.connect() as c:
+    s = store.active_stories(c)
+    if s:
+        cov = store.last_coverage(c, s[0].id)
+        print(s[0].title, '->', cov)   # None until a bulletin has reported it
+"
+```
+Selection tagging, temporal framing, the safety + continuity gates (regenerate-then-evergreen), and
+coverage recording are covered by `tests/test_news_select.py` + `tests/test_news_desk.py`; run
+`pytest -q`.

@@ -1,4 +1,4 @@
-"""Tests for the story-log-driven news producer (src/formats/news.py) — D4.2.
+"""Tests for the story-log-driven news producer (src/formats/news.py) — D4.2 + D4.3.
 
 The creative step (Claude + TTS) is exercised by the D4.4 demo; here we pin the pure,
 brittle logic a silent bug would corrupt:
@@ -8,9 +8,12 @@ brittle logic a silent bug would corrupt:
   item reports its lead beat with the right relative phrase;
 * an empty selection yields the quiet-day instruction (the desk never goes blank);
 * coverage RECORDING writes the story's newest beat + the consistent handle, and
-  reuses a prior angle (the D4.0 round-trip the next bulletin reads).
+  reuses a prior angle (the D4.0 round-trip the next bulletin reads);
+* CONTINUITY (D4.3) — prior coverage is fed into the prompt for consistent naming,
+  and the gate regenerates on a flagged draft then falls back to evergreen (C0).
 
-DB tests roll back at teardown and skip cleanly without Postgres.
+DB tests roll back at teardown and skip cleanly without Postgres; the gate tests mock
+Claude + TTS so no tokens are spent.
 """
 
 from __future__ import annotations
@@ -21,6 +24,7 @@ from datetime import datetime
 import pytest
 from src.formats import news, news_select
 from src.world import store
+from src.world.context import AssembledContext
 
 # A fixed real `now`; in-world face is +600 (2626-06-24 12:00).
 NOW = datetime(2026, 6, 24, 12, 0)
@@ -246,3 +250,168 @@ class _SameConn:
 
     def __exit__(self, *exc):
         return False
+
+
+# --- Continuity: prior-coverage feed (pure; no DB) --------------------------
+
+
+def _prior(story_id: str, *, stage: str, angle: str) -> store.NewsCoverage:
+    return store.NewsCoverage(
+        story_id=story_id,
+        covered_at=datetime(2626, 6, 24, 6, 0),
+        arc_stage=stage,
+        last_beat_id=None,
+        angle=angle,
+    )
+
+
+def test_continuity_block_lists_prior_handles_and_stage():
+    story = _story("levee")
+    sel = _sel(
+        story,
+        coverage_tag=news_select.COVERAGE_REPEAT,
+        temporal_kind=news_select.KIND_ONGOING,
+        prior_coverage=_prior(
+            "levee", stage=store.ARC_HAPPENING, angle="the levee row"
+        ),
+    )
+    block = news._continuity_block([sel])
+    assert "the levee row" in block  # the handle to keep using
+    assert store.ARC_HAPPENING in block  # the stage last reported
+    assert "SAME name" in block
+
+
+def test_continuity_block_empty_without_prior_coverage():
+    story = _story("fresh")
+    sel = _sel(
+        story,
+        coverage_tag=news_select.COVERAGE_NEW,
+        temporal_kind=news_select.KIND_BREAKING,
+    )
+    assert news._continuity_block([sel]) == ""
+
+
+def test_build_system_weaves_continuity_and_revision_note():
+    story = _story("levee")
+    sel = _sel(
+        story,
+        coverage_tag=news_select.COVERAGE_REPEAT,
+        temporal_kind=news_select.KIND_ONGOING,
+        prior_coverage=_prior(
+            "levee", stage=store.ARC_HAPPENING, angle="the levee row"
+        ),
+    )
+    ctx = AssembledContext(cached_context="BIBLE", dynamic="")
+    system = news._build_system(
+        ctx, NOW, "Vell", [sel], revision_note="you renamed the levee story"
+    )
+    assert "the levee row" in system  # prior coverage fed to the writer
+    assert "PREVIOUS DRAFT" in system  # the revision note guides the retry
+    assert "you renamed the levee story" in system
+
+
+# --- Continuity gate loop (mocks Claude + TTS; no tokens, no DB) -------------
+
+
+def _ctx_with_anchor() -> AssembledContext:
+    anchor = store.CastMember(
+        id="vell", name="Vell", card_text="dry, precise", logical_voice="vell_night"
+    )
+    return AssembledContext(cached_context="BIBLE", dynamic="", speakers=[anchor])
+
+
+def _one_selection() -> list[news_select.SelectedStory]:
+    story = _story("levee")
+    lead = _beat("lb", "levee", datetime(2626, 6, 24, 11, 0))
+    return [
+        _sel(
+            story,
+            coverage_tag=news_select.COVERAGE_NEW,
+            temporal_kind=news_select.KIND_BREAKING,
+            lead_beat=lead,
+        )
+    ]
+
+
+def _wire_gate(monkeypatch, editor):
+    """Mock selection, TTS, coverage, and route llm.generate to writer/editor stubs.
+
+    `editor(draft) -> note` decides the continuity verdict per draft; the writer
+    returns DRAFT-1, DRAFT-2, … so the editor can vary its verdict across retries.
+    Returns the list that records coverage calls.
+    """
+    monkeypatch.setattr(
+        news.news_select, "select_stories", lambda now: _one_selection()
+    )
+    monkeypatch.setattr(
+        news.common, "render_single_voice", lambda parts, voice, seg_id: "/fake.mp3"
+    )
+    monkeypatch.setattr(news, "safety_check", lambda text: _ok_safety())
+    recorded: list = []
+    monkeypatch.setattr(news, "_record_coverage", lambda sel, now: recorded.append(sel))
+
+    writer_calls = {"n": 0}
+
+    def fake_generate(prompt, *, system, model, cached_context=None, max_tokens=None):
+        if prompt.startswith("Draft to check"):
+            draft = prompt.split("Draft to check:", 1)[1]
+            return editor(draft)
+        writer_calls["n"] += 1
+        return f"DRAFT-{writer_calls['n']}"
+
+    monkeypatch.setattr(news.llm, "generate", fake_generate)
+    return recorded, writer_calls
+
+
+def _ok_safety():
+    from src.safety import SafetyResult
+
+    return SafetyResult(ok=True, reason="ok", stage="llm")
+
+
+def test_continuity_gate_regenerates_then_renders(monkeypatch):
+    # DRAFT-1 is flagged (both base + escalation passes), DRAFT-2 clears.
+    def editor(draft: str) -> str:
+        return "ISSUES: you renamed the levee story" if "DRAFT-1" in draft else "OK"
+
+    recorded, writer_calls = _wire_gate(monkeypatch, editor)
+    seg = news.news(NOW, _ctx_with_anchor())
+
+    assert seg.script == "DRAFT-2"  # the clean draft aired, not the flagged one
+    assert seg.meta["continuity_ok"] is True
+    assert writer_calls["n"] == 2  # regenerated once
+    assert len(recorded) == 1  # coverage recorded on the clean render
+
+
+def test_continuity_gate_falls_back_to_evergreen(monkeypatch):
+    # Every draft is flagged -> no draft clears -> evergreen, nothing aired/recorded.
+    recorded, _ = _wire_gate(monkeypatch, lambda draft: "ISSUES: contradicts canon")
+    sentinel = object()
+    monkeypatch.setattr(
+        news.evergreen,
+        "evergreen_segment",
+        lambda now, **kw: sentinel,
+    )
+
+    result = news.news(NOW, _ctx_with_anchor())
+    assert result is sentinel  # dropped to evergreen
+    assert recorded == []  # no coverage recorded — nothing aired
+
+
+def test_safety_gate_falls_back_to_evergreen_and_writes_nothing(monkeypatch):
+    # Continuity would pass, but every draft trips the SAFETY gate -> evergreen,
+    # nothing flagged is rendered, no coverage recorded.
+    from src.safety import SafetyResult
+
+    recorded, _ = _wire_gate(monkeypatch, lambda draft: "OK")
+    monkeypatch.setattr(
+        news,
+        "safety_check",
+        lambda text: SafetyResult(ok=False, reason="blocklisted term", stage="keyword"),
+    )
+    sentinel = object()
+    monkeypatch.setattr(news.evergreen, "evergreen_segment", lambda now, **kw: sentinel)
+
+    result = news.news(NOW, _ctx_with_anchor())
+    assert result is sentinel  # safety flag drops the slot to evergreen
+    assert recorded == []  # nothing aired -> nothing recorded

@@ -38,6 +38,81 @@ A typical *build* session will be short, e.g.:
 
 ---
 
+## 2026-06-30 — Phase D — news register/length tuning + sequencing call (D9 anchor, D10 next)
+**Focus:** reviewed a real `make format FMT=news` bulletin against three asks — named people, plainer
+tone, ~5-min length — and decided what to fix now vs which pack owns what.
+**Decisions:**
+- **News register → formal, by prompt now.** The sample read poetic ("landed like a stone in still
+  water"; invented studio colour like an archivist pulling old recordings). Retuned `news.py`
+  `_build_system` to a formal broadcast register: facts first (who/what/when/numbers/names), short
+  declarative sentences, NO metaphor/lyricism/editorial asides/invented colour, ≤1 light human note.
+- **Length is a dial, not a feature.** Bumped the `FORMAT_NEWS_*` defaults to a full ~5-min hourly
+  bulletin (words 800–1000, max_tokens 1600, length_target_sec 300, `NEWS_STORY_COUNT` 4). Spoken news
+  is ~140–160 wpm and LLMs undershoot, so targets are set high; the scheduler still times on the
+  MEASURED render, so verify by listening to one `make format FMT=news`.
+- **Dedicated news anchor → DEFERRED to D9 (not a quick-win card now).** The cast card — not the prompt —
+  is the dominant lever on voice; news currently borrows **Vell**, the atmospheric *night host*, which
+  fights the formal instruction. A purpose-built plain newsreader card would help most. We *could* author
+  one today (cast is hand-authored `docs/canon/90-cast.md` + the lazy `FORMAT_NEWS_SPEAKER_ID` dial, no
+  code), but chose to fold it into **D9** (Voice & Roster) so the anchor lands with its managed roster
+  slot, a distinct registered voice, the pronunciation lexicon (spoken-right invented names), and emotion
+  — rather than a one-off card we'd revisit.
+- **D10 is the next pack.** Its hard deps (D3 story log, D2 recall) are both BUILT and the tracker marks
+  it Ready; D5–D9 don't block it. D10 (figures + attributable quotes, tick-generated + stored) is what
+  makes named people PERSIST and stay consistent across bulletins/days/formats — the real fix for the
+  "invent + keep consistent names" ask. Only the *voiced* soundbite defers to D9's guest-voice slot;
+  textual attribution ("X said…") lands without it. D10-first also helps D7 (artist→figure links) and D8.
+**Changed:** `src/formats/news.py` (formal register prompt), `src/config.py` (`FORMAT_NEWS_*` +
+`news_story_count` defaults), `.env.example` (length/register dials), `tests/test_news_coverage.py`
+(delta-count so the suite stays green once real bulletins have recorded coverage).
+**Why:** voice quality is carried by the cast card, so the durable fix for tone is a real anchor (D9),
+not more prompt text; and consistent NAMED people is a storage problem (D10), not a prompt problem —
+sequencing D10 next delivers the highest-leverage content win while its dependencies are already in place.
+**Next:** start **D10 — Figures & Quotes** (data layer + tick generation → news/DJ attribution).
+Commit: (this session) · Clips: (optional — record a before/after news bulletin)
+
+---
+
+## 2026-06-30 — Phase D — D4: the News Desk (reports the living world) — D4.0–D4.4
+**Focus:** replace the one-shot, memoryless news bulletin with a desk that reads the D3 story log and
+broadcasts it like a real station — relevant to now AND canon, recurring + evolving across the day with
+correct past/now/future framing, and self-consistent over time.
+**Decisions:**
+- **Coverage memory is the substrate** (D4.0). A new `news_coverage(story_id, covered_at, arc_stage,
+  last_beat_id, angle)` table (the only SQL, in `store.py`) records *how the desk has told each story* —
+  in-world `covered_at`, the newest beat reached, and the handle used. Kept DISTINCT from D5's broad
+  output-level anti-repetition (this is per-story, news-specific); D5 layers on top. Survives
+  `seed-canon`, cleared by `reset-world` (§2a), folded into `counts`.
+- **Selection is its own module** (D4.1, `news_select.py`). Each hour it tags every active story
+  `new`/`repeat`/`evolve` (from coverage + a genuinely newer beat) and `breaking`/`trailed`/`ongoing`
+  (from the clock), grounds it against canon via D2 recall, drops cold repeats, and returns a ranked,
+  bounded mix via soft per-kind quotas. Canon recall degrades to temporal-only when RAG is off; a
+  `ground=False` fast path skips it entirely (the demo + any no-RAG caller).
+- **The producer reuses the seams** (D4.2/D4.3). `news.py` consumes the selection, frames each item by
+  arc + `relative_phrase` (evolve = "an update on …" with the delta beat; repeat = a light touch), and
+  keeps the C0 gate — now **safety + a desk continuity editor** (against canon + prior coverage) in one
+  regenerate-then-evergreen loop. Prior coverage is fed back for consistent naming; coverage is recorded
+  only on a clean render. Records the story's *newest* beat so the next bulletin's evolve check is honest.
+- **The demo seeds + rolls back, never TRUNCATEs** (D4.4). `make news-demo` adds its own `demo-` stories
+  in a transaction and filters the display to them, rather than clearing the world — a TRUNCATE takes an
+  exclusive lock and would block on the scheduler/tick. Deterministic, token-free, non-polluting.
+**Changed:** `src/world/store.py` (news_coverage + reads/writes), `src/formats/news_select.py` (new),
+`src/formats/news.py` (rewritten), `src/formats/news_demo.py` (new), `src/config.py` (NEWS_* dials),
+`tests/test_news_coverage.py` + `test_news_select.py` + `test_news_desk.py` (new), Makefile (`news-demo`),
+README / `.env.example` / `docs/ADMIN_MANUAL.md`, PHASE_D_OVERVIEW tracker (D4 ✅).
+**Why:** the news desk is half the heart of Phase D — a world that *moves* (D3) is only worth featuring
+if the station *reports* it like a real one. Coverage memory is what turns "a fact happened" into "an
+update on the story we've been following," and the continuity gate is what keeps a 24/7 desk from
+drifting a story's name or facts across the day.
+**📣 Postable:** `make news-demo` — a 20-line, token-free trace of one story going breaking → repeated →
+repeated-and-evolved → "yesterday" across a simulated day, while another is steadily trailed. Great
+short clip of the desk "thinking."
+**Next:** D5 (broad anti-repetition so talk + news never loop phrasing), or D10 (figures & quotes so the
+news can *attribute* — "X said …").
+Commit: (this session) · Clips: (record `make news-demo`)
+
+---
+
 ## 2026-06-29 — Phase D — naturalness pass on the talk prompts (route A)
 **Focus:** the DJs sounded official/stiff and segments mirrored each other — fix the *register* (how
 they speak), which is separate from the persona (the cast cards) and from the looping problem (D5).

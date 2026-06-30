@@ -163,6 +163,23 @@ nightly; don't fold it into `make schedule`). A run is transactional, so a failu
 non-zero (loud) without corrupting the store. A fresh DB has no running stories yet — run a couple of
 ticks after seeding to give the world a living "now".
 
+The news desk reports that living world (Phase D / D4). Instead of N flat headlines,
+the desk ([`src/formats/news.py`](src/formats/news.py)) **reads the story log** and broadcasts it like
+a real station. Each hour it **selects** ([`news_select.py`](src/formats/news_select.py)) a bounded,
+ranked mix of running stories — tagged `breaking`/`trailed`/`ongoing` by where their beats sit on the
+clock and `new`/`repeat`/`evolve` from a per-story **coverage memory** (`news_coverage`, D4.0) — grounds
+them against canon by semantic recall, and frames each by its arc + relative phrase ("tonight" /
+"tomorrow" / "yesterday"). A story that gained a beat since last coverage is reported as an **update**
+(the delta), a repeated one as a light "still developing" touch; prior coverage is fed back so naming
+stays consistent, and a **continuity editor** pass catches a renamed or contradicted story (re-roll with
+the note, then evergreen — the C0 discipline). Coverage is recorded only on a clean render.
+```bash
+make news-demo          # watch one story go breaking → repeated → evolved → past across a simulated day
+make format FMT=news     # one voiced bulletin on demand (Claude + TTS)
+```
+`make news-demo` is deterministic and token-free: it seeds a tiny story log in a rolled-back transaction
+(never touches your world) and prints the desk's selection + framing for four bulletins across a day.
+
 Two DJs hold a conversation, not two monologues. The conversation orchestrator
 ([`src/writers/conversation.py`](src/writers/conversation.py)) runs a light writers' room over the
 assembled context: a **showrunner** picks one beat from the current events, an **orchestrator**
@@ -178,8 +195,9 @@ make conversation   # showrunner → dialogue → continuity → two-voice segme
 Generation fills a proven skeleton, not a blank page. [`src/formats/`](src/formats/) holds three
 **program-format templates**, each a function `(now, context) -> Segment` behind a small registry
 ([`make_format_segment`](src/formats/__init__.py)) that assembles exactly the cast each one needs:
-- **news** — a single-DJ desk: sting → in-world headlines derived from the current events →
-  sign-off. (Reportage, so stating the facts plainly is correct — the opposite of the talk rule.)
+- **news** — a single-DJ desk that reads the **story log** (D4): selects a tagged mix of running
+  stories, frames each by arc + beat date, recurs/evolves them across the day, and stays consistent via
+  a continuity gate. (Reportage, so stating the facts plainly is correct — the opposite of the talk rule.)
 - **talk** — the two-DJ conversation (open → banter → music lead-in → close); it *wraps* B4,
   reusing `conversation.compose_segment` with a structural directive.
 - **music** — a single-DJ wrap: intro → a `[SONG]` slot marker (real song scheduling is Phase C

@@ -37,7 +37,7 @@ LIQ_LOG    := $(RUN_DIR)/liquidsoap.log
 PLAYER_URL := http://127.0.0.1:8000/
 STREAM_URL := http://127.0.0.1:8000/settlement.mp3
 
-.PHONY: help generate serve air play play-convo stop status seed seed-canon reset-world demo context conversation format buffer schedule ident prune fallback health world-tick
+.PHONY: help generate serve air play play-convo stop status seed seed-canon reset-world demo context conversation format buffer schedule ident prune fallback health world-tick news-demo
 
 # B5 format default: `make format` builds a talk segment; override with FMT=news
 # or FMT=music. Pass a TOPIC=... to steer canon retrieval.
@@ -74,6 +74,7 @@ help:
 	@echo "  make health    run the health checks + alert on any issue (C4)"
 	@echo "  make schedule  top up the rolling buffer to depth + write the playlist (C2)"
 	@echo "  make world-tick run one world tick: invent + advance world stories (D3)"
+	@echo "  make news-demo show the news desk reframe stories across a simulated day (D4)"
 	@echo "  make air       schedule + serve — the live scheduler-driven stream (C2)"
 
 # Seed/refresh the world-state DB from the canon bible (docs/canon/ folder, or the
@@ -102,6 +103,15 @@ reset-world:
 world-tick:
 	@echo "==> Running one world tick (D3)…"
 	$(PY) -m src.world.world_tick
+
+# D4: show the news desk read the living story log across a SIMULATED day — one story
+# goes breaking → repeated → repeated-and-evolved → referenced-as-past while another is
+# steadily trailed. Deterministic + token-free (no Claude/TTS); seeds its own demo
+# stories in a transaction that is ROLLED BACK, so it never touches your world. Needs a
+# reachable Postgres (DATABASE_URL). For one voiced bulletin instead: `make format FMT=news`.
+news-demo:
+	@echo "==> News-desk simulated day (D4)…"
+	$(PY) -m src.formats.news_demo
 
 # B2 proof: render the Lumen Festival at two `now` values and show the relative
 # phrase flip ("in five days" -> "yesterday"). Needs `make seed` first.

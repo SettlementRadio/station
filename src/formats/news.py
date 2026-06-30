@@ -32,7 +32,7 @@ from .. import evergreen
 from ..config import settings
 from ..logging_setup import get_logger
 from ..providers import llm
-from ..safety import generate_safe
+from ..safety import safety_check
 from ..segment import Segment
 from ..world import clock, store
 from ..world import events as events_mod
@@ -97,19 +97,67 @@ def _briefs_block(selected: list[SelectedStory], now: datetime) -> str:
     return "\n".join(_story_brief(s, now) for s in selected)
 
 
+def _continuity_block(selected: list[SelectedStory]) -> str:
+    """Prior coverage of the re-reported stories (D4.3) — for consistent naming.
+
+    For each story the desk has aired before, the handle/angle it used and the stage
+    it last reported, so a re-report keeps the SAME name and doesn't contradict what
+    already went out. Empty (no string) when nothing here has been covered before. The
+    SAME block is shown to the writer (to stay consistent) and the continuity editor
+    (to check the draft against).
+    """
+    covered = [s for s in selected if s.prior_coverage is not None]
+    if not covered:
+        return ""
+    lines = []
+    for s in covered:
+        prior = s.prior_coverage
+        handle = prior.angle if prior.angle else s.story.title
+        lines.append(
+            f"- \"{handle}\": you last reported this at the '{prior.arc_stage}' "
+            "stage. Use the SAME name for it, and don't contradict that earlier report."
+        )
+    return "Continuity — you've reported some of these before:\n" + "\n".join(lines)
+
+
 def _build_system(
-    ctx: AssembledContext, now: datetime, anchor: str, selected: list[SelectedStory]
+    ctx: AssembledContext,
+    now: datetime,
+    anchor: str,
+    selected: list[SelectedStory],
+    *,
+    revision_note: str | None = None,
 ) -> str:
-    """The per-call system prompt: anchor's voice + the framed stories + the rules."""
+    """The per-call system prompt: anchor's voice + framed stories + continuity + rules.
+
+    `revision_note` (set on a continuity-gate retry) is prepended so the next draft
+    fixes the editor's flagged problem (the C0 regenerate-with-the-note path).
+    """
+    revision = ""
+    if revision_note:
+        revision = (
+            "A PREVIOUS DRAFT had continuity problems the editor flagged: "
+            f"{revision_note}\nFix exactly those — keep the same stories and framing "
+            "otherwise.\n\n"
+        )
+    continuity = _continuity_block(selected)
+    continuity_section = f"{continuity}\n\n" if continuity else ""
     return (
+        f"{revision}"
         "You are the writer for Settlement Radio's news desk, scripting the anchor "
         f"{anchor}. Write the SPOKEN SCRIPT ONLY — exactly the words {anchor} says "
         "aloud, with no stage directions, headings, speaker labels, or notes.\n\n"
         f"Settlement time right now: {clock.render_wall_clock(now)}.\n\n"
-        f"Sound unmistakably like {anchor}: lean on the voice, habits, and cadence in "
-        "their character card (cached above). This is a real person at the desk who "
-        "knows this settlement — not a wire-service reader.\n\n"
+        f"{anchor} is a professional news anchor: composed, precise, plain-spoken.\n"
+        "Register — formal broadcast news. Report the facts directly: who, what, when, "
+        "the numbers and the names. Short, clear, declarative sentences. AVOID "
+        "metaphor and simile, lyrical or poetic phrasing, editorial 'knowing' asides, "
+        "invented studio colour (no recurring archivists pulling up old recordings); "
+        "at most one light human note in the whole bulletin. Name the people, "
+        "institutions, and places a story is about, and refer to each by the SAME name "
+        "every time it comes up.\n\n"
         f"The stories to report this hour:\n{_briefs_block(selected, now)}\n\n"
+        f"{continuity_section}"
         "How to handle them:\n"
         "  - This is reportage — state plainly what is happening; you may report it "
         "directly (the no-reciting rule is for the two-host show, not the desk).\n"
@@ -124,10 +172,73 @@ def _build_system(
         "a natural order → a brief sign-off back to the studio. Keep every item INSIDE "
         "the fiction — never real-world places, brands, franchises, people, or events; "
         "never mention being an AI. "
-        f"Aim roughly for {settings.format_news_words_low}-"
-        f"{settings.format_news_words_high} words; let it breathe — read like spoken "
-        "news, not clipped headlines."
+        f"Aim for {settings.format_news_words_low}-{settings.format_news_words_high} "
+        "words — a full bulletin with real substance per story; pace it as a measured "
+        "news read, not a summary."
     )
+
+
+# --- Continuity gate (D4.3: the desk doesn't drift across bulletins) --------
+
+
+def _is_ok(note: str) -> bool:
+    """True when the editor's note signals no problems (starts with 'OK')."""
+    return note.strip().upper().startswith("OK")
+
+
+def _run_continuity(
+    script: str, ctx: AssembledContext, selected: list[SelectedStory], tier: str
+) -> str:
+    """One continuity pass at `tier`; returns the editor's note ('OK' / 'ISSUES…').
+
+    Checks the bulletin against the world bible (cached) and the desk's prior coverage
+    of these stories — catching a renamed story, a contradiction of an earlier report,
+    or an arc mis-framed (a finished event called upcoming, etc.).
+    """
+    continuity = _continuity_block(selected)
+    prior_section = (
+        f"\n\nThe desk's prior coverage:\n{continuity}" if continuity else ""
+    )
+    system = (
+        "You are the continuity editor for Settlement Radio's news desk. Check the "
+        "bulletin draft below against the world bible in the cached context and the "
+        "desk's prior coverage. Flag ONLY real continuity faults: renaming a story the "
+        "desk already named, contradicting an earlier report, mis-framing where a "
+        "story sits in its arc (e.g. trailing something already past), or a real-world "
+        "/ anachronistic reference. Reply with the single word OK if it is consistent, "
+        "otherwise 'ISSUES:' followed by a terse list. Do not rewrite the draft."
+        f"{prior_section}"
+    )
+    note = llm.generate(
+        f"Draft to check:\n\n{script}",
+        system=system,
+        model=tier,
+        cached_context=ctx.cached_context,
+        max_tokens=settings.news_continuity_max_tokens,
+    )
+    return note.strip()
+
+
+def _continuity_check(
+    script: str, ctx: AssembledContext, selected: list[SelectedStory]
+) -> tuple[bool, str]:
+    """Continuity verdict for the bulletin, escalating to confirm a flag (D4.3).
+
+    Runs at `news_continuity_tier`; if that smells a problem, re-checks at
+    `news_continuity_escalation_tier` to confirm before the gate spends a retry —
+    mirrors the two-DJ gate, sparing a good bulletin a false drop to evergreen.
+    Returns `(ok, note)`; the gate in `news()` acts on it.
+    """
+    tier = settings.news_continuity_tier
+    note = _run_continuity(script, ctx, selected, tier)
+    ok = _is_ok(note)
+    if not ok:
+        log.warning("format_news_continuity_flagged", tier=tier, note=note[:300])
+        tier = settings.news_continuity_escalation_tier
+        note = _run_continuity(script, ctx, selected, tier)
+        ok = _is_ok(note)
+    log.info("format_news_continuity_done", tier=tier, ok=ok)
+    return ok, note
 
 
 # --- Coverage recording (D4.0: remember what this bulletin said) ------------
@@ -180,7 +291,15 @@ def _coverage_meta(selected: list[SelectedStory]) -> dict:
 
 
 def news(now: datetime, ctx: AssembledContext) -> Segment:
-    """Generate one story-log-driven news `Segment` for `now` (D4.2)."""
+    """Generate one story-log-driven news `Segment` for `now` (D4.1–D4.3).
+
+    C0 — the GATE. Each attempt's draft must clear BOTH the content-safety check and
+    the desk continuity check (against canon + prior coverage). A safety flag re-rolls
+    a fresh draft; a continuity flag re-rolls with the editor's note fed back. Bounded
+    by `settings.news_continuity_max_attempts`; if no draft clears both, the slot drops
+    to an evergreen fallback — a flagged draft is NEVER rendered. Coverage is recorded
+    only on a clean render, so the memory reflects what actually aired.
+    """
     anchor_card = common.require_speaker(ctx, "news")
     seg_id = common.make_seg_id("news", now)
 
@@ -193,45 +312,77 @@ def news(now: datetime, ctx: AssembledContext) -> Segment:
         selected=len(selected),
     )
 
-    system = _build_system(ctx, now, anchor_card.name, selected)
-    script, safety = generate_safe(
-        lambda: llm.generate(
+    attempts = settings.news_continuity_max_attempts
+    revision_note: str | None = None  # set when a continuity flag should guide a retry
+    last_reason = "no draft cleared the gates"
+    for attempt in range(1, attempts + 1):
+        system = _build_system(
+            ctx, now, anchor_card.name, selected, revision_note=revision_note
+        )
+        script = llm.generate(
             "Write the news bulletin now.",
             system=system,
             model=settings.llm_default_tier,
             cached_context=ctx.cached_context,
             max_tokens=settings.format_news_max_tokens,
+        ).strip()
+
+        safety = safety_check(script)
+        if not safety.ok:
+            last_reason = f"safety: {safety.reason}"
+            revision_note = None  # a safety flag re-rolls fresh, not note-guided
+            log.warning(
+                "format_news_safety_flag",
+                seg_id=seg_id,
+                attempt=attempt,
+                reason=safety.reason,
+            )
+            continue
+
+        cont_ok, cont_note = _continuity_check(script, ctx, selected)
+        if not cont_ok:
+            last_reason = f"continuity: {cont_note}"
+            revision_note = cont_note  # feed the editor's note into the rewrite
+            log.warning(
+                "format_news_continuity_gate_flag", seg_id=seg_id, attempt=attempt
+            )
+            continue
+
+        # Both gates cleared — render, record coverage, return.
+        audio_path = common.render_single_voice(
+            [script], anchor_card.logical_voice, seg_id
         )
-    )
-    if not safety.ok:
-        # C0: regeneration didn't clear the safety gate — never air the flagged
-        # draft; drop this slot to a safe evergreen instead (no coverage recorded).
-        log.error("format_news_safety_fallback", seg_id=seg_id, reason=safety.reason)
-        return evergreen.evergreen_segment(
-            now,
-            fmt="news",
+        # D4.0 — remember what aired so the next bulletin can repeat/evolve/stay true.
+        _record_coverage(selected, now)
+        log.info(
+            "format_news_done",
             seg_id=seg_id,
+            attempt=attempt,
+            words=len(script.split()),
+        )
+        return Segment(
+            id=seg_id,
+            format="news",
             length_target_sec=settings.format_news_length_target_sec,
-            reason=f"safety: {safety.reason}",
+            air_time=now.isoformat(),
+            script=script,
+            audio_path=audio_path,
+            disclosure=True,
+            meta={
+                "format_template": "news",
+                "speaker": anchor_card.id,
+                "continuity_ok": True,
+                **_coverage_meta(selected),
+            },
         )
 
-    audio_path = common.render_single_voice([script], anchor_card.logical_voice, seg_id)
-
-    # D4.0 — remember what aired, so the next bulletin can repeat/evolve consistently.
-    _record_coverage(selected, now)
-
-    log.info("format_news_done", seg_id=seg_id, words=len(script.split()))
-    return Segment(
-        id=seg_id,
-        format="news",
+    # No draft cleared both gates — never air a flagged bulletin; drop to evergreen
+    # (no coverage recorded, since nothing aired).
+    log.error("format_news_gate_fallback", seg_id=seg_id, reason=last_reason)
+    return evergreen.evergreen_segment(
+        now,
+        fmt="news",
+        seg_id=seg_id,
         length_target_sec=settings.format_news_length_target_sec,
-        air_time=now.isoformat(),
-        script=script,
-        audio_path=audio_path,
-        disclosure=True,
-        meta={
-            "format_template": "news",
-            "speaker": anchor_card.id,
-            **_coverage_meta(selected),
-        },
+        reason=last_reason,
     )

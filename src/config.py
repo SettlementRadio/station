@@ -172,11 +172,15 @@ class Settings(BaseSettings):
     # segment; word-count guidance and the length-target DIAL are per format so
     # the three read as tonally distinct (a tight news desk vs. a short music bed).
     format_news_speaker_id: str = "vell"  # the single DJ on the news desk
-    format_news_headline_count: int = 3  # in-world headlines per news segment
-    format_news_words_low: int = 320
-    format_news_words_high: int = 420
-    format_news_max_tokens: int = 900
-    format_news_length_target_sec: int = 150  # ~2.5-min news bulletin; a DIAL
+    format_news_headline_count: int = 3  # legacy B5 dial; D4 uses news_story_count
+    # A full ~5-minute hourly bulletin. Spoken news runs ~140-160 wpm, and LLMs tend to
+    # undershoot a word target, so aim high (~800-1000 words → ~5-6 min) and give the
+    # generation enough tokens to reach it. `length_target_sec` is scheduler metadata
+    # (the playlist is timed on the MEASURED render, C2) — keep it ~ the real length.
+    format_news_words_low: int = 800
+    format_news_words_high: int = 1000
+    format_news_max_tokens: int = 1600
+    format_news_length_target_sec: int = 300  # ~5-min news bulletin; a DIAL
     format_music_speaker_id: str = "vell"  # the single DJ wrapping the track
     format_music_words_low: int = 130
     format_music_words_high: int = 200
@@ -411,7 +415,7 @@ class Settings(BaseSettings):
     # the bulletin connects to canon, not just the calendar — degrading to pure
     # temporal ranking when embeddings/pgvector are unavailable. `news_breaking_bonus`
     # / `news_evolve_bonus` lift breaking + freshly-developed stories in the ranking.
-    news_story_count: int = 3
+    news_story_count: int = 4
     news_target_breaking: int = 2
     news_target_trailed: int = 1
     news_target_ongoing: int = 1
@@ -422,6 +426,18 @@ class Settings(BaseSettings):
     news_canon_weight: float = 0.5
     news_breaking_bonus: float = 1.0
     news_evolve_bonus: float = 0.5
+    # D4.3 — desk continuity: the bulletin is fed each re-reported story's PRIOR
+    # coverage (the handle/angle + last stage) so it names + frames it consistently,
+    # then a continuity editor pass checks the draft against canon + that prior
+    # coverage for renames / contradictions / arc mis-framing. A flag re-rolls with
+    # the editor's note fed back, bounded by `news_continuity_max_attempts` (then the
+    # evergreen fallback — the C0 discipline). The check runs at `news_continuity_tier`
+    # and ESCALATES to `news_continuity_escalation_tier` to confirm a flag before
+    # spending a retry (mirrors the two-DJ gate, sparing a good bulletin a false drop).
+    news_continuity_max_attempts: int = 2  # drafts before falling back to evergreen
+    news_continuity_tier: str = "sonnet"  # the editor pass (CLAUDE.md routing)
+    news_continuity_escalation_tier: str = "opus"  # confirm a flag before re-rolling
+    news_continuity_max_tokens: int = 300
 
     def model_id(self, tier: str) -> str:
         """Map a logical tier ("haiku"|"sonnet"|"opus") to its real model id."""
