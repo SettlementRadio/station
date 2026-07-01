@@ -36,7 +36,7 @@ import tempfile
 from dataclasses import dataclass
 from datetime import datetime
 
-from .. import evergreen
+from .. import evergreen, freshness
 from ..config import settings
 from ..logging_setup import get_logger
 from ..providers import llm, tts
@@ -91,7 +91,11 @@ def _situation(frame: ShowFrame, ctx: AssembledContext) -> str:
 
 
 def showrunner(
-    ctx: AssembledContext, now: datetime, *, frame: ShowFrame | None = None
+    ctx: AssembledContext,
+    now: datetime,
+    *,
+    frame: ShowFrame | None = None,
+    recent_block: str = "",
 ) -> str:
     """Pick tonight's beat: ONE event/angle for the two DJs, framed for the hour.
 
@@ -100,10 +104,16 @@ def showrunner(
     these two personalities; the dynamic events/canon go in the per-call system.
     `frame` is the C1 show frame (computed once by `compose_segment`); if omitted it
     is derived from `now`, so the beat is framed for the actual time of day.
+
+    `recent_block` (D5.2) is the anti-repetition steer — recently-aired topics/angles
+    to avoid re-picking, from the airplay memory (`freshness.recent_topics_block`). It
+    goes in the per-call system (not the cached core), so the cache still hits; empty on
+    a cold start, in which case the showrunner picks freely as before.
     """
     names = _names(ctx)
     frame = frame or _frame_for(ctx, now)
     situation = _situation(frame, ctx)
+    freshness_section = f"{recent_block}\n\n" if recent_block else ""
     system = (
         "You are the showrunner for Settlement Radio, a tribute sci-fi radio "
         f"station. Choose the beat for a short on-air exchange between {names}.\n\n"
@@ -111,6 +121,7 @@ def showrunner(
         f"({frame.part_of_day}).\n"
         f"On air right now: {situation}.\n\n"
         f"What's true right now:\n{ctx.dynamic or '(nothing notable)'}\n\n"
+        f"{freshness_section}"
         "Pick exactly ONE current event or world fact for them to glance off, and a "
         "HUMAN angle — a feeling, a small concrete detail, a gentle disagreement, "
         "something one of them can't stop thinking about — not just a fact to report. "
@@ -142,6 +153,7 @@ def orchestrate(
     frame: ShowFrame | None = None,
     extra_directive: str | None = None,
     revision_note: str | None = None,
+    recent_openings: str = "",
 ) -> str:
     """Write the two-DJ exchange in one call; return speaker-labelled dialogue.
 
@@ -155,6 +167,11 @@ def orchestrate(
 
     `revision_note` (C0) carries the continuity editor's complaint from a rejected
     draft, so the rewrite fixes the named problem rather than re-rolling blind.
+
+    `recent_openings` (D5.2) is the anti-repetition steer for the FIRST line — recent
+    talk openings to NOT start like (from `freshness.recent_openings_block`). Woven in
+    beside the beat (the reserved injection point below), in the per-call system so the
+    cache still hits; empty on a cold start.
     """
     names = _names(ctx)
     label_help = " / ".join(f"{c.name}:" for c in ctx.speakers)
@@ -181,9 +198,11 @@ def orchestrate(
     # SLOT THEIR INPUTS INTO this prompt — they don't replace it — so keep the
     # showrunner→orchestrate→continuity structure intact as their injection points:
     #   * D5 (freshness): a "don't circle topics/openings aired recently: …" line
-    #     from the recent-airplay memory, woven in beside the beat.
+    #     from the recent-airplay memory, woven in beside the beat. [BUILT — D5.2:
+    #     showrunner takes recent topics; orchestrate takes recent openings here.]
     #   * D9 (DJ memory): each host's history from the event log, joined to their card.
     #   * D10 (figures/quotes): an attributable quote a host can reference.
+    freshness_section = f"{recent_openings}\n\n" if recent_openings else ""
     system = (
         "You are the writers' room for Settlement Radio, scripting a SPOKEN "
         f"on-air exchange between two hosts — {names}. Write the dialogue ONLY.\n\n"
@@ -193,6 +212,7 @@ def orchestrate(
         "match the hour above; do not write a night or dawn-handover scene unless "
         "the on-air note says so.\n\n"
         f"Tonight's beat (from the showrunner):\n{beat}\n\n"
+        f"{freshness_section}"
         f"What's true right now:\n{ctx.dynamic or '(nothing notable)'}\n\n"
         "Write a REAL conversation — two people who've shared this booth for years "
         "and are easy with each other, NOT two narrators taking turns. Make it sound "
@@ -426,7 +446,12 @@ def compose_segment(
         lead=frame.lead,
         handover=frame.is_handover,
     )
-    beat = showrunner(ctx, now, frame=frame)
+    # D5.2 — anti-repetition steers from the airplay memory, read once for this slot:
+    # recent topics/angles for the beat pick, recent talk openings for the first line.
+    # Both degrade to "" on a cold start, so a fresh station generates as it did before.
+    recent_topics = freshness.recent_topics_block(now)
+    recent_openings = freshness.recent_openings_block(now, fmt)
+    beat = showrunner(ctx, now, frame=frame, recent_block=recent_topics)
 
     attempts = settings.convo_continuity_max_attempts
     revision_note: str | None = (
@@ -441,6 +466,7 @@ def compose_segment(
             frame=frame,
             extra_directive=extra_directive,
             revision_note=revision_note,
+            recent_openings=recent_openings,
         ).strip()
 
         safety = safety_check(script)

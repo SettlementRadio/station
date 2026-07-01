@@ -248,10 +248,13 @@ class AirplayRecord:
     the next segment off recently-used ground (D5.2). Features only: the audio is GC'd
     by C2.5; this memory must OUTLIVE it.
 
-    `aired_at` is the segment's IN-WORLD air time (a naive `timestamp`, the SAME
-    timeline as `events.in_world_datetime` / `news_coverage.covered_at`), so "recently
-    on air" lines up with the buffer's air order rather than wall-clock; the caller
-    passes it (the segment's pinned `air_time`).
+    `aired_at` is the segment's BROADCAST air time — its pinned `air_time` on the
+    scheduler's real timeline (a naive `timestamp`), NOT the in-world +600y clock that
+    `events.in_world_datetime` / `news_coverage.covered_at` use. That is deliberate:
+    anti-repetition is about BROADCAST adjacency (don't loop the same opening across
+    back-to-back slots), so "recently on air" must line up with real air order, not with
+    when the referenced events happen in-world. The caller passes it (the pinned
+    `air_time`), and the freshness reads anchor on the same real `now`.
 
     DISTINCT from `NewsCoverage` (D4): that is news-specific and per-story — INTENDED
     recurrence (which story to re-report and how it evolves); this is broad and
@@ -413,8 +416,9 @@ CREATE TABLE IF NOT EXISTS news_coverage (
 -- The on-air anti-repetition memory (D5.0): one row per placed CONTENT segment — its
 -- salient features (a topic/beat handle, an opening fingerprint, a few key phrases),
 -- NOT the audio — so the writers' room (D5.2) can avoid looping the same beat / opening
--- / phrasing across 24/7 output. `aired_at` is the segment's in-world air time (same
--- naive `timestamp` timeline as events / news_coverage). Runtime accrual, but
+-- / phrasing across 24/7 output. `aired_at` is the segment's BROADCAST air time (its
+-- pinned real-timeline `air_time`, NOT the in-world clock — anti-repetition is about
+-- real air adjacency; see the AirplayRecord docstring). Runtime accrual, but
 -- PERSISTENT + BOUNDED: it survives a `seed-canon` refresh AND the C2.5 audio prune
 -- (the point — it must outlive the audio), is bounded by `prune_airplay` (its OWN
 -- sweep), and is cleared only on `reset-world` (it is in `_WORLD_TABLES`). DISTINCT
@@ -1445,15 +1449,16 @@ def recent_airplay(
     within: timedelta,
     limit: int | None = None,
 ) -> list[AirplayRecord]:
-    """Airplay records within `within` of in-world `now`, newest first (D5.0).
+    """Airplay records within `within` of broadcast `now`, newest first (D5.0).
 
     The recency window the writers' room reads (D5.2) to avoid looping — across ALL
-    formats. The window is anchored at `now` (`aired_at >= now - within`) with NO upper
-    bound, because the upcoming buffer holds segments placed AHEAD of `now`: with
-    `within` kept above `buffer_depth_hours` (settings.freshness_window_hours) the whole
-    buffer counts as "recent", which is exactly what we want to steer the next segment
-    off. `limit` caps how many rows return (newest first). Degrades to an empty list on
-    a cold start (no rows yet) — callers must handle that.
+    formats. `now` is the real broadcast time (the slot's `air_time`), the same timeline
+    `aired_at` is stored on. The window is anchored at `now` (`aired_at >= now -
+    within`) with NO upper bound, because the upcoming buffer holds segments placed
+    AHEAD of `now`: with `within` above `buffer_depth_hours` (freshness_window_hours)
+    the whole buffer counts as "recent", which is exactly what we want to steer the next
+    segment off. `limit` caps how many rows return (newest first). Degrades to an empty
+    list on a cold start (no rows yet) — callers must handle that.
     """
     sql = (
         f"SELECT {_AIRPLAY_COLUMNS} FROM airplay_history WHERE aired_at >= %s "

@@ -339,6 +339,30 @@ def test_build_system_weaves_continuity_and_revision_note():
     assert "you renamed the levee story" in system
 
 
+def test_build_system_weaves_freshness_with_d4_vs_d5_distinction():
+    # D5.2 — recent openings reach the desk prompt, and the note makes clear that
+    # repeating a STORY is fine (D4) but the WORDING must vary (D5).
+    ctx = AssembledContext(cached_context="BIBLE", dynamic="")
+    system = news._build_system(
+        ctx,
+        NOW,
+        "Vell",
+        [],
+        recent_openings=(
+            "Recent openings (open differently):\n- good evening from the desk"
+        ),
+    )
+    assert "good evening from the desk" in system  # the steer reached the prompt
+    assert "Repeating a STORY" in system  # the D4/D5 boundary is spelled out
+    assert "vary the" in system.lower()
+
+
+def test_build_system_omits_freshness_when_empty():
+    ctx = AssembledContext(cached_context="BIBLE", dynamic="")
+    system = news._build_system(ctx, NOW, "Vell", [])
+    assert "Repeating a STORY" not in system  # no dangling freshness note
+
+
 # --- Continuity gate loop (mocks Claude + TTS; no tokens, no DB) -------------
 
 

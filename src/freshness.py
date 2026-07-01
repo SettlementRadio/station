@@ -161,7 +161,7 @@ def extract_features(seg: Segment) -> store.AirplayRecord | None:
     """Build the airplay record for a placed segment, or None if it is exempt (D5.1).
 
     Returns None for exempt segments (idents/evergreen) and for a segment without a
-    pinned `air_time` (it can't be anchored on the in-world timeline). Otherwise it
+    pinned `air_time` (it can't be anchored on the broadcast timeline). Otherwise it
     extracts the topic handle, opening fingerprint, and key phrases — features only,
     never the audio.
     """
@@ -226,3 +226,89 @@ def sweep(now: datetime) -> int:
     except Exception as exc:  # noqa: BLE001 — housekeeping must not break playout
         log.warning("airplay_sweep_failed", error=str(exc))
         return 0
+
+
+# --- Reading the memory back into the writers' room (D5.2) -------------------
+# The producers call these to get a small, ready-to-inject prompt block of what aired
+# recently, so generation steers off recent ground. The block is small + variable, so
+# the caller weaves it into the PER-CALL system prompt (never the cached bible) — the
+# prompt cache still hits. Every read degrades to "" on an empty memory (cold start) or
+# a DB hiccup, so a missing memory never blocks generation.
+
+
+def _distinct(items: object, limit: int) -> list[str]:
+    """De-dupe (case-insensitively, order-preserving) up to `limit` non-empty items."""
+    seen: set[str] = set()
+    out: list[str] = []
+    for it in items:  # type: ignore[attr-defined]
+        if not it:
+            continue
+        key = it.strip().lower()
+        if key in seen:
+            continue
+        seen.add(key)
+        out.append(it.strip())
+        if len(out) >= limit:
+            break
+    return out
+
+
+def _read_recent(now: datetime, *, fmt: str | None = None) -> list[store.AirplayRecord]:
+    """The recent-airplay window for `now` (all formats, or one), best-effort."""
+    within = timedelta(hours=settings.freshness_window_hours)
+    try:
+        with store.connect() as conn:
+            if fmt is not None:
+                return store.recent_by_format(conn, now, fmt, within=within)
+            return store.recent_airplay(conn, now, within=within)
+    except Exception as exc:  # noqa: BLE001 — a missing memory must not block generation
+        log.warning("airplay_read_failed", fmt=fmt or "*", error=str(exc))
+        return []
+
+
+def _avoid_block(kind: str, items: list[str]) -> str:
+    """Format recent topic/opening items into a prompt block, mode-aware ('' empty)."""
+    if not items:
+        return ""
+    bullets = "\n".join(f"- {it}" for it in items)
+    hard = settings.freshness_mode == "avoid"
+    if kind == "topic":
+        head = (
+            "Recently on air — do NOT pick a beat that circles these topics/angles "
+            "again; choose a different one:"
+            if hard
+            else "Recently on air (these ran lately — prefer a fresh angle over these):"
+        )
+    else:  # opening
+        head = (
+            "Recent openings — do NOT open like any of these; start differently:"
+            if hard
+            else "Recent openings (how recent segments started — open differently):"
+        )
+    return f"{head}\n{bullets}"
+
+
+def recent_topics_block(now: datetime) -> str:
+    """Recent topics/beats (all formats) to steer the showrunner off (D5.2).
+
+    Returns "" when the memory is empty or freshness is disabled — the showrunner then
+    just picks freely (the cold-start path).
+    """
+    if not settings.freshness_enabled:
+        return ""
+    records = _read_recent(now)
+    topics = _distinct((r.topic for r in records), settings.freshness_recent_limit)
+    return _avoid_block("topic", topics)
+
+
+def recent_openings_block(now: datetime, fmt: str) -> str:
+    """Recent openings (scoped to `fmt`) to steer a producer's first line off (D5.2).
+
+    Format-scoped so a producer varies its OWN openings without being constrained by
+    another format's wording. "" on an empty memory / when disabled.
+    """
+    if not settings.freshness_enabled:
+        return ""
+    records = _read_recent(now, fmt=fmt)
+    openings = _distinct((r.opening for r in records), settings.freshness_recent_limit)
+    return _avoid_block("opening", openings)

@@ -17,6 +17,8 @@ test_airplay.py (D5.0); the chokepoint persistence is best-effort glue.
 
 from __future__ import annotations
 
+from datetime import datetime
+
 from src import freshness
 from src.segment import Segment
 
@@ -130,3 +132,82 @@ def test_missing_air_time_is_skipped():
     seg = _talk("**Vell:** Tonight we open.")
     seg.air_time = None
     assert freshness.extract_features(seg) is None
+
+
+# --- D5.2: reading the memory back into prompt blocks ------------------------
+
+NOW = datetime(2026, 6, 30, 21, 0)
+
+
+def _rec(topic=None, opening=None, fmt="talk"):
+    return freshness.store.AirplayRecord(
+        seg_id="x", format=fmt, aired_at=NOW, topic=topic, opening=opening
+    )
+
+
+def test_recent_topics_block_lists_distinct_topics(monkeypatch):
+    monkeypatch.setattr(
+        freshness,
+        "_read_recent",
+        lambda now, fmt=None: [
+            _rec(topic="the relay drift"),
+            _rec(topic="The Relay Drift"),  # dupe (case) — collapsed
+            _rec(topic="the harvest failure"),
+            _rec(topic=None),  # no topic — skipped
+        ],
+    )
+    block = freshness.recent_topics_block(NOW)
+    assert "the relay drift" in block
+    assert "the harvest failure" in block
+    assert block.count("- ") == 2  # de-duped, None dropped
+
+
+def test_recent_openings_block_is_format_scoped(monkeypatch):
+    captured = {}
+
+    def fake_read(now, fmt=None):
+        captured["fmt"] = fmt
+        return [_rec(opening="tonight we open on the quiet", fmt="news")]
+
+    monkeypatch.setattr(freshness, "_read_recent", fake_read)
+    block = freshness.recent_openings_block(NOW, "news")
+    assert captured["fmt"] == "news"  # scoped to the format asked for
+    assert "tonight we open on the quiet" in block
+
+
+def test_prefer_vs_avoid_mode_wording(monkeypatch):
+    monkeypatch.setattr(
+        freshness, "_read_recent", lambda now, fmt=None: [_rec(topic="the drift")]
+    )
+    monkeypatch.setattr(freshness.settings, "freshness_mode", "prefer")
+    assert "prefer" in freshness.recent_topics_block(NOW).lower()
+    monkeypatch.setattr(freshness.settings, "freshness_mode", "avoid")
+    assert "do not" in freshness.recent_topics_block(NOW).lower()
+
+
+def test_limit_caps_items_shown(monkeypatch):
+    monkeypatch.setattr(
+        freshness,
+        "_read_recent",
+        lambda now, fmt=None: [_rec(topic=f"topic {i}") for i in range(20)],
+    )
+    monkeypatch.setattr(freshness.settings, "freshness_recent_limit", 3)
+    assert freshness.recent_topics_block(NOW).count("- ") == 3
+
+
+def test_blocks_empty_when_disabled(monkeypatch):
+    monkeypatch.setattr(freshness.settings, "freshness_enabled", False)
+    # _read_recent must not even be consulted when disabled.
+    monkeypatch.setattr(
+        freshness,
+        "_read_recent",
+        lambda *a, **k: (_ for _ in ()).throw(AssertionError("should not read")),
+    )
+    assert freshness.recent_topics_block(NOW) == ""
+    assert freshness.recent_openings_block(NOW, "talk") == ""
+
+
+def test_blocks_empty_on_cold_start(monkeypatch):
+    monkeypatch.setattr(freshness, "_read_recent", lambda now, fmt=None: [])
+    assert freshness.recent_topics_block(NOW) == ""
+    assert freshness.recent_openings_block(NOW, "talk") == ""

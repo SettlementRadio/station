@@ -28,7 +28,7 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from .. import evergreen
+from .. import evergreen, freshness
 from ..config import settings
 from ..logging_setup import get_logger
 from ..providers import llm
@@ -137,6 +137,25 @@ def _continuity_block(selected: list[SelectedStory]) -> str:
     return "Continuity — you've reported some of these before:\n" + "\n".join(lines)
 
 
+def _freshness_section(recent_openings: str) -> str:
+    """The D5.2 anti-repetition block for the desk — vary WORDING, not the stories.
+
+    `recent_openings` is recent news openings to avoid (from
+    `freshness.recent_openings_block`, scoped to "news"). The note makes the D4-vs-D5
+    boundary explicit: repeating a STORY
+    across bulletins is intended (D4 drives which stories recur + how they evolve); only
+    the WORDING must stay fresh (D5). Empty (no string) on a cold start / when disabled.
+    """
+    if not recent_openings:
+        return ""
+    return (
+        f"{recent_openings}\n"
+        "Repeating a STORY across bulletins is fine and expected — but vary the "
+        "WORDING: don't open or phrase a story the way the recent bulletins above "
+        "did.\n\n"
+    )
+
+
 def _build_system(
     ctx: AssembledContext,
     now: datetime,
@@ -144,11 +163,16 @@ def _build_system(
     selected: list[SelectedStory],
     *,
     revision_note: str | None = None,
+    recent_openings: str = "",
 ) -> str:
     """The per-call system prompt: anchor's voice + framed stories + continuity + rules.
 
     `revision_note` (set on a continuity-gate retry) is prepended so the next draft
     fixes the editor's flagged problem (the C0 regenerate-with-the-note path).
+
+    `recent_openings` (D5.2) is the freshness steer — recent news openings to avoid —
+    woven in as the `_freshness_section`, in the per-call prompt so the cache still
+    hits.
     """
     revision = ""
     if revision_note:
@@ -159,6 +183,7 @@ def _build_system(
         )
     continuity = _continuity_block(selected)
     continuity_section = f"{continuity}\n\n" if continuity else ""
+    freshness_section = _freshness_section(recent_openings)
     return (
         f"{revision}"
         "You are the writer for Settlement Radio's news desk, scripting the anchor "
@@ -175,6 +200,7 @@ def _build_system(
         "every time it comes up.\n\n"
         f"The stories to report this hour:\n{_briefs_block(selected, now)}\n\n"
         f"{continuity_section}"
+        f"{freshness_section}"
         "How to handle them:\n"
         "  - This is reportage — state plainly what is happening; you may report it "
         "directly (the no-reciting rule is for the two-host show, not the desk).\n"
@@ -332,12 +358,21 @@ def news(now: datetime, ctx: AssembledContext) -> Segment:
         selected=len(selected),
     )
 
+    # D5.2 — recent news openings to vary against, read once for this bulletin (the
+    # block is stable across this slot's retries). Degrades to "" on a cold start.
+    recent_openings = freshness.recent_openings_block(now, "news")
+
     attempts = settings.news_continuity_max_attempts
     revision_note: str | None = None  # set when a continuity flag should guide a retry
     last_reason = "no draft cleared the gates"
     for attempt in range(1, attempts + 1):
         system = _build_system(
-            ctx, now, anchor_card.name, selected, revision_note=revision_note
+            ctx,
+            now,
+            anchor_card.name,
+            selected,
+            revision_note=revision_note,
+            recent_openings=recent_openings,
         )
         script = llm.generate(
             "Write the news bulletin now.",

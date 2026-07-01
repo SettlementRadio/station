@@ -27,10 +27,16 @@ def _ctx() -> AssembledContext:
 
 def _patch_common(monkeypatch):
     """Stub the model/TTS-touching steps shared by every case."""
-    monkeypatch.setattr(convo, "showrunner", lambda ctx, now, *, frame=None: "the beat")
+    monkeypatch.setattr(
+        convo, "showrunner", lambda ctx, now, *, frame=None, recent_block="": "the beat"
+    )
     monkeypatch.setattr(
         convo, "_render_turns", lambda turns, seg_id: f"/x/{seg_id}.mp3"
     )
+    # D5.2 — keep these gate tests off the DB: the freshness steers are exercised in
+    # test_freshness/test_conversation; here they're not the subject.
+    monkeypatch.setattr(convo.freshness, "recent_topics_block", lambda now: "")
+    monkeypatch.setattr(convo.freshness, "recent_openings_block", lambda now, fmt: "")
 
 
 def test_clean_draft_passes_both_gates(monkeypatch):
@@ -60,7 +66,14 @@ def test_continuity_flag_regenerates_with_note_then_falls_back(monkeypatch):
     seen_notes: list[str | None] = []
 
     def _orchestrate(
-        ctx, beat, now, *, frame=None, extra_directive=None, revision_note=None
+        ctx,
+        beat,
+        now,
+        *,
+        frame=None,
+        extra_directive=None,
+        revision_note=None,
+        recent_openings="",
     ):
         seen_notes.append(revision_note)
         return SCRIPT
@@ -88,7 +101,14 @@ def test_safety_flag_regenerates_fresh_then_succeeds(monkeypatch):
     notes: list[str | None] = []
 
     def _orchestrate(
-        ctx, beat, now, *, frame=None, extra_directive=None, revision_note=None
+        ctx,
+        beat,
+        now,
+        *,
+        frame=None,
+        extra_directive=None,
+        revision_note=None,
+        recent_openings="",
     ):
         notes.append(revision_note)
         return SCRIPT

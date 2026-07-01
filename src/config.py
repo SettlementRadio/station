@@ -482,8 +482,20 @@ class Settings(BaseSettings):
     # table can't grow forever. This memory SURVIVES `seed-canon` AND the C2.5 audio
     # prune (that is the whole point — it must outlive the audio it describes) and is
     # cleared only by the destructive `reset-world` (§2a matrix).
-    freshness_window_hours: float = 6.0  # in-world look-back for "recently on air"
+    freshness_window_hours: float = 6.0  # look-back for "recently on air"
     freshness_retention_margin: float = 4.0  # keep window × this before sweeping
+    # D5.2 — reading the memory back into generation. `freshness_enabled` is the master
+    # toggle (off => the writers' room ignores the memory, as before D5).
+    # `freshness_recent_limit` caps how many recent topics/openings a prompt shows (the
+    # block is small + variable, so it rides the per-call dynamic part, NOT the cached
+    # bible — the cache still hits). `freshness_mode` tunes the influence: "prefer" is a
+    # SOFT nudge ("prefer a different angle"), "avoid" a HARD "do not reuse these". The
+    # default is conservative (prefer + a small limit): over-constraining can starve a
+    # small canon, and the moving world (D3) is the real source of variety — D5 only
+    # keeps the *wording* from looping on top of it.
+    freshness_enabled: bool = True
+    freshness_recent_limit: int = 6  # max recent items shown in a prompt block
+    freshness_mode: str = "prefer"  # "prefer" (soft nudge) | "avoid" (hard)
 
     def model_id(self, tier: str) -> str:
         """Map a logical tier ("haiku"|"sonnet"|"opus") to its real model id."""

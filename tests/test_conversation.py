@@ -8,6 +8,9 @@ and the wrong DJ speaks, or turns vanish) and the continuity verdict reader.
 
 from __future__ import annotations
 
+from datetime import datetime
+
+from src.world.context import AssembledContext
 from src.world.store import CastMember
 from src.writers import conversation as convo
 
@@ -47,3 +50,50 @@ def test_is_ok_reads_the_continuity_verdict():
     assert convo._is_ok("OK")
     assert convo._is_ok("ok, consistent and in character")
     assert not convo._is_ok("ISSUES: Vell references a real brand")
+
+
+# --- D5.2: the freshness steer reaches the talk prompts ---------------------
+
+
+def _ctx() -> AssembledContext:
+    return AssembledContext(
+        cached_context="", dynamic="the relay is warm", speakers=CARDS
+    )
+
+
+def _capture_system(monkeypatch) -> dict:
+    """Stub convo.llm.generate to record the system prompt it was called with."""
+    seen: dict = {}
+
+    def fake_generate(user, *, system, **kwargs):
+        seen["system"] = system
+        return "Vell: hi.\nWren: hi."
+
+    monkeypatch.setattr(convo.llm, "generate", fake_generate)
+    return seen
+
+
+def test_showrunner_injects_recent_topics(monkeypatch):
+    seen = _capture_system(monkeypatch)
+    convo.showrunner(
+        _ctx(), datetime(2026, 6, 30, 21, 0), recent_block="AVOID-TOPIC-ZZZ"
+    )
+    assert "AVOID-TOPIC-ZZZ" in seen["system"]
+
+
+def test_orchestrate_injects_recent_openings(monkeypatch):
+    seen = _capture_system(monkeypatch)
+    convo.orchestrate(
+        _ctx(),
+        "the beat",
+        datetime(2026, 6, 30, 21, 0),
+        recent_openings="AVOID-OPEN-ZZZ",
+    )
+    assert "AVOID-OPEN-ZZZ" in seen["system"]
+
+
+def test_talk_prompts_omit_freshness_when_empty(monkeypatch):
+    # No recent block -> no dangling header; the prompt is the pre-D5 shape.
+    seen = _capture_system(monkeypatch)
+    convo.showrunner(_ctx(), datetime(2026, 6, 30, 21, 0), recent_block="")
+    assert "Recently on air" not in seen["system"]
