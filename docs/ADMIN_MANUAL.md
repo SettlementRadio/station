@@ -255,3 +255,49 @@ with store.connect() as c:
 The schema/split, the tick's reuse + drop-the-flagged behaviour, and the news/talk attribution are covered
 by `tests/test_figures_quotes.py` + additions to `test_world_tick.py` / `test_context.py` /
 `test_news_desk.py`; run `pytest -q`.
+
+---
+
+## D5 — Freshness / anti-repetition (the station never loops itself)
+
+A small **airplay memory** (`airplay_history`) records what aired recently — *features only* (a topic/beat
+handle, an **opening fingerprint**, a few key phrases), never the audio — so the writers' room can steer the
+next segment off recent ground: the showrunner avoids re-picking a recent beat, the talk + news producers
+avoid reusing an opening. It is DISTINCT from D4's coverage memory: D4 drives *which* stories recur; D5 keeps
+the *wording* fresh on top. Nothing new to operate — recording happens automatically at the scheduler
+chokepoint and the reads happen inside the normal `make format` / scheduler path.
+
+**Lifecycle (important):** the airplay memory **outlives the audio** — it is NOT collected by the C2.5 disk
+GC (that would defeat the point); it is bounded by its OWN sweep (`FRESHNESS_WINDOW_HOURS ×
+FRESHNESS_RETENTION_MARGIN`), folded into the top-up housekeeping. It **survives `make seed-canon`** and is
+cleared only by `make reset-world` (§2a).
+
+### See it (a few Claude calls, no TTS)
+```bash
+make freshness-demo   # four talk segments at an advancing clock, each steered off what aired before it;
+                      # prints the growing avoid-list + a distinctness check. Needs ANTHROPIC_API_KEY +
+                      # `make seed` (richer after `make world-tick`). Its airplay writes are rolled back.
+```
+
+### Config knobs (`.env`; defaults sane)
+- **`FRESHNESS_ENABLED`** — master toggle (false = the writers' room ignores the memory).
+- **`FRESHNESS_WINDOW_HOURS`** — the "recently on air" look-back (broadcast timeline). Keep it comfortably
+  ABOVE `BUFFER_DEPTH_HOURS` so the whole upcoming buffer counts as recent. Default 6.
+- **`FRESHNESS_MODE`** — `prefer` (soft nudge) vs `avoid` (hard don't-reuse). Default `prefer`.
+- **`FRESHNESS_RECENT_LIMIT`** — how many recent topics/openings a prompt block shows. Default 6.
+- **`FRESHNESS_RETENTION_MARGIN`** — the airplay sweep keeps rows for window × this, then drops them. Default 4.
+
+### Inspect / verify
+Show what the memory holds right now (most recent first):
+```bash
+python -c "
+from datetime import datetime, timedelta
+from src.world import store
+with store.connect() as c:
+    for r in store.recent_airplay(c, datetime.now(), within=timedelta(hours=24)):
+        print(f'{r.aired_at:%m-%d %H:%M}  {r.format:<5} open={r.opening!r}  topic={r.topic!r}')
+"
+```
+The store round-trip + window bounding + `reset`/`seed-canon` contract are in `tests/test_airplay.py`;
+feature extraction + the prompt-block reads in `tests/test_freshness.py`; the prompt injection into the
+showrunner/producer/news prompts in `test_conversation.py` / `test_news_desk.py`. Run `pytest -q`.

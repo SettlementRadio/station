@@ -330,7 +330,7 @@ done and Claude (chat) can generate the `_TASKS.md` now.
 | D2 Semantic Retrieval / RAG | `PHASE_D_RAG_TASKS.md` | D1 | ✅ | ✅ | **Built** (D2.0–D2.6) |
 | D3 World Engine (keystone) | `PHASE_D_WORLD_ENGINE_TASKS.md` | D1 (D2 recommended) | ✅ | ✅ | **Built** (D3.0–D3.5) |
 | D4 News Desk | `PHASE_D_NEWS_DESK_TASKS.md` | D3, D2 | ✅ | ✅ | **Built** (D4.0–D4.4) |
-| D5 Freshness / Anti-repetition | `PHASE_D_FRESHNESS_TASKS.md` | D3/D4 | ✅ | ☐ | **Ready** (D3 built; rides D4) |
+| D5 Freshness / Anti-repetition | `PHASE_D_FRESHNESS_TASKS.md` | D3/D4 | ✅ | ✅ | **Built** (D5.0–D5.3) |
 | D6 Programming + Status Console | `PHASE_D_PROGRAMMING_TASKS.md` | C2 scheduler | ✅ | ☐ | **Ready** (parallel-able) |
 | D7 Production (sound + songs) | `PHASE_D_PRODUCTION_TASKS.md` | D6 (soft→D10: artist links) | ✅ | ☐ | Blocked on D6 build |
 | D8 Commercials & Sponsorship | `PHASE_D_COMMERCIALS_TASKS.md` | D6, D7 (CM for real sponsors) | ✅ | ☐ | Blocked on D6/D7 build |

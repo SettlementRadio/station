@@ -38,6 +38,45 @@ A typical *build* session will be short, e.g.:
 
 ---
 
+## 2026-07-01 — Phase D — D5: Freshness / Anti-repetition (the station never loops itself) — D5.0–D5.3
+**Focus:** stop 24/7 output drifting into the same openings + the same beat every hour — a broad,
+cross-format on-air memory that steers generation off recently-aired ground.
+**Decisions:**
+- **A dedicated `airplay_history` table, not schedule.json / sidecars.** Those hold only the *upcoming*
+  buffer and are GC'd with the audio; the anti-repetition memory must be its own persistent, recency-
+  queryable store of *features only* (topic/beat handle, opening fingerprint, key phrases — never audio).
+- **It records on the BROADCAST timeline, not in-world.** `aired_at` is the segment's real `air_time`
+  (scheduler order), because anti-repetition is about broadcast *adjacency* (don't loop back-to-back
+  slots), NOT when the referenced events sit in the +600y world. (Corrected a D5.0 docstring that had
+  claimed in-world.)
+- **One chokepoint records everything.** Features are extracted once in the scheduler next to
+  `_write_sidecar`, so every placed content slot is captured without wiring each producer;
+  idents/evergreen/fallbacks are exempt (they're meant to repeat).
+- **Kept DISTINCT from D4, in code and in the prompt.** D4's coverage memory drives *which* stories
+  recur + *how they evolve* (intended); D5 keeps the *wording* fresh on top. The news prompt says so
+  outright ("repeating a STORY is fine — vary the WORDING").
+- **The memory outlives the audio + survives `seed-canon`.** It is bounded by its OWN sweep (window ×
+  margin), never the C2.5 disk GC; cleared only by `reset-world` (added to the §2a matrix's scopes).
+- **Conservative influence by default** (`prefer` soft, small limit): over-constraining starves a small
+  canon, and D3's moving world is the real variety source — D5 only prevents *accidental* looping.
+**Changed:** `src/world/store.py` (airplay_history schema + `record_airplay`/`recent_airplay`/
+`recent_by_format`/`prune_airplay`, in `_WORLD_TABLES`), new `src/freshness.py` (extract at the
+chokepoint + read blocks back), `src/scheduler.py` (record + sweep in the top-up housekeeping),
+`src/writers/conversation.py` (showrunner topics + orchestrate openings), `src/formats/news.py`
+(recent openings + the D4/D5 note), `src/config.py` + `.env.example` (`FRESHNESS_*`), new
+`src/freshness_demo.py` + `make freshness-demo`, README, ADMIN_MANUAL, tests
+(`test_airplay.py`, `test_freshness.py`, + injections in `test_conversation.py`/`test_news_desk.py`).
+200 tests green.
+**Why:** a station that repeats its own openings sounds broken within an hour; the memory is what lets
+the writers' room *see what it just did* and choose differently — cheap string heuristics, no extra LLM.
+**📣 Postable:** `make freshness-demo` — four talk segments at an advancing clock, each handed the
+openings before it and told to open differently; ran 4/4 distinct openings AND beats. The "steer list
+grows, the opening stays fresh" printout is a clean 20-second clip of the mechanism working.
+**Next:** D6 (programming + status console) or D9 (voice & emotion) — both Ready.
+Commit: _pending_  ·  Clips: 2026-07-01-freshness-demo.mov
+
+---
+
 ## 2026-06-30 — Phase D — D10: Figures & Quotes (the world speaks) — D10.0–D10.2 + D10.4
 **Focus:** model the invented PEOPLE a story is about and their attributable, dated quotes, then have
 the news desk + DJs reference them — turning "a fact happened" into "people in a living world saying

@@ -199,6 +199,25 @@ make world-tick      # the GENERATED path: a tick invents figures + quotes for i
 `make figures-demo` is deterministic and token-free (seeds + rolls back). Dials live under `WORLD_TICK_FIGURES_*`
 (volume + reuse) and `NEWS_QUOTES_PER_STORY` / `CONTEXT_QUOTES_LIMIT` (how many reach each surface).
 
+The station never loops itself (Phase D / D5). Round-the-clock output would drift into the same
+openings and the same beat every hour; a small **airplay memory** stops it. At the scheduler chokepoint every
+placed content segment lands one row of *features only* — a topic/beat handle, an **opening fingerprint** (first
+few spoken words, normalised so near-identical openings collide), and a few key phrases — in an `airplay_history`
+table behind the store seam ([`src/world/store.py`](src/world/store.py)), extracted cheaply (no extra LLM call)
+in [`src/freshness.py`](src/freshness.py). Before it writes, the writers' room reads that recent window back: the
+**showrunner** is steered off recently-used topics, and the **producers** (talk + news) off recent openings —
+"prefer a different angle / open differently". It is DISTINCT from D4's per-story coverage memory: D4 drives
+*which* stories recur and *how they evolve* (intended); D5 only keeps the *wording* from looping on top of that
+(the news prompt says so explicitly). The memory **outlives the audio** it describes (it is not GC'd with the
+renders — it is bounded by its own much-wider sweep) and **survives a `seed-canon` refresh**, cleared only by
+`reset-world`.
+```bash
+make freshness-demo   # four talk segments at an advancing clock; watch the openings/beats stay varied
+```
+`make freshness-demo` spends a few Claude calls per segment (no TTS, no gates) and rolls its writes back. Dials live
+under `FRESHNESS_*`: `FRESHNESS_WINDOW_HOURS` (the look-back — keep it above `BUFFER_DEPTH_HOURS`),
+`FRESHNESS_MODE` (`prefer` soft vs `avoid` hard), `FRESHNESS_RECENT_LIMIT`, and `FRESHNESS_ENABLED`.
+
 Two DJs hold a conversation, not two monologues. The conversation orchestrator
 ([`src/writers/conversation.py`](src/writers/conversation.py)) runs a light writers' room over the
 assembled context: a **showrunner** picks one beat from the current events, an **orchestrator**

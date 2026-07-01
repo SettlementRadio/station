@@ -37,7 +37,7 @@ LIQ_LOG    := $(RUN_DIR)/liquidsoap.log
 PLAYER_URL := http://127.0.0.1:8000/
 STREAM_URL := http://127.0.0.1:8000/settlement.mp3
 
-.PHONY: help generate serve air play play-convo stop status seed seed-canon reset-world demo context conversation format buffer schedule ident prune fallback health world-tick news-demo figures-demo
+.PHONY: help generate serve air play play-convo stop status seed seed-canon reset-world demo context conversation format buffer schedule ident prune fallback health world-tick news-demo figures-demo freshness-demo
 
 # B5 format default: `make format` builds a talk segment; override with FMT=news
 # or FMT=music. Pass a TOPIC=... to steer canon retrieval.
@@ -76,6 +76,7 @@ help:
 	@echo "  make world-tick run one world tick: invent + advance world stories (D3)"
 	@echo "  make news-demo show the news desk reframe stories across a simulated day (D4)"
 	@echo "  make figures-demo show the world's people speak — attributed quotes (D10)"
+	@echo "  make freshness-demo show anti-repetition keep talk openings/beats varied (D5)"
 	@echo "  make air       schedule + serve — the live scheduler-driven stream (C2)"
 
 # Seed/refresh the world-state DB from the canon bible (docs/canon/ folder, or the
@@ -122,6 +123,15 @@ news-demo:
 figures-demo:
 	@echo "==> Figures & quotes demo (D10)…"
 	$(PY) -m src.formats.figures_demo
+
+# D5: show the anti-repetition memory keep talk FRESH — generate four talk segments at an
+# advancing clock, each steered off what aired before it, and print the openings/beats +
+# a distinctness check. Spends a few Claude calls per segment (showrunner + orchestrator)
+# but NO TTS and NO gates, so it's far cheaper than `make buffer`. Its airplay writes are
+# ROLLED BACK. Needs ANTHROPIC_API_KEY + `make seed` (richer after `make world-tick`).
+freshness-demo:
+	@echo "==> Anti-repetition demo (D5)…"
+	$(PY) -m src.freshness_demo
 
 # B2 proof: render the Lumen Festival at two `now` values and show the relative
 # phrase flip ("in five days" -> "yesterday"). Needs `make seed` first.
