@@ -497,6 +497,27 @@ class Settings(BaseSettings):
     freshness_recent_limit: int = 6  # max recent items shown in a prompt block
     freshness_mode: str = "prefer"  # "prefer" (soft nudge) | "avoid" (hard)
 
+    # --- Programming (D6: named programs, dayparts, the weekly grid) ------------
+    # The station is programmed by a weekly GRID (docs/programming/grid.yaml — the
+    # human-edited source of truth; see docs/programming/README.md for the model).
+    # `program_for(now)` (src/world/programming.py) reads it and answers which named
+    # show — its hosts, framing hint, and format CLOCK — airs at an in-world wall-
+    # clock slot; D6.1 generalises framing.py off it, D6.2 wires the scheduler to it.
+    #
+    # `programming_grid_path` is the YAML source. `programming_default_program` is the
+    # reserved fallback program id returned when no slot matches, so the scheduler
+    # never stalls (its framing is the LEGACY hour-derived frame — see the grid file's
+    # `default` program and framing.program_frame). `programming_enabled` is the master
+    # switch: off => callers fall back to today's flat behaviour (a clean rollback).
+    # `programming_console_upcoming` caps how many upcoming entries the D6.3 status
+    # console prints.
+    programming_grid_path: Path = Field(
+        default=_REPO_ROOT / "docs" / "programming" / "grid.yaml"
+    )
+    programming_default_program: str = "default"
+    programming_enabled: bool = True
+    programming_console_upcoming: int = 8
+
     def model_id(self, tier: str) -> str:
         """Map a logical tier ("haiku"|"sonnet"|"opus") to its real model id."""
         ids = {

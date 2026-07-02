@@ -42,7 +42,7 @@ from ..logging_setup import get_logger
 from ..providers import llm, tts
 from ..safety import safety_check
 from ..segment import Segment
-from ..world import clock, context, framing
+from ..world import clock, context, framing, programming
 from ..world.context import AssembledContext
 from ..world.framing import ShowFrame
 from ..world.store import CastMember
@@ -72,14 +72,17 @@ class ContinuityResult:
 
 
 def _frame_for(ctx: AssembledContext, now: datetime) -> ShowFrame:
-    """The clock-driven show frame for `now`, using the two assembled hosts.
+    """The show frame for `now`, driven by the active program (D6.1).
 
-    The cards are in canon handover order (`settings.convo_speaker_ids` = night
-    host then first-light host), so the first is the night anchor and the second
-    the day anchor. Computed once per segment and passed to the room's steps.
+    `programming.program_for(now)` reads the weekly grid and returns the show on air
+    this slot — its hosts (lead-first) and framing hint — and `framing.program_frame`
+    turns that into the `ShowFrame` (who anchors, who's alongside, is-it-a-handover,
+    the situation prose). The reserved `default` program's `legacy` framing routes
+    back through the C1 two-host `show_frame`, so with the initial grid (the two
+    hosts) — or no grid at all — the frame is exactly what it was before D6.
     """
-    night_host, day_host = ctx.speakers[0].id, ctx.speakers[1].id
-    return framing.show_frame(now, night_host=night_host, day_host=day_host)
+    program = programming.program_for(now)
+    return framing.program_frame(now, program)
 
 
 def _situation(frame: ShowFrame, ctx: AssembledContext) -> str:

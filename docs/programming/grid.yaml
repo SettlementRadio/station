@@ -1,0 +1,71 @@
+# grid.yaml — Settlement Radio weekly programming grid (Phase D / D6).
+#
+# The human-edited source of truth for WHICH SHOW AIRS WHEN. Edit this file, run
+# `make seed-grid` (scoped: only the grid tables, never the world — built in D6.2),
+# and the next scheduler top-up airs it. See README.md in this folder for the full
+# model (Program / Clock / grid slot), the clock grammar, and the design decisions.
+#
+# In-world wall clock == real wall clock (the world clock shifts the YEAR only), so
+# slots are plain weekday + HH:MM-HH:MM ranges. The grid must tile the week with no
+# gaps; the reserved `default` program backstops any hole so the scheduler never stalls.
+#
+# This initial grid is BACKWARD-COMPATIBLE with the two current hosts (vell/wren) and
+# the existing framing boundaries (dawn handover 05-07, dusk handover 20-22), so the
+# generalised framing (D6.1) reproduces today's frames. More hosts (joss, kael, mira,
+# thorn, sera, the-archivist, orin, zhe — already in docs/canon/90-cast.md) and `music`
+# clocks arrive with D9 / D7 respectively.
+
+programs:
+  long_night:
+    name: "The Long Night"
+    hosts: [vell, wren]          # vell anchors solo; wren is the companion-of-record
+    framing: solo
+    daypart: deep night
+    clock: [talk, talk, news@:00]   # quiet, talk-heavy; news pinned to the hour
+
+  first_light:
+    name: "First Light"
+    hosts: [wren, vell]          # hosts[0]=incoming lead (wren), hosts[1]=outgoing (vell)
+    framing: handover            # the old dawn handover, now a boundary program
+    daypart: first light
+    clock: [talk, news@:00]
+
+  daywatch:
+    name: "Daywatch"
+    hosts: [wren, vell]          # wren anchors the waking day; vell stays on for a stretch
+    framing: solo
+    daypart: daytime
+    clock: [talk, news@:00, talk]
+
+  nightfall:
+    name: "Nightfall"
+    hosts: [vell, wren]          # hosts[0]=incoming lead (vell), hosts[1]=outgoing (wren)
+    framing: handover            # the old dusk handover, now a boundary program
+    daypart: nightfall
+    clock: [talk, news@:00]
+
+  # Reserved fallback — returned by program_for(now) when no slot matches, so the
+  # scheduler never stalls. Its clock is the weighted-rotation fallback (seeded from
+  # settings.buffer_rotation) and its framing is `legacy` — the hour-derived night/
+  # dawn/day/dusk frame (framing.show_frame), so a fallback slot behaves EXACTLY like
+  # today's flat rotation. With an empty grid the station is unchanged. (README §5.)
+  default:
+    name: "Settlement Radio"
+    hosts: [vell, wren]          # night host, then day host (legacy handover order)
+    framing: legacy
+    rotation: [talk, news]       # weighted-rotation fallback (no explicit clock)
+
+# The weekly tiling: weekday range -> time range -> program id. `daily` = all seven
+# days; ranges (mon-fri) and aliases (weekdays / weekends) are also allowed. A range
+# may wrap past midnight (22:00-05:00 = start hour through the end hour next day).
+grid:
+  daily:
+    "22:00-05:00": long_night    # night: vell solo
+    "05:00-07:00": first_light   # dawn handover: vell -> wren
+    "07:00-20:00": daywatch      # waking day: wren solo
+    "20:00-22:00": nightfall     # dusk handover: wren -> vell
+
+  # Example weekend override (illustrative; inactive until authored with real shows /
+  # D7 music / D9 hosts). Uncomment + add the referenced program to re-tile weekends:
+  # weekends:
+  #   "07:00-12:00": archive_hour   # e.g. the-archivist on the deep archives

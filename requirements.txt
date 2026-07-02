@@ -31,6 +31,10 @@ sentence-transformers>=3.0
 pydantic-settings>=2.0
 structlog>=24.1
 
+# Programming grid (D6): the weekly grid is hand-edited YAML (docs/programming/
+# grid.yaml), read by src/world/programming.py. PyYAML parses it.
+PyYAML>=6.0
+
 # Dev tooling (B0.5) — lint/format + the pre-commit gate. Not needed at runtime;
 # installed in the dev venv. See README "Engineering standards / pre-commit".
 ruff>=0.8
