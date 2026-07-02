@@ -510,13 +510,17 @@ class Settings(BaseSettings):
     # `default` program and framing.program_frame). `programming_enabled` is the master
     # switch: off => callers fall back to today's flat behaviour (a clean rollback).
     # `programming_console_upcoming` caps how many upcoming entries the D6.3 status
-    # console prints.
+    # console prints; `console_story_limit`/`console_beats_per_story` bound its (D3)
+    # story-log panel. The console (`python -m src.console` / `make console`) is
+    # STRICTLY READ-ONLY + operator-private (CLI/SSH) — never an internet endpoint.
     programming_grid_path: Path = Field(
         default=_REPO_ROOT / "docs" / "programming" / "grid.yaml"
     )
     programming_default_program: str = "default"
     programming_enabled: bool = True
     programming_console_upcoming: int = 8
+    console_story_limit: int = 6  # active stories shown in the console's story log
+    console_beats_per_story: int = 1  # newest beats shown per story in that panel
 
     def model_id(self, tier: str) -> str:
         """Map a logical tier ("haiku"|"sonnet"|"opus") to its real model id."""

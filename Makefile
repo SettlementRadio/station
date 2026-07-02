@@ -37,7 +37,7 @@ LIQ_LOG    := $(RUN_DIR)/liquidsoap.log
 PLAYER_URL := http://127.0.0.1:8000/
 STREAM_URL := http://127.0.0.1:8000/settlement.mp3
 
-.PHONY: help generate serve air play play-convo stop status seed seed-canon reset-world demo context conversation format buffer schedule ident prune fallback health world-tick news-demo figures-demo freshness-demo
+.PHONY: help generate serve air play play-convo stop status console seed seed-canon reset-world demo context conversation format buffer schedule ident prune fallback health world-tick news-demo figures-demo freshness-demo
 
 # B5 format default: `make format` builds a talk segment; override with FMT=news
 # or FMT=music. Pass a TOPIC=... to steer canon retrieval.
@@ -60,7 +60,8 @@ help:
 	@echo "  make generate  write a fresh segment for the current time"
 	@echo "  make serve     start Icecast + Liquidsoap (loops newest segment)"
 	@echo "  make stop      stop Icecast + Liquidsoap"
-	@echo "  make status    show what's running"
+	@echo "  make status    show what's running (playout pids + mount)"
+	@echo "  make console   read-only station status: on-air/next, buffer, story log (D6.3)"
 	@echo "  make seed-canon  refresh the world from docs/canon/ (safe; keeps tick state)"
 	@echo "  make reset-world DESTRUCTIVE full world+canon wipe + rebuild (warns/confirms)"
 	@echo "  make demo      show the progressing-event relative-time flip (B2)"
@@ -252,3 +253,10 @@ status:
 	@echo "Icecast    : $$(pgrep -f 'icecast -c config/icecast.xml' >/dev/null && echo running || echo stopped)"
 	@echo "Liquidsoap : $$(pgrep -f 'liquidsoap config/radio.liq' >/dev/null && echo running || echo stopped)"
 	@printf "Mount      : "; curl -s -o /dev/null --max-time 2 -w "%{http_code} %{content_type} (000 = down)\n" $(STREAM_URL) 2>/dev/null; echo
+
+# Read-only operator status console (D6.3): on-air/next, buffer runway, last-run
+# heartbeat, the D3 story log, cost rollup — all from existing state, mutating
+# nothing. PRIVATE (CLI/SSH only), never an internet endpoint. Complements `status`
+# (which shows the playout processes) — this shows the PROGRAMMING/world state.
+console:
+	@$(PY) -m src.console
