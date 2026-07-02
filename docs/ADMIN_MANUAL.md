@@ -301,3 +301,83 @@ with store.connect() as c:
 The store round-trip + window bounding + `reset`/`seed-canon` contract are in `tests/test_airplay.py`;
 feature extraction + the prompt-block reads in `tests/test_freshness.py`; the prompt injection into the
 showrunner/producer/news prompts in `test_conversation.py` / `test_news_desk.py`. Run `pytest -q`.
+
+---
+
+## D6 — Programming backbone + status console (the station is programmed, not a flat loop)
+
+The station now runs a **weekly programming grid**: each in-world hour maps to a **named program**
+(*The Long Night*, *First Light*, *Daywatch*, *Nightfall*) with its own **hosts**, **framing** (solo /
+handover), and a **clock** — a real-radio-style format sequence with **run-lengths** (`music x3` = a
+three-song sweep) and **pinned top-of-hour slots** (`news@:00`). The scheduler reads the grid at each
+slot instead of cycling a flat rotation, and routes the program's hosts into generation (so day news is
+anchored by the day host, etc.). Framing is driven by the active program (N hosts, not two hardcoded).
+
+### Edit the grid (the human-edited source of truth)
+The grid is a hand-edited YAML file — **the only thing you edit** (full management via a web editor is
+Phase E). Workflow mirrors the bible: **edit → live** (no re-seed, no restart — it's mtime-reloaded).
+```bash
+$EDITOR docs/programming/grid.yaml     # add/rename a program, retune a clock, move a slot
+```
+Shape (see `docs/programming/README.md` for the full model — programs, the clock grammar, the tiling):
+```yaml
+programs:
+  daywatch:
+    name: "Daywatch"
+    hosts: [wren, vell]              # cast ids (docs/canon/90-cast.md); hosts[0] = lead/anchor
+    framing: solo                    # solo | handover | ensemble | legacy (the default program)
+    clock: [talk, news@:00, talk]    # the hour-clock: sequence + run-lengths + pinned slots
+grid:
+  daily:                             # daily | weekdays | weekends | mon-fri | sat | mon,wed
+    "07:00-20:00": daywatch          # weekday range -> HH:MM-HH:MM (may wrap midnight) -> program id
+```
+Rules the grid must respect: it should **tile the week with no gaps** (a reserved `default` program
+backstops any hole so the scheduler never stalls), and each `stem`/program id is unique. Formats are the
+`formats.FORMATS` keys (`talk`/`news`; `music` airs from D7). Markers (`sting`) are inert until D7.
+
+### See it (token-free)
+```bash
+make programming-demo   # the weekly daypart map, the clock walking across the dawn boundary (pinned
+                        # news landing on the hour), run-lengths, and the console + now-playing feed.
+```
+
+### Operator status console (private; read-only)
+A CLI that shows the live station state — **operator-only, never internet-exposed** (opposite of the
+public feed below). Reads existing state, mutates nothing.
+```bash
+make console            # or: python -m src.console
+```
+Panels: **on air / next** (program · format · hosts · duration), **buffer** runway (reuses the health
+calc), **last run** heartbeat, the **D3 story log** (active stories + newest beats), and a **cost**
+rollup (omitted until the jobs persist one). Degrades gracefully if the DB is down. This is distinct
+from `make status`, which shows the playout processes + mount.
+
+### Public now-playing feed (for the web player)
+A small JSON the C8 web player reads — **public-safe fields only** (on-now / next + program + hosts +
+the AI-disclosure line), never operator/internal state. The scheduler refreshes it on every top-up; run
+it standalone to write + inspect:
+```bash
+make now-playing        # writes + prints segments/nowplaying.json
+cat segments/nowplaying.json
+```
+The disclosure line is sourced from `src/disclosure.py` and kept identical to `web/src/lib/disclosure.ts`
+(air and screen agree — a hard rule).
+
+### Config knobs (`.env`; defaults sane)
+- **`PROGRAMMING_ENABLED`** — master switch. `false` = rollback to the flat `BUFFER_ROTATION` (pre-D6);
+  `true` = the grid drives what/who airs, and `BUFFER_ROTATION` becomes only the default program's mix.
+- **`PROGRAMMING_GRID_PATH`** — the grid YAML (default `docs/programming/grid.yaml`).
+- **`PROGRAMMING_DEFAULT_PROGRAM`** — the reserved never-stall fallback program id (default `default`).
+- **`PROGRAMMING_CONSOLE_UPCOMING`** / **`CONSOLE_STORY_LIMIT`** / **`CONSOLE_BEATS_PER_STORY`** — console panel sizes.
+- **`NOWPLAYING_FEED_PATH`** / **`NOWPLAYING_NEXT_COUNT`** — where the public feed is written + how many "next" items.
+
+### What survives a re-seed
+The grid is **config, not world**: `reset-world` leaves it alone (git is its backup); `seed-canon`
+leaves it alone. It has no DB rows in Phase D — `program_for` reads the YAML directly (the DB-table
+projection + `make seed-grid` land in Phase E when the web editor needs a write target).
+
+### Inspect / verify
+`program_for` boundaries + whole-week tiling and the generalised framing (two-host parity) are in
+`tests/test_programming.py`; the scheduler airing the grid (clocks, pins, host routing) in
+`tests/test_scheduler_grid.py`; the console + feed (read-only, public-safe allow-list) in
+`tests/test_console.py` / `tests/test_nowplaying.py`. Run `pytest -q`.

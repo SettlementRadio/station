@@ -36,7 +36,7 @@ from datetime import datetime
 from . import health
 from .config import settings
 from .logging_setup import get_logger
-from .scheduler import _duration_of, _end_of, _load_state
+from .scheduler import _duration_of, _load_state, onair_hosts, split_schedule
 from .world import programming, store
 
 log = get_logger(__name__)
@@ -62,15 +62,14 @@ def _age(sec: float) -> str:
 
 
 def _hosts_for(entry: dict) -> str:
-    """The hosts on air for an entry, from the programming grid (ids; best-effort)."""
-    at = entry.get("air_time")
-    if not at:
+    """The hosts actually on air for an entry (the SAME slice the D6.4 feed shows)."""
+    if not entry.get("program"):  # idents etc. carry no program -> no hosts
         return "—"
     try:
-        prog = programming.program_for(datetime.fromisoformat(at))
+        prog = programming.program_for(datetime.fromisoformat(entry["air_time"]))
     except Exception:  # noqa: BLE001 — the console never fails on a display lookup
         return "—"
-    return ", ".join(prog.hosts) or "—"
+    return ", ".join(onair_hosts(prog, entry.get("format"))) or "—"
 
 
 def _entry_line(entry: dict, *, marker: str = "  ") -> str:
@@ -90,19 +89,7 @@ def _entry_line(entry: dict, *, marker: str = "  ") -> str:
 
 def now_next_lines(now: datetime, state: dict) -> list[str]:
     """ON AIR now + the next N upcoming entries, from the live schedule."""
-    entries = sorted(state.get("entries", []), key=lambda e: e.get("air_time") or "")
-    current: dict | None = None
-    upcoming: list[dict] = []
-    for e in entries:
-        try:
-            start = datetime.fromisoformat(e["air_time"])
-            end = _end_of(e)
-        except (KeyError, ValueError):
-            continue
-        if start <= now < end and current is None:
-            current = e
-        elif start >= now:
-            upcoming.append(e)
+    current, upcoming = split_schedule(now, state)
 
     lines: list[str] = []
     if current is not None:

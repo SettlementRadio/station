@@ -38,6 +38,47 @@ A typical *build* session will be short, e.g.:
 
 ---
 
+## 2026-07-02 — Phase D — D6: Programming backbone + status console — D6.0–D6.5
+**Focus:** turn "a folder of clips on a flat rotation" into a *programmed station* — a weekly grid of
+named programs (hosts, framing, an hour-clock) the scheduler reads, a private operator console, and a
+public now-playing feed for the web player.
+**Decisions:**
+- **The grid is a hand-edited YAML** (`docs/programming/grid.yaml`) read directly by `program_for(now)`
+  — the config-file path. The **DB-table projection + `make seed-grid` are deferred to Phase E**, when
+  the web grid editor needs a write target; both sit behind the one `program_for` seam, so storage can
+  evolve without any caller changing. (Reconciled the D6.0 design doc to say this, not "DB now.")
+- **The clock is an explicit sequence with run-lengths + pinned slots**, not a weighted ratio — that's
+  the only shape that expresses a *dedicated music block* (`music x3`) vs *music interspersed*, plus
+  `news@:00` top-of-hour. Pins fire on **crossing** the hour on the CONTINUOUS air timeline (a global
+  cursor in `schedule.json`), so they land at the top of the hour even across a program boundary — not
+  per-program (that skipped the boundary hour's news).
+- **`part_of_day` stays hour-derived; the program drives hosts + handover.** This is what makes the
+  generalised `framing.program_frame` reproduce the two-host C1 frame EXACTLY for the shipped grid
+  (a per-hour parity test), so D1–D5 are untouched. The `default` program's `legacy` framing routes
+  straight back through `show_frame`.
+- **`programming_enabled` is the master switch / clean rollback** to the flat `buffer_rotation`; when on,
+  `buffer_rotation` is only the default program's fallback mix — one source of truth, not two fighting.
+- **Two strictly separate surfaces (audit fix): private console vs public feed.** The console
+  (`make console`, CLI/SSH only) shows internal state (story log, buffer, health, cost); the feed
+  (`segments/nowplaying.json`) is an explicit **allow-list** of public-safe fields (on-now/next +
+  program + hosts + disclosure), never internal state. One shared `split_schedule` + `onair_hosts` so
+  the two never disagree.
+**Changed:** new `src/world/programming.py` (`program_for`, `next_format`), generalised
+`src/world/framing.py`, `scheduler.py` (grid-driven selection + per-program/global clock cursors +
+`split_schedule`/`onair_hosts`), new `src/console.py` + `src/nowplaying.py` + `src/programming_demo.py`;
+`docs/programming/{README.md,grid.yaml}`; config + `.env.example` + Makefile (`console`, `now-playing`,
+`programming-demo`) + README + ADMIN_MANUAL; tests `test_programming.py`, `test_scheduler_grid.py`,
+`test_console.py`, `test_nowplaying.py`. `pytest` 234 green, ruff clean.
+**Why:** a real station is programmed — the grid is what lets a 3-hour overnight block and a top-of-hour
+news share one code path, and what D7 (sound design per daypart) + D8 (ad-break cadence) + D9 (a bigger
+cast) build on. Keeping the read surfaces split is the public/private boundary the launch depends on.
+**📣 Postable:** `make programming-demo` — a token-free screen of the grid: programs + hosts change by
+daypart, `news@:00` lands on the hour, run-lengths (a 3-song sweep vs interspersed), and the console +
+public feed rendered from it. Good "it's a real station now" clip.
+**Next:** D7 (production layer: sound design + songs keyed to the dayparts D6 built) — or pivot to the
+C server track (deploy) per the local-vs-server discussion.
+Commit: (uncommitted) · Clips: (none yet — `make programming-demo`)
+
 ## 2026-07-01 — Phase D — D5: Freshness / Anti-repetition (the station never loops itself) — D5.0–D5.3
 **Focus:** stop 24/7 output drifting into the same openings + the same beat every hour — a broad,
 cross-format on-air memory that steers generation off recently-aired ground.

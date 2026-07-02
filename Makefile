@@ -7,6 +7,8 @@
 #   make play-convo generate a two-DJ conversation + serve it (B4; see note below).
 #   make stop       Stop Icecast + Liquidsoap (no orphans left behind).
 #   make status     Show what's running and the mount state.
+#   make console    Read-only operator status: on-air/next, buffer, story log (D6.3).
+#   make now-playing Write + print the PUBLIC now-playing feed for the web player (D6.4).
 #   make seed-canon Refresh the world from the canon bible (safe; keeps tick state).
 #   make reset-world DESTRUCTIVE full world+canon wipe + rebuild (warns/confirms).
 #   make demo       Show the progressing-event relative-time flip (B2; needs seed).
@@ -37,7 +39,7 @@ LIQ_LOG    := $(RUN_DIR)/liquidsoap.log
 PLAYER_URL := http://127.0.0.1:8000/
 STREAM_URL := http://127.0.0.1:8000/settlement.mp3
 
-.PHONY: help generate serve air play play-convo stop status console seed seed-canon reset-world demo context conversation format buffer schedule ident prune fallback health world-tick news-demo figures-demo freshness-demo
+.PHONY: help generate serve air play play-convo stop status console now-playing seed seed-canon reset-world demo context conversation format buffer schedule ident prune fallback health world-tick news-demo figures-demo freshness-demo programming-demo
 
 # B5 format default: `make format` builds a talk segment; override with FMT=news
 # or FMT=music. Pass a TOPIC=... to steer canon retrieval.
@@ -62,6 +64,7 @@ help:
 	@echo "  make stop      stop Icecast + Liquidsoap"
 	@echo "  make status    show what's running (playout pids + mount)"
 	@echo "  make console   read-only station status: on-air/next, buffer, story log (D6.3)"
+	@echo "  make now-playing write + print the public now-playing feed (D6.4)"
 	@echo "  make seed-canon  refresh the world from docs/canon/ (safe; keeps tick state)"
 	@echo "  make reset-world DESTRUCTIVE full world+canon wipe + rebuild (warns/confirms)"
 	@echo "  make demo      show the progressing-event relative-time flip (B2)"
@@ -78,6 +81,7 @@ help:
 	@echo "  make news-demo show the news desk reframe stories across a simulated day (D4)"
 	@echo "  make figures-demo show the world's people speak — attributed quotes (D10)"
 	@echo "  make freshness-demo show anti-repetition keep talk openings/beats varied (D5)"
+	@echo "  make programming-demo show the weekly grid: programs/hosts by daypart (D6; token-free)"
 	@echo "  make air       schedule + serve — the live scheduler-driven stream (C2)"
 
 # Seed/refresh the world-state DB from the canon bible (docs/canon/ folder, or the
@@ -260,3 +264,17 @@ status:
 # (which shows the playout processes) — this shows the PROGRAMMING/world state.
 console:
 	@$(PY) -m src.console
+
+# Public now-playing / program-info feed (D6.4): write the small JSON the C8 web
+# player reads (on-now/next + program + hosts + disclosure) and print it. PUBLIC-SAFE
+# — an allow-list of publishable fields only, never operator/internal state. The
+# scheduler also refreshes it on every top-up; this target is for standalone checks.
+now-playing:
+	@$(PY) -m src.nowplaying
+
+# Programming backbone demo (D6.5): shows the weekly grid drive named programs +
+# hosts + framing by daypart, the per-program clock (run-lengths, pinned top-of-hour
+# news), and the console + now-playing feed rendering from it. Token-free (pure reads;
+# no Claude/TTS), DB-optional (host names resolve from the cast if a DB is reachable).
+programming-demo:
+	@$(PY) -m src.programming_demo

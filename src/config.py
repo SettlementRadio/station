@@ -521,6 +521,14 @@ class Settings(BaseSettings):
     programming_console_upcoming: int = 8
     console_story_limit: int = 6  # active stories shown in the console's story log
     console_beats_per_story: int = 1  # newest beats shown per story in that panel
+    # D6.4 — the PUBLIC now-playing / program-info feed for the C8 web player
+    # (src/nowplaying.py). A small JSON written beside the schedule, refreshed each
+    # scheduler top-up, carrying ONLY public-safe fields (on-now/next + program +
+    # hosts + disclosure) — never operator/internal state (that's the console above).
+    nowplaying_feed_path: Path = Field(
+        default=_REPO_ROOT / "segments" / "nowplaying.json"
+    )
+    nowplaying_next_count: int = 3  # how many upcoming items the public feed lists
 
     def model_id(self, tier: str) -> str:
         """Map a logical tier ("haiku"|"sonnet"|"opus") to its real model id."""

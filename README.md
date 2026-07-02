@@ -42,6 +42,25 @@ ahead of air from a living world-state (canon, cast, an event timeline, and a wo
 around the clock. Segment length is a parameter, so the same pipeline serves an overnight block or
 a near-live drop. Details in [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
 
+## Programming the station
+The station is a **programmed weekly grid**, not a flat loop. Each in-world hour maps to a **named
+program** (*The Long Night*, *First Light*, *Daywatch*, *Nightfall*) with its own hosts, framing, and a
+**clock** — a real-radio format sequence with run-lengths (`music x3` = a three-song sweep) and pinned
+top-of-hour slots (`news@:00`). The scheduler reads the grid at each slot and routes the program's hosts
+into generation, so *who* and *what* airs change by daypart.
+
+- **Edit the grid** — the human-edited source of truth is one YAML file,
+  [`docs/programming/grid.yaml`](docs/programming/grid.yaml) (model + clock grammar in
+  [`docs/programming/README.md`](docs/programming/README.md)). Edit → live (reloaded on change, no
+  restart). Full grid *management* (a drag-the-grid web editor) is **Phase E**; in Phase D you edit the file.
+- **See it, token-free** — `make programming-demo` prints the weekly daypart map, the clock walking across
+  a program boundary (pinned news landing on the hour), run-lengths, and the console + feed.
+- **Operator console** (private, read-only) — `make console` shows on-air/next, buffer runway, the
+  last-run heartbeat, and the world story log. Never internet-exposed.
+- **Public now-playing feed** — `make now-playing` writes `segments/nowplaying.json` (refreshed on every
+  scheduler top-up): the public-safe subset (on-now/next + program + hosts + AI-disclosure line) the web
+  player reads. The player UI itself is C8.
+
 ## Run it locally
 The station backend (the Python pipeline + Liquidsoap playout) runs on macOS (Apple Silicon)
 with Homebrew. Generation and playout are decoupled, so you can generate a segment, then serve it.

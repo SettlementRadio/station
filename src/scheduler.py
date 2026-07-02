@@ -141,6 +141,31 @@ def _end_of(entry: dict) -> datetime:
     )
 
 
+def split_schedule(now: datetime, state: dict) -> tuple[dict | None, list[dict]]:
+    """Partition the live schedule at `now`: (current on-air entry, upcoming entries).
+
+    A pure read over a loaded state dict — the SHARED source for the D6.3 operator
+    console and the D6.4 public now-playing feed, so both agree on what's "on now" vs
+    "next". Entries whose air window has fully passed are dropped; the current one is
+    the entry whose `[air_time, end)` contains `now`; upcoming are those starting at/
+    after `now`, in air order.
+    """
+    entries = sorted(state.get("entries", []), key=lambda e: e.get("air_time") or "")
+    current: dict | None = None
+    upcoming: list[dict] = []
+    for e in entries:
+        try:
+            start = datetime.fromisoformat(e["air_time"])
+            end = _end_of(e)
+        except (KeyError, ValueError):
+            continue
+        if start <= now < end and current is None:
+            current = e
+        elif start >= now:
+            upcoming.append(e)
+    return current, upcoming
+
+
 def _write_playlist(entries: list[dict]) -> Path:
     """Write the ordered upcoming audio paths for Liquidsoap to re-read.
 
@@ -206,6 +231,21 @@ def _program_speakers(program: Program, name: str) -> list[str] | None:
     if need > 0 and len(hosts) >= need:
         return hosts[:need]
     return None
+
+
+def onair_hosts(program: Program, fmt: str) -> list[str]:
+    """The cast ids actually on air for `fmt` under `program` — the DISPLAY answer.
+
+    The single source the D6.3 console and the D6.4 feed both use to name who's on air,
+    so they never disagree. Same routing as `_program_speakers` (talk = both hosts, a
+    single-voice news/music desk = the lead), but always returns concrete ids: it falls
+    back to the format's own default cast when the program under-specifies, and to the
+    program's hosts for a non-registry format.
+    """
+    if fmt not in FORMATS:  # a non-registry slot (e.g. an ident) -> the show's cast
+        return list(program.hosts)
+    routed = _program_speakers(program, fmt)
+    return routed if routed is not None else list(FORMATS[fmt].speaker_ids())
 
 
 # --- The top-up: refill the rolling buffer to depth -------------------------
@@ -429,6 +469,16 @@ def top_up(now: datetime | None = None) -> list[dict]:
     # wider) keep window. This is NOT the disk GC above — the freshness memory must
     # OUTLIVE the audio it describes; it just can't grow forever on a 24/7 station.
     sweep_airplay(now)
+
+    # D6.4 — refresh the PUBLIC now-playing feed from the freshly-saved schedule, so
+    # the web player tracks the air as it advances. Best-effort: a failure here must
+    # never break a top-up (the air is fed; the feed is a read-side convenience).
+    try:
+        from . import nowplaying
+
+        nowplaying.write_feed(now)
+    except Exception as exc:  # noqa: BLE001 — the feed must not break playout
+        log.error("nowplaying_write_error", error=str(exc))
 
     return upcoming
 

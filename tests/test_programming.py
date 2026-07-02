@@ -13,7 +13,7 @@ written fixture and pin the mapping directly (no DB, no Claude/TTS).
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timedelta
 
 import pytest
 from src.config import settings
@@ -163,6 +163,17 @@ def test_shipped_grid_tiles_the_weekday_with_expected_programs(real_grid):
     }
     for h in range(24):
         assert programming.program_for(_mon(h)).id == expected[h], f"hour {h}"
+
+
+def test_shipped_grid_tiles_the_whole_week_with_no_gaps(real_grid):
+    """Every (weekday, hour) resolves to a REAL program — the default fills no hole."""
+    default = settings.programming_default_program
+    base = datetime(2026, 6, 22)  # a Monday
+    for day in range(7):
+        for hour in range(24):
+            now = base + timedelta(days=day, hours=hour)
+            prog = programming.program_for(now)
+            assert prog.id != default, f"gap at weekday {now.weekday()} hour {hour}"
 
 
 def test_program_frame_matches_legacy_show_frame_across_the_day(real_grid):

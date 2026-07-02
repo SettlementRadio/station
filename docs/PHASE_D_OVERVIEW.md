@@ -331,8 +331,8 @@ done and Claude (chat) can generate the `_TASKS.md` now.
 | D3 World Engine (keystone) | `PHASE_D_WORLD_ENGINE_TASKS.md` | D1 (D2 recommended) | ✅ | ✅ | **Built** (D3.0–D3.5) |
 | D4 News Desk | `PHASE_D_NEWS_DESK_TASKS.md` | D3, D2 | ✅ | ✅ | **Built** (D4.0–D4.4) |
 | D5 Freshness / Anti-repetition | `PHASE_D_FRESHNESS_TASKS.md` | D3/D4 | ✅ | ✅ | **Built** (D5.0–D5.3) |
-| D6 Programming + Status Console | `PHASE_D_PROGRAMMING_TASKS.md` | C2 scheduler | ✅ | ☐ | **Ready** (parallel-able) |
-| D7 Production (sound + songs) | `PHASE_D_PRODUCTION_TASKS.md` | D6 (soft→D10: artist links) | ✅ | ☐ | Blocked on D6 build |
+| D6 Programming + Status Console | `PHASE_D_PROGRAMMING_TASKS.md` | C2 scheduler | ✅ | ✅ | **Built** (D6.0–D6.5) |
+| D7 Production (sound + songs) | `PHASE_D_PRODUCTION_TASKS.md` | D6 (soft→D10: artist links) | ✅ | ☐ | **Ready** (D6 built) |
 | D8 Commercials & Sponsorship | `PHASE_D_COMMERCIALS_TASKS.md` | D6, D7 (CM for real sponsors) | ✅ | ☐ | Blocked on D6/D7 build |
 | D9 Voice & Emotion + Roster | `PHASE_D_VOICE_ROSTER_TASKS.md` | D3 (memory); C6 (emotion); D10 (guests) | ✅ | ☐ | **Ready** (D3 built; +C6 for emotion) |
 | D10 Figures & Quotes | `PHASE_D_FIGURES_QUOTES_TASKS.md` | D3 (D2 rec.; D9 for soundbites) | ✅ | ✅ | **Built** (D10.0–D10.2, D10.4; D10.3 soundbite awaits D9) |
