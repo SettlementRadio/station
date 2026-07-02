@@ -30,7 +30,7 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 
 import yaml
@@ -328,4 +328,86 @@ def _default_program(grid: _Grid) -> Program:
     )
 
 
-__all__ = ["ClockStep", "Program", "program_for", "reload"]
+# --- Walking a program's clock (D6.2: the scheduler's format selection) ------
+
+
+def _sequence_atoms(program: Program) -> list[ClockStep]:
+    """The program's NON-pinned clock steps, expanded by run-length (markers kept).
+
+    `[talk, music x3, sting, news@:00]` → `[talk, music, music, music, sting]` (the
+    pinned `news@:00` is pulled out — it fires via the pin path, not the sequence).
+    """
+    atoms: list[ClockStep] = []
+    for step in program.clock:
+        if step.pin_minute is not None:
+            continue
+        atoms.extend([step] * max(1, step.count))
+    return atoms
+
+
+def next_format(
+    program: Program,
+    air_cursor: datetime,
+    pstate: dict,
+    prev_cursor: datetime | None = None,
+) -> tuple[str | None, dict]:
+    """Pick the next format to air for `program` at `air_cursor`; advance its clock.
+
+    Pure + deterministic, so the scheduler stays thin and this is unit-testable. Given
+    the program's per-program clock state `pstate` (persisted in `schedule.json` across
+    top-up runs) and the GLOBAL previous air-cursor `prev_cursor` (the last slot's time,
+    for pin-crossing detection), returns `(format_name | None, new_pstate)`:
+
+      1. **Pinned steps first** — a `news@:00` fires when the air-cursor CROSSES its
+         top-of-hour instant (`prev_cursor` was before it, this cursor at/after), so it
+         lands at the top of the hour once, wherever the sequence otherwise sits. The
+         crossing rides the CONTINUOUS air timeline (`prev_cursor`, global), not the
+         per-program cursor — so a pin at a program boundary still fires. A cold start
+         (`prev_cursor is None`) waits for the next crossing, not firing mid-hour.
+      2. **The sequence** — the non-pinned steps in order, run-lengths honoured (a
+         `music x3` sweep airs three in a row), skipping D7 sound-design markers
+         (inert today). The `seq` cursor wraps and continues across top-ups; each
+         program keeps its own, so a program resumes where it left off.
+      3. **Weighted-rotation fallback** — a program with no usable sequence (no clock,
+         or all markers/pins) cycles its `rotation`, else `settings.buffer_rotation`
+         (the default program's mix). Returns `None` only if even that is empty.
+
+    `pstate` shape: `{"seq": int, "rot": int}` (per-program). The pin timeline lives in
+    the scheduler as one global cursor, passed in as `prev_cursor`. (A gap spanning
+    several hours fires only the most recent crossing — stale hourly items aren't
+    backfilled.)
+    """
+    state = {"seq": int(pstate.get("seq", 0)), "rot": int(pstate.get("rot", 0))}
+
+    # 1. Pins — fire on the crossing of the pin's most-recent top-of-hour instant.
+    if prev_cursor is not None:
+        for step in program.clock:
+            if step.pin_minute is None:
+                continue
+            cand = air_cursor.replace(minute=step.pin_minute, second=0, microsecond=0)
+            if cand > air_cursor:  # this hour's instant is still ahead -> use last hour
+                cand -= timedelta(hours=1)
+            if prev_cursor < cand <= air_cursor:
+                return step.format, state
+
+    # 2. The non-pinned sequence, skipping markers (at most one full cycle).
+    atoms = _sequence_atoms(program)
+    if atoms:
+        n = len(atoms)
+        for _ in range(n):
+            step = atoms[state["seq"] % n]
+            state["seq"] = (state["seq"] + 1) % n
+            if not step.is_marker:
+                return step.format, state
+        # All atoms are markers — fall through to the rotation fallback.
+
+    # 3. Weighted-rotation fallback.
+    rotation = list(program.rotation) or list(settings.buffer_rotation)
+    if not rotation:
+        return None, state
+    name = rotation[state["rot"] % len(rotation)]
+    state["rot"] = (state["rot"] + 1) % len(rotation)
+    return name, state
+
+
+__all__ = ["ClockStep", "Program", "next_format", "program_for", "reload"]

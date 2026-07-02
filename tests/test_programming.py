@@ -205,3 +205,76 @@ def test_solo_program_with_one_host_has_no_companion(grid_file):
     # a single-host situation still resolves with no dangling placeholder
     text = framing.resolve_situation(frame, {"the-archivist": "The Archivist"})
     assert "The Archivist" in text and "{" not in text and "}" not in text
+
+
+# --- next_format: walking a program's clock (D6.2, pure) --------------------
+
+
+def _program(clock=None, rotation=None):
+    """Build a bare Program with a parsed clock — for the pure next_format tests."""
+    steps = tuple(programming._parse_clock_token(t) for t in (clock or []))
+    return programming.Program(
+        id="p",
+        name="P",
+        hosts=("vell", "wren"),
+        framing="solo",
+        daypart="",
+        clock=steps,
+        rotation=tuple(rotation or []),
+    )
+
+
+def _walk(program, times):
+    """Run next_format across a series of air-cursors, threading state + prev cursor."""
+    state: dict = {}
+    out = []
+    prev = None
+    for t in times:
+        name, state = programming.next_format(program, t, state, prev)
+        out.append(name)
+        prev = t
+    return out
+
+
+def test_next_format_honours_run_lengths_in_order():
+    prog = _program(clock=["talk", "music x2"])  # sequence: talk, music, music
+    times = [_mon(14).replace(minute=15 + i) for i in range(4)]
+    assert _walk(prog, times) == ["talk", "music", "music", "talk"]
+
+
+def test_next_format_pins_news_when_the_cursor_crosses_the_top_of_hour():
+    prog = _program(clock=["talk", "news@:00"])
+    t13_58 = _mon(13).replace(minute=58)  # cold start (no prev) -> no pin yet
+    t14_01 = _mon(14).replace(minute=1)  # crosses 14:00 -> news fires
+    t14_03 = _mon(14).replace(minute=3)  # pin already spent this hour
+    t15_02 = _mon(15).replace(minute=2)  # crosses 15:00 -> news fires again
+    assert _walk(prog, [t13_58, t14_01, t14_03, t15_02]) == [
+        "talk",  # cold start: sequence, not the pin
+        "news",  # crossed the top of hour 14
+        "talk",  # sequence resumes (already crossed this hour)
+        "news",  # crossed the top of hour 15
+    ]
+
+
+def test_next_format_skips_sound_design_markers():
+    prog = _program(clock=["talk", "sting", "music"])  # sting is inert until D7
+    times = [_mon(14).replace(minute=15 + i) for i in range(4)]
+    assert _walk(prog, times) == ["talk", "music", "talk", "music"]
+
+
+def test_next_format_falls_back_to_rotation_without_a_clock():
+    prog = _program(rotation=["talk", "news"])  # no explicit clock
+    times = [_mon(14).replace(minute=15 + i) for i in range(3)]
+    assert _walk(prog, times) == ["talk", "news", "talk"]
+
+
+def test_each_program_keeps_its_own_cursor_across_boundaries():
+    # Two programs advance independently; returning to one continues its sequence.
+    a = _program(clock=["talk", "music", "music"])
+    b = _program(clock=["news", "news"])
+    sa: dict = {}
+    sb: dict = {}
+    n1, sa = programming.next_format(a, _mon(1), sa)  # a: talk
+    n2, sb = programming.next_format(b, _mon(2), sb)  # b: news
+    n3, sa = programming.next_format(a, _mon(3), sa)  # a continues: music
+    assert (n1, n2, n3) == ("talk", "news", "music")

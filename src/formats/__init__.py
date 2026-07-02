@@ -77,6 +77,7 @@ def make_format_segment(
     now_iso: str,
     *,
     topic: str | None = None,
+    speakers: Sequence[str] | None = None,
 ) -> Segment:
     """Build a `Segment` for the named format at `now_iso`.
 
@@ -85,13 +86,19 @@ def make_format_segment(
     steers canon retrieval (see `context.assemble`). The returned Segment carries
     its measured `actual_duration_sec` (C2) so the scheduler times the playlist on
     real audio length.
+
+    `speakers` (D6.2) overrides the format's default cast so the programming grid
+    drives *who's on air* — the scheduler passes the active program's hosts here
+    (already sliced to what the format needs). When None, the format's own default
+    `speaker_ids()` is used, so the direct B4/B5 paths are unchanged.
     """
     if name not in FORMATS:
         raise ValueError(f"unknown format {name!r}; expected one of {sorted(FORMATS)}")
     spec = FORMATS[name]
     now = datetime.fromisoformat(now_iso)
-    log.info("format_dispatch", name=name, topic=topic)
-    ctx = context.assemble(now, topic=topic, speakers=spec.speaker_ids())
+    speaker_ids = list(speakers) if speakers else list(spec.speaker_ids())
+    log.info("format_dispatch", name=name, topic=topic, speakers=speaker_ids)
+    ctx = context.assemble(now, topic=topic, speakers=speaker_ids)
     return stamp_duration(spec.build(now, ctx))
 
 

@@ -27,7 +27,7 @@ def _fake_generator(tmp_path, *, duration=120.0, fail_formats=()):
     """
     counter = {"n": 0}
 
-    def _gen(name, now_iso, *, topic=None):
+    def _gen(name, now_iso, *, topic=None, speakers=None):
         if name in fail_formats:
             raise RuntimeError(f"simulated generation failure for {name!r}")
         counter["n"] += 1
@@ -47,6 +47,10 @@ def _fake_generator(tmp_path, *, duration=120.0, fail_formats=()):
 
 def _wire(monkeypatch, tmp_path, *, depth_hours, rotation, generator):
     monkeypatch.setattr(scheduler, "make_format_segment", generator)
+    # These C2 tests target the rolling-buffer/timing/resilience machinery over a flat
+    # rotation, so run them on the D6.2 rollback path (programming disabled). The
+    # grid-driven path has its own tests (test_scheduler_grid.py).
+    monkeypatch.setattr(scheduler.settings, "programming_enabled", False)
     monkeypatch.setattr(scheduler.settings, "buffer_rotation", rotation)
     monkeypatch.setattr(scheduler.settings, "buffer_depth_hours", depth_hours)
     monkeypatch.setattr(scheduler.settings, "schedule_topup_max_segments", 100)

@@ -130,30 +130,29 @@ See [`grid.yaml`](grid.yaml) for the full initial week (backward-compatible with
 
 ---
 
-## 4. Where the grid lives — **DB-table path** (decided)
+## 4. Where the grid lives — the YAML is the source of truth, behind `program_for`
 
-Both candidate paths keep `grid.yaml` as the human-edited, git-versioned source of truth; the only
-difference is whether a DB copy exists. **We take the DB-table path** (the OVERVIEW §2a matrix already
-commits to it: *`programs`/grid owned by "YAML manifest", refreshed by `seed-grid`*):
+`grid.yaml` is the human-edited, git-versioned **source of truth** — that never changes. The only
+open question is whether a DB *copy* exists, and both paths sit behind one seam: **`program_for(now)`**
+(`src/world/programming.py`) is the single reader; nothing else touches the grid. So the storage can
+evolve without any caller changing.
 
-- `grid.yaml` is a **seed manifest**. A scoped **`make seed-grid`** (built in D6.2) loads it into two
-  tables in `src/world/store.py`: `programs` (one row per program, `clock`/`hosts` as JSON) and
-  `program_grid` (one row per slot: weekday, start, end, program id). All SQL stays behind `store.py`
-  (the seam is law).
-- **Scoped + non-destructive.** `seed-grid` touches **only** the grid tables — never the world state.
-  Per the §2a matrix, editing the grid is *not* a world reset: **`reset-world` leaves the grid alone**
-  (it is config, not world), and `seed-canon` leaves it alone too. The grid's backup is git (the YAML).
-- **Additive migrations, never truncate-reseed** once the world is alive (OVERVIEW §2): the `programs` /
-  `program_grid` tables land via idempotent `CREATE TABLE IF NOT EXISTS`; `seed-grid` re-projects the
-  manifest into them (an upsert/replace of the grid rows only).
+- **Phase D (as built): the config-file read.** `program_for` reads `grid.yaml` directly — an
+  mtime-cached parse, so an operator edit is picked up on the next load, no restart, no DB, no SQL. This
+  is all the running station needs: the human edits the file, the scheduler reads it (D6.1/D6.2).
+- **Phase E (deferred): the DB-table projection.** When the **web grid editor** (drag-the-grid, no file
+  editing — a private, VPS-only single-operator surface) arrives, it needs a table to write to. At that
+  point `grid.yaml` becomes a **seed manifest** and a scoped **`make seed-grid`** projects it into
+  `programs` + `program_grid` tables in `src/world/store.py` (all SQL behind the seam), added **behind
+  the same `program_for`** — an additive migration (idempotent `CREATE TABLE IF NOT EXISTS`, an
+  upsert of the grid rows), never a truncate-reseed. The OVERVIEW §2a matrix already reserves this row
+  (`programs`/grid owned by the YAML manifest, refreshed by `seed-grid`, scoped so **`reset-world`
+  leaves the grid alone** — it is config, not world; git is its backup).
 
-**Why DB over config-file:** the **Phase E** web grid editor (drag-the-grid, no file editing — a
-private, VPS-only single-operator surface) needs a table to write to, while the YAML stays the
-reproducible, version-controlled source. In Phase D the human **only ever edits the file** — never raw
-SQL, never a web UI.
-
-(The rejected **config-file path** — scheduler reads the YAML directly, no DB — is simpler today but
-leaves Phase E nowhere to write. We pay one scoped seeder now to avoid a migration later.)
+The decision, then: **the YAML is authoritative in both phases; the DB is an additive projection built
+only when Phase E's editor needs a write target.** We don't pay for a seeder + schema the running
+station doesn't use yet — but nothing about reading the file now precludes it, because everything goes
+through `program_for`. In Phase D the human **only ever edits the file** — never raw SQL, never a web UI.
 
 ---
 
@@ -173,10 +172,13 @@ lookup miss. So a reserved program id **`default`** always exists:
 This makes `default` both the safety net *and* the on-ramp: with an empty grid the station behaves
 exactly as it does today.
 
-**Relationship to `settings.buffer_rotation`:** it stops being the scheduler's rotation and becomes
-**only the default program's fallback clock** — a single source of truth, not two silently fighting.
-The grid supersedes it for every slot that matches a program (which, once the grid tiles the week, is
-all of them). This is documented in D6.2 where the scheduler is rewired.
+**Relationship to `settings.buffer_rotation`:** when programming is on (the default), it stops being
+the scheduler's rotation and becomes **only the default program's fallback clock** — a single source of
+truth, not two silently fighting. The grid supersedes it for every slot that matches a program (once
+the grid tiles the week, all of them). The master switch `settings.programming_enabled` is the clean
+rollback: set it `false` and the scheduler airs the flat `buffer_rotation` exactly as it did pre-D6
+(D6.2). The scheduler carries the per-program clock cursors (`seq`/`rot`) plus one global top-of-hour
+cursor in `schedule.json` (`clock_state`), so sequences and pins advance correctly across top-up runs.
 
 ---
 

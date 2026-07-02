@@ -57,11 +57,13 @@ from .config import settings
 from .disclosure import disclosure_ident_segment
 from .evergreen import EVERGREEN_NAME_PREFIX
 from .fallback import ensure_fallback_assets
-from .formats import make_format_segment
+from .formats import FORMATS, make_format_segment
 from .freshness import record_segment as record_airplay_features
 from .freshness import sweep as sweep_airplay
 from .logging_setup import get_logger
 from .segment import Segment
+from .world import programming
+from .world.programming import Program
 
 log = get_logger(__name__)
 
@@ -90,6 +92,11 @@ def _entry(seg: Segment) -> dict:
     return {
         "id": seg.id,
         "format": seg.format,
+        # D6.2 — the program that placed this slot (None for idents / the flat path),
+        # so the D6.3 console + D6.4 now-playing feed can name what's on without
+        # recomputing the grid. Read from the segment meta the scheduler stamped.
+        "program": seg.meta.get("program"),
+        "program_name": seg.meta.get("program_name"),
         "audio_path": seg.audio_path,
         "air_time": seg.air_time,
         # Schedule on MEASURED duration; fall back to the target only if a probe
@@ -155,18 +162,21 @@ def _write_playlist(entries: list[dict]) -> Path:
 # --- Generation (with bounded retry) ----------------------------------------
 
 
-def _generate_slot(name: str, air_cursor: datetime) -> Segment | None:
+def _generate_slot(
+    name: str, air_cursor: datetime, speakers: list[str] | None = None
+) -> Segment | None:
     """Produce one segment for `name` at `air_cursor`, bounded-retrying on error.
 
     `make_format_segment` already handles *content* failure internally (the safety /
     continuity gates fall back to an evergreen), so a raise here is an INFRASTRUCTURE
     failure (Claude/TTS/DB). We retry it `schedule_failure_max_retries` times, then
-    give up on this slot (the caller skips it — never dead air).
+    give up on this slot (the caller skips it — never dead air). `speakers` (D6.2) is
+    the active program's hosts routed into the format; None keeps the format default.
     """
     attempts = settings.schedule_failure_max_retries + 1
     for attempt in range(1, attempts + 1):
         try:
-            seg = make_format_segment(name, air_cursor.isoformat())
+            seg = make_format_segment(name, air_cursor.isoformat(), speakers=speakers)
             seg.air_time = air_cursor.isoformat()  # pin the slot's air-time
             return seg
         except Exception as exc:
@@ -177,6 +187,24 @@ def _generate_slot(name: str, air_cursor: datetime) -> Segment | None:
                 of=attempts,
                 error=str(exc),
             )
+    return None
+
+
+def _program_speakers(program: Program, name: str) -> list[str] | None:
+    """The active program's hosts, sliced to what format `name` needs (D6.2).
+
+    A format declares how many voices it wants via `FORMATS[name].speaker_ids()` (news
+    = 1 anchor, talk = 2). We take that many of the program's hosts, lead-first — so
+    the grid drives who's on air (day news anchored by the day host, etc.). When the
+    program under-specifies (fewer hosts than the format needs, e.g. a solo program
+    carrying a talk step), we fall back to the format's own default cast (None) so
+    generation never breaks on an authoring gap.
+    """
+    default = list(FORMATS[name].speaker_ids())
+    need = len(default)
+    hosts = list(program.hosts)
+    if need > 0 and len(hosts) >= need:
+        return hosts[:need]
     return None
 
 
@@ -222,15 +250,30 @@ def top_up(now: datetime | None = None) -> list[dict]:
         runway_sec = 0.0
 
     rot_i = state.get("rotation_index", 0)
+    # D6.2 — per-program clock cursors (`{pid: {seq, rot}}`) plus one GLOBAL previous
+    # air-cursor (`_last_cursor`), both persisted so each program's sequence advances
+    # across top-up runs and pinned top-of-hour slots fire on the continuous timeline
+    # (even across program boundaries), not per-program.
+    clock_state: dict = state.get("clock_state", {})
+    prev_cursor: datetime | None = None
+    if clock_state.get("_last_cursor"):
+        try:
+            prev_cursor = datetime.fromisoformat(clock_state["_last_cursor"])
+        except ValueError:
+            prev_cursor = None
     # C3: count CONTENT segments placed since the last disclosure ident, persisted
     # across runs so the spoken-disclosure cadence is steady regardless of pruning.
     content_since_ident = state.get("content_since_ident", 0)
+    # Consecutive-failure stall threshold: the whole format set failing in a row means
+    # the generator is down. Grid mode spans all formats; flat mode is the rotation.
+    stall_cap = len(FORMATS) if settings.programming_enabled else len(rotation)
     log.info(
         "schedule_topup_start",
         now=now.isoformat(),
         upcoming=len(upcoming),
         runway_sec=round(runway_sec),
         depth_target_sec=round(depth_target_sec),
+        programming=settings.programming_enabled,
         rotation=rotation,
     )
 
@@ -271,16 +314,43 @@ def top_up(now: datetime | None = None) -> list[dict]:
                 log.warning("schedule_ident_error", error=str(exc))
             continue
 
-        name = rotation[rot_i % len(rotation)]
-        seg = _generate_slot(name, air_cursor)
+        # D6.2 — pick the next format from the programming GRID: the active program's
+        # clock at the air-cursor (run-lengths, pinned top-of-hour slots, markers
+        # skipped), routing that program's hosts into generation so the grid drives
+        # WHO's on air. `programming_enabled=False` is the rollback to the flat
+        # buffer_rotation (the pre-D6 behaviour), so buffer_rotation is never a second
+        # source of truth silently fighting the grid — it's the default program's mix.
+        program: Program | None = None
+        new_pstate: dict | None = None
+        speakers: list[str] | None = None
+        if settings.programming_enabled:
+            program = programming.program_for(air_cursor)
+            name, new_pstate = programming.next_format(
+                program, air_cursor, clock_state.get(program.id, {}), prev_cursor
+            )
+            if name is not None:
+                speakers = _program_speakers(program, name)
+        else:
+            name = rotation[rot_i % len(rotation)]
+
+        seg = _generate_slot(name, air_cursor, speakers) if name else None
         if seg is None:
-            # This slot's format failed even after retries — skip it, advance the
-            # rotation, and try the next format. If the WHOLE rotation fails in a
-            # row, the generator is down: stop this run and let playout keep airing
-            # the existing buffer/fallback (never dead air); the next run retries.
-            rot_i += 1
+            # The slot failed (infra error) or the program yielded nothing airable —
+            # advance past it (commit the clock/rotation step so we don't retry the
+            # same atom forever) and try the next format. If the whole format set
+            # fails in a row, the generator is down: stop this run and let playout
+            # keep airing the existing buffer/fallback (never dead air); next run
+            # retries.
+            if program is not None and new_pstate is not None:
+                clock_state[program.id] = new_pstate
+                # Consume the crossing so a failed pin doesn't re-fire in a spin (the
+                # cursor didn't advance, so mark this instant as processed).
+                prev_cursor = air_cursor
+                clock_state["_last_cursor"] = air_cursor.isoformat()
+            else:
+                rot_i += 1
             consecutive_skips += 1
-            if consecutive_skips >= len(rotation):
+            if consecutive_skips >= stall_cap:
                 log.error(
                     "schedule_topup_stalled",
                     added=added,
@@ -289,6 +359,19 @@ def top_up(now: datetime | None = None) -> list[dict]:
                 break
             continue
         consecutive_skips = 0
+
+        # Commit the advanced clock/rotation state now that the slot has aired, and
+        # stamp the program onto the segment (for the D6.3 console / D6.4 feed). Advance
+        # the global pin cursor to this slot's time so the next slot's crossing is
+        # measured from here (content only — idents don't consume a top-of-hour pin).
+        if program is not None and new_pstate is not None:
+            clock_state[program.id] = new_pstate
+            prev_cursor = air_cursor
+            clock_state["_last_cursor"] = air_cursor.isoformat()
+            seg.meta["program"] = program.id
+            seg.meta["program_name"] = program.name
+        else:
+            rot_i += 1
 
         # Self-describing sidecar so prune() can read this render's air end once it
         # has aired out of the live schedule (C2.5). Written with the pinned slot
@@ -304,13 +387,13 @@ def top_up(now: datetime | None = None) -> list[dict]:
         upcoming.append(entry)
         air_cursor += timedelta(seconds=duration)
         runway_sec += duration
-        rot_i += 1
         added += 1
         content_since_ident += 1
         log.info(
             "schedule_slot_added",
             seg_id=seg.id,
             format=seg.format,
+            program=program.id if program is not None else None,
             air_time=entry["air_time"],
             duration_sec=round(duration, 1),
             runway_sec=round(runway_sec),
@@ -318,6 +401,7 @@ def top_up(now: datetime | None = None) -> list[dict]:
 
     state["entries"] = upcoming
     state["rotation_index"] = rot_i % len(rotation)
+    state["clock_state"] = clock_state
     state["content_since_ident"] = content_since_ident
     # C4 — heartbeat: record that a top-up ran to completion. `src/health.py`
     # check_last_run() reads this to detect a generator that has stopped running.
