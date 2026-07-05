@@ -542,6 +542,14 @@ class Settings(BaseSettings):
     # src/production/media.py — not config (the config-vs-constant rule above).
     assets_dir: Path = Field(default=_REPO_ROOT / "assets")
     tracks_manifest_path: Path = Field(default=_REPO_ROOT / "config" / "tracks.yaml")
+    # D7.1 — the Layer 4 mixing dials (src/production/mix.py). Mixing is baked at
+    # RENDER time (the decision is written down in mix.py): a bed sits under speech
+    # at `production_bed_gain_db` BELOW the untouched speech (more negative =
+    # quieter bed; -15 dB keeps it audibly present but never competing), fading
+    # in/out over `production_bed_fade_sec` so it never pops. Over-bedding is worse
+    # than none — default conservative and let D7.3 tune per program by ear.
+    production_bed_gain_db: float = -15.0
+    production_bed_fade_sec: float = 1.5
 
     def model_id(self, tier: str) -> str:
         """Map a logical tier ("haiku"|"sonnet"|"opus") to its real model id."""

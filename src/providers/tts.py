@@ -5,6 +5,12 @@ Every speech-synthesis call goes through `synthesize(...)`. Callers pass a
 vendor's voice id and renders audio. The implementation is selected by the
 TTS_PROVIDER env var, so swapping ElevenLabs for self-hosted Kokoro/Orpheus
 later means editing this one file + env. See docs/ARCHITECTURE.md "Seam #1".
+
+ffmpeg note (D7.1): this module owns the SYNTHESIS-side ffmpeg only — transcode
+(`_to_mp3`), measurement (`probe_duration`), and the same-codec turn join
+(`concat_audio`). Production *mixing* (beds under speech, stings, anything
+layering heterogeneous audio) lives ONLY in `src/production/mix.py` — two
+cohesive homes, nothing scattered.
 """
 
 from __future__ import annotations

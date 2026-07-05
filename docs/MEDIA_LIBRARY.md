@@ -688,7 +688,7 @@ For each: a **metadata block** (→ the manifest / `tracks` row — this is the 
   ```
 - **Length:** ~3:45 (standard song).
 
-#### S14. "Sixteen Skies"  🎛️  *(from R6 Persona — instrumental)*
+#### DONE_S14. "Sixteen Skies"  🎛️  *(from R6 Persona — instrumental)*
 - **artist:** Sixteen Hands · **album:** *Across the Dark* · **era/year:** Age of the Relays, 2620
 - **mood:** contemplative · **tags:** `drift-song, betweener, age-of-relays, synthesist, instrumental, contemplative`
 - **story_blurb:** "Sixteen players, sixteen skies, one piece — the instrumental the collective built to
