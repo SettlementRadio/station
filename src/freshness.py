@@ -49,6 +49,11 @@ _OPENING_WORDS = 8
 # whole script).
 _KEY_PHRASES = 5
 
+# D7.4 — how a music slot's ARTIST is marked in its airplay `features` (the topic
+# carries the track id). The music selector reads these back to avoid repeating a
+# song/artist inside the freshness window (production/selector.py).
+ARTIST_FEATURE_PREFIX = "artist:"
+
 # A leading speaker label to strip before reading the opening words, e.g. "**Vell:** …"
 # (talk dialogue) — so the fingerprint reflects what was SAID, not who said it. A short
 # capitalised name token followed by a colon; tolerates surrounding `**` markdown.
@@ -141,6 +146,9 @@ def _topic_handle(seg: Segment) -> str | None:
     if seg.format == "news":
         stories = seg.meta.get("stories") or []
         return ", ".join(str(s) for s in stories) if stories else None
+    if seg.format == "music":  # D7.4 — the spun track's id IS the topic
+        track_id = seg.meta.get("track_id")
+        return str(track_id) if track_id else None
     return None
 
 
@@ -176,13 +184,19 @@ def extract_features(seg: Segment) -> store.AirplayRecord | None:
         log.warning("airplay_bad_air_time", seg_id=seg.id, air_time=seg.air_time)
         return None
     script = seg.script or ""
+    features = _key_phrases(script)
+    # D7.4 — a music slot also marks its ARTIST so the selector can steer off a
+    # recently-played artist, not just the exact track (the topic is the track id).
+    artist = seg.meta.get("track_artist")
+    if seg.format == "music" and artist:
+        features = [f"{ARTIST_FEATURE_PREFIX}{artist}", *features[: _KEY_PHRASES - 1]]
     return store.AirplayRecord(
         seg_id=seg.id,
         format=seg.format,
         aired_at=aired_at,
         topic=_topic_handle(seg),
         opening=_opening_fingerprint(script),
-        features=_key_phrases(script),
+        features=features,
     )
 
 

@@ -208,12 +208,13 @@ class Settings(BaseSettings):
     # `BUFFER_TARGET_SEC=600 make buffer`; `buffer_max_segments` is a hard stop so a
     # tiny per-segment length can't spin an unbounded run.
     buffer_target_sec: int = 3600  # ~an hour of audio; the (pre-Phase-C) buffer depth
-    # C2: `music` is DROPPED from the default rotation for Phase C — its `[SONG]`
-    # slot has nothing to fill it until Phase D (real song pool + Layer 4 bed
-    # mixing), so airing it would mean a silent gap. Only `talk`/`news` air for now;
-    # re-add "music" once Phase D fills the slot. (Both the B6 one-shot buffer and
-    # the C2 scheduler read this one rotation dial.)
-    buffer_rotation: list[str] = ["talk", "news"]  # B5 format names, cycled
+    # `music` is BACK in the rotation as of D7.4: the `[SONG]` slot is now filled
+    # with a real curated track (selector → intro → track → back-announce, one
+    # mp3), and a slot with no playable track falls back to evergreen — no silent
+    # gap is possible (it was dropped in C2 precisely because the slot was empty).
+    # (Both the B6 one-shot buffer and the C2 scheduler read this one rotation
+    # dial; in grid mode the program clocks in docs/programming/grid.yaml decide.)
+    buffer_rotation: list[str] = ["talk", "news", "music"]  # B5 format names, cycled
     buffer_max_segments: int = 30  # safety cap on segments per run
 
     # --- Scheduler (C2: the real rolling buffer — Layer 5, replaces one-shot B6) -
@@ -571,6 +572,29 @@ class Settings(BaseSettings):
     # `production_bed_gain_db` dial. Empty either list to switch bedding off.
     production_bedded_programs: list[str] = ["long_night"]
     production_bedded_formats: list[str] = ["talk"]
+    # D7.4 — the music selector: "the brain that decides what to play"
+    # (src/production/selector.py — a rule-based, deterministic policy over the
+    # track catalogue; the LLM only writes the intro/back-announce AROUND the
+    # chosen track, never picks it). Weighted inputs, each a dial:
+    #   daypart  — the active program's daypart mood (mellow overnight, brighter
+    #              morning; the mood sets are named constants in selector.py);
+    #   world    — the live story log's tone tilts the pick (a somber development
+    #              pulls a somber track — a cheap keyword rule, no LLM call);
+    #   featured — an artist named in a running story, or a track the human
+    #              tagged `featured`/`pinned` in config/tracks.yaml;
+    #   repeats  — PENALTIES for a track/artist that aired within the D5
+    #              freshness window, and for sitting in the same era as the last
+    #              spin (the variety spread).
+    # `music_select_jitter` is seeded variety: a small deterministic nudge (from
+    # the air-time-derived seed) so equal-scored tracks rotate instead of always
+    # winning by id — same inputs + seed always pick the same track (testable).
+    music_select_daypart_weight: float = 2.0
+    music_select_world_weight: float = 1.0
+    music_select_featured_weight: float = 3.0
+    music_select_repeat_track_penalty: float = 8.0
+    music_select_repeat_artist_penalty: float = 3.0
+    music_select_era_repeat_penalty: float = 1.0
+    music_select_jitter: float = 0.5
 
     def model_id(self, tier: str) -> str:
         """Map a logical tier ("haiku"|"sonnet"|"opus") to its real model id."""

@@ -164,44 +164,60 @@ def duck_bed_under(speech_path: str, bed_path: str, out_path: str) -> str:
     return out_path
 
 
+def join_clips(paths: list[str], out_path: str) -> str:
+    """Join N heterogeneous clips in order into one mp3 — a re-encoding concat.
+
+    The production-side join (D7.4's intro → track → back-announce stitch): each
+    input is conformed to the mix format first (level-preserving mono upmix),
+    so a Kokoro speech clip and a Suno track concat cleanly — which is exactly
+    what `tts.concat_audio` (same-codec stream copy) can NOT do. RAISES on any
+    failure: the callers decide the degrade (a sting join falls back to the bare
+    clip; a music segment without its track must FAIL the slot — airing intro +
+    back-announce around a missing song would be worse than skipping).
+    """
+    if not paths:
+        raise ValueError("join_clips: no clips to join")
+    input_args: list[str] = []
+    for p in paths:
+        input_args += ["-i", p]
+    conforms = ";".join(f"[{i}:a]{_conform(p)}[a{i}]" for i, p in enumerate(paths))
+    heads = "".join(f"[a{i}]" for i in range(len(paths)))
+    graph = f"{conforms};{heads}concat=n={len(paths)}:v=0:a=1[out]"
+    _run_ffmpeg(
+        [
+            *input_args,
+            "-filter_complex",
+            graph,
+            "-map",
+            "[out]",
+            "-codec:a",
+            "libmp3lame",
+            "-b:a",
+            settings.tts_mp3_bitrate,
+            out_path,
+        ],
+        out_path,
+    )
+    log.info("mix_join_done", parts=len(paths), out_path=out_path)
+    return out_path
+
+
 def attach_sting(
     clip_path: str, sting_path: str, out_path: str, *, position: str = "before"
 ) -> str:
     """Join a sting onto a clip (`position` "before" | "after") → one mp3.
 
-    A re-encoding concat (the two inputs never share a codec — Suno sting vs
-    rendered speech), conformed to the mix format first. Returns `out_path` on
+    A two-clip `join_clips` with degrade semantics: returns `out_path` on
     success; on failure logs at error and returns `clip_path` — the clip airs
     without its punctuation rather than not at all.
     """
     if position not in ("before", "after"):
         raise ValueError(f"attach_sting: position {position!r} not 'before'|'after'")
-    first, second = (
-        (sting_path, clip_path) if position == "before" else (clip_path, sting_path)
+    ordered = (
+        [sting_path, clip_path] if position == "before" else [clip_path, sting_path]
     )
     try:
-        graph = (
-            f"[0:a]{_conform(first)}[a0];[1:a]{_conform(second)}[a1];"
-            "[a0][a1]concat=n=2:v=0:a=1[out]"
-        )
-        _run_ffmpeg(
-            [
-                "-i",
-                first,
-                "-i",
-                second,
-                "-filter_complex",
-                graph,
-                "-map",
-                "[out]",
-                "-codec:a",
-                "libmp3lame",
-                "-b:a",
-                settings.tts_mp3_bitrate,
-                out_path,
-            ],
-            out_path,
-        )
+        join_clips(ordered, out_path)
     except Exception as exc:
         log.error(
             "mix_sting_failed",

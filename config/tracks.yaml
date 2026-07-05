@@ -410,3 +410,409 @@ tracks:
     duration_sec: null
     audio_path: "assets/music/vela-and-the-beacons__meet-me-on-the-thread.mp3"
     licence_note: null
+
+  - id: lane-runners__green-lights-all-the-way
+    title: "Green Lights All the Way"
+    artist: "The Lane Runners"
+    artist_figure_id: null
+    album: "Green Lights"
+    era: "age-of-relays"
+    in_world_year: 2625
+    mood: "joyful"
+    tags: [lane-rock, betweener, age-of-relays, driving, joyful]
+    story_blurb: "The luckiest run ever sung — every buoy green from dock to bay. Haulers play it leaving port for luck; harbourmasters swear it works."
+    duration_sec: null
+    audio_path: "assets/music/lane-runners__green-lights-all-the-way.mp3"
+    licence_note: null
+
+  - id: lane-runners__heavy-and-happy
+    title: "Heavy and Happy"
+    artist: "The Lane Runners"
+    artist_figure_id: null
+    album: "Green Lights"
+    era: "age-of-relays"
+    in_world_year: 2625
+    mood: "warm"
+    tags: [lane-rock, betweener, age-of-relays, warm, joyful]
+    story_blurb: "The hauler's grin set to a groove — a full hold as a point of pride. The unofficial anthem of every loading dock on the frontier run."
+    duration_sec: null
+    audio_path: "assets/music/lane-runners__heavy-and-happy.mp3"
+    licence_note: null
+
+  - id: kestrel-run__run-the-kestrel
+    title: "Run the Kestrel"
+    artist: "The Kestrel Run"
+    artist_figure_id: null
+    album: "The Kestrel Run"
+    era: "age-of-relays"
+    in_world_year: 2621
+    mood: "celebratory"
+    tags: [lane-rock, betweener, age-of-relays, driving, celebratory]
+    story_blurb: "A stadium-sized anthem for the famous shipping lane the band is named after — the shortest road through the longest dark. Crowds do the stomp-stomp-clap unprompted."
+    duration_sec: null
+    audio_path: "assets/music/kestrel-run__run-the-kestrel.mp3"
+    licence_note: null
+
+  - id: kestrel-run__same-stars-tonight
+    title: "Same Stars Tonight"
+    artist: "The Kestrel Run"
+    artist_figure_id: null
+    album: "The Kestrel Run"
+    era: "age-of-relays"
+    in_world_year: 2622
+    mood: "hopeful"
+    tags: [lane-rock, betweener, age-of-relays, hopeful, tender]
+    story_blurb: "The lighters-up anthem of the settled worlds — for everyone with someone three relays away. The chorus is sung at every send-off and every homecoming."
+    duration_sec: null
+    audio_path: "assets/music/kestrel-run__same-stars-tonight.mp3"
+    licence_note: null
+
+  - id: hullbirds__dockyard-heart
+    title: "Dockyard Heart"
+    artist: "The Hullbirds"
+    artist_figure_id: null
+    album: "Patchwork Wings"
+    era: "age-of-relays"
+    in_world_year: 2624
+    mood: "joyful"
+    tags: [lane-rock, betweener, age-of-relays, driving, joyful]
+    story_blurb: "The repair-dock anthem — 'fixing things is a kind of loving.' The Hullbirds grew up in the yards and it shows; the weld-it-seal-it chant is a playground game now."
+    duration_sec: null
+    audio_path: "assets/music/hullbirds__dockyard-heart.mp3"
+    licence_note: null
+
+  - id: hullbirds__patchwork-wings
+    title: "Patchwork Wings"
+    artist: "The Hullbirds"
+    artist_figure_id: null
+    album: "Patchwork Wings"
+    era: "age-of-relays"
+    in_world_year: 2624
+    mood: "hopeful"
+    tags: [lane-rock, betweener, age-of-relays, hopeful, joyful]
+    story_blurb: "The underdog song — a ship of salvaged plates that flies better than new. 'Mended means you made it through' gets quoted far beyond the music."
+    duration_sec: null
+    audio_path: "assets/music/hullbirds__patchwork-wings.mp3"
+    licence_note: null
+
+  - id: vela-and-the-beacons__counting-down-the-sky
+    title: "Counting Down the Sky"
+    artist: "Vela & the Beacons"
+    artist_figure_id: null
+    album: "Signals"
+    era: "age-of-relays"
+    in_world_year: 2626
+    mood: "joyful"
+    tags: [relay-pop, core, age-of-relays, bright, joyful]
+    story_blurb: "The arrival-day countdown song — ten nights till the freighter crests the bay. Harbour crowds shout the numbers back; the final bell is real on some worlds."
+    duration_sec: null
+    audio_path: "assets/music/vela-and-the-beacons__counting-down-the-sky.mp3"
+    licence_note: null
+
+  - id: vela-and-the-beacons__ps-im-still-yours
+    title: "P.S. I'm Still Yours"
+    artist: "Vela & the Beacons"
+    artist_figure_id: null
+    album: "Signals"
+    era: "age-of-relays"
+    in_world_year: 2626
+    mood: "tender"
+    tags: [relay-pop, core, age-of-relays, tender, bright]
+    story_blurb: "Four words signed at the end of every relay letter, made into a hook. The postscript half the settled worlds now writes on purpose."
+    duration_sec: null
+    audio_path: "assets/music/vela-and-the-beacons__ps-im-still-yours.mp3"
+    licence_note: null
+
+  - id: sunwell__good-morning-universe
+    title: "Good Morning, Universe"
+    artist: "Sunwell"
+    artist_figure_id: null
+    album: "Garden Districts"
+    era: "age-of-relays"
+    in_world_year: 2623
+    mood: "bright"
+    tags: [relay-pop, concordance, age-of-relays, bright, joyful]
+    story_blurb: "The wake-up song of the garden districts — a duo trading lines over breakfast. First-light radio gold; the whistled outro is everyone's walk-to-work tune."
+    duration_sec: null
+    audio_path: "assets/music/sunwell__good-morning-universe.mp3"
+    licence_note: null
+
+  - id: sunwell__picnic-on-the-ring
+    title: "Picnic on the Ring"
+    artist: "Sunwell"
+    artist_figure_id: null
+    album: "Garden Districts"
+    era: "age-of-relays"
+    in_world_year: 2624
+    mood: "joyful"
+    tags: [relay-pop, concordance, age-of-relays, joyful, bright]
+    story_blurb: "Rest-day on the viewing ring — bread, preserves, and the whole sky wheeling past the window. The station-kid summer song."
+    duration_sec: null
+    audio_path: "assets/music/sunwell__picnic-on-the-ring.mp3"
+    licence_note: null
+
+  - id: auroral-standard__turn-up-the-lights
+    title: "Turn Up the Lights"
+    artist: "Auroral Standard"
+    artist_figure_id: null
+    album: "Storm Season"
+    era: "age-of-relays"
+    in_world_year: 2626
+    mood: "celebratory"
+    tags: [pulse-dance, meridian, age-of-relays, synthesist, celebratory]
+    story_blurb: "Seventh-night on the storm coast, power restored, every window lit — 'we are the brightest thing in sight.' The dance-floor closer on three worlds."
+    duration_sec: null
+    audio_path: "assets/music/auroral-standard__turn-up-the-lights.mp3"
+    licence_note: null
+
+  - id: brace-and-the-tin-reelers__everybody-brings-a-drum
+    title: "Everybody Brings a Drum"
+    artist: "Brace & the Tin Reelers"
+    artist_figure_id: null
+    album: "Salvage & Song"
+    era: "age-of-relays"
+    in_world_year: 2625
+    mood: "celebratory"
+    tags: [frontier-reel, freeholds, age-of-relays, salvage-perc, celebratory]
+    story_blurb: "The open-door party reel — if it rings when you bang it, it's an instrument. The one song where the audience IS the band."
+    duration_sec: null
+    audio_path: "assets/music/brace-and-the-tin-reelers__everybody-brings-a-drum.mp3"
+    licence_note: null
+
+  - id: nightliners__one-more-for-the-relay
+    title: "One More for the Relay"
+    artist: "The Nightliners"
+    artist_figure_id: null
+    album: "The Late Window"
+    era: "age-of-relays"
+    in_world_year: 2617
+    mood: "joyful"
+    tags: [void-lounge, concordance, age-of-relays, joyful, warm]
+    story_blurb: "The late-club toast song — when the relay bell brings good news, the band plays one more. Every bar has its own verse of local good news."
+    duration_sec: null
+    audio_path: "assets/music/nightliners__one-more-for-the-relay.mp3"
+    licence_note: null
+
+  - id: hearth-and-hull__the-lamplighters-song
+    title: "The Lamplighter's Song"
+    artist: "Hearth & Hull"
+    artist_figure_id: null
+    album: "The Settlement Songbook"
+    era: "age-of-relays"
+    in_world_year: 2620
+    mood: "warm"
+    tags: [earth-roots, betweener, age-of-relays, warm, hopeful]
+    story_blurb: "The song every settlement child knows — a lamplighter's round said to go back to the first ships. Hearth & Hull's recording is just the version everyone learned it from."
+    duration_sec: null
+    audio_path: "assets/music/hearth-and-hull__the-lamplighters-song.mp3"
+    licence_note: null
+
+  - id: hearth-and-hull__pass-it-on
+    title: "Pass It On"
+    artist: "Hearth & Hull"
+    artist_figure_id: null
+    album: "The Settlement Songbook"
+    era: "age-of-relays"
+    in_world_year: 2622
+    mood: "hopeful"
+    tags: [earth-roots, betweener, age-of-relays, hopeful, joyful]
+    story_blurb: "The passing-it-down song — coats, soup, skills, and the song itself. Ends every Hearth & Hull show with the crowd carrying the claps out the door."
+    duration_sec: null
+    audio_path: "assets/music/hearth-and-hull__pass-it-on.mp3"
+    licence_note: null
+
+  - id: lane-runners__green-lights-reprise
+    title: "Green Lights (Reprise)"
+    artist: "The Lane Runners"
+    artist_figure_id: null
+    album: "Green Lights"
+    era: "age-of-relays"
+    in_world_year: 2625
+    mood: "warm"
+    tags: [lane-rock, betweener, age-of-relays, warm, joyful]
+    story_blurb: "The B-side reprise — the same lucky run sung slower, the way crews hum it at the end of a shift instead of the start."
+    duration_sec: null
+    audio_path: "assets/music/lane-runners__green-lights-reprise.mp3"
+    licence_note: null
+
+  - id: lane-runners__heavy-and-happy-again
+    title: "Heavy and Happy Again"
+    artist: "The Lane Runners"
+    artist_figure_id: null
+    album: "Green Lights"
+    era: "age-of-relays"
+    in_world_year: 2625
+    mood: "warm"
+    tags: [lane-rock, betweener, age-of-relays, warm, joyful]
+    story_blurb: "The sequel single — same grin, next run. Cut after the band's first tour, when every dock crowd already knew the first chorus and demanded another."
+    duration_sec: null
+    audio_path: "assets/music/lane-runners__heavy-and-happy-again.mp3"
+    licence_note: null
+
+  - id: kestrel-run__run-run-run
+    title: "Run Run Run"
+    artist: "The Kestrel Run"
+    artist_figure_id: null
+    album: "The Kestrel Run"
+    era: "age-of-relays"
+    in_world_year: 2621
+    mood: "celebratory"
+    tags: [lane-rock, betweener, age-of-relays, driving, celebratory]
+    story_blurb: "The terrace-chant cut — the chorus stretched to song length, recorded with a harbour crowd doing the stomp-stomp-clap. What the stands actually sing."
+    duration_sec: null
+    audio_path: "assets/music/kestrel-run__run-run-run.mp3"
+    licence_note: null
+
+  - id: kestrel-run__same-stars-acoustic
+    title: "Same Stars (Acoustic)"
+    artist: "The Kestrel Run"
+    artist_figure_id: null
+    album: "The Kestrel Run"
+    era: "age-of-relays"
+    in_world_year: 2622
+    mood: "tender"
+    tags: [lane-rock, betweener, age-of-relays, hopeful, tender]
+    story_blurb: "The stripped cut of 'Same Stars Tonight' — one guitar, one voice, for the nights the full anthem is too big. The version played at quiet send-offs."
+    duration_sec: null
+    audio_path: "assets/music/kestrel-run__same-stars-acoustic.mp3"
+    licence_note: null
+
+  - id: hullbirds__dockyard-hearts
+    title: "Dockyard Hearts"
+    artist: "The Hullbirds"
+    artist_figure_id: null
+    album: "Patchwork Wings"
+    era: "age-of-relays"
+    in_world_year: 2624
+    mood: "joyful"
+    tags: [lane-rock, betweener, age-of-relays, driving, joyful]
+    story_blurb: "The all-crew version of 'Dockyard Heart' — the whole repair bay on the chorus, recorded on the yard floor between shifts. Plural on purpose: nobody out here has just one."
+    duration_sec: null
+    audio_path: "assets/music/hullbirds__dockyard-hearts.mp3"
+    licence_note: null
+
+  - id: hullbirds__wings
+    title: "Wings"
+    artist: "The Hullbirds"
+    artist_figure_id: null
+    album: "Patchwork Wings"
+    era: "age-of-relays"
+    in_world_year: 2624
+    mood: "tender"
+    tags: [lane-rock, betweener, age-of-relays, hopeful, tender]
+    story_blurb: "The late-night cut of 'Patchwork Wings' — slower, closer, half the drums. For when 'mended means you made it through' needs saying softly."
+    duration_sec: null
+    audio_path: "assets/music/hullbirds__wings.mp3"
+    licence_note: null
+
+  - id: vela-and-the-beacons__counting-down-the-sky-harbour
+    title: "Counting Down the Sky (Harbour Version)"
+    artist: "Vela & the Beacons"
+    artist_figure_id: null
+    album: "Signals"
+    era: "age-of-relays"
+    in_world_year: 2626
+    mood: "joyful"
+    tags: [relay-pop, core, age-of-relays, bright, joyful]
+    story_blurb: "The dockside recording of 'Counting Down the Sky' — cut on an actual arrival day, the numbers shouted back by everyone waiting on the quay. The bell at zero is real."
+    duration_sec: null
+    audio_path: "assets/music/vela-and-the-beacons__counting-down-the-sky-harbour.mp3"
+    licence_note: null
+
+  - id: vela-and-the-beacons__pps
+    title: "P.P.S."
+    artist: "Vela & the Beacons"
+    artist_figure_id: null
+    album: "Signals"
+    era: "age-of-relays"
+    in_world_year: 2626
+    mood: "tender"
+    tags: [relay-pop, core, age-of-relays, tender, bright]
+    story_blurb: "The answer record to 'P.S. I'm Still Yours' — the reply letter set to the same swing, sung from the other end of the beam. It ends: 'P.P.S. — me too.'"
+    duration_sec: null
+    audio_path: "assets/music/vela-and-the-beacons__pps.mp3"
+    licence_note: null
+
+  - id: sunwell__slow-morning-universe
+    title: "Slow Morning, Universe"
+    artist: "Sunwell"
+    artist_figure_id: null
+    album: "Garden Districts"
+    era: "age-of-relays"
+    in_world_year: 2623
+    mood: "mellow"
+    tags: [relay-pop, concordance, age-of-relays, mellow, warm]
+    story_blurb: "The rest-day sibling of 'Good Morning, Universe' — same tune at half the hurry, for mornings with nowhere to be. The kettle gets a whole verse."
+    duration_sec: null
+    audio_path: "assets/music/sunwell__slow-morning-universe.mp3"
+    licence_note: null
+
+  - id: sunwell__another-turn-of-the-ring
+    title: "Another Turn of the Ring"
+    artist: "Sunwell"
+    artist_figure_id: null
+    album: "Garden Districts"
+    era: "age-of-relays"
+    in_world_year: 2624
+    mood: "joyful"
+    tags: [relay-pop, concordance, age-of-relays, joyful, bright]
+    story_blurb: "The encore the duo added when crowds wouldn't let the picnic end — one more slow turn of the station, one more round of preserves."
+    duration_sec: null
+    audio_path: "assets/music/sunwell__another-turn-of-the-ring.mp3"
+    licence_note: null
+
+  - id: auroral-standard__turn-up-the-lights-again
+    title: "Turn Up the Lights Again"
+    artist: "Auroral Standard"
+    artist_figure_id: null
+    album: "Storm Season"
+    era: "age-of-relays"
+    in_world_year: 2626
+    mood: "celebratory"
+    tags: [pulse-dance, meridian, age-of-relays, synthesist, celebratory]
+    story_blurb: "The encore mix — the dance-floor closer re-cut for the moment the crowd refuses to go home, so the lights come up twice."
+    duration_sec: null
+    audio_path: "assets/music/auroral-standard__turn-up-the-lights-again.mp3"
+    licence_note: null
+
+  - id: nightliners__one-more-for-the-relays
+    title: "One More for the Relays"
+    artist: "The Nightliners"
+    artist_figure_id: null
+    album: "The Late Window"
+    era: "age-of-relays"
+    in_world_year: 2617
+    mood: "joyful"
+    tags: [void-lounge, concordance, age-of-relays, joyful, warm]
+    story_blurb: "The last-call variant — for the rare night several good-news bells ring at once, so every toast gets its own verse. Plural earned."
+    duration_sec: null
+    audio_path: "assets/music/nightliners__one-more-for-the-relays.mp3"
+    licence_note: null
+
+  - id: hearth-and-hull__the-old-lamplighters-song
+    title: "The Old Lamplighter's Song"
+    artist: "Hearth & Hull"
+    artist_figure_id: null
+    album: "The Settlement Songbook"
+    era: "age-of-relays"
+    in_world_year: 2620
+    mood: "warm"
+    tags: [earth-roots, betweener, age-of-relays, warm, hopeful]
+    story_blurb: "The 'old way' arrangement — the round as the first ships were said to sing it, unaccompanied but for a knee-slap. Recorded for the Songbook's archive side."
+    duration_sec: null
+    audio_path: "assets/music/hearth-and-hull__the-old-lamplighters-song.mp3"
+    licence_note: null
+
+  - id: hearth-and-hull__lets-pass-it-on
+    title: "Let's Pass It On"
+    artist: "Hearth & Hull"
+    artist_figure_id: null
+    album: "The Settlement Songbook"
+    era: "age-of-relays"
+    in_world_year: 2622
+    mood: "hopeful"
+    tags: [earth-roots, betweener, age-of-relays, hopeful, joyful]
+    story_blurb: "The audience recording of 'Pass It On' — a full hall carrying the choruses while the duo drops out verse by verse. Passing it on, demonstrated."
+    duration_sec: null
+    audio_path: "assets/music/hearth-and-hull__lets-pass-it-on.mp3"
+    licence_note: null

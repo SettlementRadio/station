@@ -12,8 +12,10 @@
 # This initial grid is BACKWARD-COMPATIBLE with the two current hosts (vell/wren) and
 # the existing framing boundaries (dawn handover 05-07, dusk handover 20-22), so the
 # generalised framing (D6.1) reproduces today's frames. More hosts (joss, kael, mira,
-# thorn, sera, the-archivist, orin, zhe — already in docs/canon/90-cast.md) and `music`
-# clocks arrive with D9 / D7 respectively.
+# thorn, sera, the-archivist, orin, zhe — already in docs/canon/90-cast.md) arrive
+# with D9. `music` is BACK in the clocks as of D7.4: the slot plays a real curated
+# track (selector -> intro -> track -> back-announce; evergreen fallback if the
+# catalogue is empty — no silent gap).
 
 programs:
   long_night:
@@ -21,28 +23,28 @@ programs:
     hosts: [vell, wren]          # vell anchors solo; wren is the companion-of-record
     framing: solo
     daypart: deep night
-    clock: [talk, talk, news@:00]   # quiet, talk-heavy; news pinned to the hour
+    clock: [talk, music, talk, news@:00]   # quiet: talk + a song; news pinned to the hour
 
   first_light:
     name: "First Light"
     hosts: [wren, vell]          # hosts[0]=incoming lead (wren), hosts[1]=outgoing (vell)
     framing: handover            # the old dawn handover, now a boundary program
     daypart: first light
-    clock: [talk, news@:00]
+    clock: [talk, music, news@:00]
 
   daywatch:
     name: "Daywatch"
     hosts: [wren, vell]          # wren anchors the waking day; vell stays on for a stretch
     framing: solo
     daypart: daytime
-    clock: [talk, news@:00, talk]
+    clock: [talk, news@:00, music, talk]
 
   nightfall:
     name: "Nightfall"
     hosts: [vell, wren]          # hosts[0]=incoming lead (vell), hosts[1]=outgoing (wren)
     framing: handover            # the old dusk handover, now a boundary program
     daypart: nightfall
-    clock: [talk, news@:00]
+    clock: [talk, music, news@:00]
 
   # Reserved fallback — returned by program_for(now) when no slot matches, so the
   # scheduler never stalls. Its clock is the weighted-rotation fallback (seeded from
@@ -53,7 +55,7 @@ programs:
     name: "Settlement Radio"
     hosts: [vell, wren]          # night host, then day host (legacy handover order)
     framing: legacy
-    rotation: [talk, news]       # weighted-rotation fallback (no explicit clock)
+    rotation: [talk, news, music]  # weighted-rotation fallback (no explicit clock)
 
 # The weekly tiling: weekday range -> time range -> program id. `daily` = all seven
 # days; ranges (mon-fri) and aliases (weekdays / weekends) are also allowed. A range

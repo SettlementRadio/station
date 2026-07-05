@@ -9,7 +9,9 @@ before the C8 player exists.
 PUBLIC-SAFE BY CONSTRUCTION (audit fix). This feed is internet-facing (it drives the
 public player), so it is an explicit ALLOW-LIST of publishable fields only:
 
-    station · disclosure · updated_at · now{program, format, hosts, air_time} · next[…]
+    station · disclosure · updated_at
+    · now{program, format, hosts, air_time, track{title, artist, album, era}}
+    · next[…]
 
 It NEVER carries internal/operator state — no buffer depth, health, cost, story-log/
 world internals, segment ids, audio paths, or durations. Internal state lives in the
@@ -99,6 +101,9 @@ def _public_entry(entry: dict, names: dict[str, str]) -> dict:
         "format_label": _FORMAT_LABELS.get(fmt, _titlecase(fmt) if fmt else None),
         "hosts": [names[h] for h in _onair_host_ids(entry)],
         "air_time": entry.get("air_time"),  # when it airs — public "on now / next"
+        # D7.4 — the spun track's lore for a music slot (title/artist/album/era —
+        # already the public-safe slice, built by the music format); None elsewhere.
+        "track": entry.get("track"),
     }
 
 

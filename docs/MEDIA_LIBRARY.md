@@ -28,7 +28,9 @@ Two media kinds, two homes, both curated (live under `assets/`, gitignored, back
 | **Jingles / idents / stings / beds** | see JINGLE_PROMPTS §4 (~27 files) | `assets/{idents,themes,stings}/` + `assets/bed.mp3` | `docs/JINGLE_PROMPTS.md` | placed by the grid (D7.2/D7.3) |
 | **Songs** (cultural artifacts) | **27** | `assets/music/` | **this doc, §5** | `tracks` table (D7.0), `[SONG]` slot (D7.4) |
 
-This doc's job is the **27 songs** (and the *media library spec* that catalogues them). The jingles are
+This doc's job is the **27 songs** (and the *media library spec* that catalogues them). **Wave 2 —
+15 more up-tempo, hooky songs (rock/pop/singalongs) — lives in `docs/MEDIA_LIBRARY_V2.md`** (same
+workflow; each entry ships its own paste-ready `tracks.yaml` block). The jingles are
 already fully spec'd next door — **generate those from `JINGLE_PROMPTS.md`**; §1 below applies to both.
 
 **Do them in this order** (each stage de-risks the next):
@@ -899,7 +901,7 @@ For each: a **metadata block** (→ the manifest / `tracks` row — this is the 
   ```
 - **Length:** ~3:45 (standard song).
 
-#### S20. "Rediscovery"  🎛️  *(from R9 Persona — instrumental)*
+#### DONE_S20. "Rediscovery"  🎛️  *(from R9 Persona — instrumental)*
 - **artist:** The Outer Revival · **album:** *Rediscovery* · **era/year:** Age of the Relays, 2625
 - **mood:** contemplative · **tags:** `outer-revival, core, age-of-relays, instrumental, contemplative`
 - **story_blurb:** "The instrumental title piece — the moment the core hears an old outer-station melody
@@ -911,7 +913,7 @@ For each: a **metadata block** (→ the manifest / `tracks` row — this is the 
 
 ### R10 · "First Generation" — archival Earth-roots (origin — a "found" recording)
 
-#### S21. "Earthlight (First-Generation Recording)"  🎵  *(optional 21st track — drop one above for a round 20)* — ↳ **canon** (Greaves/Archivist deep stacks)
+#### DONE_S21. "Earthlight (First-Generation Recording)"  🎵  *(optional 21st track — drop one above for a round 20)* — ↳ **canon** (Greaves/Archivist deep stacks)
 - **artist:** attributed *"First Generation"* (unknown original ship) · **album:** *The Deep Stacks* · **era/year:** pre-diaspora / origin (the oldest thing in the archive)
 - **mood:** nostalgic · **tags:** `earth-roots, earth, origin, solo, nostalgic`
 - **story_blurb:** "From the deep stacks — Greaves says it's first-generation, off the original ship. A
@@ -1004,7 +1006,7 @@ For each: a **metadata block** (→ the manifest / `tracks` row — this is the 
   ```
 - **Length:** ~3:30 (standard song).
 
-#### S23. "The Thousand-Hour Road"  🎵  *(from R11 Persona)*
+#### DONE_S23. "The Thousand-Hour Road"  🎵  *(from R11 Persona)*
 - **artist:** The Lane Runners · **album:** *Turnover* · **era/year:** Age of the Relays, 2624
 - **mood:** warm · **tags:** `lane-rock, betweener, age-of-relays, warm, driving`
 - **story_blurb:** "The mid-tempo one — the pride and patience of the people who keep the freight
@@ -1047,7 +1049,7 @@ For each: a **metadata block** (→ the manifest / `tracks` row — this is the 
 
 ### R12 · Auroral Standard — pulse-dance / Synthesist (meridian, present) — Persona: build from S24
 
-#### S24. "Stormglass"  🎵  ★ Persona seed for R12
+#### DONE_S24. "Stormglass"  🎵  ★ Persona seed for R12
 - **artist:** Auroral Standard · **album:** *Storm Season* · **era/year:** Age of the Relays, 2625
 - **mood:** joyful · **tags:** `pulse-dance, meridian, age-of-relays, synthesist, joyful`
 - **story_blurb:** "Dance music from Meridian's storm coast, where the season locks everyone indoors —

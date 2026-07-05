@@ -114,6 +114,9 @@ def _entry(seg: Segment) -> dict:
         # recomputing the grid. Read from the segment meta the scheduler stamped.
         "program": seg.meta.get("program"),
         "program_name": seg.meta.get("program_name"),
+        # D7.4 — the spun track's PUBLIC lore (title/artist/album/era), set by the
+        # music format; None elsewhere. The now-playing feed shows it (D6.4).
+        "track": seg.meta.get("track"),
         "audio_path": seg.audio_path,
         "air_time": seg.air_time,
         # Schedule on MEASURED duration; fall back to the target only if a probe

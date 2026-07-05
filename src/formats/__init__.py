@@ -5,7 +5,7 @@ skeleton so generation isn't a blank page:
 
   * `news`  — sting → N in-world headlines → sign-off            (single DJ)
   * `talk`  — open → banter → music lead-in → close              (two DJs; wraps B4)
-  * `music` — DJ intro → [song slot marker] → back-announce      (single DJ)
+  * `music` — DJ intro → a REAL curated track → back-announce    (single DJ; D7.4)
 
 This module is the registry + dispatcher. Each format declares which cast it
 needs; `make_format_segment` assembles exactly that slice of the world (via

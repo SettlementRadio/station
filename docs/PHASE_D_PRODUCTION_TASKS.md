@@ -182,6 +182,13 @@ bed-less programs) stay dry; the bed selection + level are dials; durations stay
   - **Era / variety spread** — mix eras so it isn't all "24th-century classics" or all current.
   - **Featured / promoted** — if the world just "dropped a new album" or an artist is in the news (D3),
     favour that artist's playable tracks; honour an explicit human **feature/pin** flag on a track.
+  - **Fit to the next pin (timing awareness)** — the scheduler knows the air-cursor and every track's
+    measured duration, and the `news@:00` pin fires on *crossing* the hour (the song is never cut, so a
+    long track can push the news past :00). Give the selector the **time remaining to the next pinned
+    slot** and prefer tracks that fit it (a soft weight, not a hard filter — with few candidates, play
+    the good song and let the news drift, like real radio). Dial:
+    `production_fit_to_pin_weight` (0 disables). This is why an 8-minute track in the catalogue is
+    fine: near the top of the hour the selector reaches for a 3-minute one instead.
   Make the policy a small, testable selector (deterministic given the same inputs + a seed, so it's
   unit-checkable) with the weights as dials. **This is "the brain that decides what to play" — the
   scheduler/selector, not the LLM** (the LLM only writes the intro/back-announce around the chosen track).
@@ -202,8 +209,8 @@ bed-less programs) stay dry; the bed selection + level are dials; durations stay
   grid decides which programs play music) and/or `settings.buffer_rotation`. Confirm no silent gap can
   occur (PHASE_C_ORIENTATION §6.1: music was dropped precisely because the slot was empty — it is no
   longer).
-**Done when:** the selector picks a track by the documented policy (mood/world/freshness/era/featured,
-weighted by dials); a cleared track plays in the music slot, intro/back-announce tell its story,
+**Done when:** the selector picks a track by the documented policy (mood/world/freshness/era/featured/
+fit-to-pin, weighted by dials); a cleared track plays in the music slot, intro/back-announce tell its story,
 now-playing shows it, and `music` airs in the grid/rotation with audio in the slot every time (no silent
 gaps).
 **Note — gates.** The intro/back-announce is generated text → keep the `generate_safe` + evergreen
@@ -215,8 +222,9 @@ doesn't pass the text gates — but the licence_note must be honoured (human's c
 **Do:**
 - Tests (surgical): the mixing primitive produces an output of the expected duration and falls back to
   clean speech on a mix failure (mock/guard ffmpeg); the **track-selection policy** honours each weighted
-  input — matches daypart/world mood, avoids recent repeats (D5), spreads eras, and favours a
-  featured/promoted artist — and is **deterministic given the same inputs + seed**; the music builder
+  input — matches daypart/world mood, avoids recent repeats (D5), spreads eras, favours a
+  featured/promoted artist, and prefers a track that fits the time remaining to the next pin (a long
+  track is chosen again once no pin is near) — and is **deterministic given the same inputs + seed**; the music builder
   stitches intro→track→back-announce in order and the intro prompt contains the track's lore
   (title/artist/era); idents/stings are placed as entries by the grid (mock the scheduler loop); curated
   `assets/` paths are never in the prune candidate set. Use small fixture audio + fixture `tracks` rows;

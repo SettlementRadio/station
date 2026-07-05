@@ -115,7 +115,9 @@ def test_feed_leaks_no_internal_fields(monkeypatch):
     _stub_names(monkeypatch, {"vell": "Vell", "wren": "Wren"})
     feed = nowplaying.build_feed(NOW, _schedule())
 
-    allowed = {"program", "format", "format_label", "hosts", "air_time"}
+    # D7.4 added `track` — the spun track's public lore (title/artist/album/era),
+    # still an allow-listed field, None for non-music entries.
+    allowed = {"program", "format", "format_label", "hosts", "air_time", "track"}
     for item in filter(None, [feed["now"], *feed["next"]]):
         assert set(item) == allowed, f"unexpected fields: {set(item) - allowed}"
         for bad in _INTERNAL_KEYS:
