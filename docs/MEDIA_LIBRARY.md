@@ -700,7 +700,7 @@ For each: a **metadata block** (→ the manifest / `tracks` row — this is the 
 
 ### R7 · The Shellwrights — Localist / far-worlds (outer, present) — Persona: S15
 
-#### S15. "Tideshell Resonance"  🎛️  ★ Persona seed for R7 — ↳ **canon** (Mira: instruments from shells of native fauna)
+#### DONE_S15. "Tideshell Resonance"  🎛️  ★ Persona seed for R7 — ↳ **canon** (Mira: instruments from shells of native fauna)
 - **artist:** The Shellwrights · **album:** *Deep Listening, Vol. IV* · **era/year:** Age of the Relays, 2616
 - **mood:** serene · **tags:** `localist, outer-station, age-of-relays, instrumental, serene`
 - **story_blurb:** "A far-worlds collective who build their instruments from the shells of native fauna —

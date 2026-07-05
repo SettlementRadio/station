@@ -70,6 +70,12 @@ def _wire(monkeypatch, tmp_path, *, depth_hours, rotation, generator):
     # The C2 tests are about timing/resilience; keep the C3 disclosure ident out of
     # them. The dedicated cadence tests below re-enable it.
     monkeypatch.setattr(scheduler.settings, "disclosure_enabled", False)
+    # D7.2 — likewise keep the production-layer placements (station ident / boundary
+    # theme / news sting) out: they resolve real curated `assets/` clips, and these
+    # tests must not depend on curated media. The D7 placement tests cover them.
+    monkeypatch.setattr(scheduler.settings, "production_ident_every_n", 0)
+    monkeypatch.setattr(scheduler.settings, "production_theme_at_boundary", False)
+    monkeypatch.setattr(scheduler.settings, "production_sting_before_news", False)
     # C4 — top_up refreshes the never-dead fallback assets (real TTS). Neutralize it
     # so the scheduler tests stay free of Claude/TTS; src/fallback has its own tests.
     monkeypatch.setattr(scheduler, "ensure_fallback_assets", lambda **k: {})

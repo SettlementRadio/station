@@ -37,6 +37,14 @@ As it places content, the scheduler also weaves a spoken AI-disclosure ident
 segments (C3), so the live stream audibly discloses on a regular cadence — the
 ident is just another entry in the ordered playlist, so playout needs no change.
 
+D7.2 extends the same weave to the production layer (src/production/placement.py):
+a program's theme (plus the handover sting for handover shows) opens each program
+BOUNDARY the grid crosses, the C8 sting fires immediately before every news
+bulletin, and the A1 sung station ident airs every
+`settings.production_ident_every_n` content segments — all static, curated
+`assets/` clips placed as ordered entries (reused, gate-free, GC-safe by
+location), never re-rendered.
+
 `buffer_depth_hours` is the lead-time dial: a deeper buffer is more resilient to a slow
 or failed generation run; driving it toward ~0 (plus streaming TTS) is what later
 enables near-live (Phase E). The scheduler never airs anything — it only decides and
@@ -61,6 +69,11 @@ from .formats import FORMATS, make_format_segment
 from .freshness import record_segment as record_airplay_features
 from .freshness import sweep as sweep_airplay
 from .logging_setup import get_logger
+from .production.placement import (
+    boundary_segments,
+    news_sting_segment,
+    station_ident_segment,
+)
 from .segment import Segment
 from .world import programming
 from .world.programming import Program
@@ -304,6 +317,36 @@ def top_up(now: datetime | None = None) -> list[dict]:
     # C3: count CONTENT segments placed since the last disclosure ident, persisted
     # across runs so the spoken-disclosure cadence is steady regardless of pruning.
     content_since_ident = state.get("content_since_ident", 0)
+    # D7.2: the production-layer counterparts, persisted the same way — the A1
+    # station-ident cadence and the program whose boundary was last opened (so a
+    # boundary that falls BETWEEN two top-up runs still gets its theme).
+    content_since_station_ident = state.get("content_since_station_ident", 0)
+    last_program_id: str | None = state.get("last_program_id")
+
+    def _place_clip(seg: Segment) -> None:
+        """Weave one curated production clip (D7.2) into the order at the cursor.
+
+        The clip's audio is a REUSED `assets/` file (GC-safe by location, no
+        sidecar, not airplay-recorded — it is meant to repeat), so placing it is
+        pure bookkeeping: pin, append, advance the cursor by its measured length.
+        """
+        nonlocal air_cursor, runway_sec, added
+        seg.air_time = air_cursor.isoformat()
+        entry = _entry(seg)
+        duration = _duration_of(entry)
+        upcoming.append(entry)
+        air_cursor += timedelta(seconds=duration)
+        runway_sec += duration
+        added += 1
+        log.info(
+            "schedule_clip_added",
+            seg_id=seg.id,
+            format=seg.format,
+            air_time=entry["air_time"],
+            duration_sec=round(duration, 1),
+            runway_sec=round(runway_sec),
+        )
+
     # Consecutive-failure stall threshold: the whole format set failing in a row means
     # the generator is down. Grid mode spans all formats; flat mode is the rotation.
     stall_cap = len(FORMATS) if settings.programming_enabled else len(rotation)
@@ -354,6 +397,23 @@ def top_up(now: datetime | None = None) -> list[dict]:
                 log.warning("schedule_ident_error", error=str(exc))
             continue
 
+        # D7.2 — the A1 sung station ident on its own (slower) cadence, mirroring
+        # the C3 weave above. Additive: the disclosure ident keeps airing as-is.
+        # Reset-first for the same reason; a missing/unreadable clip skips this
+        # firing (placement returns None / stamp guards the probe), never blocks.
+        if (
+            settings.production_ident_every_n > 0
+            and content_since_station_ident >= settings.production_ident_every_n
+        ):
+            content_since_station_ident = 0
+            try:
+                station_ident = station_ident_segment(air_cursor)
+                if station_ident is not None:
+                    _place_clip(station_ident)
+            except Exception as exc:
+                log.warning("schedule_station_ident_error", error=str(exc))
+            continue
+
         # D6.2 — pick the next format from the programming GRID: the active program's
         # clock at the air-cursor (run-lengths, pinned top-of-hour slots, markers
         # skipped), routing that program's hosts into generation so the grid drives
@@ -365,6 +425,22 @@ def top_up(now: datetime | None = None) -> list[dict]:
         speakers: list[str] | None = None
         if settings.programming_enabled:
             program = programming.program_for(air_cursor)
+            # D7.2 — program boundary: when the show at the cursor CHANGES, open it
+            # with its sonic identity (a handover program gets the B6 sting, then
+            # the theme — placement.boundary_segments) before any content. First
+            # run just records the program (a boundary is a CHANGE, not a start);
+            # the id persists so a boundary falling between top-ups still fires.
+            if program.id != last_program_id:
+                if (
+                    settings.production_theme_at_boundary
+                    and last_program_id is not None
+                ):
+                    try:
+                        for clip_seg in boundary_segments(program, air_cursor):
+                            _place_clip(clip_seg)
+                    except Exception as exc:
+                        log.warning("schedule_boundary_error", error=str(exc))
+                last_program_id = program.id
             name, new_pstate = programming.next_format(
                 program, air_cursor, clock_state.get(program.id, {}), prev_cursor
             )
@@ -400,6 +476,20 @@ def top_up(now: datetime | None = None) -> list[dict]:
             continue
         consecutive_skips = 0
 
+        # D7.2 — the C8 sting fires immediately BEFORE a news bulletin (the pinned
+        # news@:00 moment). Placed only once the bulletin actually generated (a
+        # lone sting before a skipped slot would be noise), then the bulletin is
+        # re-pinned after it. Works in grid and flat mode alike; a missing clip
+        # skips silently (media logs it).
+        if name == "news" and settings.production_sting_before_news:
+            try:
+                sting = news_sting_segment(air_cursor)
+                if sting is not None:
+                    _place_clip(sting)
+                    seg.air_time = air_cursor.isoformat()
+            except Exception as exc:
+                log.warning("schedule_news_sting_error", error=str(exc))
+
         # Commit the advanced clock/rotation state now that the slot has aired, and
         # stamp the program onto the segment (for the D6.3 console / D6.4 feed). Advance
         # the global pin cursor to this slot's time so the next slot's crossing is
@@ -429,6 +519,7 @@ def top_up(now: datetime | None = None) -> list[dict]:
         runway_sec += duration
         added += 1
         content_since_ident += 1
+        content_since_station_ident += 1
         log.info(
             "schedule_slot_added",
             seg_id=seg.id,
@@ -443,6 +534,8 @@ def top_up(now: datetime | None = None) -> list[dict]:
     state["rotation_index"] = rot_i % len(rotation)
     state["clock_state"] = clock_state
     state["content_since_ident"] = content_since_ident
+    state["content_since_station_ident"] = content_since_station_ident
+    state["last_program_id"] = last_program_id
     # C4 — heartbeat: record that a top-up ran to completion. `src/health.py`
     # check_last_run() reads this to detect a generator that has stopped running.
     state["last_topup_at"] = now.isoformat()

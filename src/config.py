@@ -550,6 +550,18 @@ class Settings(BaseSettings):
     # than none — default conservative and let D7.3 tune per program by ear.
     production_bed_gain_db: float = -15.0
     production_bed_fade_sec: float = 1.5
+    # D7.2 — placement cadences (src/production/placement.py; woven by the
+    # scheduler exactly like the C3 disclosure ident — ordered entries, playout
+    # unchanged). `production_theme_at_boundary` opens each program change with
+    # its theme (a handover program gets the B6 "passing the light" sting first —
+    # that pairing is mapping-driven, not a separate dial).
+    # `production_sting_before_news` fires the C8 sting immediately before every
+    # news bulletin. `production_ident_every_n` airs the A1 sung station logo
+    # every N CONTENT segments (0 = off) — a separate, slower cadence than the
+    # C3 disclosure ident (which keeps airing as-is; these are additive).
+    production_theme_at_boundary: bool = True
+    production_sting_before_news: bool = True
+    production_ident_every_n: int = 8
 
     def model_id(self, tier: str) -> str:
         """Map a logical tier ("haiku"|"sonnet"|"opus") to its real model id."""
