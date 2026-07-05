@@ -1,0 +1,412 @@
+# config/tracks.yaml — Settlement Radio curated music-lore manifest
+#
+# The human-owned catalogue of PLAYABLE songs (curated, not tick-generated). This file is the
+# authoritative source the D7.0 loader reads into the `tracks` table (`make seed-tracks`). It is
+# pre-authored from docs/MEDIA_LIBRARY.md §5/§6 — the loader must READ THIS FILE/FORMAT, not invent
+# its own. Survives a canon refresh (curated config/catalog, not world state — OVERVIEW §2a).
+#
+# WORKFLOW (see docs/MEDIA_LIBRARY.md):
+#   1. Human generates each song in Suno (Style + Lyrics per doc §5) and saves the MP3 into
+#      assets/music/ under the EXACT filename in `audio_path` below. That string is the only link
+#      between file and lore — nothing is discovered by scanning the folder.
+#   2. `duration_sec` is null until the trimmed file exists; the loader may probe it (tts.probe_duration)
+#      or the human stamps it. A row whose audio_path file is missing is NOT playable (skip, don't crash).
+#   3. `artist_figure_id` is null now (D7 ships text-only artists); backfilled to a D10 figure row later.
+#
+# A song not yet generated: leave its row here (duration_sec null, file absent) — it simply isn't
+# playable until the file lands. It stays referenceable lore either way.
+
+licence_default: "Suno Pro — commercial rights, self-owned; cleared for broadcast (confirm plan terms before air)."
+
+tracks:
+  # --- R1 · Halden Vre — Void Ballads (outer-station, present) ---
+  - id: halden-vre__the-slow-star
+    title: "The Slow Star"
+    artist: "Halden Vre"
+    artist_figure_id: null
+    album: "A Window in the Dark"
+    era: "age-of-relays"
+    in_world_year: 2611
+    mood: "melancholy"
+    tags: [void-ballad, outer-station, age-of-relays, solo, melancholy]
+    story_blurb: "Written on a one-keeper station months from the nearest light — a man singing to the single star that never sets in his window."
+    duration_sec: null
+    audio_path: "assets/music/halden-vre__the-slow-star.mp3"
+    licence_note: null
+
+  - id: halden-vre__nobody-answers-the-dark
+    title: "Nobody Answers the Dark"
+    artist: "Halden Vre"
+    artist_figure_id: null
+    album: "A Window in the Dark"
+    era: "age-of-relays"
+    in_world_year: 2613
+    mood: "contemplative"
+    tags: [void-ballad, outer-station, age-of-relays, solo, solitude]
+    story_blurb: "A keeper's half-question to the emptiness beyond the last settlement — sent out on a relay that won't reach anyone for half a year."
+    duration_sec: null
+    audio_path: "assets/music/halden-vre__nobody-answers-the-dark.mp3"
+    licence_note: null
+
+  - id: halden-vre__keepers-lament
+    title: "Keeper's Lament"
+    artist: "Halden Vre"
+    artist_figure_id: null
+    album: "A Window in the Dark"
+    era: "age-of-relays"
+    in_world_year: 2612
+    mood: "wistful"
+    tags: [void-ballad, outer-station, age-of-relays, instrumental, wistful]
+    story_blurb: "The wordless version keepers hum on the long shifts — no lyrics ever settled on it, so everyone finishes it their own way."
+    duration_sec: null
+    audio_path: "assets/music/halden-vre__keepers-lament.mp3"
+    licence_note: null
+
+  # --- R2 · Ysolde Mar — Drift Songs (betweener, present) ---
+  - id: ysolde-mar__the-long-way-round
+    title: "The Long Way Round"
+    artist: "Ysolde Mar"
+    artist_figure_id: null
+    album: "Cargo-Hold Songs"
+    era: "age-of-relays"
+    in_world_year: 2619
+    mood: "mellow"
+    tags: [drift-song, betweener, age-of-relays, solo, mellow]
+    story_blurb: "A navigator's song, learned in a cargo hold from a woman who plays to stay awake on the crossings — it loops the way a long journey does."
+    duration_sec: null
+    audio_path: "assets/music/ysolde-mar__the-long-way-round.mp3"
+    licence_note: null
+
+  - id: ysolde-mar__cargo-hold-lullaby
+    title: "Cargo-Hold Lullaby"
+    artist: "Ysolde Mar"
+    artist_figure_id: null
+    album: "Cargo-Hold Songs"
+    era: "age-of-relays"
+    in_world_year: 2620
+    mood: "tender"
+    tags: [drift-song, betweener, age-of-relays, solo, tender]
+    story_blurb: "What she sings to the freight and to herself in the last watch before landfall — half a lullaby, half a promise to arrive."
+    duration_sec: null
+    audio_path: "assets/music/ysolde-mar__cargo-hold-lullaby.mp3"
+    licence_note: null
+
+  # --- R3 · The Ninefold Pipes of Forge — resonance-pipe instrumental (forge, Reconnection) ---
+  - id: ninefold-pipes-of-forge__foundry-evensong
+    title: "Foundry Evensong"
+    artist: "The Ninefold Pipes of Forge"
+    artist_figure_id: null
+    album: "Resonance"
+    era: "reconnection"
+    in_world_year: 2470
+    mood: "solemn"
+    tags: [resonance-pipe, forge, reconnection, instrumental, purist, solemn]
+    story_blurb: "Played on Forge's resonance pipes — long alloy tubes first built as signalling devices in the foundries, later bowed and struck into an organ of industry. The piece the night shift plays out over the cooling floors."
+    duration_sec: null
+    audio_path: "assets/music/ninefold-pipes-of-forge__foundry-evensong.mp3"
+    licence_note: null
+
+  - id: ninefold-pipes-of-forge__signalfire
+    title: "Signalfire"
+    artist: "The Ninefold Pipes of Forge"
+    artist_figure_id: null
+    album: "Resonance"
+    era: "reconnection"
+    in_world_year: 2475
+    mood: "hopeful"
+    tags: [resonance-pipe, forge, reconnection, instrumental, hopeful]
+    story_blurb: "The pipes were signalling gear before they were instruments; this piece remembers that — a call across the foundry-dark that answers itself, warmer each time."
+    duration_sec: null
+    audio_path: "assets/music/ninefold-pipes-of-forge__signalfire.mp3"
+    licence_note: null
+
+  # --- R4 · Concordance Exchange Consort — Core Harmonies (concordance, present) ---
+  - id: concordance-exchange-consort__gardens-under-glass
+    title: "Gardens Under Glass"
+    artist: "Concordance Exchange Consort"
+    artist_figure_id: null
+    album: "Deep Listening, Vol. II"
+    era: "age-of-relays"
+    in_world_year: 2607
+    mood: "serene"
+    tags: [core-harmony, concordance, age-of-relays, synth-harpsichord, instrumental, serene]
+    story_blurb: "Core Harmonies from Concordance, the oldest world — layered synth-harpsichord written for the roofed gardens of the Exchange Houses, where nothing has wanted for anything in centuries."
+    duration_sec: null
+    audio_path: "assets/music/concordance-exchange-consort__gardens-under-glass.mp3"
+    licence_note: null
+
+  - id: concordance-exchange-consort__the-long-table
+    title: "The Long Table"
+    artist: "Concordance Exchange Consort"
+    artist_figure_id: null
+    album: "Deep Listening, Vol. II"
+    era: "age-of-relays"
+    in_world_year: 2609
+    mood: "warm"
+    tags: [core-harmony, concordance, age-of-relays, synth-harpsichord, warm]
+    story_blurb: "A gentle piece for the Settlement Council's long table — the sound of many worlds sitting down together, for once, in the same room."
+    duration_sec: null
+    audio_path: "assets/music/concordance-exchange-consort__the-long-table.mp3"
+    licence_note: null
+
+  # --- R5 · Brace & the Tin Reelers — Frontier Reels (freeholds, present) ---
+  - id: brace-and-the-tin-reelers__salvage-yard-saturday
+    title: "Salvage Yard Saturday"
+    artist: "Brace & the Tin Reelers"
+    artist_figure_id: null
+    album: "Salvage & Song"
+    era: "age-of-relays"
+    in_world_year: 2622
+    mood: "joyful"
+    tags: [frontier-reel, freeholds, age-of-relays, salvage-perc, joyful]
+    story_blurb: "A Freeholds reel banged out on oxygen-tank drums and wire chimes — the Saturday sound of people who work hard all week and celebrate harder, on instruments made from what broke."
+    duration_sec: null
+    audio_path: "assets/music/brace-and-the-tin-reelers__salvage-yard-saturday.mp3"
+    licence_note: null
+
+  - id: brace-and-the-tin-reelers__wire-and-bone
+    title: "Wire and Bone"
+    artist: "Brace & the Tin Reelers"
+    artist_figure_id: null
+    album: "Salvage & Song"
+    era: "age-of-relays"
+    in_world_year: 2621
+    mood: "driving"
+    tags: [frontier-reel, freeholds, age-of-relays, salvage-perc, driving]
+    story_blurb: "The reel they play at a Freeholds send-off — half work-song, half dare, all made of wire and bone and whatever rings when you hit it."
+    duration_sec: null
+    audio_path: "assets/music/brace-and-the-tin-reelers__wire-and-bone.mp3"
+    licence_note: null
+
+  - id: brace-and-the-tin-reelers__the-oxygen-drum
+    title: "The Oxygen Drum"
+    artist: "Brace & the Tin Reelers"
+    artist_figure_id: null
+    album: "Salvage & Song"
+    era: "age-of-relays"
+    in_world_year: 2623
+    mood: "bright"
+    tags: [frontier-reel, freeholds, age-of-relays, salvage-perc, instrumental, bright]
+    story_blurb: "Just the rhythm section, cut loose — the sound of a Freeholds workshop finding a groove in its own scrap."
+    duration_sec: null
+    audio_path: "assets/music/brace-and-the-tin-reelers__the-oxygen-drum.mp3"
+    licence_note: null
+
+  # --- R6 · Sixteen Hands — Drift / relay-collective (betweener, present) ---
+  - id: sixteen-hands__letters-we-sent-ahead
+    title: "Letters We Sent Ahead"
+    artist: "Sixteen Hands"
+    artist_figure_id: null
+    album: "Across the Dark"
+    era: "age-of-relays"
+    in_world_year: 2618
+    mood: "wistful"
+    tags: [drift-song, betweener, age-of-relays, synthesist, wistful]
+    story_blurb: "A collective whose members have never met — each part recorded on a different world and stitched together across the relays. You can hear the distance between the voices; that's the point."
+    duration_sec: null
+    audio_path: "assets/music/sixteen-hands__letters-we-sent-ahead.mp3"
+    licence_note: null
+
+  - id: sixteen-hands__sixteen-skies
+    title: "Sixteen Skies"
+    artist: "Sixteen Hands"
+    artist_figure_id: null
+    album: "Across the Dark"
+    era: "age-of-relays"
+    in_world_year: 2620
+    mood: "contemplative"
+    tags: [drift-song, betweener, age-of-relays, synthesist, instrumental, contemplative]
+    story_blurb: "Sixteen players, sixteen skies, one piece — the instrumental the collective built to prove a song could hold together across worlds that will never share an hour."
+    duration_sec: null
+    audio_path: "assets/music/sixteen-hands__sixteen-skies.mp3"
+    licence_note: null
+
+  # --- R7 · The Shellwrights — Localist / far-worlds (outer, present) ---
+  - id: shellwrights__tideshell-resonance
+    title: "Tideshell Resonance"
+    artist: "The Shellwrights"
+    artist_figure_id: null
+    album: "Deep Listening, Vol. IV"
+    era: "age-of-relays"
+    in_world_year: 2616
+    mood: "serene"
+    tags: [localist, outer-station, age-of-relays, instrumental, serene]
+    story_blurb: "A far-worlds collective who build their instruments from the shells of native fauna — listen for the resonance no manufactured instrument makes. A signature of the Localist tradition: music grown from its own world."
+    duration_sec: null
+    audio_path: "assets/music/shellwrights__tideshell-resonance.mp3"
+    licence_note: null
+
+  - id: shellwrights__fauna-song
+    title: "Fauna Song"
+    artist: "The Shellwrights"
+    artist_figure_id: null
+    album: "Deep Listening, Vol. IV"
+    era: "age-of-relays"
+    in_world_year: 2617
+    mood: "tender"
+    tags: [localist, outer-station, age-of-relays, tender]
+    story_blurb: "A lullaby the far-worlds sing to the creatures whose shells become their instruments — gratitude and apology in the same breath."
+    duration_sec: null
+    audio_path: "assets/music/shellwrights__fauna-song.mp3"
+    licence_note: null
+
+  # --- R8 · The First-Ships Choir — Exodus Hymns (First Expansion — classic) ---
+  - id: first-ships-choir__departure-hymn
+    title: "Departure Hymn"
+    artist: "The First-Ships Choir"
+    artist_figure_id: null
+    album: "The Deep Stacks"
+    era: "first-expansion"
+    in_world_year: 2190
+    mood: "solemn"
+    tags: [exodus-hymn, earth, first-expansion, purist, solemn]
+    story_blurb: "An Exodus Hymn from the first ships — solemn, hopeful, carrying the weight of leaving and the dream of arrival. Four hundred years old and still sung when a settlement sends someone out."
+    duration_sec: null
+    audio_path: "assets/music/first-ships-choir__departure-hymn.mp3"
+    licence_note: null
+
+  - id: first-ships-choir__the-blue-cradle
+    title: "The Blue Cradle"
+    artist: "The First-Ships Choir"
+    artist_figure_id: null
+    album: "The Deep Stacks"
+    era: "first-expansion"
+    in_world_year: 2205
+    mood: "nostalgic"
+    tags: [exodus-hymn, earth, first-expansion, nostalgic]
+    story_blurb: "The hymn every settled child learns about Earth — half record, half founding myth: the blue planet, the place humanity first learned to look up and wonder."
+    duration_sec: null
+    audio_path: "assets/music/first-ships-choir__the-blue-cradle.mp3"
+    licence_note: null
+
+  # --- R9 · The Outer Revival — Void-revival / Outer Revival movement (core, present) ---
+  - id: outer-revival__nobody-told-the-frontier-it-was-over
+    title: "Nobody Told the Frontier It Was Over"
+    artist: "The Outer Revival"
+    artist_figure_id: null
+    album: "Rediscovery"
+    era: "age-of-relays"
+    in_world_year: 2624
+    mood: "melancholy"
+    tags: [outer-revival, core, age-of-relays, void-ballad, melancholy]
+    story_blurb: "Core musicians 'discovering' a Void-Ballad style that never stopped evolving on the outer stations — polished and beautiful, and a little haunted by the fact that it was never lost, just never heard. The Outer Revival in one song."
+    duration_sec: null
+    audio_path: "assets/music/outer-revival__nobody-told-the-frontier-it-was-over.mp3"
+    licence_note: null
+
+  - id: outer-revival__rediscovery
+    title: "Rediscovery"
+    artist: "The Outer Revival"
+    artist_figure_id: null
+    album: "Rediscovery"
+    era: "age-of-relays"
+    in_world_year: 2625
+    mood: "contemplative"
+    tags: [outer-revival, core, age-of-relays, instrumental, contemplative]
+    story_blurb: "The instrumental title piece — the moment the core hears an old outer-station melody as if for the first time, and treats a rediscovery as a discovery."
+    duration_sec: null
+    audio_path: "assets/music/outer-revival__rediscovery.mp3"
+    licence_note: null
+
+  # --- R10 · "First Generation" — archival Earth-roots (origin; optional 21st track) ---
+  - id: first-generation__earthlight
+    title: "Earthlight (First-Generation Recording)"
+    artist: "First Generation"
+    artist_figure_id: null
+    album: "The Deep Stacks"
+    era: "origin"
+    in_world_year: null
+    mood: "nostalgic"
+    tags: [earth-roots, earth, origin, solo, nostalgic]
+    story_blurb: "From the deep stacks — Greaves says it's first-generation, off the original ship. A single voice and a worn acoustic instrument, older than every world now listening."
+    duration_sec: null
+    audio_path: "assets/music/first-generation__earthlight.mp3"
+    licence_note: null
+
+  # --- R11 · The Lane Runners — lane-rock (betweener, present) ---
+  - id: lane-runners__burn-day
+    title: "Burn Day"
+    artist: "The Lane Runners"
+    artist_figure_id: null
+    album: "Turnover"
+    era: "age-of-relays"
+    in_world_year: 2623
+    mood: "driving"
+    tags: [lane-rock, betweener, age-of-relays, driving, joyful]
+    story_blurb: "Hauler rock off the freight lanes — 'burn day' is the day a ship fires the main engines for turnover, halfway home. The whole crew's holiday; the Lane Runners made it everyone's."
+    duration_sec: null
+    audio_path: "assets/music/lane-runners__burn-day.mp3"
+    licence_note: null
+
+  - id: lane-runners__the-thousand-hour-road
+    title: "The Thousand-Hour Road"
+    artist: "The Lane Runners"
+    artist_figure_id: null
+    album: "Turnover"
+    era: "age-of-relays"
+    in_world_year: 2624
+    mood: "warm"
+    tags: [lane-rock, betweener, age-of-relays, warm, driving]
+    story_blurb: "The mid-tempo one — the pride and patience of the people who keep the freight moving. Every hauler bar on every dock claims this song was written about their lane."
+    duration_sec: null
+    audio_path: "assets/music/lane-runners__the-thousand-hour-road.mp3"
+    licence_note: null
+
+  # --- R12 · Auroral Standard — pulse-dance / Synthesist (meridian, present) ---
+  - id: auroral-standard__stormglass
+    title: "Stormglass"
+    artist: "Auroral Standard"
+    artist_figure_id: null
+    album: "Storm Season"
+    era: "age-of-relays"
+    in_world_year: 2625
+    mood: "joyful"
+    tags: [pulse-dance, meridian, age-of-relays, synthesist, joyful]
+    story_blurb: "Dance music from Meridian's storm coast, where the season locks everyone indoors — so they dance. A 'stormglass' is the window wall you dance in front of while the weather does its worst."
+    duration_sec: null
+    audio_path: "assets/music/auroral-standard__stormglass.mp3"
+    licence_note: null
+
+  - id: auroral-standard__aurora-season
+    title: "Aurora Season"
+    artist: "Auroral Standard"
+    artist_figure_id: null
+    album: "Storm Season"
+    era: "age-of-relays"
+    in_world_year: 2626
+    mood: "bright"
+    tags: [pulse-dance, meridian, age-of-relays, synthesist, instrumental, bright]
+    story_blurb: "The instrumental — the week after the storms, when Meridian's sky pays the coast back with auroras. The track every skate-rink on three worlds wore out last season."
+    duration_sec: null
+    audio_path: "assets/music/auroral-standard__aurora-season.mp3"
+    licence_note: null
+
+  # --- R13 · The Nightliners — void-lounge (concordance, present) ---
+  - id: nightliners__two-oclock-settlement-time
+    title: "Two O'Clock, Settlement Time"
+    artist: "The Nightliners"
+    artist_figure_id: null
+    album: "The Late Window"
+    era: "age-of-relays"
+    in_world_year: 2615
+    mood: "mellow"
+    tags: [void-lounge, concordance, age-of-relays, mellow, nostalgic]
+    story_blurb: "The deep-hours standard from Concordance's late clubs — named for the hour the night really begins. Every settlement bar band covers it; Vell has been known to hum it on air."
+    duration_sec: null
+    audio_path: "assets/music/nightliners__two-oclock-settlement-time.mp3"
+    licence_note: null
+
+  # --- R14 · Vela & the Beacons — relay-pop (core, present) ---
+  - id: vela-and-the-beacons__meet-me-on-the-thread
+    title: "Meet Me on the Thread"
+    artist: "Vela & the Beacons"
+    artist_figure_id: null
+    album: "Signals"
+    era: "age-of-relays"
+    in_world_year: 2625
+    mood: "bright"
+    tags: [relay-pop, core, age-of-relays, bright, tender]
+    story_blurb: "The relay-romance hit — two sweethearts on worlds eleven weeks apart who keep their date on 'the thread', same hour every week. Half the settled worlds can sing the chorus; the other half pretends it can't."
+    duration_sec: null
+    audio_path: "assets/music/vela-and-the-beacons__meet-me-on-the-thread.mp3"
+    licence_note: null

@@ -35,6 +35,34 @@ Movements rise and fall. The Purists held that only acoustic instruments were le
 
 These figures and movements are the vocabulary of the station's DJs. When a DJ plays a song they do not just announce the title; they tell its story, place it in the larger tapestry, connect it to what came before. And the listeners who call in do not just request songs — they argue lineage and legacy, debate the movements, share where they were when they first heard a piece that mattered.
 
+## Scenes of the present day
+
+The Divergence never ended; it only found new channels. Four scenes of the current age show how the
+old movements keep speaking through new mouths.
+
+The freight crews of the between have their own driving music — **lane-rock**, engine-rhythm anthems
+built on drum patterns that echo a ship under thrust and choruses meant to be sung by a whole crew at
+once. Its great occasion is *burn day*, the halfway moment when a hauler fires its engines for
+turnover: the day the whole hull hums one song. It is working music, proud and warm, the sound of
+people who know a town they will never live in eats tonight because they didn't stay.
+
+On Meridian's storm coast, where the season seals the doors for a month of night, the Synthesist
+tradition grew **pulse-dance** — four-on-the-floor music for dancing indoors while the weather does
+its worst, every lit house a little star the storm cannot put out. It is the purest living argument
+for the Synthesist creed: music that could exist in no other form, joy manufactured precisely where
+the world withholds it.
+
+The core's late clubs keep the **void-lounge** — slow, smoky standards played after the last ferry
+goes, brushed drums and patient keys for the hour the honest and the hopeless rhyme. Its songs
+travel the relays to every night shift in the settled worlds; the deep hours, the lounge players
+say, are the same on every world — same brave lamps, different star.
+
+And everywhere the relays reach, there is **relay-pop** — bright, hooky harmony songs about love
+across the lag: sweethearts on worlds weeks apart who keep a standing hour on the thread, letters
+answered in slow motion, the distance doing its part. It is the young form, sweet and a little
+sentimental, and it carries the oldest truth the station knows: that connection across the dark is
+what all this machinery is *for*.
+
 ## The station's playlist as cultural memory
 
 The music Settlement Radio plays is not random. It is curated, selected to create a particular mood, to tell a particular story about the settled worlds. The playlist includes the hits of the core, the anthems of the frontier, the obscure local scenes that deserve wider attention. It includes new releases and ancient recordings, music weeks old and music centuries old, all treated as part of a continuous tradition.
@@ -69,3 +97,11 @@ The playlist is also an argument. By choosing certain songs and not others, the 
     - **Tags:** music, drift, core, frontier, revival, rediscovery
 12. **The station's playlist is never random but curated — a claim about what matters and what the settled worlds should sound like, as much argument as entertainment.**
     - **Tags:** music, curation, meaning, broadcast, intention, culture
+13. **Lane-rock is the driving music of the freight crews — engine-rhythm anthems sung by whole crews, with "burn day" (the halfway turnover burn) as its great occasion.**
+    - **Tags:** music, genre, between, ships, work, joy, celebration
+14. **Pulse-dance grew from the Synthesist tradition on Meridian's storm coast — four-on-the-floor music for dancing indoors through the sealed storm season, joy made exactly where the world withholds it.**
+    - **Tags:** music, genre, dance, technology, weather, community, joy
+15. **The void-lounge is the core's late-club standard — slow, smoky songs for the deep hours after the last ferry, carried by relay to every night shift in the settled worlds.**
+    - **Tags:** music, genre, core, night, comfort, shared
+16. **Relay-pop is the young bright form — harmony songs about love across the lag, sweethearts keeping a standing hour on the thread across weeks of distance.**
+    - **Tags:** music, genre, relay, distance, connection, love, longing

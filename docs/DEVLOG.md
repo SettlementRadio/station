@@ -38,7 +38,38 @@ A typical *build* session will be short, e.g.:
 
 ---
 
-## 2026-07-02 — Phase D — D6: Programming backbone + status console — D6.0–D6.5
+## 2026-07-04 — Phase D — D7 prep: the media library (Suno production, no code)
+**Focus:** author the full media-production layer *before* the D7 build — the song catalogue as
+cultural artifacts, the expanded jingle set, the seed manifest — then generate the assets in Suno.
+**Decisions:**
+- **Artist = Suno Persona = future D10 figure.** The catalogue is a 14-act roster; each act is one
+  Suno Persona (so a band's tracks share a voice) and each maps to `in_world_artist` today /
+  `artist_figure_id` after the D10 backfill. One idea bridges the production tool and the data model.
+- **`config/tracks.yaml` is pre-authored and is the D7.0 contract** — all 27 song rows (lore, tags,
+  exact `audio_path`); the loader conforms to the file, not vice versa. Missing file = not playable,
+  never crash; null duration = probe at seed. The D7 task pack now says this explicitly ("do NOT
+  re-invent").
+- **Playable vs referenceable stays a hard line:** 27 tracks with files are playable; the wider music
+  culture (four new *scenes* — lane-rock, pulse-dance, void-lounge, relay-pop) went into canon
+  `70-music.md` as facts 13–16, **without artist names** (artists stay owned by tracks.yaml → D10).
+- **Jingle set expanded to match the as-built system**, not the MVP: B5b (nightfall — the grid program
+  had no theme), D17 (event-agnostic special coverage — D3 generates events now, Lumen is not the only
+  one), D18 (ad-break pair for D8), A4 sweepers ×3; three energy tiers + "Persona for Group A only" as
+  the anti-sameness rules; every Style string self-contained (the human works Style-box + filename
+  only; Lyrics box only for A1 and the 13 sung songs).
+**Changed:** `docs/MEDIA_LIBRARY.md` (new — 27 songs, full lyrics, roster, Suno mechanics, storage
+spec); `config/tracks.yaml` (new — 27 rows); `docs/JINGLE_PROMPTS.md` (22 entries / ~27 files, §4
+storage table, tier guidance, self-contained styles); `docs/PHASE_D_PRODUCTION_TASKS.md` (contract
+warnings); `docs/canon/70-music.md` (scenes of the present day + facts 13–16); `assets/` — **25/27
+jingle files generated and placed** (only the D18 pair pending, needed for D8 not D7) + first 4 songs.
+**Why:** D7's plumbing is only testable end-to-end with real curated media at known paths — and the
+lore has to exist *before* the DJ can tell a song's story. Authoring the manifest first makes the
+catalogue diffable, seedable, and safe from "the agent invents a format" drift.
+**📣 Postable:** the roster reveal — 14 invented bands with genres grown from the world's physics
+(oxygen-tank drums, relay-lag harmonies, storm-season dance music); pairs well with first-play clips.
+**Next:** run `make seed-canon` (loads the four new scene facts), then **start D7.0 in a fresh
+session** (media stores + `tracks` table, loading the pre-authored manifest).
+Commit: (this session — docs/config/assets; commit before starting D7)  ·  Clips: (none)
 **Focus:** turn "a folder of clips on a flat rotation" into a *programmed station* — a weekly grid of
 named programs (hosts, framing, an hour-clock) the scheduler reads, a private operator console, and a
 public now-playing feed for the web player.

@@ -11,7 +11,22 @@
 > tier), and the scheduler's playlist-entry placement (the disclosure ident is woven in as just another
 > ordered entry — the pattern stings/jingles reuse).
 >
-> **Read first:** `docs/PHASE_D_OVERVIEW.md` §3 (D7 brief); `docs/JINGLE_PROMPTS.md` (**the sonic-identity
+> **⚠️ Already authored — do NOT re-invent (read these first):**
+> - **`config/tracks.yaml` EXISTS** — the curated music-lore manifest, pre-authored with all ~21 song rows
+>   (title/artist/album/era/mood/tags/story_blurb/audio_path; `duration_sec: null`, `artist_figure_id:
+>   null`). **D7.0's loader must READ THIS FILE and its field shape as-is** — it is the source of truth, not
+>   a format to design. Its top-of-file comment documents the workflow + null semantics. Do not rename its
+>   fields, do not generate a different manifest, do not seed placeholder rows over it.
+> - **`docs/MEDIA_LIBRARY.md` EXISTS** — the human's Suno production brief for the **songs** (the roster of
+>   ~10 artists, the 20 song prompts, the exact `assets/music/` filenames, mood/tag vocab). It is the prose
+>   companion to `config/tracks.yaml`; the two agree field-for-field. The **song audio is human-generated in
+>   Suno and dropped into `assets/music/`** under the filenames the manifest's `audio_path` already names —
+>   the loader links file↔lore only via that string (no folder scanning). A manifest row whose file is
+>   absent is simply **not playable yet** (skip gracefully; never crash).
+>
+> **Read first:** `docs/PHASE_D_OVERVIEW.md` §3 (D7 brief); `config/tracks.yaml` + `docs/MEDIA_LIBRARY.md`
+> (**the songs manifest + brief — already written; the loader conforms to them, §5/§6**);
+> `docs/JINGLE_PROMPTS.md` (**the sonic-identity
 > brief + Suno prompts + §3 "Mapping to the app" + §4 naming convention — already written; follow it**);
 > `src/formats/music.py` + `src/formats/common.py` (`render_single_voice`); `src/providers/tts.py`
 > (`concat_audio`); `config/radio.liq` (the bed tier); `docs/PHASE_C_ORIENTATION.md` §6.1 (music dropped
@@ -74,12 +89,16 @@ GC.
   built, **backfill** `artist_figure_id` to connect tracks to their artist figures (a one-off backfill +
   new tracks set it going forward). D7 never blocks on D10; everything degrades to the text artist name.
 - **The catalogue is curated lore you own (a mini-bible), not generated.** A human adds a cleared track by
-  dropping the file in `assets/music/` **and writing its lore** — recommend a **music-lore manifest** (or
-  per-track sidecar) the seeder reads into `tracks` (the canon-folder pattern: human-authored source →
-  seeded rows), so it's reproducible, diffable, and **survives a canon refresh** (it's curated, `source`
-  = bible-authored, never tick-generated — OVERVIEW §2). Provide the registration path (seed from the
-  manifest / a `make tracks` import). Ship a couple of **royalty-free/placeholder** tracks for testing —
-  flag clearly that the real catalogue + lore + **licence clearance is the human's call**.
+  dropping the file in `assets/music/` **and writing its lore** in the **music-lore manifest**. **That
+  manifest already exists and is authored: `config/tracks.yaml`** (~21 rows from `docs/MEDIA_LIBRARY.md`;
+  the canon-folder pattern: human-authored source → seeded rows). **Build the seeder to load THIS file's
+  exact field shape** (`id, title, artist, artist_figure_id, album, era, in_world_year, mood, tags,
+  story_blurb, duration_sec, audio_path, licence_note` + a top-level `licence_default`) — reproducible,
+  diffable, and **survives a canon refresh** (curated, bible-authored, never tick-generated — OVERVIEW §2).
+  Provide the registration path (`make seed-tracks` reads `config/tracks.yaml`). Rows whose `duration_sec`
+  is null → **probe from the file** (`tts.probe_duration`) at seed; rows whose `audio_path` file is absent
+  → load the lore but mark **not playable** (don't crash, don't invent audio). Real catalogue + lore +
+  **licence clearance is the human's call** (the manifest carries `licence_default` — Suno Pro).
 - **Playable songs vs music *culture* — the load-bearing boundary.** Only tracks with an actual
   `audio_path` are **playable**. But the world's *music culture* — artists, albums, scenes, eras the
   station merely *talks about* — is **lore + events, no audio needed** (see the D3/D10 cross-refs). So the
