@@ -92,6 +92,12 @@ class Program:
     is one of `solo` | `handover` | `ensemble` | `legacy` (the last reserved for the
     default program — the hour-derived frame). `clock` is the explicit format
     sequence; `rotation` is the weighted-rotation fallback used when `clock` is empty.
+
+    `break_every` (D8.1) is the program's ad-break cadence: one sparse ad break
+    after every N content segments while this show is on air; 0 (the default —
+    the key absent in grid.yaml) means this show takes NO breaks. The grid, not
+    a global constant, decides the ad load — different dayparts carry different
+    loads (the scheduler weaves the break itself; see scheduler.top_up).
     """
 
     id: str
@@ -101,6 +107,7 @@ class Program:
     daypart: str  # optional display label ("" if none) — does not set part_of_day
     clock: tuple[ClockStep, ...]
     rotation: tuple[str, ...]
+    break_every: int = 0  # D8.1: content segments between ad breaks; 0 = none
 
 
 @dataclass(frozen=True)
@@ -154,6 +161,13 @@ def _parse_program(pid: str, data: dict) -> Program:
     clock = tuple(_parse_clock_token(str(t)) for t in (data.get("clock") or []))
     rotation = tuple(str(r).strip() for r in (data.get("rotation") or []))
     name = str(data.get("name") or pid).strip()
+    try:
+        break_every = max(int(data.get("break_every") or 0), 0)
+    except (TypeError, ValueError):
+        log.warning(
+            "programming_bad_break_every", program=pid, value=data.get("break_every")
+        )
+        break_every = 0
     return Program(
         id=pid,
         name=name,
@@ -162,6 +176,7 @@ def _parse_program(pid: str, data: dict) -> Program:
         daypart=daypart,
         clock=clock,
         rotation=rotation,
+        break_every=break_every,
     )
 
 

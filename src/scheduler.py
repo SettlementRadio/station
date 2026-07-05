@@ -48,6 +48,14 @@ location), never re-rendered. D7.3 adds beds: where the grid calls for it
 ducked bed at render time (placement.apply_bed) and re-measured on the final
 mixed audio.
 
+D8.1 weaves sparse AD BREAKS the same way: the GRID decides the cadence (a
+program's `break_every: N` = one break per N content segments while it's on
+air; most shows take none), and when it fires the scheduler generates 1..
+`commercial_break_max_segments` fresh `commercial`/`promo` spots (never a
+prerecorded reel; every `commercial_break_promo_every_n`-th spot is a promo)
+and brackets them with the D18 break_in/break_out stings — ordered entries,
+playout unchanged, no program-clock atom consumed.
+
 `buffer_depth_hours` is the lead-time dial: a deeper buffer is more resilient to a slow
 or failed generation run; driving it toward ~0 (plus streaming TTS) is what later
 enables near-live (Phase E). The scheduler never airs anything — it only decides and
@@ -75,6 +83,7 @@ from .logging_setup import get_logger
 from .production.placement import (
     apply_bed,
     boundary_segments,
+    break_sting_segment,
     news_sting_segment,
     station_ident_segment,
 )
@@ -329,6 +338,12 @@ def top_up(now: datetime | None = None) -> list[dict]:
     # boundary that falls BETWEEN two top-up runs still gets its theme).
     content_since_station_ident = state.get("content_since_station_ident", 0)
     last_program_id: str | None = state.get("last_program_id")
+    # D8.1: the ad-break cadence — content placed since the last break (reset at
+    # each program boundary so every show's ad load starts fresh), plus a running
+    # total of break spots ever placed (drives the commercial-vs-promo rotation
+    # across breaks). Both persisted so the cadence is steady across top-ups.
+    content_since_break = state.get("content_since_break", 0)
+    break_spots_total = state.get("break_spots_total", 0)
 
     def _place_clip(seg: Segment) -> None:
         """Weave one curated production clip (D7.2) into the order at the cursor.
@@ -353,6 +368,68 @@ def top_up(now: datetime | None = None) -> list[dict]:
             duration_sec=round(duration, 1),
             runway_sec=round(runway_sec),
         )
+
+    def _place_break(program: Program) -> None:
+        """Weave one sparse ad break at the cursor (D8.1): sting → spot(s) → sting.
+
+        The spots are GENERATED fresh each break (never a rotating reel — the
+        D8 load-bearing principle) via the normal slot path, so the C0 gates +
+        evergreen fallback apply; every `commercial_break_promo_every_n`-th
+        spot (counted across breaks) is a station promo. Spots generate FIRST:
+        if none does, nothing is placed (a lone sting bracket would be noise).
+        Placed spots ride the normal entry mechanism (sidecar, airplay memory,
+        honest measured duration) but consume no program-clock atom — a break
+        interrupts the show, it isn't part of its clock. The D18 break stings
+        bracket the spots; a missing sting clip degrades to an unbracketed
+        break (media logs it), never a lost break.
+        """
+        nonlocal air_cursor, runway_sec, added, break_spots_total
+        nonlocal content_since_ident, content_since_station_ident
+        spots: list[Segment] = []
+        promo_n = settings.commercial_break_promo_every_n
+        for _ in range(max(settings.commercial_break_max_segments, 1)):
+            is_promo = promo_n > 0 and (break_spots_total + 1) % promo_n == 0
+            mode = "promo" if is_promo else "commercial"
+            spot = _generate_slot(mode, air_cursor, _program_speakers(program, mode))
+            if spot is None:
+                break  # infra failure — air whatever already generated
+            break_spots_total += 1
+            spots.append(spot)
+        if not spots:
+            log.warning("schedule_break_skipped", program=program.id)
+            return
+
+        sting_in = break_sting_segment("break_in", air_cursor)
+        if sting_in is not None:
+            _place_clip(sting_in)
+        for spot in spots:
+            spot.air_time = air_cursor.isoformat()  # re-pin after the opener sting
+            spot.meta["program"] = program.id
+            spot.meta["program_name"] = program.name
+            _write_sidecar(spot)
+            record_airplay_features(spot)
+            entry = _entry(spot)
+            duration = _duration_of(entry)
+            upcoming.append(entry)
+            air_cursor += timedelta(seconds=duration)
+            runway_sec += duration
+            added += 1
+            # A spot is content the listener hears — it counts toward the C3/D7.2
+            # ident cadences like any content slot.
+            content_since_ident += 1
+            content_since_station_ident += 1
+            log.info(
+                "schedule_break_spot_added",
+                seg_id=spot.id,
+                format=spot.format,
+                program=program.id,
+                air_time=entry["air_time"],
+                duration_sec=round(duration, 1),
+                runway_sec=round(runway_sec),
+            )
+        sting_out = break_sting_segment("break_out", air_cursor)
+        if sting_out is not None:
+            _place_clip(sting_out)
 
     # Consecutive-failure stall threshold: the whole format set failing in a row means
     # the generator is down. Grid mode spans all formats; flat mode is the rotation.
@@ -448,6 +525,27 @@ def top_up(now: datetime | None = None) -> list[dict]:
                     except Exception as exc:
                         log.warning("schedule_boundary_error", error=str(exc))
                 last_program_id = program.id
+                # D8.1 — each show's ad load starts fresh: no instant break at
+                # the top of a show because the previous one ran long.
+                content_since_break = 0
+
+            # D8.1 — the ad-break cadence: the GRID decides (program.break_every
+            # content segments between breaks; 0 = this show takes none), the
+            # scheduler weaves. Reset-first so a failed break skips this firing
+            # rather than blocking content or spinning; the next cadence still
+            # fires. Grid mode only — the flat rotation carries no ad load.
+            if (
+                settings.commercial_break_enabled
+                and program.break_every > 0
+                and content_since_break >= program.break_every
+            ):
+                content_since_break = 0
+                try:
+                    _place_break(program)
+                except Exception as exc:
+                    log.warning("schedule_break_error", error=str(exc))
+                continue
+
             name, new_pstate = programming.next_format(
                 program, air_cursor, clock_state.get(program.id, {}), prev_cursor
             )
@@ -539,6 +637,7 @@ def top_up(now: datetime | None = None) -> list[dict]:
         added += 1
         content_since_ident += 1
         content_since_station_ident += 1
+        content_since_break += 1
         log.info(
             "schedule_slot_added",
             seg_id=seg.id,
@@ -554,6 +653,8 @@ def top_up(now: datetime | None = None) -> list[dict]:
     state["clock_state"] = clock_state
     state["content_since_ident"] = content_since_ident
     state["content_since_station_ident"] = content_since_station_ident
+    state["content_since_break"] = content_since_break
+    state["break_spots_total"] = break_spots_total
     state["last_program_id"] = last_program_id
     # C4 — heartbeat: record that a top-up ran to completion. `src/health.py`
     # check_last_run() reads this to detect a generator that has stopped running.

@@ -43,6 +43,7 @@ A `Program` is a named show (e.g. *The Long Night*, *First Light*, *Daywatch*) c
 | `framing` | how the room frames the show: `solo` (one anchor + optional companion), `handover` (an outgoing→incoming boundary show), `ensemble` (≥2 co-hosts, later), or `legacy` (reserved for the `default` program — the hour-derived night/dawn/day/dusk frame, `framing.show_frame`). This is the generalised replacement for framing.py's hardcoded handover flag. |
 | `daypart` | an **optional display label** for the console + now-playing feed (*The Long Night*, *First Light*…). It does **not** override the frame's `part_of_day`, which stays hour-derived (see §6) so a program spanning morning→evening still frames each hour correctly and the two-host tests keep exact parity. |
 | `clock` | the format **sequence** (see §2.2) — the load-bearing piece. |
+| `break_every` | **(D8.1, optional)** the show's **ad-break cadence**: one sparse break — 1..`commercial_break_max_segments` fresh-generated `commercial`/`promo` spots, bracketed by the d18 `break_in`/`break_out` stings — after every N **content** segments while the show is on air. Absent/`0` = the show takes **no** breaks (the handover shows and `default` stay break-free). The grid, not a global constant, owns each daypart's ad load; the counter resets at every program boundary. Keep it sparse — texture, not interruption. |
 
 A program does **not** own its air-times; the **grid** (§2.3) places it. One program can tile many slots
 (e.g. `daywatch` fills every weekday 07:00–17:00).

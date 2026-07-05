@@ -619,6 +619,20 @@ class Settings(BaseSettings):
     # disk). Every degrade is logged and the EFFECTIVE level is recorded in the
     # segment meta. Keep richer levels sparse — texture, not a showcase.
     format_commercial_production_level: int = 1
+    # D8.1 — the ad-break cadence. WHERE/HOW OFTEN a break airs is the GRID's
+    # call, not a global constant: a program declares `break_every: N` in
+    # grid.yaml (one break after every N content segments while it's on air;
+    # absent/0 = that show takes no breaks), so different dayparts carry
+    # different ad loads. These dials only shape/gate the weave itself:
+    # `commercial_break_enabled` is the master toggle; `*_max_segments` caps
+    # spots per break (default ONE — sparse; over-running ads is worse than
+    # none); `*_promo_every_n` makes every Nth spot (counted across breaks) a
+    # station promo instead of a commercial (0 = commercials only). The break
+    # is bracketed by the D18 break_in/break_out stings (D7 media registry) and
+    # placed like the disclosure ident — ordered entries, playout unchanged.
+    commercial_break_enabled: bool = True
+    commercial_break_max_segments: int = 1
+    commercial_break_promo_every_n: int = 3
 
     def model_id(self, tier: str) -> str:
         """Map a logical tier ("haiku"|"sonnet"|"opus") to its real model id."""

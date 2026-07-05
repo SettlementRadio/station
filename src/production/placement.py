@@ -113,6 +113,27 @@ def handover_sting_segment(program: Program, now: datetime) -> Segment | None:
     )
 
 
+def break_sting_segment(moment: str, now: datetime) -> Segment | None:
+    """The D18 sting bracketing an ad break (`"break_in"` | `"break_out"`), or None.
+
+    D8.1: the pair makes a break SOUND like a break — the opener before the
+    spot(s), the closer returning to programming. Missing clips degrade to None
+    (the break airs unbracketed rather than not at all; media logs the gap).
+    """
+    if moment not in ("break_in", "break_out"):
+        raise ValueError(f"break_sting_segment: unknown moment {moment!r}")
+    clip = media.sting(moment)
+    if clip is None:
+        return None
+    return _clip_segment(
+        clip,
+        fmt="sting",
+        now=now,
+        seg_id=f"sting-{moment}-{now:%Y%m%dT%H%M%S}",
+        meta={"sting": moment},
+    )
+
+
 def news_sting_segment(now: datetime) -> Segment | None:
     """The C8 sting that fires immediately before a news bulletin, or None."""
     clip = media.sting("news")

@@ -17,6 +17,11 @@
 # track (selector -> intro -> track -> back-announce; evergreen fallback if the
 # catalogue is empty — no silent gap).
 
+# `break_every: N` (D8.1) — this show's AD-BREAK cadence: one sparse break (a
+# fresh-generated commercial/promo spot, bracketed by the d18 break stings)
+# after every N content segments while the show is on air. Absent/0 = the show
+# takes NO breaks. The grid owns the ad load — keep it sparse (texture, not
+# interruption); the handover shows and the fallback program stay break-free.
 programs:
   long_night:
     name: "The Long Night"
@@ -24,6 +29,7 @@ programs:
     framing: solo
     daypart: deep night
     clock: [talk, music, talk, news@:00]   # quiet: talk + a song; news pinned to the hour
+    break_every: 6               # rare — a wry late-night spot, the night stays quiet
 
   first_light:
     name: "First Light"
@@ -38,6 +44,7 @@ programs:
     framing: solo
     daypart: daytime
     clock: [talk, news@:00, music, talk]
+    break_every: 4               # the day carries the (still light) ad load
 
   nightfall:
     name: "Nightfall"
