@@ -38,6 +38,41 @@ A typical *build* session will be short, e.g.:
 
 ---
 
+## 2026-07-05 — Phase D — D7 built: the production layer (sound design + songs on air)
+**Focus:** build the whole D7 sub-pack, task by task (D7.0–D7.5): the tracks catalogue, the Layer 4
+mixer, grid-placed idents/stings/themes, ducked beds, the music selector — and `music` back on air.
+**Decisions:**
+- **`tracks` is curated catalog, not world state** — deliberately outside `_WORLD_TABLES` (survives
+  `seed-canon` AND `reset-world`; its own `make seed-tracks` refresh); `artist_figure_id` is a SOFT
+  reference (no FK — tracks outlive a world wipe that truncates figures; D10 backfills).
+- **Playability is derived live, never stored** — a track is playable iff its manifest-named file
+  exists (`production.media.is_playable`); dropping a Suno mp3 in makes the row playable, no re-seed.
+- **Mixing is baked at render time** (segments stay single mp3s; scheduler/playout untouched), and
+  ffmpeg has exactly TWO homes: synthesis plumbing in `providers/tts.py`, mixing in
+  `production/mix.py`. Found + fixed a real bug on the way: ffmpeg's default mono→stereo conform
+  applies the −3 dB pan law, so mixed speech aired quieter than dry — the mixer now upmixes mono at
+  full gain (measured identical).
+- **The selector is rule-based and deterministic, not an LLM** — weighted policy (daypart mood,
+  world tone from the story log via a cheap keyword rule, D5 freshness for track+artist, era spread,
+  featured/pinned) with a seeded jitter; same inputs + seed ⇒ same pick. The LLM only writes the
+  intro/back-announce around the chosen track's lore.
+- **Beds are doubly opt-in** (`production_bedded_programs × _formats`, default long_night×talk) —
+  over-bedding is worse than none; news always stays dry.
+**Changed:** `src/production/` (media/mix/placement/selector), `src/world/store.py` (+`tracks`),
+`src/world/seed_tracks.py`, `src/formats/music.py` (real track in the `[SONG]` gap: intro → C10
+bumper → track → back-announce via `join_clips`), scheduler weaves (boundary theme + B6 handover
+sting, C8 before news, A1 cadence, `apply_bed`), freshness records track id/artist, now-playing
+carries the track, `music` back in `grid.yaml` clocks + `buffer_rotation`; 29 new surgical tests
+(263 green); README / `.env.example` / ADMIN_MANUAL / overview tracker updated.
+**Why:** the station now *sounds produced* — the difference between "a TTS pipeline" and "a radio
+station" is exactly this layer; and the human's 27-song Suno catalogue landed mid-session, so the
+first real spin (Aurora Season, story told from its manifest blurb) aired the same day the plumbing
+was built.
+**📣 Postable:** the first real song on Settlement Radio — `segments/music-20260705T182414.mp3`
+(Vell introduces "Aurora Season" from the lore, the track plays, he back-announces it). Commit e65eb4f.
+**Next:** D8 (commercials — the d18 break stings are already on disk) or the C5–C9 server track.
+Commit: e65eb4f (D7.4) + this session's D7.0–D7.3/D7.5 commits  ·  Clips: (record the first-spin playback)
+
 ## 2026-07-04 — Phase D — D7 prep: the media library (Suno production, no code)
 **Focus:** author the full media-production layer *before* the D7 build — the song catalogue as
 cultural artifacts, the expanded jingle set, the seed manifest — then generate the assets in Suno.

@@ -381,3 +381,56 @@ projection + `make seed-grid` land in Phase E when the web editor needs a write 
 `tests/test_programming.py`; the scheduler airing the grid (clocks, pins, host routing) in
 `tests/test_scheduler_grid.py`; the console + feed (read-only, public-safe allow-list) in
 `tests/test_console.py` / `tests/test_nowplaying.py`. Run `pytest -q`.
+
+## D7 — Production layer (jingles, beds, songs — the station sounds produced)
+
+Layer 4 is live: curated **idents/themes/stings** air where the grid calls for them, **beds** duck
+under speech, and **real songs** play in the `music` format with a DJ intro/back-announce that tells
+each song's story. Code home: `src/production/` (media registry · mixer · placement · selector).
+
+### The media folders (curated, GC-safe)
+All curated audio lives under `assets/` — gitignored, backed up (C5), and **never** touched by the
+disk GC (it only scans `segments/`): `assets/idents/`, `assets/themes/` (+ loopable `*_bed`
+variants), `assets/stings/`, `assets/music/`, plus the fixed `assets/bed.mp3` (C4 playout fallback).
+**Filenames are the contract** — the exact names live in `docs/JINGLE_PROMPTS.md` §4 and the
+clip→placement registry in `src/production/media.py`. A registered clip whose file is missing is
+skipped with a warning, never a crash.
+
+### Register / update a song (the catalogue is yours, not generated)
+```bash
+$EDITOR config/tracks.yaml        # write the row: id/title/artist/album/era/mood/tags/story_blurb/
+                                  #   audio_path (+ licence via licence_default or per-row)
+cp <trimmed>.mp3 assets/music/<exact audio_path filename>.mp3
+make seed-tracks                  # refresh the `tracks` table; probes real durations from the files
+```
+- A row whose file is absent loads as **lore only** (referenceable, not playable); dropping the file
+  in later makes it playable immediately (playability is checked live — re-seed only to stamp its
+  duration).
+- The catalogue **survives `seed-canon` AND `reset-world`** (curated catalog, not world state);
+  `make seed-tracks` is its only refresh. To **promote** a track, add the tag `featured` or `pinned`
+  to its manifest row (+ re-seed) — the selector boosts it.
+
+### What airs where (and the dials)
+- **Program boundary** → the show's theme (handover shows get the B6 "passing the light" sting
+  first). Dial: `PRODUCTION_THEME_AT_BOUNDARY` (true).
+- **Before every news bulletin** → the C8 sting. Dial: `PRODUCTION_STING_BEFORE_NEWS` (true).
+- **A1 sung station ident** every N content segments. Dial: `PRODUCTION_IDENT_EVERY_N` (8; 0=off).
+  The C3 disclosure ident is separate and keeps airing.
+- **Beds under speech** — doubly opt-in: `PRODUCTION_BEDDED_PROGRAMS` × `PRODUCTION_BEDDED_FORMATS`
+  (default: `["long_night"]` × `["talk"]` — news always dry). Level: `PRODUCTION_BED_GAIN_DB`
+  (−15 dB below the untouched speech), fade: `PRODUCTION_BED_FADE_SEC`. Baked at render; a mix
+  failure airs the clean dry speech.
+- **The music selector** — rule-based + deterministic (no LLM): daypart mood, world tone (story
+  log), freshness (no repeat track/artist in the D5 window), era spread, featured/pinned. Weights:
+  `MUSIC_SELECT_*` in `.env.example`. The slot with no playable track falls back to a spoken
+  evergreen — a silent gap is impossible.
+
+### Hear it / verify
+```bash
+make format FMT=music     # one full spin: intro → bumper → the track → back-announce (live calls)
+make now-playing          # the public feed now carries track{title, artist, album, era}
+pytest -q tests/test_production.py tests/test_selector.py tests/test_production_schedule.py
+```
+The D7 surgical tests cover the mixer's duration accounting + never-silence fallback, every selector
+input + determinism, the music stitch order + lore-in-prompt, the grid placements, and the invariant
+that `assets/` is never in the GC's candidate set.

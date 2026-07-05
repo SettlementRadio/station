@@ -45,6 +45,7 @@ Done when: `make seed` reports row counts and `.venv/bin/pytest -q` is green.
 | Do | `make` | Raw |
 |----|--------|-----|
 | Seed the DB from `docs/CANON.md` (idempotent) | `make seed` | `$PY -m src.world.seed` |
+| Refresh the curated tracks catalogue from `config/tracks.yaml` (D7; probes durations) | `make seed-tracks` | `$PY -m src.world.seed_tracks` |
 | Show the progressing-event flip (B2 demo) | `make demo` | `$PY -m src.world.events` |
 | Print the writer's assembled context (B3) | `make context` | `$PY -m src.world.context` |
 

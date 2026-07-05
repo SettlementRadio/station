@@ -58,8 +58,41 @@ into generation, so *who* and *what* airs change by daypart.
 - **Operator console** (private, read-only) — `make console` shows on-air/next, buffer runway, the
   last-run heartbeat, and the world story log. Never internet-exposed.
 - **Public now-playing feed** — `make now-playing` writes `segments/nowplaying.json` (refreshed on every
-  scheduler top-up): the public-safe subset (on-now/next + program + hosts + AI-disclosure line) the web
-  player reads. The player UI itself is C8.
+  scheduler top-up): the public-safe subset (on-now/next + program + hosts + AI-disclosure line + the
+  playing track's title/artist/album/era) the web player reads. The player UI itself is C8.
+
+## The production layer (sound design + songs — D7)
+The station *sounds produced*: curated jingles/idents/stings air where the grid calls for them, beds
+duck under speech, and real songs play in the `music` format — all Layer 4
+([`src/production/`](src/production/)).
+
+- **Curated media lives under `assets/`** (gitignored, backed up, **never** touched by the disk GC —
+  it only ever scans `segments/`): `assets/idents/` (station IDs), `assets/themes/` (program themes +
+  loopable `_bed` variants), `assets/stings/` (short punctuation), `assets/music/` (songs), plus the
+  fixed `assets/bed.mp3` playout fallback. The exact filenames are the contract in
+  [`docs/JINGLE_PROMPTS.md`](docs/JINGLE_PROMPTS.md) §4; the clip→placement mapping (which theme opens
+  which program, which sting precedes the news) is the registry in
+  [`src/production/media.py`](src/production/media.py). A missing clip degrades to "skip that
+  placement" — never a crash.
+- **On air, placed by the grid** — each program boundary opens with its theme (handover shows get the
+  B6 "passing the light" sting first), the C8 sting fires before every news bulletin, and the A1 sung
+  station ident airs every `PRODUCTION_IDENT_EVERY_N` content segments. Beds are doubly opt-in
+  (`PRODUCTION_BEDDED_PROGRAMS` × `PRODUCTION_BEDDED_FORMATS`; default: the night show's talk only) and
+  are baked at render time at `PRODUCTION_BED_GAIN_DB` below the untouched speech
+  ([`src/production/mix.py`](src/production/mix.py) — a mix failure degrades to clean, dry speech).
+- **Songs are cultural artifacts, not files** — the catalogue is the human-authored music-lore
+  manifest [`config/tracks.yaml`](config/tracks.yaml) (title, artist, album, era, story, mood, licence),
+  seeded into the `tracks` table by `make seed-tracks`. **Registering a track:** drop the mp3 into
+  `assets/music/` under the exact `audio_path` filename, write/keep its manifest row, run
+  `make seed-tracks` (durations are probed from the files; a row whose file is absent stays
+  referenceable lore — just not playable yet). The catalogue survives `seed-canon` *and*
+  `reset-world` — it's curated station catalog, not world state.
+- **`music` is back in the rotation** — when a music slot comes up, a deterministic, rule-based
+  **selector** ([`src/production/selector.py`](src/production/selector.py) — no LLM) picks the track by
+  daypart mood, the live world's tone, freshness (don't repeat a song/artist), era spread, and
+  featured/pinned artists (`MUSIC_SELECT_*` dials). The DJ's intro/back-announce is written around that
+  track's lore — the segment airs as one mp3: intro → music bumper → **the track** → back-announce.
+  No playable track ⇒ the slot falls back to a spoken evergreen — a silent gap is impossible.
 
 ## Run it locally
 The station backend (the Python pipeline + Liquidsoap playout) runs on macOS (Apple Silicon)
