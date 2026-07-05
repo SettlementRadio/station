@@ -67,6 +67,9 @@ PROGRAM_BEDS: dict[str, str] = {
 }
 FORMAT_BEDS: dict[str, str] = {
     "talk": "themes/c9_talk_bed.mp3",
+    # D8.0 L2 — a spot opted into "read over a bed" reuses the talk bed until a
+    # dedicated ad bed is curated (JINGLE_PROMPTS is the human's media pipeline).
+    "commercial": "themes/c9_talk_bed.mp3",
 }
 
 # Stings — short punctuation, by moment. "news" fires before the pinned
@@ -81,6 +84,9 @@ STINGS: dict[str, str] = {
     "advisory": "stings/d15_advisory.mp3",
     "break_in": "stings/d18_break_in.mp3",  # D8
     "break_out": "stings/d18_break_out.mp3",  # D8
+    # D8.0 L4 — the sparse ~2s brand-sting bookend, the ONLY prerecorded ad
+    # audio (curated by the human; L4 degrades to a plain read until it exists).
+    "brand": "stings/d8_brand.mp3",
 }
 
 # Transition sweepers (A4 ×3) by the D6 grid's `daypart` label — the quick

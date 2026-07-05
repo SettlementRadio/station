@@ -1,11 +1,13 @@
 """Program format templates (PHASE_B_TASKS.md B5) — reusable show backbones.
 
-Three templates, each a function `(now, context) -> Segment` that fills a proven
+Each template is a function `(now, context) -> Segment` that fills a proven
 skeleton so generation isn't a blank page:
 
-  * `news`  — sting → N in-world headlines → sign-off            (single DJ)
-  * `talk`  — open → banter → music lead-in → close              (two DJs; wraps B4)
-  * `music` — DJ intro → a REAL curated track → back-announce    (single DJ; D7.4)
+  * `news`       — sting → N in-world headlines → sign-off         (single DJ)
+  * `talk`       — open → banter → music lead-in → close           (two DJs; wraps B4)
+  * `music`      — DJ intro → a REAL curated track → back-announce (single DJ; D7.4)
+  * `commercial` — a fictional in-world product spot, fresh copy   (single DJ; D8.0)
+  * `promo`      — a station self-promo (same builder, promo mode) (single DJ; D8.0)
 
 This module is the registry + dispatcher. Each format declares which cast it
 needs; `make_format_segment` assembles exactly that slice of the world (via
@@ -29,6 +31,8 @@ from ..world.context import AssembledContext
 
 # Import the builders under aliases so the submodules (`formats.news`, etc.) keep
 # their names — `make_format_segment` is the public entry point, not the builders.
+from .commercial import commercial as build_commercial
+from .commercial import promo as build_promo
 from .music import music as build_music
 from .news import news as build_news
 from .talk import talk as build_talk
@@ -51,6 +55,13 @@ FORMATS: dict[str, FormatSpec] = {
     "news": FormatSpec(build_news, lambda: [settings.format_news_speaker_id]),
     "talk": FormatSpec(build_talk, lambda: settings.convo_speaker_ids),
     "music": FormatSpec(build_music, lambda: [settings.format_music_speaker_id]),
+    # D8.0 — one builder, two entries: `commercial` (fictional product spot) and
+    # `promo` (station self-promo) share src/formats/commercial.py's gate+render
+    # plumbing; the mode is bound per entry.
+    "commercial": FormatSpec(
+        build_commercial, lambda: [settings.format_commercial_speaker_id]
+    ),
+    "promo": FormatSpec(build_promo, lambda: [settings.format_commercial_speaker_id]),
 }
 
 

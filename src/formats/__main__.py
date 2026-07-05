@@ -1,6 +1,7 @@
 """Runnable check for the B5 program formats — generate one segment on demand.
 
-    .venv/bin/python -m src.formats <news|talk|music> [topic...]   (needs `make seed`)
+    .venv/bin/python -m src.formats <news|talk|music|commercial|promo> [topic...]
+    (needs `make seed`)
 
 Makes live Anthropic + TTS calls. Prints the script, the audio path, and the
 segment metadata so the human can hear and read the result.

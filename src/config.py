@@ -596,6 +596,30 @@ class Settings(BaseSettings):
     music_select_era_repeat_penalty: float = 1.0
     music_select_jitter: float = 0.5
 
+    # --- Commercials & promos (D8: in-world spots — texture, not interruption) --
+    # The `commercial`/`promo` formats (src/formats/commercial.py) — ONE builder,
+    # two registry entries sharing it: `commercial` invents a fictional +600y
+    # product/service spot FRESH every airing (never a rotating reel — infinite
+    # in-character copy is the AI advantage); `promo` promotes the station / the
+    # current named show, truthfully. Both run the C0 gate + evergreen fallback
+    # like every producer. The speaker is the host card whose voice reads the
+    # spot (a grid `speakers` override still applies); a DISTINCT ad-read voice
+    # is a D9 roster decision, not a dial here.
+    format_commercial_speaker_id: str = "vell"
+    format_commercial_words_low: int = 55
+    format_commercial_words_high: int = 90
+    format_commercial_max_tokens: int = 300
+    format_commercial_length_target_sec: int = 40  # a ~30-40s spot; a DIAL
+    # The D8.0 production spectrum — how "produced" a spot sounds. 1 = a single
+    # voiced read (default; works standalone). 2 = the read over a ducked bed
+    # (reuses D7.1's mixing primitive + the D7.0 "commercial" bed mapping).
+    # 3 = a multi-voice scene / figure testimonial (needs the D9 guest voice +
+    # a D10 figure — degrades to 1 until D9 lands). 4 = a curated ~2s brand-sting
+    # bookend (the ONLY prerecorded ad audio; degrades to 1 while no clip is on
+    # disk). Every degrade is logged and the EFFECTIVE level is recorded in the
+    # segment meta. Keep richer levels sparse — texture, not a showcase.
+    format_commercial_production_level: int = 1
+
     def model_id(self, tier: str) -> str:
         """Map a logical tier ("haiku"|"sonnet"|"opus") to its real model id."""
         ids = {
