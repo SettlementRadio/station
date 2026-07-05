@@ -709,7 +709,7 @@ For each: a **metadata block** (→ the manifest / `tracks` row — this is the 
 - **Style:** `instrumental, no vocals, otherworldly localist piece, bright shell-resonance percussion, glassy organic overtones, hollow bowed tones, soft airy pad, gentle water-like textures, serene and strange, alien-warm, spacious, tape warmth, 70 BPM`
 - **Instrumental:** ON. **Length:** ~3:15 (standard song; let the theme develop through 2–3 variations).
 
-#### S16. "Fauna Song"  🎵  *(from R7 Persona)*
+#### DONE_S16. "Fauna Song"  🎵  *(from R7 Persona)*
 - **artist:** The Shellwrights · **album:** *Deep Listening, Vol. IV* · **era/year:** Age of the Relays, 2617
 - **mood:** tender · **tags:** `localist, outer-station, age-of-relays, tender`
 - **story_blurb:** "A lullaby the far-worlds sing to the creatures whose shells become their instruments —
@@ -758,7 +758,7 @@ For each: a **metadata block** (→ the manifest / `tracks` row — this is the 
 
 ### R8 · The First-Ships Choir — Exodus Hymns (First Expansion — classic) — Persona: S17
 
-#### S17. "Departure Hymn"  🎵  ★ Persona seed for R8
+#### DONE_S17. "Departure Hymn"  🎵  ★ Persona seed for R8
 - **artist:** The First-Ships Choir · **album:** *The Deep Stacks* · **era/year:** First Expansion, c. 2190 (four centuries old)
 - **mood:** solemn · **tags:** `exodus-hymn, earth, first-expansion, purist, solemn`
 - **story_blurb:** "An Exodus Hymn from the first ships — solemn, hopeful, carrying the weight of leaving
@@ -803,7 +803,7 @@ For each: a **metadata block** (→ the manifest / `tracks` row — this is the 
   ```
 - **Length:** ~3:40 (standard song / hymn).
 
-#### S18. "The Blue Cradle"  🎵  *(from R8 Persona)*
+#### DONE_S18. "The Blue Cradle"  🎵  *(from R8 Persona)*
 - **artist:** The First-Ships Choir · **album:** *The Deep Stacks* · **era/year:** First Expansion, c. 2205 (classic)
 - **mood:** nostalgic · **tags:** `exodus-hymn, earth, first-expansion, nostalgic`
 - **story_blurb:** "The hymn every settled child learns about Earth — half record, half founding myth:
@@ -852,7 +852,7 @@ For each: a **metadata block** (→ the manifest / `tracks` row — this is the 
 
 ### R9 · The Outer Revival — Void-revival / Outer Revival movement (core, present) — Persona: S19
 
-#### S19. "Nobody Told the Frontier It Was Over"  🎵  ★ Persona seed for R9 — ↳ **canon fact 11** (Outer Revival)
+#### DONE_S19. "Nobody Told the Frontier It Was Over"  🎵  ★ Persona seed for R9 — ↳ **canon fact 11** (Outer Revival)
 - **artist:** The Outer Revival · **album:** *Rediscovery* · **era/year:** Age of the Relays, 2624
 - **mood:** melancholy · **tags:** `outer-revival, core, age-of-relays, void-ballad, melancholy`
 - **story_blurb:** "Core musicians 'discovering' a Void-Ballad style that never stopped evolving on the

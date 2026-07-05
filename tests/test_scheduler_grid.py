@@ -104,6 +104,7 @@ def _wire_grid(monkeypatch, tmp_path, *, grid_text, depth_hours, generator):
     monkeypatch.setattr(scheduler.settings, "production_ident_every_n", 0)
     monkeypatch.setattr(scheduler.settings, "production_theme_at_boundary", False)
     monkeypatch.setattr(scheduler.settings, "production_sting_before_news", False)
+    monkeypatch.setattr(scheduler.settings, "production_bedded_programs", [])
     monkeypatch.setattr(scheduler, "ensure_fallback_assets", lambda **k: {})
     monkeypatch.setattr(scheduler, "record_airplay_features", lambda seg: False)
     monkeypatch.setattr(scheduler, "sweep_airplay", lambda now: 0)

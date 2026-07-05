@@ -76,6 +76,7 @@ def _wire(monkeypatch, tmp_path, *, depth_hours, rotation, generator):
     monkeypatch.setattr(scheduler.settings, "production_ident_every_n", 0)
     monkeypatch.setattr(scheduler.settings, "production_theme_at_boundary", False)
     monkeypatch.setattr(scheduler.settings, "production_sting_before_news", False)
+    monkeypatch.setattr(scheduler.settings, "production_bedded_programs", [])
     # C4 — top_up refreshes the never-dead fallback assets (real TTS). Neutralize it
     # so the scheduler tests stay free of Claude/TTS; src/fallback has its own tests.
     monkeypatch.setattr(scheduler, "ensure_fallback_assets", lambda **k: {})

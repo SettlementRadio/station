@@ -43,7 +43,10 @@ BOUNDARY the grid crosses, the C8 sting fires immediately before every news
 bulletin, and the A1 sung station ident airs every
 `settings.production_ident_every_n` content segments — all static, curated
 `assets/` clips placed as ordered entries (reused, gate-free, GC-safe by
-location), never re-rendered.
+location), never re-rendered. D7.3 adds beds: where the grid calls for it
+(production_bedded_programs × _formats), the slot's speech is re-baked over a
+ducked bed at render time (placement.apply_bed) and re-measured on the final
+mixed audio.
 
 `buffer_depth_hours` is the lead-time dial: a deeper buffer is more resilient to a slow
 or failed generation run; driving it toward ~0 (plus streaming TTS) is what later
@@ -70,6 +73,7 @@ from .freshness import record_segment as record_airplay_features
 from .freshness import sweep as sweep_airplay
 from .logging_setup import get_logger
 from .production.placement import (
+    apply_bed,
     boundary_segments,
     news_sting_segment,
     station_ident_segment,
@@ -475,6 +479,18 @@ def top_up(now: datetime | None = None) -> list[dict]:
                 break
             continue
         consecutive_skips = 0
+
+        # D7.3 — bake the slot's bed under the speech where the grid calls for it
+        # (doubly opt-in via production_bedded_programs/_formats — e.g. the night
+        # show's talk gets the soft B4 bed, news stays dry). The segment is
+        # re-measured on the FINAL mixed audio inside apply_bed, and a mix failure
+        # already degraded to the dry render there; this outer guard only keeps an
+        # unexpected error from costing the slot.
+        if program is not None:
+            try:
+                seg = apply_bed(seg, program)
+            except Exception as exc:
+                log.warning("schedule_bed_error", seg_id=seg.id, error=str(exc))
 
         # D7.2 — the C8 sting fires immediately BEFORE a news bulletin (the pinned
         # news@:00 moment). Placed only once the bulletin actually generated (a

@@ -562,6 +562,15 @@ class Settings(BaseSettings):
     production_theme_at_boundary: bool = True
     production_sting_before_news: bool = True
     production_ident_every_n: int = 8
+    # D7.3 — which slots get a bed under the speech. DOUBLY opt-in, and
+    # deliberately conservative (over-bedding is worse than none): a slot is
+    # bedded only when its PROGRAM is listed AND its FORMAT is listed — so with
+    # the defaults, only the night show's talk gets the soft B4 bed; its news
+    # stays dry, and the whole day stays dry. WHICH bed comes from the D7.0
+    # mapping (the program's own bed, else the format's); the LEVEL is the D7.1
+    # `production_bed_gain_db` dial. Empty either list to switch bedding off.
+    production_bedded_programs: list[str] = ["long_night"]
+    production_bedded_formats: list[str] = ["talk"]
 
     def model_id(self, tier: str) -> str:
         """Map a logical tier ("haiku"|"sonnet"|"opus") to its real model id."""

@@ -23,11 +23,12 @@ from __future__ import annotations
 from datetime import datetime
 from pathlib import Path
 
+from ..config import settings
 from ..formats import stamp_duration
 from ..logging_setup import get_logger
 from ..segment import Segment
 from ..world.programming import Program
-from . import media
+from . import media, mix
 
 log = get_logger(__name__)
 
@@ -124,6 +125,52 @@ def news_sting_segment(now: datetime) -> Segment | None:
         seg_id=f"sting-news-{now:%Y%m%dT%H%M%S}",
         meta={"sting": "news"},
     )
+
+
+def bed_clip_for(program_id: str, fmt: str) -> Path | None:
+    """The bed that belongs under this (program, format) slot, or None (dry).
+
+    DOUBLY opt-in (D7.3, conservative by design): both the program AND the
+    format must be listed in the `production_bedded_*` dials — so news stays dry
+    even inside a bedded program. Which bed: the program's own (D7.0 mapping)
+    first, else the format's. None when nothing is mapped or the file is absent.
+    """
+    if program_id not in settings.production_bedded_programs:
+        return None
+    if fmt not in settings.production_bedded_formats:
+        return None
+    return media.bed_for_program(program_id) or media.bed_for_format(fmt)
+
+
+def apply_bed(seg: Segment, program: Program) -> Segment:
+    """Bake the slot's bed (if any) under a rendered speech segment (D7.3).
+
+    Render-time, per the D7.1 decision: the D7.1 primitive loops the bed under
+    the speech at `production_bed_gain_db` and returns ONE mp3; the segment then
+    points at the mixed render and is RE-MEASURED on that final audio (honest
+    duration accounting). A mix failure already degrades inside `duck_bed_under`
+    — the segment simply keeps its dry render. The dry `<id>.mp3` stays on disk
+    beside the `<id>-bedded.mp3` and both age out through the C2.5 GC normally.
+    """
+    if not seg.audio_path:
+        return seg
+    clip = bed_clip_for(program.id, seg.format)
+    if clip is None:
+        return seg
+    out_path = str(settings.segments_dir / f"{seg.id}-bedded.mp3")
+    mixed = mix.duck_bed_under(seg.audio_path, str(clip), out_path)
+    if mixed != seg.audio_path:  # success — point at the mixed render
+        seg.audio_path = mixed
+        seg.meta["bed"] = clip.name
+        stamp_duration(seg)
+        log.info(
+            "placement_bed_applied",
+            seg_id=seg.id,
+            program=program.id,
+            bed=clip.name,
+            duration_sec=seg.actual_duration_sec,
+        )
+    return seg
 
 
 def boundary_segments(program: Program, now: datetime) -> list[Segment]:
