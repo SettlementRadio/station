@@ -472,7 +472,7 @@ For each: a **metadata block** (→ the manifest / `tracks` row — this is the 
 - **Style:** `instrumental, no vocals, deep resonance-pipe organ music, long bowed alloy tubes, cathedral-of-industry, low sustained metallic overtones, slow processional, warm reverb, awe and gravity, hopeful resolve, tape warmth, 60 BPM`
 - **Instrumental:** ON. **Length:** ~3:15 (standard song; let the theme develop through 2–3 variations).
 
-#### S7. "Signalfire"  🎛️  *(from R3 Persona)*
+#### DONE_S7. "Signalfire"  🎛️  *(from R3 Persona)*
 - **artist:** The Ninefold Pipes of Forge · **album:** *Resonance* · **era/year:** the Reconnection, c. 2475
 - **mood:** hopeful · **tags:** `resonance-pipe, forge, reconnection, instrumental, hopeful`
 - **story_blurb:** "The pipes were signalling gear before they were instruments; this piece remembers
@@ -492,7 +492,7 @@ For each: a **metadata block** (→ the manifest / `tracks` row — this is the 
 - **Style:** `instrumental, no vocals, lush core-harmony chamber piece, layered synth-harpsichord, warm strings, soft woodwinds, refined and abundant, interweaving counterpoint, graceful, golden and unhurried, tape warmth, 84 BPM`
 - **Instrumental:** ON. **Length:** ~3:30 (standard song; let the theme develop through 2–3 variations).
 
-#### S9. "The Long Table"  🎵  *(from R4 Persona — restrained vocal)*
+#### DONE_S9. "The Long Table"  🎵  *(from R4 Persona — restrained vocal)*
 - **artist:** Concordance Exchange Consort · **album:** *Deep Listening, Vol. II* · **era/year:** Age of the Relays, 2609
 - **mood:** warm · **tags:** `core-harmony, concordance, age-of-relays, synth-harpsichord, warm`
 - **story_blurb:** "A gentle piece for the Settlement Council's long table — the sound of many worlds
@@ -538,7 +538,7 @@ For each: a **metadata block** (→ the manifest / `tracks` row — this is the 
 
 ### R5 · Brace & the Tin Reelers — Frontier Reels (freeholds, present) — Persona: S10
 
-#### S10. "Salvage Yard Saturday"  🎵  ★ Persona seed for R5
+#### DONE_S10. "Salvage Yard Saturday"  🎵  ★ Persona seed for R5
 - **artist:** Brace & the Tin Reelers · **album:** *Salvage & Song* · **era/year:** Age of the Relays, 2622
 - **mood:** joyful · **tags:** `frontier-reel, freeholds, age-of-relays, salvage-perc, joyful`
 - **story_blurb:** "A Freeholds reel banged out on oxygen-tank drums and wire chimes — the Saturday
@@ -585,7 +585,7 @@ For each: a **metadata block** (→ the manifest / `tracks` row — this is the 
   ```
 - **Length:** ~3:15 (standard song).
 
-#### S11. "Wire and Bone"  🎵  *(from R5 Persona)*
+#### DONE_S11. "Wire and Bone"  🎵  *(from R5 Persona)*
 - **artist:** Brace & the Tin Reelers · **album:** *Salvage & Song* · **era/year:** Age of the Relays, 2621
 - **mood:** driving · **tags:** `frontier-reel, freeholds, age-of-relays, salvage-perc, driving`
 - **story_blurb:** "The reel they play at a Freeholds send-off — half work-song, half dare, all made of
@@ -630,7 +630,7 @@ For each: a **metadata block** (→ the manifest / `tracks` row — this is the 
   ```
 - **Length:** ~3:15 (standard song).
 
-#### S12. "The Oxygen Drum"  🎛️  *(from R5 Persona — instrumental)*
+#### DONE_S12. "The Oxygen Drum"  🎛️  *(from R5 Persona — instrumental)*
 - **artist:** Brace & the Tin Reelers · **album:** *Salvage & Song* · **era/year:** Age of the Relays, 2623
 - **mood:** bright · **tags:** `frontier-reel, freeholds, age-of-relays, salvage-perc, instrumental, bright`
 - **story_blurb:** "Just the rhythm section, cut loose — the sound of a Freeholds workshop finding a
@@ -642,7 +642,7 @@ For each: a **metadata block** (→ the manifest / `tracks` row — this is the 
 
 ### R6 · Sixteen Hands — Drift / relay-collective (betweener, present) — Persona: S13
 
-#### S13. "Letters We Sent Ahead"  🎵  ★ Persona seed for R6 — ↳ **canon fact 9** (composed by relay, members never met)
+#### DONE_S13. "Letters We Sent Ahead"  🎵  ★ Persona seed for R6 — ↳ **canon fact 9** (composed by relay, members never met)
 - **artist:** Sixteen Hands · **album:** *Across the Dark* · **era/year:** Age of the Relays, 2618
 - **mood:** wistful · **tags:** `drift-song, betweener, age-of-relays, synthesist, wistful`
 - **story_blurb:** "A collective whose members have never met — each part recorded on a different world

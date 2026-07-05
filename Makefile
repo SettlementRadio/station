@@ -11,6 +11,7 @@
 #   make now-playing Write + print the PUBLIC now-playing feed for the web player (D6.4).
 #   make seed-canon Refresh the world from the canon bible (safe; keeps tick state).
 #   make reset-world DESTRUCTIVE full world+canon wipe + rebuild (warns/confirms).
+#   make seed-tracks Refresh the curated tracks catalogue from config/tracks.yaml (D7).
 #   make demo       Show the progressing-event relative-time flip (B2; needs seed).
 #   make context    Print the writer's assembled context for now (B3; needs seed).
 #   make conversation  Generate a two-DJ talk segment (B4; needs seed; Claude+TTS).
@@ -39,7 +40,7 @@ LIQ_LOG    := $(RUN_DIR)/liquidsoap.log
 PLAYER_URL := http://127.0.0.1:8000/
 STREAM_URL := http://127.0.0.1:8000/settlement.mp3
 
-.PHONY: help generate serve air play play-convo stop status console now-playing seed seed-canon reset-world demo context conversation format buffer schedule ident prune fallback health world-tick news-demo figures-demo freshness-demo programming-demo
+.PHONY: help generate serve air play play-convo stop status console now-playing seed seed-canon reset-world seed-tracks demo context conversation format buffer schedule ident prune fallback health world-tick news-demo figures-demo freshness-demo programming-demo
 
 # B5 format default: `make format` builds a talk segment; override with FMT=news
 # or FMT=music. Pass a TOPIC=... to steer canon retrieval.
@@ -99,6 +100,16 @@ seed-canon seed:
 reset-world:
 	@echo "==> reset-world: DESTRUCTIVE full world+canon wipe…"
 	$(PY) -m src.world.seed reset
+
+# D7.0: refresh the curated tracks catalogue (the `tracks` table) from the human-
+# authored music-lore manifest, config/tracks.yaml. Curated config/catalog (§2a):
+# this is its OWN seed path — `seed-canon` and `reset-world` never touch it. Rows
+# whose audio file exists get their real duration probed (ffprobe); rows whose file
+# hasn't been generated yet still load as lore (not playable until the file lands
+# in assets/music/ under the manifest's exact filename). Safe to re-run anytime.
+seed-tracks:
+	@echo "==> Refreshing the curated tracks catalogue from config/tracks.yaml…"
+	$(PY) -m src.world.seed_tracks
 
 # D3: run ONE world tick — invent new bible-consistent stories + advance running ones
 # in the world-state DB (gated, batched, cached). This is the nightly WORLD-STATE job

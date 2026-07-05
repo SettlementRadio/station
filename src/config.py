@@ -530,6 +530,19 @@ class Settings(BaseSettings):
     )
     nowplaying_next_count: int = 3  # how many upcoming items the public feed lists
 
+    # --- Production media (D7: curated jingles/stings/beds + the songs catalogue) -
+    # `assets_dir` is the home of ALL curated, non-regenerable media (idents/themes/
+    # stings/music per docs/JINGLE_PROMPTS.md §4) — deliberately OUTSIDE
+    # `segments_dir`, so the C2.5 disk GC (which only ever scans `segments_dir`) can
+    # never touch it. `tracks_manifest_path` is the human-authored music-lore
+    # manifest (the source of truth the `tracks` table is seeded from — `make
+    # seed-tracks`); its `audio_path` strings are repo-root-relative. The clip→
+    # placement mapping itself (which theme opens which program, which sting
+    # precedes the news) is intrinsic domain data, a named registry in
+    # src/production/media.py — not config (the config-vs-constant rule above).
+    assets_dir: Path = Field(default=_REPO_ROOT / "assets")
+    tracks_manifest_path: Path = Field(default=_REPO_ROOT / "config" / "tracks.yaml")
+
     def model_id(self, tier: str) -> str:
         """Map a logical tier ("haiku"|"sonnet"|"opus") to its real model id."""
         ids = {

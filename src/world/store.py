@@ -335,6 +335,50 @@ class Quote:
 
 
 @dataclass(frozen=True)
+class Track:
+    """One curated, playable song — a cultural artifact, not a labelled file (D7.0).
+
+    A song in this world has an artist, an era, and a story; the DJ doesn't "play a
+    piece of music," they say *"here's a classic from the 24th century, by …"*. The
+    lore fields (`album`/`era`/`in_world_year`/`story_blurb`) are what the D7.4
+    intro/back-announce + now-playing draw on.
+
+    `in_world_artist` is the plain-text artist name (always set); `artist_figure_id`
+    is the OPTIONAL link to a D10 `figures` row (the musician as a real in-world
+    person). It is a SOFT reference, not a DB FK — deliberately: `tracks` is curated
+    config/catalog that SURVIVES `reset-world` while `figures` is world state that
+    gets truncated, so a hard FK would either block the wipe or cascade away curated
+    rows. D7 ships with it null (text-only artists); D10 backfills it.
+
+    `audio_path` is the repo-relative file the manifest names (the ONLY link between
+    file and lore — nothing scans folders). A track is PLAYABLE iff that file exists
+    on disk (checked live via `production.media.is_playable`, never a stored flag —
+    dropping the file in makes the row playable without a re-seed). `duration_sec`
+    is probed from the file at seed (`tts.probe_duration`) and stays NULL while the
+    file is absent. `licence_note` is the human's clearance call (the manifest's
+    `licence_default` fills it when a row doesn't override).
+
+    Per the §2a matrix this is CURATED catalog, not world state: it survives
+    `seed-canon` AND `reset-world`, refreshed only by its own `make seed-tracks`
+    (source of truth: `config/tracks.yaml` — human-authored, diffable, in git).
+    """
+
+    id: str
+    title: str
+    in_world_artist: str
+    mood: str
+    audio_path: str
+    artist_figure_id: str | None = None
+    album: str | None = None
+    era: str | None = None
+    in_world_year: int | None = None
+    story_blurb: str | None = None
+    duration_sec: float | None = None
+    licence_note: str | None = None
+    tags: list[str] = field(default_factory=list)
+
+
+@dataclass(frozen=True)
 class EmbeddingRow:
     """One row to write into the polymorphic `embeddings` table (D2).
 
@@ -527,6 +571,8 @@ CREATE INDEX IF NOT EXISTS events_story_idx ON events (story_id);
 # the destructive `reset-world` (§2a) and counted — so they live here. (They are NOT in
 # the `scope="canon"` refresh, so a bible edit leaves them standing — §2a: "survives".)
 # `embeddings` is handled separately (it is DERIVED, regenerable — see below).
+# `tracks` (D7.0) is deliberately ABSENT: it is curated config/catalog (§2a), owned
+# by `make seed-tracks`, and survives even the destructive full wipe.
 _WORLD_TABLES = (
     "canon",
     '"cast"',
@@ -565,6 +611,32 @@ CREATE TABLE IF NOT EXISTS embeddings (
 CREATE INDEX IF NOT EXISTS embeddings_corpus_idx ON embeddings (corpus);
 CREATE INDEX IF NOT EXISTS embeddings_vec_idx
     ON embeddings USING hnsw (embedding vector_cosine_ops);
+"""
+
+# --- Catalog schema (D7.0: the curated tracks catalogue) ---------------------
+# CURATED CONFIG/CATALOG, not world state (§2a): deliberately NOT in
+# `_WORLD_TABLES`, so it survives both `seed-canon` and the destructive
+# `reset-world`; it is cleared/refreshed only by its own `make seed-tracks`
+# (source of truth: config/tracks.yaml). `artist_figure_id` is a SOFT reference
+# to `figures` (no FK — see the Track docstring: tracks outlive a world wipe that
+# truncates figures; D10 backfills the link). No extra indexes: a curated
+# catalogue is dozens of rows, the PK is plenty.
+_CATALOG_SCHEMA_SQL = """
+CREATE TABLE IF NOT EXISTS tracks (
+    id               text PRIMARY KEY,
+    title            text NOT NULL,
+    in_world_artist  text NOT NULL,
+    artist_figure_id text,
+    album            text,
+    era              text,
+    in_world_year    integer,
+    mood             text NOT NULL,
+    story_blurb      text,
+    duration_sec     real,
+    licence_note     text,
+    audio_path       text NOT NULL,
+    tags             text[] NOT NULL DEFAULT '{}'
+);
 """
 
 
@@ -618,6 +690,7 @@ def init_schema(conn: psycopg.Connection) -> None:
     conn.execute(_SCHEMA_SQL)
     conn.execute(_MIGRATIONS_SQL)
     conn.execute(_VECTOR_SCHEMA_SQL)
+    conn.execute(_CATALOG_SCHEMA_SQL)
 
 
 def clear_world(conn: psycopg.Connection, *, scope: str = "world") -> None:
@@ -870,6 +943,46 @@ def insert_quotes(conn: psycopg.Connection, quotes: Iterable[Quote]) -> int:
         rows,
     )
     log.info("db_insert_quotes", count=len(rows))
+    return len(rows)
+
+
+def clear_tracks(conn: psycopg.Connection) -> None:
+    """Empty the curated tracks catalogue so `seed-tracks` reproduces the manifest.
+
+    ONLY the tracks seeder calls this (the catalogue's own refresh path — §2a);
+    it is never part of `clear_world`, in either scope.
+    """
+    log.info("db_clear_tracks")
+    conn.execute("TRUNCATE tracks")
+
+
+def insert_tracks(conn: psycopg.Connection, tracks: Iterable[Track]) -> int:
+    """Insert curated tracks (the music-lore catalogue, D7.0); return the count."""
+    rows = [
+        (
+            t.id,
+            t.title,
+            t.in_world_artist,
+            t.artist_figure_id,
+            t.album,
+            t.era,
+            t.in_world_year,
+            t.mood,
+            t.story_blurb,
+            t.duration_sec,
+            t.licence_note,
+            t.audio_path,
+            t.tags,
+        )
+        for t in tracks
+    ]
+    conn.cursor().executemany(
+        "INSERT INTO tracks (id, title, in_world_artist, artist_figure_id, album, "
+        "era, in_world_year, mood, story_blurb, duration_sec, licence_note, "
+        "audio_path, tags) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)",
+        rows,
+    )
+    log.info("db_insert_tracks", count=len(rows))
     return len(rows)
 
 
@@ -1375,6 +1488,89 @@ def attributed_quotes_by_ids(
     ).fetchall()
     n = len(_QUOTE_COLUMNS.split(", "))
     return [(_quote_from_row(r[:n]), _figure_from_row(r[n:])) for r in rows]
+
+
+# --- Tracks catalogue reads (D7.0: the music selector / DJ intro read these) --
+
+_TRACK_COLUMNS = (
+    "id, title, in_world_artist, artist_figure_id, album, era, in_world_year, "
+    "mood, story_blurb, duration_sec, licence_note, audio_path, tags"
+)
+
+
+def _track_from_row(row: tuple) -> Track:
+    """Build a `Track` from a row selected with `_TRACK_COLUMNS`."""
+    return Track(
+        id=row[0],
+        title=row[1],
+        in_world_artist=row[2],
+        artist_figure_id=row[3],
+        album=row[4],
+        era=row[5],
+        in_world_year=row[6],
+        mood=row[7],
+        story_blurb=row[8],
+        duration_sec=row[9],
+        licence_note=row[10],
+        audio_path=row[11],
+        tags=list(row[12]),
+    )
+
+
+def get_track(conn: psycopg.Connection, track_id: str) -> Track | None:
+    """One track by id, or None."""
+    row = conn.execute(
+        f"SELECT {_TRACK_COLUMNS} FROM tracks WHERE id = %s", (track_id,)
+    ).fetchone()
+    return None if row is None else _track_from_row(row)
+
+
+def all_tracks(conn: psycopg.Connection) -> list[Track]:
+    """The whole curated catalogue, ordered by id.
+
+    Playability (the file exists on disk) is NOT a column — filter with
+    `production.media.is_playable` (the file is the only link, checked live).
+    """
+    rows = conn.execute(f"SELECT {_TRACK_COLUMNS} FROM tracks ORDER BY id").fetchall()
+    return [_track_from_row(r) for r in rows]
+
+
+def tracks_by_mood(conn: psycopg.Connection, mood: str) -> list[Track]:
+    """Tracks with the given mood, ordered by id (a D7.4 selector input)."""
+    rows = conn.execute(
+        f"SELECT {_TRACK_COLUMNS} FROM tracks WHERE mood = %s ORDER BY id",
+        (mood,),
+    ).fetchall()
+    return [_track_from_row(r) for r in rows]
+
+
+def tracks_by_tags(conn: psycopg.Connection, tags: Iterable[str]) -> list[Track]:
+    """Tracks whose tags overlap any of `tags`, ordered by id (array overlap `&&`).
+
+    Empty `tags` returns no rows — same contract as `canon_by_tags`.
+    """
+    tag_list = list(tags)
+    if not tag_list:
+        return []
+    rows = conn.execute(
+        f"SELECT {_TRACK_COLUMNS} FROM tracks WHERE tags && %s ORDER BY id",
+        (tag_list,),
+    ).fetchall()
+    return [_track_from_row(r) for r in rows]
+
+
+def tracks_by_artist(conn: psycopg.Connection, artist: str) -> list[Track]:
+    """Tracks by an artist's plain-text name, ordered by id.
+
+    Matches `in_world_artist` (the always-set text name). Once D10 backfills
+    `artist_figure_id`, a figure-keyed read can join properly; until then the
+    name is the artist's identity (the manifest keeps it consistent per roster).
+    """
+    rows = conn.execute(
+        f"SELECT {_TRACK_COLUMNS} FROM tracks WHERE in_world_artist = %s ORDER BY id",
+        (artist,),
+    ).fetchall()
+    return [_track_from_row(r) for r in rows]
 
 
 # --- News coverage reads (D4.0: the desk reads its own history) -------------
