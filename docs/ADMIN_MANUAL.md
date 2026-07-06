@@ -482,3 +482,47 @@ lead-in is templated in `src/formats/sponsor.py`; a "sponsored by" blurb is auto
 ```bash
 pytest -q tests/test_commercials.py    # builder, gate fallback, cadence+cap, run window, wording
 ```
+
+## D9 — Voice & emotion + the DJ roster (the cast comes alive)
+
+### Add / edit / remove a DJ  → Phase E panel
+1. Author/edit the card in `docs/canon/90-cast.md` (the `Logical voice` line is required;
+   keep a few tick-DOMAIN words on the `Tags:` line — they drive that DJ's on-air memory
+   affinity, see the file's intro).
+2. Add that voice to `config/voices.yaml` — one entry, all three engines (kokoro /
+   elevenlabs / say). The file header documents picking presets.
+3. `make seed-canon` — FAILS LOUD if a card names a voice the registry doesn't have.
+4. To air them: schedule a program with their cast id in `docs/programming/grid.yaml`
+   (read live, no seed step). Removing a DJ = delete the card + re-seed; a grid still
+   naming the removed id fails loud at generation and the slot falls back (never dead air).
+
+### Fix a mispronounced invented name  → Phase E panel
+Edit `config/pronunciation.yaml` (`respell` = any engine; `phonemes` = exact Kokoro sound,
+misaki alphabet — see the header). Applies on the next render, no restart. Unknown names
+pass through unharmed. Off switch: `TTS_LEXICON_ENABLED=false`.
+
+### Tune emotion  → Phase E panel
+- Writers tag turns themselves (`Vell [somber]:` — vocabulary: warm | wry | somber | bright |
+  urgent); un-tagged turns take the daypart mood floor (`_PART_OF_DAY_EMOTION`,
+  writers/conversation.py), then `.env` `TTS_EMOTION_DEFAULT` ("" = engine default).
+- AUDIBLE only on `TTS_PROVIDER=elevenlabs` (Kokoro has no emotion knob) — which engine
+  ships is the C6 decision; C6 also retunes the per-emotion curves (`_ELEVENLABS_EMOTIONS`,
+  providers/tts.py) by ear and confirms the 8 new DJs' premade voice ids.
+
+### Guests / soundbites  → Phase E panel
+`.env`: `CONVO_GUEST_ENABLED` (true), `CONVO_GUEST_CHANCE` (0.2 — share of talk slots; the
+draw is per-slot deterministic). A figure with a quote (D10) airs as a soundbite in its own
+stable voice (`guest_*` pool in `config/voices.yaml`; a `figures.voice_id` naming a registry
+voice wins); no figures = a one-off invited persona. Hosts always open and close (gated).
+
+### DJ memory  → Phase E panel
+`.env`: `CONVO_MEMORY_ENABLED` (true), `CONVO_MEMORY_PER_HOST` (3), `CONVO_MEMORY_WINDOW_DAYS`
+(60 — the look-back). A host prefers stories whose tags overlap their card tags; the
+continuity editor sees the same block, so misremembering re-rolls the draft.
+
+### Verify
+```bash
+pytest -q tests/test_tts_emotion.py tests/test_lexicon.py tests/test_voices.py \
+          tests/test_guest.py tests/test_memory.py
+.venv/bin/python -m src.formats talk   # a talk segment; logs show emotion/memory/guest per slot
+```

@@ -41,6 +41,8 @@ def _patch_common(monkeypatch):
     monkeypatch.setattr(convo.freshness, "recent_openings_block", lambda now, fmt: "")
     # D9.3 — host-only by default (the guest path has its own test below).
     monkeypatch.setattr(convo.guest_mod, "maybe_guest", lambda ctx, now, fmt: None)
+    # D9.4 — memory off the DB here; its assembly is exercised in test_memory.
+    monkeypatch.setattr(convo.memory_mod, "memory_section", lambda speakers, now: "")
 
 
 def test_clean_draft_passes_both_gates(monkeypatch):
@@ -48,7 +50,9 @@ def test_clean_draft_passes_both_gates(monkeypatch):
     monkeypatch.setattr(convo, "orchestrate", lambda *a, **k: SCRIPT)
     monkeypatch.setattr(convo, "safety_check", lambda text: _ok_safety())
     monkeypatch.setattr(
-        convo, "continuity_check", lambda s, c: ContinuityResult(True, "sonnet", "OK")
+        convo,
+        "continuity_check",
+        lambda s, c, **k: ContinuityResult(True, "sonnet", "OK"),
     )
 
     seg = convo.compose_segment(_ctx(), NOW, seg_id="talk-1")
@@ -65,7 +69,7 @@ def test_continuity_flag_regenerates_with_note_then_falls_back(monkeypatch):
     monkeypatch.setattr(
         convo,
         "continuity_check",
-        lambda s, c: ContinuityResult(False, "opus", "ISSUES: time collision"),
+        lambda s, c, **k: ContinuityResult(False, "opus", "ISSUES: time collision"),
     )
     seen_notes: list[str | None] = []
 
@@ -79,6 +83,7 @@ def test_continuity_flag_regenerates_with_note_then_falls_back(monkeypatch):
         revision_note=None,
         recent_openings="",
         guest=None,
+        memory="",
     ):
         seen_notes.append(revision_note)
         return SCRIPT
@@ -101,7 +106,9 @@ def test_safety_flag_regenerates_fresh_then_succeeds(monkeypatch):
     safety_verdicts = iter([_flag_safety(), _ok_safety()])
     monkeypatch.setattr(convo, "safety_check", lambda text: next(safety_verdicts))
     monkeypatch.setattr(
-        convo, "continuity_check", lambda s, c: ContinuityResult(True, "sonnet", "OK")
+        convo,
+        "continuity_check",
+        lambda s, c, **k: ContinuityResult(True, "sonnet", "OK"),
     )
     notes: list[str | None] = []
 
@@ -115,6 +122,7 @@ def test_safety_flag_regenerates_fresh_then_succeeds(monkeypatch):
         revision_note=None,
         recent_openings="",
         guest=None,
+        memory="",
     ):
         notes.append(revision_note)
         return SCRIPT
@@ -139,7 +147,9 @@ def test_guest_must_be_bracketed_by_hosts(monkeypatch):
     monkeypatch.setattr(convo.guest_mod, "maybe_guest", lambda ctx, now, fmt: guest)
     monkeypatch.setattr(convo, "safety_check", lambda text: _ok_safety())
     monkeypatch.setattr(
-        convo, "continuity_check", lambda s, c: ContinuityResult(True, "sonnet", "OK")
+        convo,
+        "continuity_check",
+        lambda s, c, **k: ContinuityResult(True, "sonnet", "OK"),
     )
     notes: list[str | None] = []
 
@@ -165,7 +175,9 @@ def test_guest_turns_render_when_bracketed(monkeypatch):
     monkeypatch.setattr(convo.guest_mod, "maybe_guest", lambda ctx, now, fmt: guest)
     monkeypatch.setattr(convo, "safety_check", lambda text: _ok_safety())
     monkeypatch.setattr(
-        convo, "continuity_check", lambda s, c: ContinuityResult(True, "sonnet", "OK")
+        convo,
+        "continuity_check",
+        lambda s, c, **k: ContinuityResult(True, "sonnet", "OK"),
     )
     script = (
         "Vell: Our guest tonight, Tessa of the relay yards.\n"

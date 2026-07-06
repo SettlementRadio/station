@@ -42,6 +42,26 @@ def test_render_dynamic_surfaces_relative_phrase_and_facts():
     assert "Radio connects the worlds." in out
 
 
+def test_assemble_fails_loud_on_unknown_cast_id(monkeypatch):
+    # D9.2 — the roster is table-driven, so a stale id (a removed DJ still named
+    # by the grid/config) must raise, never silently drop the persona.
+    import pytest
+
+    class _Conn:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *exc):
+            return False
+
+    monkeypatch.setattr(context.canon_source, "load_bible", lambda *a: "bible")
+    monkeypatch.setattr(context.store, "connect", lambda: _Conn())
+    monkeypatch.setattr(context.store, "get_cast_member", lambda conn, sid: None)
+
+    with pytest.raises(ValueError, match="unknown speaker cast id 'ghost'"):
+        context.assemble(datetime(2026, 7, 6, 21, 0), speakers=["ghost"])
+
+
 def test_render_dynamic_surfaces_attributed_quote():
     # D10.2 — a quote with its figure becomes a "what people are saying" line, framed.
     now = datetime(2026, 6, 19, 23, 0)

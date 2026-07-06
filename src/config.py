@@ -188,6 +188,16 @@ class Settings(BaseSettings):
     # to pre-D9.3 behaviour.
     convo_guest_enabled: bool = True
     convo_guest_chance: float = 0.2  # ~1 in 5 talk slots carries a guest
+    # D9.4 — DJ memory: each host recalls recent PAST happenings from the D3
+    # story log as lived history, persona-weighted by their card tags
+    # (src/writers/memory.py). Bounded so the prompt stays small and the cache
+    # lever holds: `*_window_days` is how far back memory reaches on the
+    # in-world timeline; `*_per_host` how many stories each host recalls.
+    # Distinct from D4 (news coverage recurrence) and D5 (output freshness) —
+    # this is in-character recall. `convo_memory_enabled=False` = pre-D9.4 room.
+    convo_memory_enabled: bool = True
+    convo_memory_per_host: int = 3
+    convo_memory_window_days: int = 60
 
     # --- Content-safety gate (C0: real automated check on every draft) ---------
     # CLAUDE.md "Content safety": before any public broadcast, generated text must

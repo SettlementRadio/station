@@ -202,6 +202,18 @@ host; a figure with its own `voice_id` keeps it, and the same figure keeps the s
 across segments. `CONVO_GUEST_ENABLED=false` returns to host-only. Guests are part of the station's
 AI-voiced fiction, covered by the standing on-air disclosure.
 
+**DJ memory (D9.4).** On air, the hosts remember what the world lived through: each talk segment
+carries a small "what {DJ} remembers" block assembled from the story log — recent **past**
+happenings, clock-framed ("yesterday", "last week") and labelled resolved / still unfolding, so a
+DJ references them as lived history rather than re-announcing them as news. Persona-weighted (a
+story whose tags match a host's card sticks with that host), bounded by two dials
+(`CONVO_MEMORY_WINDOW_DAYS` look-back, `CONVO_MEMORY_PER_HOST` stories each), clipped to
+one-sentence handles, and kept in the **per-call** prompt so the cached bible is untouched. The
+same block is shown to the continuity editor, so a host misremembering a logged story is flagged
+and re-rolled like any continuity error. Distinct from the news desk's coverage memory (D4) and
+the anti-repetition freshness memory (D5) — this is in-character recall.
+`CONVO_MEMORY_ENABLED=false` switches it off.
+
 **4. World-state database (Postgres).** From Phase B the world (canon, cast, events) lives in a
 local PostgreSQL database, seeded from the **canon bible**. Install and start it with Homebrew, then
 create the database:

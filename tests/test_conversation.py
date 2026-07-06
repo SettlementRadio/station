@@ -69,6 +69,25 @@ def test_parse_turns_drops_unknown_emotion_tag():
     assert turns[0].text == "Ahem."
 
 
+def test_render_turns_applies_turn_emotion_then_segment_default(monkeypatch):
+    # D9.0/D9.5 — a tagged turn keeps its own emotion; an un-annotated turn
+    # renders with the segment default (the daypart mood floor).
+    seen: list[str | None] = []
+
+    def fake_synthesize(text, *, voice, emotion=None, out_path):
+        seen.append(emotion)
+        return out_path
+
+    monkeypatch.setattr(convo.tts, "synthesize", fake_synthesize)
+    monkeypatch.setattr(convo.tts, "concat_audio", lambda parts, out: out)
+    turns = [
+        convo.Turn("Vell", "vell_night", "Quiet night.", emotion="somber"),
+        convo.Turn("Wren", "dj_two", "It is."),
+    ]
+    convo._render_turns(turns, "emo-test", default_emotion="warm")
+    assert seen == ["somber", "warm"]
+
+
 def test_orchestrate_prompt_offers_the_emotion_vocabulary(monkeypatch):
     from src.providers import tts
 

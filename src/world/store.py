@@ -1407,6 +1407,33 @@ def story_beats(conn: psycopg.Connection, story_id: str) -> list[Event]:
     return [_event_from_row(r) for r in rows]
 
 
+def remembered_stories(
+    conn: psycopg.Connection, *, iw_now: datetime, window_days: int, limit: int
+) -> list[tuple[Story, datetime]]:
+    """Stories with a PAST beat inside the look-back window — lived history (D9.4).
+
+    The read behind DJ memory: what the station (and its hosts) lived through
+    recently enough to bring up on air. A story qualifies via its beats that have
+    ALREADY HAPPENED (in-world datetime <= now, within `window_days` back — the
+    memory window dial); upcoming beats never make a memory. Returns
+    `(story, latest_past_beat_datetime)` pairs — resolved (`past`) stories first
+    (finished arcs are the safest to recall), then most-recent-beat first.
+    Distinct from `last_coverage` (D4, the news desk's per-story coverage memory)
+    and the airplay history (D5, output anti-repetition).
+    """
+    cols = ", ".join(f"s.{c.strip()}" for c in _STORY_COLUMNS.split(","))
+    rows = conn.execute(
+        f"SELECT {cols}, MAX(e.in_world_datetime) AS last_beat "
+        "FROM stories s JOIN events e ON e.story_id = s.id "
+        "WHERE e.in_world_datetime <= %s AND e.in_world_datetime >= %s "
+        f"GROUP BY {cols} "
+        "ORDER BY (s.arc_stage = %s) DESC, MAX(e.in_world_datetime) DESC, s.id "
+        "LIMIT %s",
+        (iw_now, iw_now - timedelta(days=window_days), ARC_PAST, limit),
+    ).fetchall()
+    return [(_story_from_row(r[:-1]), r[-1]) for r in rows]
+
+
 # --- Figures & quotes reads (D10.0: the news desk / writers read these) -----
 
 _FIGURE_COLUMNS = "id, name, role, card_text, voice_id, tags, source"

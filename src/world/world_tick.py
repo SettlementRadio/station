@@ -46,9 +46,12 @@ log = get_logger(__name__)
 
 # The world's domains — the D1 cornerstones double as the spread the tick generates
 # across (history, literature, finance, war, nations, peoples, geography, religion,
-# culture, technology). Intrinsic domain data, not config; D3.3 adds the *weighting*
-# that keeps quiet domains from starving. Used here only to steer the proposal toward
-# variety and to tag each story.
+# culture, technology), plus `sports` (D9.4: canon's bounded-leisure games and the
+# live circuit Kael's card covers — added so the sports desk's beat actually happens
+# in the generated world). Intrinsic domain data, not config; D3.3 adds the
+# *weighting* that keeps quiet domains from starving. Used here only to steer the
+# proposal toward variety and to tag each story. These tags are also what a DJ's
+# card tags match for on-air memory affinity (D9.4, writers/memory.py).
 DOMAINS: tuple[str, ...] = (
     "history",
     "literature",
@@ -60,6 +63,7 @@ DOMAINS: tuple[str, ...] = (
     "religion",
     "culture",
     "technology",
+    "sports",
 )
 
 # State keys the tick owns (live in the `state` kv table; survive a canon refresh).

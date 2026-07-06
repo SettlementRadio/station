@@ -196,6 +196,18 @@ host-only when no guest/figure is present.
 framing; the memory is bounded + in the dynamic context; it stays consistent (no misremembering) under
 the continuity gate.
 
+> **BUILT (2026-07-06).** `store.remembered_stories` (past beats in a look-back window; resolved-first)
+> → `writers/memory.py` renders a per-host "What {DJ} remembers" block: persona-weighted by card-tag
+> overlap, bounded by `convo_memory_window_days` + `convo_memory_per_host`, each story clipped to a
+> one-sentence handle, clock-framed via `events.phrase_for_datetime` + arc-labelled
+> (resolved / still unfolding). Injected in the orchestrator's PER-CALL system (cache lever holds) and
+> shown to the continuity editor so misremembering flags (the gate re-rolls). Degrades to "" on
+> off/empty-log/DB failure. The tag vocabularies were ALIGNED the same day: every cast card in
+> `90-cast.md` now carries a few tick-DOMAIN tags (the file's intro documents the double duty), a
+> `sports` domain was added to `world_tick.DOMAINS` so Kael's beat exists in the generated world,
+> and the candidate window was widened — verified live: Vell recalls peoples/history stories, Wren
+> relay/nations, Thorn finance/war, Mira culture/literature.
+
 ## D9.5 — Tests + verification + docs
 **Goal:** voice/roster/memory logic is covered, and the result is demonstrable.
 **Do:**

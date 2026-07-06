@@ -47,6 +47,7 @@ from ..world.context import AssembledContext
 from ..world.framing import ShowFrame
 from ..world.store import CastMember
 from . import guest as guest_mod
+from . import memory as memory_mod
 from .guest import Guest
 
 log = get_logger(__name__)
@@ -180,6 +181,7 @@ def orchestrate(
     revision_note: str | None = None,
     recent_openings: str = "",
     guest: Guest | None = None,
+    memory: str = "",
 ) -> str:
     """Write the two-DJ exchange in one call; return speaker-labelled dialogue.
 
@@ -202,6 +204,11 @@ def orchestrate(
     `guest` (D9.3) is an optional non-host speaker for THIS segment — a figure
     soundbite or an invited persona (see `writers/guest.py`). The prompt tells the
     room to weave them in, bracketed by the hosts; None keeps the host-only shape.
+
+    `memory` (D9.4) is the pre-rendered "what the hosts remember" block
+    (`writers/memory.py`) — each host's lived history from the story log, joined
+    to their card. Small + variable, so it rides HERE in the per-call system (the
+    cache lever holds); "" keeps the memory-less shape.
     """
     names = _names(ctx)
     labels = [f"{c.name}:" for c in ctx.speakers]
@@ -236,6 +243,7 @@ def orchestrate(
     #     from the recent-airplay memory, woven in beside the beat. [BUILT — D5.2:
     #     showrunner takes recent topics; orchestrate takes recent openings here.]
     #   * D9 (DJ memory): each host's history from the event log, joined to their card.
+    #     [BUILT — D9.4: the `memory` block below, rendered by writers/memory.py.]
     #   * D10 (figures/quotes): an attributable quote a host can reference.
     freshness_section = f"{recent_openings}\n\n" if recent_openings else ""
     system = (
@@ -249,6 +257,7 @@ def orchestrate(
         f"Tonight's beat (from the showrunner):\n{beat}\n\n"
         f"{freshness_section}"
         f"What's true right now:\n{ctx.dynamic or '(nothing notable)'}\n\n"
+        f"{memory}"
         f"{guest_section}"
         "Write a REAL conversation — two people who've shared this booth for years "
         "and are easy with each other, NOT two narrators taking turns. Make it sound "
@@ -330,35 +339,50 @@ def _guest_section(guest: Guest | None) -> str:
 # --- Step 3: continuity -----------------------------------------------------
 
 
-def continuity_check(script: str, ctx: AssembledContext) -> ContinuityResult:
+def continuity_check(
+    script: str, ctx: AssembledContext, *, memory: str = ""
+) -> ContinuityResult:
     """Check the draft against canon; escalate to opus only if sonnet flags trouble.
 
     Returns the verdict; the GATE that acts on it (regenerate with the note, then
     fall back to evergreen) lives in `compose_segment` (C0). The escalation to
     `opus` on a sonnet flag is the confirm step before that gate spends a retry.
+
+    `memory` (D9.4) is the same lived-history block the orchestrator saw — shown
+    to the editor so a host MISREMEMBERING a logged story (wrong outcome, wrong
+    framing of a resolved arc) flags like any continuity error.
     """
     tier = settings.convo_continuity_tier
-    note = _run_continuity(script, ctx, tier)
+    note = _run_continuity(script, ctx, tier, memory)
     ok = _is_ok(note)
     if not ok:
         # The first pass smells a problem — spend a more careful model to confirm.
         log.warning("convo_continuity_flagged", tier=tier, note=note[:300])
         tier = settings.convo_continuity_escalation_tier
-        note = _run_continuity(script, ctx, tier)
+        note = _run_continuity(script, ctx, tier, memory)
         ok = _is_ok(note)
     log.info("convo_continuity_done", tier=tier, ok=ok)
     return ContinuityResult(ok=ok, tier=tier, note=note)
 
 
-def _run_continuity(script: str, ctx: AssembledContext, tier: str) -> str:
+def _run_continuity(
+    script: str, ctx: AssembledContext, tier: str, memory: str = ""
+) -> str:
     """One continuity pass at `tier`; returns the editor's note ('OK' / 'ISSUES…')."""
+    memory_block = (
+        "The hosts' remembered history from the station log — the draft must not "
+        f"contradict or misdate any of it:\n{memory}\n"
+        if memory
+        else ""
+    )
     system = (
         "You are the continuity editor for Settlement Radio. Check the draft below "
         "against the world bible and the character cards in the cached context: any "
         "contradiction of canon, a host acting out of character, a real-world or "
         "anachronistic reference, or info-dumping/reciting facts. Reply with the "
         "single word OK if it is consistent and in character, otherwise 'ISSUES:' "
-        "followed by a terse list. Do not rewrite the draft."
+        "followed by a terse list. Do not rewrite the draft.\n\n"
+        f"{memory_block}"
     )
     note = llm.generate(
         f"Draft to check:\n\n{script}",
@@ -564,6 +588,10 @@ def compose_segment(
     # D9.3 — decide ONCE per slot whether a guest/soundbite joins (sparse,
     # air-time-seeded, so retries keep the same guest); None = host-only.
     seg_guest = guest_mod.maybe_guest(ctx, now, fmt)
+    # D9.4 — the hosts' lived history from the story log, read once per slot;
+    # "" degrades to the memory-less room. The same block goes to the
+    # orchestrator AND the continuity editor (misremembering flags).
+    memory = memory_mod.memory_section(ctx.speakers, now)
     beat = showrunner(ctx, now, frame=frame, recent_block=recent_topics)
 
     attempts = settings.convo_continuity_max_attempts
@@ -581,6 +609,7 @@ def compose_segment(
             revision_note=revision_note,
             recent_openings=recent_openings,
             guest=seg_guest,
+            memory=memory,
         ).strip()
 
         safety = safety_check(script)
@@ -616,7 +645,7 @@ def compose_segment(
             log.warning("convo_guest_bracket_flag", seg_id=seg_id, attempt=attempt)
             continue
 
-        continuity = continuity_check(script, ctx)
+        continuity = continuity_check(script, ctx, memory=memory)
         if not continuity.ok:
             last_reason = f"continuity: {continuity.note}"
             revision_note = continuity.note  # feed the editor's note into the rewrite
@@ -663,6 +692,7 @@ def compose_segment(
                     if seg_guest is not None
                     else None
                 ),
+                "memory_used": bool(memory),
                 "lead": frame.lead,
                 "handover": frame.is_handover,
                 "safety_stage": safety.stage,

@@ -38,6 +38,44 @@ A typical *build* session will be short, e.g.:
 
 ---
 
+## 2026-07-06 — Phase D — D9 built: voice & emotion + the DJ roster (the cast comes alive)
+**Focus:** build the whole D9 sub-pack (D9.0–D9.5): emotion wired end-to-end, the pronunciation
+lexicon, the data-driven voice registry with a distinct preset per DJ, guest/non-host voices (the
+D9×D10 bridge), per-DJ memory from the story log, tests + a real on-air demo + docs.
+**Decisions:**
+- **Emotion is data behind the seam** — a 5-word logical vocabulary (`warm|wry|somber|bright|
+  urgent`) maps to real ElevenLabs `VoiceSettings` (stability/style/speed) ONLY inside
+  `_synthesize_elevenlabs`; Kokoro/`say` accept-and-ignore. Writers tag turns (`Vell [somber]:`),
+  un-tagged turns take a daypart mood floor, operator default `TTS_EMOTION_DEFAULT`. AUDIBLE only
+  on the flagship path — C6 decides the engine AND retunes the (unheard) curves by ear.
+- **Two new human-edited registries** (the tracks.yaml pattern): `config/pronunciation.yaml`
+  (invented names → respell + Kokoro phonemes via misaki's `[name](/…/)` markup — verified live:
+  Zhe "zhee"→"zhay") and `config/voices.yaml` (logical voice → vendor preset per engine — the
+  hardcoded tts.py dicts + 9 placeholder aliases are GONE; every DJ distinct; `make seed-canon`
+  fails loud on a bible↔registry mismatch). ElevenLabs ids for the 8 new DJs are premade-roster
+  picks, unheard (key lacks `voices_read`) — confirm at C6.
+- **Guests are sparse, deterministic, and host-bracketed** — `writers/guest.py` draws ~1 in 5 talk
+  slots (air-time-seeded): a D10 figure+quote becomes a voiced soundbite (stable pool voice per
+  figure; `figures.voice_id` honoured) else an invited one-off persona; a structural gate re-rolls
+  any draft where the guest opens/closes. This DELIVERS D10.3.
+- **DJ memory = in-character recall, bounded** — `store.remembered_stories` (past beats in a
+  window) → per-host persona-weighted one-sentence handles, in the PER-CALL prompt (cache lever
+  holds), shown to the continuity editor so misremembering flags. Cross-referenced vs D4/D5.
+- **Content fix that made memory bite:** cast card tags now carry tick-DOMAIN words (the two tag
+  vocabularies never met before — hosts all remembered the same beats); added a `sports` domain so
+  Kael's beat exists in the generated world.
+**Changed:** `providers/tts.py` (+`lexicon.py`), `writers/{conversation,guest,memory}.py`,
+`world/{store,seed,world_tick}.py`, `config/{voices,pronunciation}.yaml`, `docs/canon/90-cast.md`
+(domain tags), `grid.yaml` (**The Bridge**, weekends 07–12 — joss+mira, the first show airing the
+new cast), config/env/README/ARCHITECTURE/pack notes, 6 new test files → **328 tests green**.
+**Why:** the roster is the product's ceiling — one pair of voices can't carry a 24/7 station; and
+every new surface stayed DATA (bible + two YAML registries) so growing the cast never touches code.
+**📣 Postable:** the demo segment — `segments/talk-20260711T090000.mp3` (~3 min): Joss + Mira's
+first broadcast, in character, referencing a 12-years-back on-air moment pulled from the station's
+own generated history, with per-turn emotion tags in the script. "The DJs remember now."
+**Next:** D11 (operator manual capstone) or the C5–C9 server track — ask the human which.
+Commit: (this session)  ·  Clips: (record The Bridge demo)
+
 ## 2026-07-06 — Phase D — D8 built: commercials & sponsorship (texture, not interruption)
 **Focus:** build the whole D8 sub-pack (D8.0–D8.3): the `commercial`/`promo` format, the
 daypart-driven ad-break cadence with the d18 sting bracket, the `sponsors` table + "Powered by"
