@@ -39,6 +39,8 @@ def _patch_common(monkeypatch):
     # test_freshness/test_conversation; here they're not the subject.
     monkeypatch.setattr(convo.freshness, "recent_topics_block", lambda now: "")
     monkeypatch.setattr(convo.freshness, "recent_openings_block", lambda now, fmt: "")
+    # D9.3 — host-only by default (the guest path has its own test below).
+    monkeypatch.setattr(convo.guest_mod, "maybe_guest", lambda ctx, now, fmt: None)
 
 
 def test_clean_draft_passes_both_gates(monkeypatch):
@@ -76,6 +78,7 @@ def test_continuity_flag_regenerates_with_note_then_falls_back(monkeypatch):
         extra_directive=None,
         revision_note=None,
         recent_openings="",
+        guest=None,
     ):
         seen_notes.append(revision_note)
         return SCRIPT
@@ -111,6 +114,7 @@ def test_safety_flag_regenerates_fresh_then_succeeds(monkeypatch):
         extra_directive=None,
         revision_note=None,
         recent_openings="",
+        guest=None,
     ):
         notes.append(revision_note)
         return SCRIPT
@@ -123,6 +127,60 @@ def test_safety_flag_regenerates_fresh_then_succeeds(monkeypatch):
     assert seg.meta["attempts"] == 2
     # A safety flag re-rolls fresh (no editor note fed back).
     assert notes == [None, None]
+
+
+def test_guest_must_be_bracketed_by_hosts(monkeypatch):
+    # D9.3 — the structural gate: a draft that lets the guest close the exchange
+    # is re-rolled with a bracketing note, and falls back if it never learns.
+    from src.writers.guest import Guest
+
+    _patch_common(monkeypatch)
+    guest = Guest(label="Guest", voice="guest_one", kind="invited", brief="b")
+    monkeypatch.setattr(convo.guest_mod, "maybe_guest", lambda ctx, now, fmt: guest)
+    monkeypatch.setattr(convo, "safety_check", lambda text: _ok_safety())
+    monkeypatch.setattr(
+        convo, "continuity_check", lambda s, c: ContinuityResult(True, "sonnet", "OK")
+    )
+    notes: list[str | None] = []
+
+    def _orchestrate(ctx, beat, now, *, revision_note=None, guest=None, **kwargs):
+        notes.append(revision_note)
+        return "Vell: Our guest tonight.\nGuest: Thanks for having me."
+
+    monkeypatch.setattr(convo, "orchestrate", _orchestrate)
+    monkeypatch.setattr(convo.settings, "convo_continuity_max_attempts", 2)
+    fallback = object()
+    monkeypatch.setattr(convo.evergreen, "evergreen_segment", lambda *a, **k: fallback)
+
+    result = convo.compose_segment(_ctx(), NOW, seg_id="talk-4")
+    assert result is fallback  # a guest-closed draft never airs
+    assert notes[0] is None and "bracketed" in (notes[1] or "")
+
+
+def test_guest_turns_render_when_bracketed(monkeypatch):
+    from src.writers.guest import Guest
+
+    _patch_common(monkeypatch)
+    guest = Guest(label="Guest", voice="guest_one", kind="invited", brief="b")
+    monkeypatch.setattr(convo.guest_mod, "maybe_guest", lambda ctx, now, fmt: guest)
+    monkeypatch.setattr(convo, "safety_check", lambda text: _ok_safety())
+    monkeypatch.setattr(
+        convo, "continuity_check", lambda s, c: ContinuityResult(True, "sonnet", "OK")
+    )
+    script = (
+        "Vell: Our guest tonight, Tessa of the relay yards.\n"
+        "Guest: It's quieter up there than you'd think.\n"
+        "Wren: Thanks for coming by, Tessa."
+    )
+    monkeypatch.setattr(convo, "orchestrate", lambda *a, **k: script)
+
+    seg = convo.compose_segment(_ctx(), NOW, seg_id="talk-5")
+    assert seg.meta["guest"] == {
+        "kind": "invited",
+        "label": "Guest",
+        "voice": "guest_one",
+    }
+    assert seg.meta["turns"] == 3
 
 
 # --- tiny verdict helpers (avoid importing the SafetyResult shape everywhere) ---

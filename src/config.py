@@ -180,6 +180,14 @@ class Settings(BaseSettings):
     # if it still fails, the slot drops to an evergreen fallback (never airs the
     # flawed draft). 2 = one draft + one note-guided retry. (Spec: PHASE_C C0.)
     convo_continuity_max_attempts: int = 2
+    # D9.3 — guest / non-host voices in a talk segment: a D10 figure voiced as a
+    # short soundbite, or a one-off invited persona (src/writers/guest.py). Kept
+    # SPARSE by design — texture, not a parade of voices: each talk slot draws
+    # deterministically (air-time-seeded) against `convo_guest_chance`; most
+    # segments stay host-only. `convo_guest_enabled=False` is the clean rollback
+    # to pre-D9.3 behaviour.
+    convo_guest_enabled: bool = True
+    convo_guest_chance: float = 0.2  # ~1 in 5 talk slots carries a guest
 
     # --- Content-safety gate (C0: real automated check on every draft) ---------
     # CLAUDE.md "Content safety": before any public broadcast, generated text must

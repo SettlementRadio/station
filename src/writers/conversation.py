@@ -46,6 +46,8 @@ from ..world import clock, context, framing, programming
 from ..world.context import AssembledContext
 from ..world.framing import ShowFrame
 from ..world.store import CastMember
+from . import guest as guest_mod
+from .guest import Guest
 
 log = get_logger(__name__)
 
@@ -177,6 +179,7 @@ def orchestrate(
     extra_directive: str | None = None,
     revision_note: str | None = None,
     recent_openings: str = "",
+    guest: Guest | None = None,
 ) -> str:
     """Write the two-DJ exchange in one call; return speaker-labelled dialogue.
 
@@ -195,10 +198,18 @@ def orchestrate(
     talk openings to NOT start like (from `freshness.recent_openings_block`). Woven in
     beside the beat (the reserved injection point below), in the per-call system so the
     cache still hits; empty on a cold start.
+
+    `guest` (D9.3) is an optional non-host speaker for THIS segment — a figure
+    soundbite or an invited persona (see `writers/guest.py`). The prompt tells the
+    room to weave them in, bracketed by the hosts; None keeps the host-only shape.
     """
     names = _names(ctx)
-    label_help = " / ".join(f"{c.name}:" for c in ctx.speakers)
+    labels = [f"{c.name}:" for c in ctx.speakers]
+    if guest is not None:
+        labels.append(f"{guest.label}:")
+    label_help = " / ".join(labels)
     emotion_help = ", ".join(sorted(tts.EMOTIONS))  # D9.0: the allowed tag set
+    guest_section = _guest_section(guest)
     frame = frame or _frame_for(ctx, now)
     situation = _situation(frame, ctx)
     backbone = (
@@ -238,6 +249,7 @@ def orchestrate(
         f"Tonight's beat (from the showrunner):\n{beat}\n\n"
         f"{freshness_section}"
         f"What's true right now:\n{ctx.dynamic or '(nothing notable)'}\n\n"
+        f"{guest_section}"
         "Write a REAL conversation — two people who've shared this booth for years "
         "and are easy with each other, NOT two narrators taking turns. Make it sound "
         "spoken, not written:\n"
@@ -280,6 +292,39 @@ def orchestrate(
     script = script.strip()
     log.info("convo_orchestrate_done", chars=len(script))
     return script
+
+
+def _guest_section(guest: Guest | None) -> str:
+    """The orchestrator prompt block weaving in a D9.3 guest ('' when none).
+
+    Both shapes keep the hosts in control — a host speaks first and last — and
+    keep the guest SHORT (texture, not a takeover). The whole broadcast is
+    AI-voiced fiction (the station's disclosure posture); the guest is part of
+    that fiction, so the room invents/voices them inside it, never as a real
+    person.
+    """
+    if guest is None:
+        return ""
+    if guest.kind == "figure":
+        return (
+            "This segment includes a short SOUNDBITE from someone in the news:\n"
+            f"{guest.brief}\n"
+            "Weave it in ONCE: a host sets it up in their own words ('here's what "
+            f"they said' / 'we have them on the line'), then {guest.label} speaks "
+            "1-2 SHORT turns — their actual words, consistent with the quote above "
+            "— then the hosts react and move on. The hosts stay in control: a host "
+            "opens the exchange and a host closes it; the guest never speaks first "
+            f"or last. Label the guest's lines exactly `{guest.label}:`.\n\n"
+        )
+    return (
+        f"This segment includes a brief in-studio interview. {guest.brief}\n"
+        "Keep it short and easy: the hosts introduce the guest by name and role, "
+        "the guest speaks 2-4 short turns in their own distinct voice (plainer "
+        "than the hosts — a resident, not a broadcaster), and a host thanks them "
+        "out. The hosts stay in control: a host opens the exchange and a host "
+        "closes it; the guest never speaks first or last. Label the guest's lines "
+        f"exactly `{guest.label}:`.\n\n"
+    )
 
 
 # --- Step 3: continuity -----------------------------------------------------
@@ -348,24 +393,30 @@ def _tag_emotion(tag: str | None) -> str | None:
     return value
 
 
-def parse_turns(script: str, cards: list[CastMember]) -> list[Turn]:
+def parse_turns(
+    script: str, cards: list[CastMember], guest: Guest | None = None
+) -> list[Turn]:
     """Split speaker-labelled dialogue into per-voice `Turn`s.
 
     Recognises lines beginning with a known host name and a colon (tolerating
     surrounding `**bold**` and an optional D9.0 `[emotion]` tag between name and
     colon), and folds any wrapped continuation lines into the current turn.
     Lines before the first recognised label (stray preamble) are dropped. Each
-    turn maps to its host's logical voice for the TTS seam.
+    turn maps to its speaker's logical voice for the TTS seam. `guest` (D9.3)
+    adds one recognised non-host label mapped to the guest's own voice.
     """
-    by_name = {c.name.lower(): c for c in cards}
-    names = "|".join(re.escape(c.name) for c in cards)
+    # speaker label (lower) -> (display name, logical voice)
+    by_name = {c.name.lower(): (c.name, c.logical_voice) for c in cards}
+    if guest is not None:
+        by_name[guest.label.lower()] = (guest.label, guest.voice)
+    names = "|".join(re.escape(name) for name, _voice in by_name.values())
     label_re = re.compile(
         rf"^\s*\*{{0,2}}({names})\*{{0,2}}\s*(?:\[([^\]]+)\])?\s*:\s*(.*)$",
         re.IGNORECASE,
     )
 
     turns: list[Turn] = []
-    cur: CastMember | None = None
+    cur: tuple[str, str] | None = None  # (display name, logical voice)
     cur_emotion: str | None = None
     buf: list[str] = []
 
@@ -375,12 +426,7 @@ def parse_turns(script: str, cards: list[CastMember]) -> list[Turn]:
         text = re.sub(r"\*\*", "", " ".join(b.strip() for b in buf)).strip()
         if text:
             turns.append(
-                Turn(
-                    speaker=cur.name,
-                    voice=cur.logical_voice,
-                    text=text,
-                    emotion=cur_emotion,
-                )
+                Turn(speaker=cur[0], voice=cur[1], text=text, emotion=cur_emotion)
             )
 
     for line in script.splitlines():
@@ -515,6 +561,9 @@ def compose_segment(
     # Both degrade to "" on a cold start, so a fresh station generates as it did before.
     recent_topics = freshness.recent_topics_block(now)
     recent_openings = freshness.recent_openings_block(now, fmt)
+    # D9.3 — decide ONCE per slot whether a guest/soundbite joins (sparse,
+    # air-time-seeded, so retries keep the same guest); None = host-only.
+    seg_guest = guest_mod.maybe_guest(ctx, now, fmt)
     beat = showrunner(ctx, now, frame=frame, recent_block=recent_topics)
 
     attempts = settings.convo_continuity_max_attempts
@@ -531,6 +580,7 @@ def compose_segment(
             extra_directive=extra_directive,
             revision_note=revision_note,
             recent_openings=recent_openings,
+            guest=seg_guest,
         ).strip()
 
         safety = safety_check(script)
@@ -545,11 +595,25 @@ def compose_segment(
             )
             continue
 
-        turns = parse_turns(script, ctx.speakers)
+        turns = parse_turns(script, ctx.speakers, guest=seg_guest)
         if not turns:
             last_reason = "no dialogue turns parsed (speaker labels did not match)"
             revision_note = None
             log.warning("convo_parse_empty", seg_id=seg_id, attempt=attempt)
+            continue
+
+        # D9.3 — structural gate: the hosts stay in control. A draft that lets
+        # the guest open or close the exchange is re-rolled with the note.
+        if seg_guest is not None and (
+            turns[0].speaker == seg_guest.label or turns[-1].speaker == seg_guest.label
+        ):
+            last_reason = "guest not bracketed by hosts"
+            revision_note = (
+                "The guest must be bracketed by the hosts: a host opens the "
+                "exchange and a host closes it — the guest never speaks first "
+                "or last."
+            )
+            log.warning("convo_guest_bracket_flag", seg_id=seg_id, attempt=attempt)
             continue
 
         continuity = continuity_check(script, ctx)
@@ -590,6 +654,15 @@ def compose_segment(
                 "part_of_day": frame.part_of_day,
                 "emotion_default": default_emotion,
                 "emotions": sorted({t.emotion for t in turns if t.emotion}),
+                "guest": (
+                    {
+                        "kind": seg_guest.kind,
+                        "label": seg_guest.label,
+                        "voice": seg_guest.voice,
+                    }
+                    if seg_guest is not None
+                    else None
+                ),
                 "lead": frame.lead,
                 "handover": frame.is_handover,
                 "safety_stage": safety.stage,

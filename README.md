@@ -192,6 +192,16 @@ management UI is Phase E — this file-based flow is the current model. Note the
 ElevenLabs ids are premade-roster picks not yet heard (the key lacks `voices_read`) — confirm at
 the C6 funded listen; Kokoro presets are verified locally.
 
+**Guest voices (D9.3).** A talk segment can carry one **non-host speaker**, the way real radio plays
+a clip or runs an interview: a **figure soundbite** (a person from the world's stories, speaking
+their attributable quote — the D9×D10 bridge) or a one-off **invited guest**. Sparse by design
+(`CONVO_GUEST_CHANCE`, ~1 in 5 talk slots, drawn deterministically per slot): the hosts introduce
+and close the guest — a draft that lets the guest open or close is re-rolled by a structural gate.
+Guest voices come from the registry's `guest_*` pool (`config/voices.yaml`), distinct from every
+host; a figure with its own `voice_id` keeps it, and the same figure keeps the same pool voice
+across segments. `CONVO_GUEST_ENABLED=false` returns to host-only. Guests are part of the station's
+AI-voiced fiction, covered by the standing on-air disclosure.
+
 **4. World-state database (Postgres).** From Phase B the world (canon, cast, events) lives in a
 local PostgreSQL database, seeded from the **canon bible**. Install and start it with Homebrew, then
 create the database:

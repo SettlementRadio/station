@@ -167,6 +167,15 @@ segment, the way real radio plays a clip or runs an interview.
 invited guest), introduced and closed by a host, with the voice drawn from the registry; it degrades to
 host-only when no guest/figure is present.
 
+> **BUILT (2026-07-06).** `src/writers/guest.py` decides the guest: sparse air-time-seeded draw
+> (`convo_guest_chance`, default ~1 in 5 talk slots; `convo_guest_enabled` off = pre-D9.3), figure
+> soundbite when the context carries D10.2 quotes (newest pair; `figures.voice_id` honoured when it
+> names a registry voice, else a stable-hash pick from the `guest_*` pool in voices.yaml — same
+> figure, same voice), else a one-off invited persona labelled `Guest:`. The orchestrator weaves it
+> (bracketed, short, inside the fiction); `parse_turns` takes the extra label; a **structural gate**
+> in `compose_segment` re-rolls any draft where the guest opens or closes. Emotion tags (D9.0) and
+> the lexicon (D9.1) apply to guest turns like any other.
+
 ## D9.4 — DJ memory from the event/story log
 **Goal:** a DJ on air references what they (and the world) lived through — in character.
 **Do:**

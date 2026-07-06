@@ -79,3 +79,32 @@ zhe_observer:          # Zhe — quiet, precise, odd flatnesses, far away
   kokoro: af_river
   elevenlabs: EXAVITQu4vr4xnSDxMaL   # "Sarah" — soft, even (C6: confirm)
   say: Karen
+
+# --- Guest voice pool (D9.3) -------------------------------------------------
+# NOT DJs: the voices for temporary, non-host speakers — a D10 figure voiced as
+# a soundbite, or a one-off invited guest. A figure with its own `voice_id` (a
+# logical name from THIS file) uses that; otherwise the room assigns a pool
+# voice by a stable hash of the figure, so the same person keeps the same voice
+# across segments. All presets distinct from every host's. Kokoro picks are
+# verified locally; ElevenLabs ids are premade-roster picks (C6: confirm);
+# `say` values are rough test stand-ins.
+
+guest_one:             # warm adult female
+  kokoro: af_bella
+  elevenlabs: AZnzlk1XvdvUeBnXmlld   # "Domi" — strong, confident (C6: confirm)
+  say: Tara
+
+guest_two:             # grounded adult male
+  kokoro: am_eric
+  elevenlabs: TxGEqnHWrfWFTfGW9XjX   # "Josh" — young, deep (C6: confirm)
+  say: Aman
+
+guest_three:           # measured British female
+  kokoro: bf_isabella
+  elevenlabs: XB0fDUnXU5powFXDhCwa   # "Charlotte" — measured (C6: confirm)
+  say: Jester         # test backend has few voices left; novelty but distinct
+
+guest_four:            # rougher, intense male
+  kokoro: am_fenrir
+  elevenlabs: N2lVS1w4EtoT3dr4eOWO   # "Callum" — gravelly, intense (C6: confirm)
+  say: Superstar      # test backend has few voices left; novelty but distinct
