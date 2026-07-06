@@ -258,7 +258,10 @@ demand). Order below is roughly the build order; the dependency graph is in §4.
 - **Builds:** `emotion` flowing through `tts.synthesize` to ElevenLabs; a pronunciation lexicon
   applied before TTS; cast CRUD beyond the two hardcoded hosts; **guest / non-host voices** (figures &
   invited guests speak in a segment — the D10 bridge); DJ memory drawn from the story log.
-- **Docs:** `src/providers/tts.py` (the inert `emotion` param + voice registries), `src/world/store.
+  *(D9.0 BUILT 2026-07-06: emotion is wired — `_ELEVENLABS_EMOTIONS` maps warm/wry/somber/bright/
+  urgent to VoiceSettings stability/style/speed; the curves are an unheard starting tune, retuned by
+  ear in **C6**.)*
+- **Docs:** `src/providers/tts.py` (the `emotion` param — wired in D9.0 — + voice registries), `src/world/store.
   py` (`"cast"` table — already supports more rows), `src/config.py` (`convo_speaker_ids`),
   PHASE_C_ORIENTATION §8/§9 (emotion presumes flagship; the C6 launch-voice decision), the
   `claude-api`/voice context for the engine call.

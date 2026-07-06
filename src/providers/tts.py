@@ -101,6 +101,50 @@ _KOKORO_VOICES = {
     "zhe_observer": "af_heart",
 }
 
+# --- Emotion (D9.0) -----------------------------------------------------------
+# The logical emotion vocabulary — the small named set the writers' room may
+# stamp on a turn or segment ("Vell, somber here"). Like the voice registries,
+# this is the seam's own domain data: callers speak ONLY these logical names;
+# how an engine realises one (or can't) stays behind the seam.
+#   * ElevenLabs — mapped to real expressiveness controls on the TTS request
+#     (`VoiceSettings`, SDK 2.x): `stability` (lower = more variable/expressive
+#     delivery), `style` (higher = more style exaggeration), `speed` (pace).
+#     Fields left unset keep the voice's own stored defaults.
+#   * Kokoro / `say` — NO emotion knob exists (PHASE_C_ORIENTATION §8): the
+#     value is accepted and ignored, exactly as before D9.0. Emotion is
+#     therefore only AUDIBLE on the flagship path — and which engine ships is
+#     the C6 launch-voice decision (docs/PHASE_C_TASKS.md).
+# The numbers are a conservative starting tune (retune by ear on the flagship
+# engine, per DJ if needed); the operator-facing dial is the DEFAULT emotion
+# (`settings.tts_emotion_default`), not these curves.
+_ELEVENLABS_EMOTIONS: dict[str, dict[str, float]] = {
+    "warm": {"stability": 0.45, "style": 0.30, "speed": 0.97},
+    "bright": {"stability": 0.35, "style": 0.45, "speed": 1.03},
+    "wry": {"stability": 0.50, "style": 0.40, "speed": 1.00},
+    "somber": {"stability": 0.65, "style": 0.15, "speed": 0.92},
+    "urgent": {"stability": 0.25, "style": 0.55, "speed": 1.06},
+}
+
+# The engine-neutral vocabulary callers (writers' room, formats) may use.
+EMOTIONS: frozenset[str] = frozenset(_ELEVENLABS_EMOTIONS)
+
+
+def resolve_emotion(emotion: str | None) -> str | None:
+    """Normalise + validate a logical emotion; fall back to the settings default.
+
+    Returns a name from `EMOTIONS`, or None for "engine default" (no
+    expressiveness override). An unknown name is logged and dropped — a bad tag
+    must never fail a render mid-buffer.
+    """
+    value = (emotion or settings.tts_emotion_default or "").strip().lower()
+    if not value:
+        return None
+    if value not in EMOTIONS:
+        log.warning("tts_unknown_emotion", emotion=value, known=sorted(EMOTIONS))
+        return None
+    return value
+
+
 # Kokoro render settings (sample rate, speed, repo id) now live in `settings`;
 # length is tuned via the writer's word count (B0), not by slowing the voice.
 
@@ -122,14 +166,23 @@ def synthesize(
     Args:
         text: the script to speak.
         voice: a *logical* voice name from the registry (NOT a vendor id).
-        emotion: optional emotional hint (reserved; not yet wired to a vendor
-            knob — kept in the signature so later providers can use it).
+        emotion: optional logical emotion from `EMOTIONS` (D9.0). Falls back to
+            `settings.tts_emotion_default`; shapes the flagship (ElevenLabs)
+            render via its expressiveness controls, and is accepted-but-ignored
+            on Kokoro/`say` (no such knob — audibility is the C6 decision).
         out_path: where to write the audio file.
 
     The implementation is chosen by `settings.tts_provider` (default "kokoro").
     """
     provider = settings.tts_provider.strip().lower()
-    log.info("tts_synthesize_start", provider=provider, voice=voice, chars=len(text))
+    emotion = resolve_emotion(emotion)
+    log.info(
+        "tts_synthesize_start",
+        provider=provider,
+        voice=voice,
+        emotion=emotion,
+        chars=len(text),
+    )
 
     backends = {
         "kokoro": _synthesize_kokoro,
@@ -169,8 +222,15 @@ def _synthesize_elevenlabs(
     emotion: str | None,
     out_path: str,
 ) -> str:
-    """ElevenLabs implementation of `synthesize`."""
+    """ElevenLabs implementation of `synthesize`.
+
+    D9.0: a validated logical `emotion` (see `resolve_emotion`, run by the
+    dispatcher) maps here — and ONLY here — to the vendor's expressiveness
+    controls (`VoiceSettings`); None sends no override, keeping the voice's own
+    stored defaults.
+    """
     from elevenlabs.client import ElevenLabs
+    from elevenlabs.types import VoiceSettings
 
     try:
         voice_id = _ELEVENLABS_VOICE_IDS[voice]
@@ -180,12 +240,15 @@ def _synthesize_elevenlabs(
             f"{sorted(_ELEVENLABS_VOICE_IDS)}"
         ) from None
 
+    voice_settings = VoiceSettings(**_ELEVENLABS_EMOTIONS[emotion]) if emotion else None
+
     client = ElevenLabs(api_key=settings.elevenlabs_api_key or None)
     audio = client.text_to_speech.convert(
         voice_id=voice_id,
         model_id=settings.tts_elevenlabs_model,
         text=text,
         output_format=settings.tts_elevenlabs_output_format,
+        voice_settings=voice_settings,
     )
 
     parent = os.path.dirname(out_path)

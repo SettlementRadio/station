@@ -97,6 +97,13 @@ class Settings(BaseSettings):
     tts_kokoro_sample_rate: int = 24_000
     tts_kokoro_speed: float = 1.0
     tts_mp3_bitrate: str = "128k"  # shared _to_mp3() transcode bitrate
+    # D9.0 — the station-wide DEFAULT logical emotion, applied when a turn/
+    # segment sets none ("" = engine default, no expressiveness override).
+    # Values come from the emotion vocabulary in providers/tts.py (warm | wry |
+    # somber | bright | urgent). Only the flagship (ElevenLabs) path renders
+    # emotion audibly; Kokoro/`say` accept and ignore it — which engine ships
+    # (and so whether this is heard) is the C6 launch-voice decision.
+    tts_emotion_default: str = ""
 
     # --- World (in-world clock; B2 events build on this) -----------------------
     world_years_ahead: int = 600  # in-world year is always real year + this (CANON.md)

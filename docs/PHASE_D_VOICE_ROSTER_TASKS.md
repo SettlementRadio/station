@@ -75,6 +75,15 @@ lived memory drawn from the event log; `ruff` + `pytest` green; README/DEVLOG up
 the same path is a clean no-op on Kokoro; the emotion vocabulary + mapping are data, not literals; the
 C6 dependency for audibility is documented.
 
+> **BUILT (2026-07-06).** Vocabulary `warm|wry|somber|bright|urgent` → `_ELEVENLABS_EMOTIONS` in
+> `tts.py`, mapping each to the SDK's `VoiceSettings` (`stability`/`style`/`speed`); orchestrator emits
+> a sparse `Name [emotion]:` tag; un-tagged turns take a daypart mood default
+> (`_PART_OF_DAY_EMOTION` in `writers/conversation.py`), then `settings.tts_emotion_default`.
+> **Open follow-up → C6:** the per-emotion `stability`/`style`/`speed` numbers (and the daypart
+> defaults) are a conservative starting tune chosen WITHOUT a funded flagship listen — they must be
+> retuned by ear during the C6 voice pass (see the C6 task), and possibly per DJ once D9.2 assigns
+> distinct voices (a curve that suits "Adam" may not suit a brighter preset).
+
 ## D9.1 — Pronunciation lexicon for invented names
 **Goal:** the world's invented names (settlements, the festival, in-world artists, DJ names) are spoken
 right and consistently, on either engine.
@@ -179,7 +188,9 @@ the continuity gate.
 - Add a demo: render a short two-DJ exchange on the **flagship** engine with per-turn emotion (audible
   difference) and the lexicon applied; air the new example DJ via the grid; show a DJ referencing a past
   story as memory. (Flagship audibility needs a funded key — note it; the Kokoro path still runs as a
-  no-op for the non-emotion checks.)
+  no-op for the non-emotion checks.) If the funded key is available before C6, use this demo to start
+  the **emotion-curve retune by ear** (the D9.0 `_ELEVENLABS_EMOTIONS` `stability`/`style`/`speed`
+  numbers are an unheard starting tune — C6 owns the final tune, but note findings here).
 - Update `README.md` (emotion needs the flagship engine / C6; the lexicon + how to edit it; authoring a
   new DJ in the bible + voice mapping; DJ memory), `.env.example` (`VOICE_*`/`ROSTER_*`/lexicon path),
   and the DEVLOG (Phase D — D9).

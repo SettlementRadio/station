@@ -31,7 +31,9 @@ def _patch_common(monkeypatch):
         convo, "showrunner", lambda ctx, now, *, frame=None, recent_block="": "the beat"
     )
     monkeypatch.setattr(
-        convo, "_render_turns", lambda turns, seg_id: f"/x/{seg_id}.mp3"
+        convo,
+        "_render_turns",
+        lambda turns, seg_id, *, default_emotion=None: f"/x/{seg_id}.mp3",
     )
     # D5.2 — keep these gate tests off the DB: the freshness steers are exercised in
     # test_freshness/test_conversation; here they're not the subject.

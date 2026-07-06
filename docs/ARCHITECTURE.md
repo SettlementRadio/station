@@ -136,7 +136,7 @@ def synthesize(
     text: str,
     *,
     voice: str,              # a logical voice name from a voice registry, NOT a vendor voice id
-    emotion: str | None = None,  # reserved — accepted but not yet wired to a vendor knob
+    emotion: str | None = None,  # a logical emotion from tts.EMOTIONS (D9.0) — see note below
     out_path: str,
 ) -> str:
     """Render speech to an audio file at out_path; return the path.
@@ -153,10 +153,16 @@ def synthesize(
          - <streaming/self-hosted> — a future near-live backend (Phase E): a streaming TTS (e.g.
                                     Cartesia) or self-hosted engine behind this same seam. An
                                     `orpheus` stub holds the place today (NotImplementedError).
-       `emotion` is accepted but inert — wired to the flagship engine in Phase D (Kokoro can't carry
-       it). A **pronunciation** hint (a lexicon for invented names) is the other knob to reserve on
-       this seam in Phase D. Non-mp3 backends share `_to_mp3()` (ffmpeg); `concat_audio()`
-       stream-copies per-turn clips into one multi-voice talk segment."""
+       `emotion` is WIRED as of D9.0: a logical name (warm|wry|somber|bright|urgent — the
+       `EMOTIONS` vocabulary; validated + defaulted by `resolve_emotion`, operator default
+       `settings.tts_emotion_default`) maps on the **elevenlabs** backend to the vendor's
+       expressiveness controls (`_ELEVENLABS_EMOTIONS` → `VoiceSettings` stability/style/speed);
+       on kokoro/say it stays accepted-and-ignored (no such knob), so emotion is AUDIBLE only on
+       the flagship path — the C6 launch-voice decision. The per-emotion numbers are a starting
+       tune, to be retuned by ear in C6 (see PHASE_C_TASKS C6). A **pronunciation** hint (a lexicon
+       for invented names) is the remaining knob to add on this seam (D9.1). Non-mp3 backends share
+       `_to_mp3()` (ffmpeg); `concat_audio()` stream-copies per-turn clips into one multi-voice
+       talk segment."""
 ```
 
 Rules: callers pass *logical* model tiers ("haiku/sonnet/opus") and *logical* voice names; the

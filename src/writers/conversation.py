@@ -57,6 +57,26 @@ class Turn:
     speaker: str  # the DJ's display name (e.g. "Vell")
     voice: str  # the logical voice name (e.g. "vell_night") for the TTS seam
     text: str  # the spoken words for this turn
+    # D9.0 — optional logical emotion for THIS turn (from tts.EMOTIONS), set by
+    # the orchestrator's `Name [emotion]:` tag; None falls back to the segment's
+    # daypart default, then settings.tts_emotion_default, then engine default.
+    emotion: str | None = None
+
+
+# D9.0 — the per-segment DEFAULT emotion by daypart (the programme's mood
+# floor): an un-tagged turn renders with this hour's mood instead of a flat
+# engine default. Deliberately gentle — warm nights, bright mornings, neutral
+# daylight (absent = engine default); per-LINE feeling comes from the
+# orchestrator's [tags]. Keys are framing.part_of_day labels. Domain constant,
+# not config (config.py convention #1); the operator's global override is
+# `settings.tts_emotion_default`. Audible only on the flagship engine (C6).
+_PART_OF_DAY_EMOTION: dict[str, str] = {
+    "deep night": "warm",
+    "late night": "warm",
+    "first light": "bright",
+    "morning": "bright",
+    "nightfall": "warm",
+}
 
 
 @dataclass(frozen=True)
@@ -178,6 +198,7 @@ def orchestrate(
     """
     names = _names(ctx)
     label_help = " / ".join(f"{c.name}:" for c in ctx.speakers)
+    emotion_help = ", ".join(sorted(tts.EMOTIONS))  # D9.0: the allowed tag set
     frame = frame or _frame_for(ctx, now)
     situation = _situation(frame, ctx)
     backbone = (
@@ -240,7 +261,11 @@ def orchestrate(
         f"{revision}"
         f"{backbone}"
         "FORMAT (strict): every line is one turn, prefixed with the speaker's name "
-        f"and a colon — {label_help} — then the words they say. Alternate between "
+        f"and a colon — {label_help} — then the words they say. When a line clearly "
+        "carries ONE strong feeling, you MAY add an emotion tag in square brackets "
+        "between the name and the colon — e.g. `Vell [somber]:` — chosen ONLY from: "
+        f"{emotion_help}. Most lines take no tag; use a few per exchange at most. "
+        "Alternate between "
         "them. No stage directions, no parentheticals, no narration, no headings, "
         "no blank-line markers. Stay entirely inside the fiction: never mention "
         "being an AI, never reference real-world brands, franchises, or people."
@@ -308,22 +333,40 @@ def _is_ok(note: str) -> bool:
 # --- Turn parsing + rendering -----------------------------------------------
 
 
+def _tag_emotion(tag: str | None) -> str | None:
+    """Validate an orchestrator-emitted `[emotion]` tag against the vocabulary.
+
+    An unknown tag is logged and dropped (the turn renders with the defaults) —
+    a stray model invention must never fail a segment.
+    """
+    if not tag:
+        return None
+    value = tag.strip().lower()
+    if value not in tts.EMOTIONS:
+        log.warning("convo_unknown_emotion_tag", tag=tag)
+        return None
+    return value
+
+
 def parse_turns(script: str, cards: list[CastMember]) -> list[Turn]:
     """Split speaker-labelled dialogue into per-voice `Turn`s.
 
     Recognises lines beginning with a known host name and a colon (tolerating
-    surrounding `**bold**`), and folds any wrapped continuation lines into the
-    current turn. Lines before the first recognised label (stray preamble) are
-    dropped. Each turn maps to its host's logical voice for the TTS seam.
+    surrounding `**bold**` and an optional D9.0 `[emotion]` tag between name and
+    colon), and folds any wrapped continuation lines into the current turn.
+    Lines before the first recognised label (stray preamble) are dropped. Each
+    turn maps to its host's logical voice for the TTS seam.
     """
     by_name = {c.name.lower(): c for c in cards}
     names = "|".join(re.escape(c.name) for c in cards)
     label_re = re.compile(
-        rf"^\s*\*{{0,2}}({names})\*{{0,2}}\s*:\s*(.*)$", re.IGNORECASE
+        rf"^\s*\*{{0,2}}({names})\*{{0,2}}\s*(?:\[([^\]]+)\])?\s*:\s*(.*)$",
+        re.IGNORECASE,
     )
 
     turns: list[Turn] = []
     cur: CastMember | None = None
+    cur_emotion: str | None = None
     buf: list[str] = []
 
     def flush() -> None:
@@ -331,25 +374,38 @@ def parse_turns(script: str, cards: list[CastMember]) -> list[Turn]:
             return
         text = re.sub(r"\*\*", "", " ".join(b.strip() for b in buf)).strip()
         if text:
-            turns.append(Turn(speaker=cur.name, voice=cur.logical_voice, text=text))
+            turns.append(
+                Turn(
+                    speaker=cur.name,
+                    voice=cur.logical_voice,
+                    text=text,
+                    emotion=cur_emotion,
+                )
+            )
 
     for line in script.splitlines():
         m = label_re.match(line)
         if m:
             flush()
             cur = by_name[m.group(1).lower()]
-            buf = [m.group(2)]
+            cur_emotion = _tag_emotion(m.group(2))
+            buf = [m.group(3)]
         elif cur is not None and line.strip():
             buf.append(line)
     flush()
     return turns
 
 
-def _render_turns(turns: list[Turn], seg_id: str) -> str:
+def _render_turns(
+    turns: list[Turn], seg_id: str, *, default_emotion: str | None = None
+) -> str:
     """Voice each turn in its own DJ voice, then stitch them into one mp3.
 
     Returns the path to the stitched segment in `settings.segments_dir`. Per-turn
     clips are written to a temp dir and cleaned up; only the joined segment lands.
+    D9.0: a turn's own emotion wins; an un-tagged turn takes `default_emotion`
+    (the segment's daypart mood); the settings/engine defaults apply below the
+    seam (`tts.resolve_emotion`).
     """
     out_path = settings.segments_dir / f"{seg_id}.mp3"
     tmpdir = tempfile.mkdtemp(prefix=f"{seg_id}-")
@@ -357,7 +413,12 @@ def _render_turns(turns: list[Turn], seg_id: str) -> str:
         parts: list[str] = []
         for i, turn in enumerate(turns):
             part = os.path.join(tmpdir, f"{i:03d}.mp3")
-            tts.synthesize(turn.text, voice=turn.voice, out_path=part)
+            tts.synthesize(
+                turn.text,
+                voice=turn.voice,
+                emotion=turn.emotion or default_emotion,
+                out_path=part,
+            )
             parts.append(part)
         tts.concat_audio(parts, str(out_path))
     finally:
@@ -498,14 +559,18 @@ def compose_segment(
             log.warning("convo_continuity_gate_flag", seg_id=seg_id, attempt=attempt)
             continue
 
-        # Both gates cleared — render and return.
-        audio_path = _render_turns(turns, seg_id)
+        # Both gates cleared — render and return. D9.0: un-tagged turns take the
+        # hour's mood floor as their emotion (audible on the flagship engine only).
+        default_emotion = _PART_OF_DAY_EMOTION.get(frame.part_of_day)
+        audio_path = _render_turns(turns, seg_id, default_emotion=default_emotion)
         log.info(
             "convo_compose_done",
             seg_id=seg_id,
             attempt=attempt,
             turns=len(turns),
             voices=sorted({t.voice for t in turns}),
+            emotions=sorted({t.emotion for t in turns if t.emotion}),
+            emotion_default=default_emotion,
             continuity_ok=True,
             audio_path=audio_path,
         )
@@ -523,6 +588,8 @@ def compose_segment(
                 "beat": beat,
                 "attempts": attempt,
                 "part_of_day": frame.part_of_day,
+                "emotion_default": default_emotion,
+                "emotions": sorted({t.emotion for t in turns if t.emotion}),
                 "lead": frame.lead,
                 "handover": frame.is_handover,
                 "safety_stage": safety.stage,

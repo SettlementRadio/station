@@ -46,6 +46,38 @@ def test_parse_turns_empty_without_recognised_labels():
     assert convo.parse_turns("Just prose, no speaker labels.", CARDS) == []
 
 
+# --- D9.0: the optional per-turn [emotion] tag -------------------------------
+
+
+def test_parse_turns_reads_emotion_tags():
+    script = (
+        "Vell [somber]: The relay went quiet tonight.\n"
+        "Wren: It does that.\n"
+        "**Vell [wry]:** Not like this."
+    )
+    turns = convo.parse_turns(script, CARDS)
+    assert [t.emotion for t in turns] == ["somber", None, "wry"]
+    # The tag is consumed, never spoken.
+    assert turns[0].text == "The relay went quiet tonight."
+    assert turns[2].text == "Not like this."
+
+
+def test_parse_turns_drops_unknown_emotion_tag():
+    turns = convo.parse_turns("Vell [melodramatic]: Ahem.", CARDS)
+    assert len(turns) == 1
+    assert turns[0].emotion is None
+    assert turns[0].text == "Ahem."
+
+
+def test_orchestrate_prompt_offers_the_emotion_vocabulary(monkeypatch):
+    from src.providers import tts
+
+    seen = _capture_system(monkeypatch)
+    convo.orchestrate(_ctx(), "the beat", datetime(2026, 6, 30, 21, 0))
+    for emotion in tts.EMOTIONS:
+        assert emotion in seen["system"]
+
+
 def test_is_ok_reads_the_continuity_verdict():
     assert convo._is_ok("OK")
     assert convo._is_ok("ok, consistent and in character")

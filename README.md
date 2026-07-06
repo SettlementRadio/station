@@ -161,6 +161,15 @@ Alternatives, all behind the same seam (set `TTS_PROVIDER` in `.env`): `elevenla
 cloud voice; needs `ELEVENLABS_API_KEY` + credits) and `say` (macOS built-in; offline fallback if
 Kokoro won't install).
 
+**Emotion (D9.0).** The writers' room can stamp a turn with a logical emotion (`warm | wry |
+somber | bright | urgent` — the orchestrator emits a sparse `Vell [somber]:` tag; un-tagged turns
+take the hour's mood, e.g. warm nights / bright mornings, or `TTS_EMOTION_DEFAULT`). Emotion flows
+end-to-end through `tts.synthesize(..., emotion=...)`, but it is **audible only on the flagship
+path** — on ElevenLabs it maps to the voice's expressiveness controls; **Kokoro and `say` have no
+emotion knob** and ignore it cleanly. Whether launch runs Kokoro-at-scale or the flagship engine is
+the open **C6** decision (`docs/PHASE_C_TASKS.md`) — that choice, not this code, decides whether
+emotion is heard on air.
+
 **4. World-state database (Postgres).** From Phase B the world (canon, cast, events) lives in a
 local PostgreSQL database, seeded from the **canon bible**. Install and start it with Homebrew, then
 create the database:

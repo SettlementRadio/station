@@ -152,9 +152,14 @@ low-regret pick. Wherever older docs say "CX22," read "the CX-line VPS — now C
 - **Verify the switchable seam (registry already done).** All three backends now map BOTH DJs
   (`vell_night` + `dj_two`) in `src/providers/tts.py` — Kokoro (`bm_george`/`af_heart`), ElevenLabs
   ("Adam"/"Rachel"), and `say` ("Daniel"/"Samantha") — so the seam is switch-ready. Remaining: with
-  a funded key, confirm `TTS_PROVIDER=elevenlabs` renders a full two-voice `talk` segment end to end
-  and that `emotion` still flows through untouched. Re-pick the ElevenLabs voices after a listen if
-  they don't match the DJs' cards.
+  a funded key, confirm `TTS_PROVIDER=elevenlabs` renders a full two-voice `talk` segment end to end.
+  `emotion` is WIRED as of D9.0 (no longer just "flows through"): a logical emotion maps to real
+  ElevenLabs expressiveness controls via `_ELEVENLABS_EMOTIONS` in `src/providers/tts.py`
+  (`stability`/`style`/`speed` per emotion). Those numbers are a conservative starting tune that has
+  never been HEARD — so the C6 listen must also **retune the emotion curves by ear** (render the same
+  line under each of warm/wry/somber/bright/urgent and against the no-emotion default; adjust the
+  registry until the five read as distinct but not theatrical). Re-pick the ElevenLabs voices after
+  a listen if they don't match the DJs' cards.
 - **Benchmark Kokoro on the VPS.** Render a full day's buffer on the box; Kokoro is CPU-only and
   slow, so even the CX33's 4 vCPUs may not finish in the nightly window — benchmark before trusting it.
 - **If it doesn't finish comfortably, scale the box or flip the voice — not the laptop:** either
