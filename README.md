@@ -94,6 +94,37 @@ duck under speech, and real songs play in the `music` format — all Layer 4
   track's lore — the segment airs as one mp3: intro → music bumper → **the track** → back-announce.
   No playable track ⇒ the slot falls back to a spoken evergreen — a silent gap is impossible.
 
+## Commercials & sponsorship (texture, not interruption — D8)
+The station airs **in-world commercials** — but never a rotating ad reel. Every spot is **written
+fresh and voiced fresh for that airing** (a fictional +600y product or a station promo; a break is
+never the same spot twice — infinite in-character copy is the AI advantage). Spots run the same
+safety gate + evergreen fallback as every producer, and the IP boundary holds: fictional products
+only, never a real brand, franchise, or person.
+
+- **The formats** — `commercial` (an invented in-world product/service spot) and `promo` (a station
+  self-promo that truthfully names the current grid show) share one builder
+  ([`src/formats/commercial.py`](src/formats/commercial.py)); `FORMAT_COMMERCIAL_*` dials set the
+  speaker, length, and the **production level** (1 = voiced read, default; 2 = read over a ducked
+  D7 bed; 3 = multi-voice testimonial, arrives with D9/D10; 4 = a curated ~2s brand-sting bookend —
+  the only prerecorded ad audio; unbuilt levels degrade to 1, and the effective level lands in the
+  segment meta).
+- **The grid owns the ad load** — a program declares `break_every: N` in
+  [`docs/programming/grid.yaml`](docs/programming/grid.yaml) (a sparse break after every N content
+  segments; absent = no breaks — the handover shows and the fallback stay clean). The scheduler
+  brackets each break with the d18 `break_in`/`break_out` stings; `COMMERCIAL_BREAK_*` dials cap
+  spots per break (default **one**) and rotate in a station promo every Nth spot.
+- **Real sponsors say "Powered by" — never "Sponsored by"** ([`docs/MARKETING.md`](docs/MARKETING.md),
+  binding; the lead-in is templated so it can't drift, and any "sponsored by" in a hand-entered
+  blurb is corrected and logged). Supporters live in the hand-entered
+  [`config/sponsors.yaml`](config/sponsors.yaml) → `make seed-sponsors` → the `sponsors` table
+  (catalog like tracks: survives `seed-canon` *and* `reset-world`). A read airs inside every
+  `SPONSOR_READ_EVERY_N_BREAKS`-th break, only within its real-wall-clock run window; a
+  sponsor-supplied clip under `assets/` plays instead when provided. **The table ships empty:
+  populating real sponsors is gated on CM (donations live), not on D8.**
+- **See/hear it** — `make commercials-demo`: generates one commercial + one promo (live calls),
+  prints the grid's per-program cadence + a simulated sting-bracketed break, and runs a demo
+  sponsor row through the run window + wording guard (then removes it).
+
 ## Run it locally
 The station backend (the Python pipeline + Liquidsoap playout) runs on macOS (Apple Silicon)
 with Homebrew. Generation and playout are decoupled, so you can generate a segment, then serve it.

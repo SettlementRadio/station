@@ -22,6 +22,15 @@ unattended, so it is written from the **as-built** admin surface and **every how
 actually running it** (the same discipline as the orientation docs + each pack's verification). A how-to
 that hasn't been run is a guess.
 
+**The panel handoff — the manual is also the Phase E requirements list.** Many Phase D admin operations
+are deliberately file-based for now (edit a YAML/env file, re-run a seed): sponsors
+(`config/sponsors.yaml` + `make seed-sponsors`), the grid + per-program ad-break cadence (`grid.yaml`
+`break_every`), the cadence/production dials (`.env`), the tracks manifest, the canon bible. While
+consolidating, KEEP the **`→ Phase E panel`** tag on every such hand-edit workflow (the packs tag them
+as they append — see the ADMIN_MANUAL header convention) and gap-fill any untagged ones — the Phase E
+control surface (ROADMAP "management / control surface") is built from exactly this list, so a missing
+tag is a missing panel feature.
+
 **Definition of done for D11:** one `docs/ADMIN_MANUAL.md` covering every admin operation across D1–D10
 (+ the essential C5 run commands), in a terse how-to style, with each how-to verified against the running
 local stack; `HOWTO.md` reconciled (one source, not two); linked from the README; **plus the integrated

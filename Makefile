@@ -40,7 +40,7 @@ LIQ_LOG    := $(RUN_DIR)/liquidsoap.log
 PLAYER_URL := http://127.0.0.1:8000/
 STREAM_URL := http://127.0.0.1:8000/settlement.mp3
 
-.PHONY: help generate serve air play play-convo stop status console now-playing seed seed-canon reset-world seed-tracks seed-sponsors demo context conversation format buffer schedule ident prune fallback health world-tick news-demo figures-demo freshness-demo programming-demo
+.PHONY: help generate serve air play play-convo stop status console now-playing seed seed-canon reset-world seed-tracks seed-sponsors demo context conversation format buffer schedule ident prune fallback health world-tick news-demo figures-demo freshness-demo programming-demo commercials-demo
 
 # B5 format default: `make format` builds a talk segment; override with FMT=news
 # or FMT=music. Pass a TOPIC=... to steer canon retrieval.
@@ -83,6 +83,7 @@ help:
 	@echo "  make figures-demo show the world's people speak — attributed quotes (D10)"
 	@echo "  make freshness-demo show anti-repetition keep talk openings/beats varied (D5)"
 	@echo "  make programming-demo show the weekly grid: programs/hosts by daypart (D6; token-free)"
+	@echo "  make commercials-demo hear a fresh spot + see the sparse break + a Powered-by read (D8)"
 	@echo "  make air       schedule + serve — the live scheduler-driven stream (C2)"
 
 # Seed/refresh the world-state DB from the canon bible (docs/canon/ folder, or the
@@ -297,3 +298,11 @@ now-playing:
 # no Claude/TTS), DB-optional (host names resolve from the cast if a DB is reachable).
 programming-demo:
 	@$(PY) -m src.programming_demo
+
+# D8.3: the commercials & sponsorship demo — generate ONE commercial + ONE promo
+# (live Anthropic + TTS calls; needs `make seed`), show where the grid places the
+# sparse sting-bracketed break (token-free), and run a demo sponsor row through
+# the run-window + "Powered by" wording guard (row inserted, then removed — the
+# real table stays empty until CM).
+commercials-demo:
+	@$(PY) -m src.commercials_demo

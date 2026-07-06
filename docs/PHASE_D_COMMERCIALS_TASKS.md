@@ -146,7 +146,10 @@ guaranteed "Powered by"; an empty table airs no sponsor reads.
   "Powered by" rule + that real sponsors come at CM), `.env.example` (`COMMERCIAL_*`/sponsor dials), and
   the DEVLOG (Phase D — D8).
 - **Append this pack's admin how-tos to `docs/ADMIN_MANUAL.md`** — terse (what it does + the exact
-  command/file/steps) — for the D11 capstone to consolidate.
+  command/file/steps) — for the D11 capstone to consolidate. **Tag the hand-edit workflows
+  `→ Phase E panel`** (the ADMIN_MANUAL header convention): managing sponsors (`config/sponsors.yaml`
+  + `make seed-sponsors`), the per-program break cadence (`grid.yaml` `break_every`), and the
+  `COMMERCIAL_*`/`SPONSOR_*`/production-level dials — all destined for the Phase E control surface.
 **Done when:** `ruff` + `pytest` green; README/`.env.example`/DEVLOG updated; the demo shows an in-world
 spot + a sparse, sting-bracketed break, and a "Powered by" read honouring its run window.
 

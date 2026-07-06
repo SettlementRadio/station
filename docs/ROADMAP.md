@@ -206,7 +206,12 @@ through the new control surface.
 - **The management / control surface.** Upgrade Phase D's read-only console into a real operator
   surface: edit the weekly grid + dayparts, allocate DJs to shows, add / edit / remove DJs and
   personas, review + approve (or reject) generated stories, trigger regeneration, manage fallbacks —
-  without hand-editing files and re-seeding.
+  without hand-editing files and re-seeding. **Every Phase D "edit a file, re-run a seed/env" workflow
+  is a panel candidate** — `docs/ADMIN_MANUAL.md` tags them `→ Phase E panel` as they accrue, so the
+  manual doubles as this surface's requirements list. Known so far (D8): manage **sponsors** (add/
+  edit/remove + run windows + weights — today `config/sponsors.yaml` + `make seed-sponsors`), tune the
+  **ad-break cadence** (per-program `break_every` in `grid.yaml` + the `COMMERCIAL_BREAK_*` /
+  `SPONSOR_READ_*` dials), and set the **spot production level** (`FORMAT_COMMERCIAL_PRODUCTION_LEVEL`).
 - **Listener interaction.** Inbound from the audience — requests, dedications, messages — read on air
   in character (the canon's "letters between worlds," made real), now that there *are* listeners.
 - **Scale & resilience.** More channels on the same engine; performance + cost at scale; resilience

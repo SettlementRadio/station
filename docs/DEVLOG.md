@@ -38,6 +38,47 @@ A typical *build* session will be short, e.g.:
 
 ---
 
+## 2026-07-06 — Phase D — D8 built: commercials & sponsorship (texture, not interruption)
+**Focus:** build the whole D8 sub-pack (D8.0–D8.3): the `commercial`/`promo` format, the
+daypart-driven ad-break cadence with the d18 sting bracket, the `sponsors` table + "Powered by"
+reads, tests + demo + docs.
+**Decisions:**
+- **Generated, never a reel** — every spot is written + voiced fresh per airing (the load-bearing
+  D8 principle: infinite in-character copy is the AI advantage; a break is never the same spot
+  twice). One builder + a mode, exposed as TWO registry entries (`commercial`, `promo`) so the
+  grid/scheduler can place either by name.
+- **The grid owns the ad load** — a program declares `break_every: N` in `grid.yaml` (daywatch 4,
+  long_night 6, handovers/default none); the scheduler weaves the break like the disclosure ident
+  (no program-clock atom consumed), spots-first so a failed generation never airs a lone sting
+  bracket. Dials default sparse (1 spot/break).
+- **Production spectrum, opt-in** — `FORMAT_COMMERCIAL_PRODUCTION_LEVEL`: L1 read (default), L2
+  bedded via D7's duck primitive, L3 testimonial (degrades to L1 until D9/D10), L4 brand-sting
+  bookend (the only prerecorded ad audio); effective level recorded in the segment meta.
+- **`sponsors` is hand-entered catalog, not world state** (§2a): outside `_WORLD_TABLES`, survives
+  `seed-canon`/`reset-world`, own `config/sponsors.yaml` + `make seed-sponsors` path; SHIPS EMPTY —
+  populating real sponsors is gated on CM. Run windows are REAL wall-clock, half-open; reads air
+  inside every Nth break only in-window.
+- **"Powered by" is structural** — the lead-in is a template in `formats/sponsor.py` (it cannot
+  drift); a "sponsored by" blurb is auto-corrected + logged. Binding per MARKETING.md.
+- **File-based admin is interim** — sponsors.yaml / grid break_every / the dials are tagged
+  `→ Phase E panel` in ADMIN_MANUAL (new convention): the manual doubles as the Phase E control
+  surface's requirements list (ROADMAP updated).
+**Changed:** `src/formats/commercial.py` + `sponsor.py` (new), `formats/__init__.py` (registry),
+`scheduler.py` (`_place_break` weave + persisted counters), `world/programming.py` (`break_every`),
+`world/store.py` (Sponsor + sponsors table + active_sponsors + counts), `world/seed_sponsors.py` +
+`config/sponsors.yaml` + Makefile (`seed-sponsors`, `commercials-demo`), `production/media.py`
+(commercial bed, brand + sponsor clips), `placement.py` (`break_sting_segment`),
+`src/commercials_demo.py` (new), `tests/test_commercials.py` (19 tests; 282 total green), README,
+`.env.example`, ADMIN_MANUAL (D8 + tag convention), grid README, ROADMAP (Phase E panel scope).
+**Why:** the small-catalogue problem is the whole argument — a prerecorded ad reel rotates a tiny
+set and goes stale; generating per airing makes ads *world texture* instead of interruption, and
+the sparse grid-owned cadence keeps it that way.
+**📣 Postable:** the demo's first-ever generated spot — "Tessmer's. The boots remember who wore
+them." — an AI radio station whose ads are fictional small businesses, never the same spot twice
+(`make commercials-demo`).
+**Next:** D9 (voice/emotion + roster) or the C5–C9 server track — operator's call.
+Commit: (this session)  ·  Clips: (none)
+
 ## 2026-07-05 — Phase D — D7 built: the production layer (sound design + songs on air)
 **Focus:** build the whole D7 sub-pack, task by task (D7.0–D7.5): the tracks catalogue, the Layer 4
 mixer, grid-placed idents/stings/themes, ducked beds, the music selector — and `music` back on air.

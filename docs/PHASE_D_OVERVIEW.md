@@ -333,7 +333,7 @@ done and Claude (chat) can generate the `_TASKS.md` now.
 | D5 Freshness / Anti-repetition | `PHASE_D_FRESHNESS_TASKS.md` | D3/D4 | ✅ | ✅ | **Built** (D5.0–D5.3) |
 | D6 Programming + Status Console | `PHASE_D_PROGRAMMING_TASKS.md` | C2 scheduler | ✅ | ✅ | **Built** (D6.0–D6.5) |
 | D7 Production (sound + songs) | `PHASE_D_PRODUCTION_TASKS.md` | D6 (soft→D10: artist links) | ✅ | ✅ | **Built** (D7.0–D7.5; music on air; artist links await D10 backfill) |
-| D8 Commercials & Sponsorship | `PHASE_D_COMMERCIALS_TASKS.md` | D6, D7 (CM for real sponsors) | ✅ | ☐ | **Ready** (D6+D7 built; d18 break stings on disk) |
+| D8 Commercials & Sponsorship | `PHASE_D_COMMERCIALS_TASKS.md` | D6, D7 (CM for real sponsors) | ✅ | ✅ | **Built** (D8.0–D8.3; sponsors table ships empty — real sponsors at CM; L3/L4 spot levels await D9/D10 + a brand clip) |
 | D9 Voice & Emotion + Roster | `PHASE_D_VOICE_ROSTER_TASKS.md` | D3 (memory); C6 (emotion); D10 (guests) | ✅ | ☐ | **Ready** (D3 built; +C6 for emotion) |
 | D10 Figures & Quotes | `PHASE_D_FIGURES_QUOTES_TASKS.md` | D3 (D2 rec.; D9 for soundbites) | ✅ | ✅ | **Built** (D10.0–D10.2, D10.4; D10.3 soundbite awaits D9) |
 | D11 Operator/Admin Manual (capstone) | `PHASE_D_ADMIN_MANUAL_TASKS.md` | D1–D10 built | ✅ | ☐ | Do last (re-verify at CM) |

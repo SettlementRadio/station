@@ -4,6 +4,11 @@
 > appends its how-tos here as it's built (terse: what it does + the exact command/file/steps); the
 > **D11 capstone** consolidates, simplifies, gap-fills, and verifies this into the final manual. Until
 > then this is an append-only draft — keep entries short and command-first.
+>
+> **Tag convention — `→ Phase E panel`:** any how-to that is a *hand-edit-a-file / re-run-a-seed / set
+> an env dial* workflow carries this tag. These are deliberate interim mechanics; the Phase E operator
+> control surface (ROADMAP "management / control surface") is built from exactly the tagged list, so
+> tag every such entry as it's appended — a missing tag is a missing panel feature.
 
 ---
 
@@ -434,3 +439,46 @@ pytest -q tests/test_production.py tests/test_selector.py tests/test_production_
 The D7 surgical tests cover the mixer's duration accounting + never-silence fallback, every selector
 input + determinism, the music stitch order + lore-in-prompt, the grid placements, and the invariant
 that `assets/` is never in the GC's candidate set.
+
+---
+
+## D8 — Commercials & sponsorship
+
+**What it is.** In-world ad breaks — a `commercial` (fictional +600y product spot) or `promo`
+(station self-promo) **generated fresh every airing** (never a prerecorded reel), placed sparsely by
+the grid and bracketed by the d18 break stings — plus real supporter **"Powered by" reads** from the
+`sponsors` table (empty until CM). Spots run the C0 gate + evergreen fallback like every producer.
+
+### Generate a spot by hand
+```bash
+.venv/bin/python -m src.formats commercial    # one fictional product spot (live calls)
+.venv/bin/python -m src.formats promo         # one station promo (names the current grid show)
+make commercials-demo                         # spots + the break walk + a sponsor-read demo
+```
+
+### Tune the ad load  → Phase E panel
+- **Which shows take breaks, how often** — `break_every: N` per program in
+  `docs/programming/grid.yaml` (absent/0 = no breaks). Shipped: daywatch 4, long_night 6,
+  handovers + default none. Edit → live (the grid reloads on change).
+- **Break shape** — `.env`: `COMMERCIAL_BREAK_ENABLED` (true), `COMMERCIAL_BREAK_MAX_SEGMENTS`
+  (1 — spots per break), `COMMERCIAL_BREAK_PROMO_EVERY_N` (3 — every Nth spot is a promo; 0=never).
+- **Spot length/voice/production** — `.env`: `FORMAT_COMMERCIAL_WORDS_LOW/HIGH` (55/90),
+  `FORMAT_COMMERCIAL_SPEAKER_ID` (vell), `FORMAT_COMMERCIAL_PRODUCTION_LEVEL` (1; 2=bedded read,
+  3=testimonial once D9/D10 land, 4=brand-sting bookend once the clip exists — unbuilt levels
+  degrade to 1, the effective level is in the segment meta).
+
+### Manage sponsors ("Powered by" reads)  → Phase E panel
+1. Edit `config/sponsors.yaml` — id, name, `powered_by_text` blurb, optional `audio_path`
+   (supplied clip under `assets/sponsors/`), `run_start`/`run_end` (real dates, half-open window),
+   `weight` (rotation share). **Leave empty until CM (donations live).**
+2. `make seed-sponsors` — refreshes the table (catalog: survives `seed-canon`/`reset-world`).
+3. Reads air inside every `SPONSOR_READ_EVERY_N_BREAKS`-th break (2; 0=off), voice
+   `SPONSOR_READ_VOICE` (vell_night), only within the run window. An empty table airs nothing.
+
+**Wording is binding:** always **"Powered by"**, never "Sponsored by" (`docs/MARKETING.md`). The
+lead-in is templated in `src/formats/sponsor.py`; a "sponsored by" blurb is auto-corrected + logged.
+
+### Verify
+```bash
+pytest -q tests/test_commercials.py    # builder, gate fallback, cadence+cap, run window, wording
+```
