@@ -104,6 +104,15 @@ class Settings(BaseSettings):
     # emotion audibly; Kokoro/`say` accept and ignore it — which engine ships
     # (and so whether this is heard) is the C6 launch-voice decision.
     tts_emotion_default: str = ""
+    # D9.1 — the pronunciation lexicon: the world's invented names (Zhe, the
+    # Lumen Festival) spoken right and consistently on either engine. The YAML
+    # is the HUMAN-EDITED source of truth (fix a mispronunciation there — no
+    # code change; the loader re-reads on file change). Applied to script text
+    # just before synthesis, behind the seam (providers/lexicon.py): Kokoro
+    # gets exact phonemes via misaki's [name](/phonemes/) markup, other engines
+    # a phonetic-respelling substitution. The toggle is a clean rollback.
+    tts_lexicon_enabled: bool = True
+    tts_lexicon_path: Path = Field(default=_REPO_ROOT / "config" / "pronunciation.yaml")
 
     # --- World (in-world clock; B2 events build on this) -----------------------
     world_years_ahead: int = 600  # in-world year is always real year + this (CANON.md)

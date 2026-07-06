@@ -1,0 +1,56 @@
+# Pronunciation lexicon (D9.1) — how the station SAYS the world's invented names.
+#
+# HUMAN-EDITED source of truth (like tracks.yaml): fix a mispronunciation by
+# editing this file — no code change, no re-seed; a long-running process picks
+# up edits automatically (the loader re-reads on file change). Applied to the
+# script text just before synthesis, behind the TTS seam (src/providers/
+# lexicon.py), per engine:
+#
+#   * Kokoro      — `phonemes` wins: the name is wrapped in misaki's
+#                   [Name](/phonemes/) markup, which pins the exact phoneme
+#                   string. The alphabet is misaki's IPA-based set — see
+#                   https://github.com/hexgrad/misaki (en.md, "Phonemes").
+#                   No `phonemes`? Falls back to the plain `respell` swap.
+#   * ElevenLabs  — `respell` is substituted into the text (the vendor's
+#   * say           pronunciation-dictionary mechanism is a possible upgrade;
+#                   see the TODO in src/providers/lexicon.py).
+#
+# Fields per entry:
+#   name      the spelling exactly as it appears in scripts (matched as a whole
+#             word, CASE-SENSITIVE — proper nouns as authored in the bible).
+#   respell   a phonetic respelling any engine can read aloud ("Zhay",
+#             "LOO-men"). Required.
+#   phonemes  optional misaki/IPA phoneme string for Kokoro ("ʒeɪ", "lˈumɛn").
+#
+# Grow it as the world grows: new cast names come from docs/canon/90-cast.md,
+# invented places/artists from the story log (D3 — check the console). Names
+# the engines already say right don't need an entry; entries below also PIN a
+# pronunciation so it can't drift between engines.
+
+- name: Vell
+  respell: Vell
+  phonemes: "vˈɛl"
+
+- name: Wren
+  respell: Ren
+  phonemes: "ɹˈɛn"
+
+- name: Lumen
+  respell: LOO-men
+  phonemes: "lˈumɛn"
+
+- name: Zhe
+  respell: Zhay
+  phonemes: "ʒeɪ"
+
+- name: Kael
+  respell: Kale
+  phonemes: "keɪl"
+
+- name: Mira
+  respell: MEER-ah
+  phonemes: "mˈɪəɹə"
+
+- name: Sera
+  respell: SAIR-ah
+  phonemes: "sˈɛəɹə"

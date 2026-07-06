@@ -20,6 +20,7 @@ import os
 from ..config import settings
 from ..logging_setup import get_logger
 from ..retry import call_with_retry
+from . import lexicon
 
 log = get_logger(__name__)
 
@@ -173,9 +174,13 @@ def synthesize(
         out_path: where to write the audio file.
 
     The implementation is chosen by `settings.tts_provider` (default "kokoro").
+    D9.1: the pronunciation lexicon (config/pronunciation.yaml, via
+    `lexicon.apply_lexicon`) is applied to `text` here, per engine, so the
+    world's invented names are spoken right on whichever backend renders.
     """
     provider = settings.tts_provider.strip().lower()
     emotion = resolve_emotion(emotion)
+    text = lexicon.apply_lexicon(text, provider)
     log.info(
         "tts_synthesize_start",
         provider=provider,

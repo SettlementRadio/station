@@ -170,6 +170,14 @@ emotion knob** and ignore it cleanly. Whether launch runs Kokoro-at-scale or the
 the open **C6** decision (`docs/PHASE_C_TASKS.md`) — that choice, not this code, decides whether
 emotion is heard on air.
 
+**Pronunciation (D9.1).** The world's invented names (Zhe, the Lumen Festival) are spoken right and
+consistently on every engine via the **pronunciation lexicon** — `config/pronunciation.yaml`, the
+human-edited source of truth. Fix a mispronunciation by editing that file (no code change or restart;
+the loader re-reads on change): each entry maps a spelled name to a phonetic `respell` (used on
+ElevenLabs/`say`) and an optional `phonemes` string (used on Kokoro via its exact-phoneme markup —
+see the file's header for the workflow and alphabet). Unknown names pass through to the engine
+default unharmed; `TTS_LEXICON_ENABLED=false` switches the whole thing off.
+
 **4. World-state database (Postgres).** From Phase B the world (canon, cast, events) lives in a
 local PostgreSQL database, seeded from the **canon bible**. Install and start it with Homebrew, then
 create the database:
