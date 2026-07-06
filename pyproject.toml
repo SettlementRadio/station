@@ -18,3 +18,8 @@ select = ["E", "F", "W", "I", "UP", "B", "C4", "N"]
 
 [tool.ruff.format]
 quote-style = "double"
+
+[tool.pytest.ini_options]
+# Put the repo root on sys.path so `.venv/bin/pytest` finds `src` the same way
+# `.venv/bin/python -m pytest` does (which prepends the cwd itself).
+pythonpath = ["."]
