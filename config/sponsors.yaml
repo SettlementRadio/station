@@ -1,0 +1,35 @@
+# sponsors.yaml — the hand-entered supporter catalog (Phase D / D8.2).
+#
+# The source of truth for REAL "Powered by" acknowledgements. Edit this file,
+# run `make seed-sponsors`, and active sponsors start airing inside ad breaks.
+# Per the §2a matrix this is catalog, not world state: `seed-canon` and
+# `reset-world` never touch it; only `make seed-sponsors` refreshes it.
+#
+# ⚠ GATED ON CM, NOT D8: leave this list EMPTY until donations are live
+# (docs/MARKETING.md owns the sponsorship policy). An empty list seeds an empty
+# table and the station airs no sponsor reads — the plumbing ships dormant.
+#
+# The wording rule is BINDING: the on-air lead-in is always "Powered by …",
+# never "Sponsored by" — it is templated in src/formats/sponsor.py, and any
+# "sponsored by" in a blurb below is auto-corrected (and logged) at render.
+#
+# Row shape (see store.Sponsor):
+#   id               stable slug (seed idempotency key)
+#   name             spoken in the lead-in: "… is powered by {name}."
+#   powered_by_text  short hand-written blurb spoken after the lead-in ("" = lead-in only)
+#   audio_path       OPTIONAL sponsor-supplied clip, repo-relative under assets/sponsors/
+#                    (played instead of the voiced read; missing file degrades to the read)
+#   run_start        first day the read may air (REAL wall-clock; omit = already running)
+#   run_end          first day it may NOT air — half-open window (omit = open-ended)
+#   weight           relative rotation share among concurrently active sponsors (default 1)
+#   tags             free-form labels (optional)
+#
+# Example (commented out — do not populate before CM):
+#   - id: example-supporter
+#     name: "a friend of the signal"
+#     powered_by_text: "Keeping the long night lit, one relay at a time."
+#     run_start: 2027-01-01
+#     run_end: 2027-02-01
+#     weight: 1
+
+sponsors: []

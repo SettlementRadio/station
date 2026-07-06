@@ -77,6 +77,7 @@ from .disclosure import disclosure_ident_segment
 from .evergreen import EVERGREEN_NAME_PREFIX
 from .fallback import ensure_fallback_assets
 from .formats import FORMATS, make_format_segment
+from .formats.sponsor import pick_sponsor, sponsor_read_segment
 from .freshness import record_segment as record_airplay_features
 from .freshness import sweep as sweep_airplay
 from .logging_setup import get_logger
@@ -88,7 +89,7 @@ from .production.placement import (
     station_ident_segment,
 )
 from .segment import Segment
-from .world import programming
+from .world import programming, store
 from .world.programming import Program
 
 log = get_logger(__name__)
@@ -344,6 +345,10 @@ def top_up(now: datetime | None = None) -> list[dict]:
     # across breaks). Both persisted so the cadence is steady across top-ups.
     content_since_break = state.get("content_since_break", 0)
     break_spots_total = state.get("break_spots_total", 0)
+    # D8.2: breaks placed (drives the every-Nth-break sponsor-read cadence) and
+    # sponsor reads placed (drives the weighted rotation among active sponsors).
+    breaks_total = state.get("breaks_total", 0)
+    sponsor_reads_total = state.get("sponsor_reads_total", 0)
 
     def _place_clip(seg: Segment) -> None:
         """Weave one curated production clip (D7.2) into the order at the cursor.
@@ -385,6 +390,7 @@ def top_up(now: datetime | None = None) -> list[dict]:
         """
         nonlocal air_cursor, runway_sec, added, break_spots_total
         nonlocal content_since_ident, content_since_station_ident
+        nonlocal breaks_total, sponsor_reads_total
         spots: list[Segment] = []
         promo_n = settings.commercial_break_promo_every_n
         for _ in range(max(settings.commercial_break_max_segments, 1)):
@@ -427,6 +433,32 @@ def top_up(now: datetime | None = None) -> list[dict]:
                 duration_sec=round(duration, 1),
                 runway_sec=round(runway_sec),
             )
+
+        # D8.2 — every Nth break also carries ONE real "Powered by" read, inside
+        # the sting bracket (an acknowledgement rides the break, it never gets
+        # its own interruption). Only sponsors inside their run window at the
+        # slot's AIR time qualify; the table ships empty (pre-CM), so this whole
+        # branch places nothing until donations are live. Any failure (DB down,
+        # flagged blurb, TTS error) skips the read — never the break.
+        breaks_total += 1
+        n_breaks = settings.sponsor_read_every_n_breaks
+        if n_breaks > 0 and breaks_total % n_breaks == 0:
+            try:
+                with store.connect() as conn:
+                    active = store.active_sponsors(conn, air_cursor)
+                if active:
+                    chosen = pick_sponsor(active, sponsor_reads_total)
+                    read = sponsor_read_segment(air_cursor, chosen)
+                    if read is not None:
+                        sponsor_reads_total += 1
+                        _place_clip(read)
+                        if read.meta.get("kind") == "read":
+                            # A one-shot TTS render — sidecar so the C2.5 GC can
+                            # age it out (a supplied clip is reused assets/ audio).
+                            _write_sidecar(read)
+            except Exception as exc:  # noqa: BLE001 — a read must never cost the break
+                log.warning("schedule_sponsor_read_error", error=str(exc))
+
         sting_out = break_sting_segment("break_out", air_cursor)
         if sting_out is not None:
             _place_clip(sting_out)
@@ -655,6 +687,8 @@ def top_up(now: datetime | None = None) -> list[dict]:
     state["content_since_station_ident"] = content_since_station_ident
     state["content_since_break"] = content_since_break
     state["break_spots_total"] = break_spots_total
+    state["breaks_total"] = breaks_total
+    state["sponsor_reads_total"] = sponsor_reads_total
     state["last_program_id"] = last_program_id
     # C4 — heartbeat: record that a top-up ran to completion. `src/health.py`
     # check_last_run() reads this to detect a generator that has stopped running.

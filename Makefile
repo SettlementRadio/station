@@ -40,7 +40,7 @@ LIQ_LOG    := $(RUN_DIR)/liquidsoap.log
 PLAYER_URL := http://127.0.0.1:8000/
 STREAM_URL := http://127.0.0.1:8000/settlement.mp3
 
-.PHONY: help generate serve air play play-convo stop status console now-playing seed seed-canon reset-world seed-tracks demo context conversation format buffer schedule ident prune fallback health world-tick news-demo figures-demo freshness-demo programming-demo
+.PHONY: help generate serve air play play-convo stop status console now-playing seed seed-canon reset-world seed-tracks seed-sponsors demo context conversation format buffer schedule ident prune fallback health world-tick news-demo figures-demo freshness-demo programming-demo
 
 # B5 format default: `make format` builds a talk segment; override with FMT=news
 # or FMT=music. Pass a TOPIC=... to steer canon retrieval.
@@ -110,6 +110,14 @@ reset-world:
 seed-tracks:
 	@echo "==> Refreshing the curated tracks catalogue from config/tracks.yaml…"
 	$(PY) -m src.world.seed_tracks
+
+# D8.2: refresh the hand-entered sponsors catalog (the `sponsors` table) from
+# config/sponsors.yaml. Catalog like tracks (§2a): its OWN seed path —
+# `seed-canon` and `reset-world` never touch it. Ships EMPTY: populating real
+# sponsors is gated on CM (donations live), not on D8. Safe to re-run anytime.
+seed-sponsors:
+	@echo "==> Refreshing the sponsors catalog from config/sponsors.yaml…"
+	$(PY) -m src.world.seed_sponsors
 
 # D3: run ONE world tick — invent new bible-consistent stories + advance running ones
 # in the world-state DB (gated, batched, cached). This is the nightly WORLD-STATE job

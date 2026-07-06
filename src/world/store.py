@@ -379,6 +379,41 @@ class Track:
 
 
 @dataclass(frozen=True)
+class Sponsor:
+    """One REAL supporter acknowledged on air (a `sponsors` row, D8.2).
+
+    Unlike everything else the station says, a sponsor is not fiction: it is a
+    real person/outfit whose donation keeps the signal lit, acknowledged with a
+    short **"Powered by {name}"** read (the wording rule is binding — always
+    "Powered by," NEVER "Sponsored by"; `docs/MARKETING.md`). `powered_by_text`
+    is the hand-entered blurb spoken AFTER the templated lead-in; `audio_path`
+    is an OPTIONAL sponsor-supplied clip (repo-relative, under `assets/` so the
+    C2.5 GC never touches it) played instead of a voiced read.
+
+    The run window is REAL wall-clock time (operator-facing — when the support
+    runs), checked by `active_sponsors(now)`: None `run_start` = already
+    running, None `run_end` = open-ended. `weight` is the relative rotation
+    share among concurrently active sponsors (the D8 placement cycles a
+    weight-expanded list).
+
+    Per the §2a matrix this is HAND-ENTERED catalog, not world state: it
+    survives `seed-canon` AND `reset-world`, refreshed only by its own
+    `make seed-sponsors` (source of truth: `config/sponsors.yaml`). The table
+    ships EMPTY — populating real sponsors is gated on CM (donations live),
+    not on D8.
+    """
+
+    id: str
+    name: str
+    powered_by_text: str
+    audio_path: str | None = None
+    run_start: datetime | None = None
+    run_end: datetime | None = None
+    weight: int = 1
+    tags: list[str] = field(default_factory=list)
+
+
+@dataclass(frozen=True)
 class EmbeddingRow:
     """One row to write into the polymorphic `embeddings` table (D2).
 
@@ -636,6 +671,22 @@ CREATE TABLE IF NOT EXISTS tracks (
     licence_note     text,
     audio_path       text NOT NULL,
     tags             text[] NOT NULL DEFAULT '{}'
+);
+
+-- D8.2: real supporters acknowledged with "Powered by" reads. HAND-ENTERED
+-- catalog like tracks (§2a): outside _WORLD_TABLES, survives seed-canon AND
+-- reset-world, owned by `make seed-sponsors` (config/sponsors.yaml). Run
+-- window is REAL wall-clock time; NULLs mean already-running / open-ended.
+-- Ships empty — real sponsors are populated at CM (donations live).
+CREATE TABLE IF NOT EXISTS sponsors (
+    id              text PRIMARY KEY,
+    name            text NOT NULL,
+    powered_by_text text NOT NULL,
+    audio_path      text,
+    run_start       timestamp,
+    run_end         timestamp,
+    weight          integer NOT NULL DEFAULT 1,
+    tags            text[] NOT NULL DEFAULT '{}'
 );
 """
 
@@ -983,6 +1034,40 @@ def insert_tracks(conn: psycopg.Connection, tracks: Iterable[Track]) -> int:
         rows,
     )
     log.info("db_insert_tracks", count=len(rows))
+    return len(rows)
+
+
+def clear_sponsors(conn: psycopg.Connection) -> None:
+    """Empty the sponsors catalog so `seed-sponsors` reproduces the manifest.
+
+    ONLY the sponsors seeder calls this (the catalog's own refresh path — §2a);
+    `clear_world` never touches it, in either scope.
+    """
+    log.info("db_clear_sponsors")
+    conn.execute("TRUNCATE sponsors")
+
+
+def insert_sponsors(conn: psycopg.Connection, sponsors: Iterable[Sponsor]) -> int:
+    """Insert sponsors (the hand-entered supporter catalog, D8.2); return the count."""
+    rows = [
+        (
+            s.id,
+            s.name,
+            s.powered_by_text,
+            s.audio_path,
+            s.run_start,
+            s.run_end,
+            s.weight,
+            s.tags,
+        )
+        for s in sponsors
+    ]
+    conn.cursor().executemany(
+        "INSERT INTO sponsors (id, name, powered_by_text, audio_path, run_start, "
+        "run_end, weight, tags) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)",
+        rows,
+    )
+    log.info("db_insert_sponsors", count=len(rows))
     return len(rows)
 
 
@@ -1559,6 +1644,52 @@ def tracks_by_tags(conn: psycopg.Connection, tags: Iterable[str]) -> list[Track]
     return [_track_from_row(r) for r in rows]
 
 
+# --- Sponsors catalog reads (D8.2: the "Powered by" read placement) -----------
+
+_SPONSOR_COLUMNS = (
+    "id, name, powered_by_text, audio_path, run_start, run_end, weight, tags"
+)
+
+
+def _sponsor_from_row(row: tuple) -> Sponsor:
+    """Build a `Sponsor` from a row selected with `_SPONSOR_COLUMNS`."""
+    return Sponsor(
+        id=row[0],
+        name=row[1],
+        powered_by_text=row[2],
+        audio_path=row[3],
+        run_start=row[4],
+        run_end=row[5],
+        weight=row[6],
+        tags=list(row[7]),
+    )
+
+
+def active_sponsors(conn: psycopg.Connection, now: datetime) -> list[Sponsor]:
+    """Sponsors whose run window contains `now` (REAL wall clock), ordered by id.
+
+    The window is half-open `[run_start, run_end)`; a NULL start means already
+    running, a NULL end open-ended. An empty table (pre-CM: no donations yet)
+    returns nothing — and the placement airs no reads. This is THE read the D8
+    sponsor placement uses; nothing ever reads an out-of-window sponsor.
+    """
+    rows = conn.execute(
+        f"SELECT {_SPONSOR_COLUMNS} FROM sponsors "
+        "WHERE (run_start IS NULL OR run_start <= %s) "
+        "AND (run_end IS NULL OR %s < run_end) ORDER BY id",
+        (now, now),
+    ).fetchall()
+    return [_sponsor_from_row(r) for r in rows]
+
+
+def all_sponsors(conn: psycopg.Connection) -> list[Sponsor]:
+    """The whole sponsors catalog, ordered by id (operator/console visibility)."""
+    rows = conn.execute(
+        f"SELECT {_SPONSOR_COLUMNS} FROM sponsors ORDER BY id"
+    ).fetchall()
+    return [_sponsor_from_row(r) for r in rows]
+
+
 def tracks_by_artist(conn: psycopg.Connection, artist: str) -> list[Track]:
     """Tracks by an artist's plain-text name, ordered by id.
 
@@ -1701,9 +1832,14 @@ def get_state(conn: psycopg.Connection, key: str) -> str | None:
 
 
 def counts(conn: psycopg.Connection) -> dict[str, int]:
-    """Row counts per world table — for seed verification and health checks."""
+    """Row counts per world table — for seed verification and health checks.
+
+    The catalog tables (`tracks`, `sponsors` — §2a hand-entered, outside the
+    world wipes) are counted too, for the same visibility, without being part
+    of `_WORLD_TABLES` (they must never join a world TRUNCATE).
+    """
     out: dict[str, int] = {}
-    for table in _WORLD_TABLES:
+    for table in (*_WORLD_TABLES, "tracks", "sponsors"):
         n = conn.execute(f"SELECT count(*) FROM {table}").fetchone()[0]
         out[table.strip('"')] = n
     return out

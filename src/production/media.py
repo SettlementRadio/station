@@ -176,6 +176,23 @@ def sweeper_for_daypart(daypart: str) -> Path | None:
 # --- Track audio (the songs catalogue's file side) ----------------------------
 
 
+def sponsor_clip(rel_path: str) -> Path | None:
+    """A sponsor's supplied clip (repo-root-relative, kept under `assets/`), or None.
+
+    D8.2: the optional pre-recorded acknowledgement a sponsor provides instead
+    of a voiced read. Curated media like everything here — under `assets/` the
+    C2.5 GC never touches it. Missing file → None (the caller degrades to the
+    voiced "Powered by" read; never a crash).
+    """
+    path = _REPO_ROOT / rel_path
+    if not path.is_file():
+        log.warning(
+            "media_file_missing", kind="sponsor_clip", key=rel_path, path=str(path)
+        )
+        return None
+    return path
+
+
 def track_audio_path(track: Track) -> Path:
     """The absolute path of a track's audio file (repo-root-relative manifest path)."""
     return _REPO_ROOT / track.audio_path

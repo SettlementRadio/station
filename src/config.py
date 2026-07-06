@@ -633,6 +633,21 @@ class Settings(BaseSettings):
     commercial_break_enabled: bool = True
     commercial_break_max_segments: int = 1
     commercial_break_promo_every_n: int = 3
+    # D8.2 — real supporter "Powered by" reads (NEVER "Sponsored by" —
+    # docs/MARKETING.md, binding; the lead-in is templated in formats/sponsor.py
+    # so it can't drift). Sponsors are HAND-ENTERED catalog (§2a): the manifest
+    # is the source of truth, seeded by `make seed-sponsors`, and SURVIVES
+    # seed-canon/reset-world. The table ships EMPTY — populating real sponsors
+    # is gated on CM (donations live), not on D8; until then this whole path
+    # airs nothing. `sponsor_read_every_n_breaks` places one read inside every
+    # Nth D8.1 ad break (0 = off) — sparse by default, an acknowledgement, not
+    # a second ad load. The read's voice mirrors disclosure_voice (a logical
+    # tts.py name, not a cast card — the read is station voice, not a show's).
+    sponsors_manifest_path: Path = Field(
+        default=_REPO_ROOT / "config" / "sponsors.yaml"
+    )
+    sponsor_read_every_n_breaks: int = 2
+    sponsor_read_voice: str = "vell_night"
 
     def model_id(self, tier: str) -> str:
         """Map a logical tier ("haiku"|"sonnet"|"opus") to its real model id."""
