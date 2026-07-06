@@ -144,8 +144,13 @@ query side lowercases + splits on non-alphanumerics, so `Lumen-Festival` won't m
    elevenlabs / say). The file header documents picking presets.
 3. `make seed-canon` — FAILS LOUD if a card names a voice the registry doesn't have.
 4. To air them: schedule a program with their cast id in `docs/programming/grid.yaml`
-   (read live, no seed step). Removing a DJ = delete the card + re-seed; a grid still
-   naming the removed id fails loud at generation and the slot falls back (never dead air).
+   (read live, no seed step).
+
+⚠ **Removing a DJ** = delete the card + `make seed-canon` (which truncates + reloads the `cast`
+table from the folder, so the row is gone). SAFE: the card is git-tracked (restore + re-seed to bring
+them back), and the DJ's tick-generated world history in the event log is NOT touched. A grid still
+naming the removed id fails loud at generation and the slot falls back — never dead air. Pull the id
+from `grid.yaml` too so nothing schedules them.
 
 ### Point at a different bible (config)
 `CANON_DIR` (folder, default `docs/canon`) and `CANON_PATH` (legacy single file, fallback). Seeding
@@ -358,6 +363,9 @@ make commercials-demo                         # spots + the break walk + a spons
    (supplied clip under `assets/sponsors/`), `run_start`/`run_end` (real dates, half-open window),
    `weight` (rotation share). **Leave empty until CM (donations live).**
 2. `make seed-sponsors` — refreshes the table (catalog: survives `seed-canon`/`reset-world`).
+   ⚠ It **clears + replaces** the whole `sponsors` table from the file, so the YAML is the source of
+   truth: to remove a sponsor, delete its row and re-seed; emptying the file wipes every read. SAFE:
+   sponsors are hand-entered + git-tracked (and in the DB backup, §Recovery) — restore from either.
 3. Reads air inside every `SPONSOR_READ_EVERY_N_BREAKS`-th break (2; 0=off), voice
    `SPONSOR_READ_VOICE` (vell_night), only within the run window. An empty table airs nothing.
 

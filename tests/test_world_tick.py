@@ -188,9 +188,14 @@ def tick_db(monkeypatch):
         pytest.skip(f"pgvector unavailable: {exc}")
 
     # Isolate the tick tests from whatever the dev DB already has COMMITTED: the shared
-    # connection reads committed rows, so a leftover tick counter/stories would make
-    # tick numbering non-deterministic. Clear the tick-owned state in THIS (rolled-back)
-    # transaction so every test starts from tick 0 with an empty story log.
+    # connection reads committed rows, so a leftover tick counter/stories/figures would
+    # make tick numbering non-deterministic or leave stray figures a "nothing written"
+    # assertion trips on. Clear ALL tick-owned state in THIS (rolled-back) transaction
+    # so every test starts from tick 0 with an empty story log. quotes CASCADE from
+    # stories, but figures carry no story FK — so clear figures/quotes explicitly
+    # (quotes first, they FK figures), else a committed dev-DB `world-tick` leaks in.
+    conn.execute("DELETE FROM quotes")
+    conn.execute("DELETE FROM figures")
     conn.execute("DELETE FROM events WHERE source = %s", (store.EVENT_SOURCE_TICK,))
     conn.execute("DELETE FROM stories")
     conn.execute(
