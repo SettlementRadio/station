@@ -1,19 +1,22 @@
 # grid.yaml — Settlement Radio weekly programming grid (Phase D / D6).
 #
-# The human-edited source of truth for WHICH SHOW AIRS WHEN. Edit this file, run
-# `make seed-grid` (scoped: only the grid tables, never the world — built in D6.2),
-# and the next scheduler top-up airs it. See README.md in this folder for the full
-# model (Program / Clock / grid slot), the clock grammar, and the design decisions.
+# The human-edited source of truth for WHICH SHOW AIRS WHEN. Edit this file and
+# the next scheduler top-up airs it — the grid is read LIVE (an mtime-cached
+# loader in src/world/programming.py; no seed step). See README.md in this folder
+# for the full model (Program / Clock / grid slot), the clock grammar, and the
+# design decisions.
 #
 # In-world wall clock == real wall clock (the world clock shifts the YEAR only), so
 # slots are plain weekday + HH:MM-HH:MM ranges. The grid must tile the week with no
 # gaps; the reserved `default` program backstops any hole so the scheduler never stalls.
 #
-# This initial grid is BACKWARD-COMPATIBLE with the two current hosts (vell/wren) and
-# the existing framing boundaries (dawn handover 05-07, dusk handover 20-22), so the
-# generalised framing (D6.1) reproduces today's frames. More hosts (joss, kael, mira,
-# thorn, sera, the-archivist, orin, zhe — already in docs/canon/90-cast.md) arrive
-# with D9. `music` is BACK in the clocks as of D7.4: the slot plays a real curated
+# The weekday grid stays BACKWARD-COMPATIBLE with the two original hosts (vell/wren)
+# and the framing boundaries (dawn handover 05-07, dusk handover 20-22), so the
+# generalised framing (D6.1) reproduces the classic frames. The WIDER cast (joss,
+# kael, mira, thorn, sera, the-archivist, orin, zhe — docs/canon/90-cast.md) is on
+# the roster as of D9.2, each with a distinct voice (config/voices.yaml); The Bridge
+# (weekend mornings) is the first show that airs them — schedule more the same way.
+# `music` is BACK in the clocks as of D7.4: the slot plays a real curated
 # track (selector -> intro -> track -> back-announce; evergreen fallback if the
 # catalogue is empty — no silent gap).
 
@@ -53,6 +56,14 @@ programs:
     daypart: nightfall
     clock: [talk, music, news@:00]
 
+  the_bridge:
+    name: "The Bridge"           # D9.2 — the first show carrying the NEW cast:
+    hosts: [joss, mira]          # joss anchors (his card: weekends/archives); mira
+    framing: solo                # alongside for culture colour. Both are bible-
+    daypart: weekend morning     # authored DJs with distinct voices (voices.yaml).
+    clock: [talk, music, news@:00, talk]
+    break_every: 5
+
   # Reserved fallback — returned by program_for(now) when no slot matches, so the
   # scheduler never stalls. Its clock is the weighted-rotation fallback (seeded from
   # settings.buffer_rotation) and its framing is `legacy` — the hour-derived night/
@@ -74,7 +85,9 @@ grid:
     "07:00-20:00": daywatch      # waking day: wren solo
     "20:00-22:00": nightfall     # dusk handover: wren -> vell
 
-  # Example weekend override (illustrative; inactive until authored with real shows /
-  # D7 music / D9 hosts). Uncomment + add the referenced program to re-tile weekends:
-  # weekends:
-  #   "07:00-12:00": archive_hour   # e.g. the-archivist on the deep archives
+  # Weekend override (D9.2): Saturday + Sunday mornings belong to The Bridge —
+  # the first slot on the grid voiced by the NEW cast (joss + mira). The rest of
+  # the weekend still follows the daily tiling above. Grow this the same way:
+  # author the show above, hosts by cast id — the grid is read live, no seed step.
+  weekends:
+    "07:00-12:00": the_bridge    # joss + mira; daywatch resumes at noon

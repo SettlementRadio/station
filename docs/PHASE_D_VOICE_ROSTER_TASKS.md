@@ -134,6 +134,16 @@ the seam.
 voice mapping airs in character on the grid; removing a DJ re-seeds cleanly with no dangling refs; the
 voice registry grows without surgery on `tts.py` internals.
 
+> **BUILT (2026-07-06).** The registry is DATA: `config/voices.yaml` (logical voice → vendor preset,
+> per engine; loader in `tts.py`, cached by mtime) — the three hardcoded dicts and the 9 placeholder
+> aliases are GONE; every DJ has a distinct preset per engine (`dj_two` stays as Wren's documented
+> legacy alias). Kokoro picks are verified rendering locally; the 8 new ElevenLabs ids are
+> premade-roster picks NOT yet heard (operator key lacks `voices_read`) — **confirm/repick at the C6
+> listen**. `make seed-canon` now fails loud when a cast card names an unmapped voice (seed.py).
+> The Bridge (grid weekends 07–12, joss + mira) is the first program airing the new cast; hosts
+> flow grid→scheduler→formats (D6.2), and `context.assemble` still fails loud on an unknown cast id.
+> `settings.convo_speaker_ids` remains ONLY as the legacy default-program fallback.
+
 ## D9.3 — Guest / non-host voices (figures, invited guests, soundbites)
 **Goal:** voices beyond the rostered DJs — an in-world figure or an invited guest can speak in a
 segment, the way real radio plays a clip or runs an interview.

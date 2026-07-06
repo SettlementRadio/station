@@ -57,6 +57,26 @@ def _embed_canon(conn, facts: list[store.CanonFact]) -> int:
     return store.insert_embeddings(conn, "canon", rows)
 
 
+def _validate_cast_voices(cast: list[store.CastMember]) -> None:
+    """Fail loud at seed time when a cast card names an unmapped logical voice.
+
+    D9.2: the voice registry (config/voices.yaml) is data, so a typo'd or
+    missing mapping is possible — catch it HERE, while the operator is watching,
+    not at a 3 a.m. render (where the slot would fail and be skipped). This is
+    also the dangling-reference guard for the edit/remove-a-DJ flow: the bible
+    and the registry must agree before the cast lands in the table.
+    """
+    from ..providers import tts
+
+    missing = {c.logical_voice for c in cast} - tts.known_voices()
+    if missing:
+        raise ValueError(
+            f"cast voices with no entry in {settings.tts_voices_path}: "
+            f"{sorted(missing)} — add each to the voice registry (one entry per "
+            "engine; see the file's header) or fix the card's `Logical voice` line"
+        )
+
+
 def _seed(scope: str) -> dict[str, int]:
     """Load the bible and (re)insert it, clearing only the tables `scope` owns.
 
@@ -66,6 +86,7 @@ def _seed(scope: str) -> dict[str, int]:
     facts, cast, events = canon_source.load_world(
         settings.canon_dir, settings.canon_path
     )
+    _validate_cast_voices(cast)
     using_folder = canon_source.has_canon_folder(settings.canon_dir)
     source_path = settings.canon_dir if using_folder else settings.canon_path
     log.info(

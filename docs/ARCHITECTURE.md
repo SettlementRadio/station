@@ -140,15 +140,20 @@ def synthesize(
     out_path: str,
 ) -> str:
     """Render speech to an audio file at out_path; return the path.
-       Implementation selected by env TTS_PROVIDER (Phase B made kokoro the default):
-         - kokoro      (DEFAULT) — self-hosted Kokoro-82M, local/free/unlimited (B0). The Phase B
-                                    workhorse. Two logical voices: vell_night→bm_george (Vell),
-                                    dj_two→af_heart (Wren). Emits 24kHz WAV → _to_mp3().
+       Implementation selected by env TTS_PROVIDER (Phase B made kokoro the default).
+       The logical-voice → vendor-preset mapping is DATA as of D9.2: config/voices.yaml
+       (settings.tts_voices_path), one entry per DJ with all engines — adding a DJ never
+       edits tts.py. Fail loud: unknown voice / missing engine mapping / missing file all
+       raise, and `make seed-canon` pre-validates the cast against the registry (seed.py).
+         - kokoro      (DEFAULT) — self-hosted Kokoro-82M, local/free/unlimited (B0). The
+                                    workhorse. All 10 DJs mapped to DISTINCT presets
+                                    (verified locally). Emits 24kHz WAV → _to_mp3().
          - elevenlabs            — cloud flagship; a runtime-switchable public voice via
-                                    settings.tts_provider (free tier ≈ 2 seg/mo). Its registry maps
-                                    BOTH DJs (vell_night→"Adam", dj_two→"Rachel"), so either backend
-                                    can voice a two-DJ talk segment — voice is a config choice. (The
-                                    free-tier quota, not the seam, is the limit; see C6.)
+                                    settings.tts_provider (free tier ≈ 2 seg/mo). All 10 DJs
+                                    mapped (the 8 new ids = premade-roster picks, confirm at
+                                    the C6 listen), so either backend voices any segment —
+                                    voice is a config choice. (The free-tier quota, not the
+                                    seam, is the limit; see C6.)
          - say                   — macOS built-in `say`, offline TEST voice. Emits AIFF → _to_mp3().
          - <streaming/self-hosted> — a future near-live backend (Phase E): a streaming TTS (e.g.
                                     Cartesia) or self-hosted engine behind this same seam. An

@@ -1,0 +1,81 @@
+# voices.yaml — the voice registry (D9.2): logical voice -> vendor preset, per engine.
+#
+# HUMAN-EDITED source of truth (like pronunciation.yaml): adding a DJ means one
+# entry here + a card in docs/canon/90-cast.md — NO code change (the old
+# hardcoded dicts in src/providers/tts.py are gone). The loader re-reads on
+# file change. `make seed-canon` FAILS LOUD if a cast card names a logical
+# voice that has no entry here, so a missing mapping is caught at seed time,
+# not at a 3 a.m. render.
+#
+# Engines:
+#   kokoro      — Kokoro-82M preset ids (first letter = language a/b, second =
+#                 gender m/f). List them via KPipeline / the model card. All the
+#                 presets below are VERIFIED rendering locally (D9.2).
+#   elevenlabs  — vendor voice ids. The two originals ("Adam", "Rachel") are in
+#                 use since Phase A/B; the 8 NEW ids below are the documented
+#                 ElevenLabs premade roster, assigned by card fit but NOT yet
+#                 heard (the operator key lacks `voices_read`, and rendering
+#                 costs credits) — CONFIRM/REPICK at the C6 funded listen.
+#   say         — macOS built-in voices (test backend only; `say -v '?'`).
+#                 Rough stand-ins, chosen distinct so multi-DJ segments read as
+#                 different people.
+#
+# Every entry must define all three engines; a render on an engine with no
+# mapping fails loud (by design — never a silent wrong voice).
+
+vell_night:            # Vell — warm, low, unhurried (the night shift)
+  kokoro: bm_george
+  elevenlabs: pNInz6obpgDQGcFmaJgB   # "Adam" — in use since Phase A
+  say: Daniel
+
+wren_dawn:             # Wren — clear, lively, a little bright (first light)
+  kokoro: af_heart
+  elevenlabs: 21m00Tcm4TlvDq8ikWAM   # "Rachel" — in use since Phase B
+  say: Samantha
+
+# Legacy alias for Wren from B4, kept so old segments/config keep resolving;
+# points at the same presets as wren_dawn ON PURPOSE (not a placeholder).
+dj_two:
+  kokoro: af_heart
+  elevenlabs: 21m00Tcm4TlvDq8ikWAM   # "Rachel"
+  say: Samantha
+
+joss_bridge:           # Joss — measured, warm, slightly rough (weekend bridge)
+  kokoro: bm_lewis
+  elevenlabs: ErXwobaYiN019PkySvjV   # "Antoni" — well-rounded, warm (C6: confirm)
+  say: Albert
+
+kael_sports:           # Kael — energetic, clear, warm (the sports desk)
+  kokoro: am_puck
+  elevenlabs: IKne3meq5aSn9XLyUdCD   # "Charlie" — casual, energetic (C6: confirm)
+  say: Junior
+
+mira_culture:          # Mira — warm, measured, expressive (culture & arts)
+  kokoro: bf_emma
+  elevenlabs: XrExE9yKIg1WjnnlVkGX   # "Matilda" — warm, professional (C6: confirm)
+  say: Moira
+
+thorn_news:            # Thorn — clear, steady, authoritative (news & currents)
+  kokoro: am_michael
+  elevenlabs: onwK4e9ZLuTAKqWW03F9   # "Daniel" — news-presenter read (C6: confirm)
+  say: Ralph
+
+sera_field:            # Sera — warm, present, from the road (field correspondent)
+  kokoro: af_sarah
+  elevenlabs: MF3mGyEYCl7XYWbV9V6O   # "Elli" — bright, emotive (C6: confirm)
+  say: Kathy
+
+archivist_deep:        # The Archivist — resonant, low, slow, strange-warm
+  kokoro: am_onyx
+  elevenlabs: JBFqnCBsd6RMkjVDRZzb   # "George" — warm, raspy storyteller (C6: confirm)
+  say: Fred
+
+orin_music:            # Orin — warm, musical even in speech (the wanderer)
+  kokoro: bm_fable
+  elevenlabs: GBv7mTt0atIp3Br8iCZE   # "Thomas" — calm, meditative (C6: confirm)
+  say: Rishi
+
+zhe_observer:          # Zhe — quiet, precise, odd flatnesses, far away
+  kokoro: af_river
+  elevenlabs: EXAVITQu4vr4xnSDxMaL   # "Sarah" — soft, even (C6: confirm)
+  say: Karen

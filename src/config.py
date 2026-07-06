@@ -113,6 +113,12 @@ class Settings(BaseSettings):
     # a phonetic-respelling substitution. The toggle is a clean rollback.
     tts_lexicon_enabled: bool = True
     tts_lexicon_path: Path = Field(default=_REPO_ROOT / "config" / "pronunciation.yaml")
+    # D9.2 — the voice registry: logical voice -> vendor preset, per engine.
+    # config/voices.yaml is the human-edited source of truth (one entry per DJ,
+    # all engines) so growing the roster never means editing providers/tts.py.
+    # Unlike the lexicon it is REQUIRED: a missing file / unmapped voice fails
+    # loud (never a silent wrong voice); seeding pre-validates cast against it.
+    tts_voices_path: Path = Field(default=_REPO_ROOT / "config" / "voices.yaml")
 
     # --- World (in-world clock; B2 events build on this) -----------------------
     world_years_ahead: int = 600  # in-world year is always real year + this (CANON.md)

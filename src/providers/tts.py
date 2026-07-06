@@ -24,83 +24,76 @@ from . import lexicon
 
 log = get_logger(__name__)
 
-# Logical voice name -> vendor voice id. This is the seam's own domain data (its
-# whole job is to map a logical name to a vendor id), so the registries stay
-# here; only tunable *config* (model names, formats, rates) moved to settings.
-#   vell_night -> "Adam" (warm, low, unhurried) for Vell, matching his card and
-#                 the Kokoro `bm_george` / `say` "Daniel" stand-ins.
-#   dj_two     -> "Rachel" (American female) for Wren, the bright first-light
-#                 host — the sibling of the Kokoro `af_heart` preset, kept
-#                 distinct from Vell so a two-voice talk segment reads as two
-#                 people. Rachel leans calm; swap for a brighter prebuilt (e.g.
-#                 "Elli" MF3mGyEYCl7XYWbV9V6O) after a listen if Wren feels flat.
-# PLACEHOLDERS (D-cast): the expanded cast (90-cast.md) defines 10 logical voices,
-# but only two real prebuilts are chosen so far. Until each DJ gets a distinct
-# voice (the D9 voice pass), the extra logical names alias onto the two real
-# presets — male-leaning cards onto "Adam", bright/female-leaning onto "Rachel" —
-# so every card resolves and the cast can be voiced. Repoint these to real ids
-# one at a time as voices are picked; the logical names never change.
-_ELEVENLABS_VOICE_IDS = {
-    "vell_night": "pNInz6obpgDQGcFmaJgB",  # ElevenLabs prebuilt "Adam"
-    "dj_two": "21m00Tcm4TlvDq8ikWAM",  # ElevenLabs prebuilt "Rachel"
-    # placeholders aliasing onto the two real presets:
-    "wren_dawn": "21m00Tcm4TlvDq8ikWAM",
-    "joss_bridge": "pNInz6obpgDQGcFmaJgB",
-    "kael_sports": "21m00Tcm4TlvDq8ikWAM",
-    "mira_culture": "21m00Tcm4TlvDq8ikWAM",
-    "thorn_news": "pNInz6obpgDQGcFmaJgB",
-    "sera_field": "21m00Tcm4TlvDq8ikWAM",
-    "archivist_deep": "pNInz6obpgDQGcFmaJgB",
-    "orin_music": "pNInz6obpgDQGcFmaJgB",
-    "zhe_observer": "21m00Tcm4TlvDq8ikWAM",
-}
+# Logical voice name -> vendor voice id, PER ENGINE — DATA as of D9.2:
+# config/voices.yaml (settings.tts_voices_path) is the human-edited registry,
+# so adding a DJ never means editing this module (author the card in the bible,
+# add one YAML entry, `make seed-canon`). Mapping a logical name to a vendor id
+# remains this seam's job — callers still speak only logical names — the
+# mapping itself just moved from three hardcoded dicts (whose 9 D-cast entries
+# were PLACEHOLDER aliases onto two real presets) to per-engine data with a
+# DISTINCT preset per DJ. Cached per (path, mtime) like the lexicon, so a
+# long-running scheduler picks up an edit while a buffer run parses once.
+#
+# FAIL LOUD, never a silent wrong voice: a missing/empty registry file, an
+# unknown logical voice, or a voice with no mapping for the active engine all
+# raise. `make seed-canon` pre-validates every cast card's voice against
+# `known_voices()` (world/seed.py), so a bad mapping is caught at seed time,
+# not at a 3 a.m. render.
+_voices_cache: tuple[tuple[str, float], dict[str, dict[str, str]]] | None = None
 
-# macOS `say` voice names (list them with: say -v '?'). "Daniel" is a warm
-# British male stand-in for Vell; "Samantha" a bright American female for Wren —
-# both serviceable while testing, and kept distinct so a two-DJ talk segment
-# reads as two people. Apple's free downloadable "Enhanced"/"Premium" voices
-# (System Settings → Accessibility → Spoken Content → System Voice) sound far
-# more natural; drop one in here once installed. This backend is offline, free,
-# and unlimited — for testing the loop, not the DJs' final voices.
-_SAY_VOICES = {
-    "vell_night": "Daniel",
-    "dj_two": "Samantha",
-    # placeholders aliasing onto the two real presets (see _ELEVENLABS note):
-    "wren_dawn": "Samantha",
-    "joss_bridge": "Daniel",
-    "kael_sports": "Samantha",
-    "mira_culture": "Samantha",
-    "thorn_news": "Daniel",
-    "sera_field": "Samantha",
-    "archivist_deep": "Daniel",
-    "orin_music": "Daniel",
-    "zhe_observer": "Samantha",
-}
 
-# Kokoro (self-hosted, open-weight, free/unlimited) voice presets. List the full
-# set with the package's `KPipeline.list_voices()` or see the Kokoro-82M model
-# card. The first letter encodes language (a=American, b=British English), the
-# second gender (m/f) — we derive the pipeline's lang_code from it below.
-#   vell_night -> a British male (warm, low), matching Vell's card + the `say`
-#                 "Daniel" stand-in.
-#   dj_two     -> a distinct American voice RESERVED for the second DJ, who is
-#                 defined in B1/B4. Repoint/rename once that card exists; kept
-#                 deliberately different from Vell so a two-voice talk segment
-#                 reads as two people.
-_KOKORO_VOICES = {
-    "vell_night": "bm_george",
-    "dj_two": "af_heart",
-    # placeholders aliasing onto the two real presets (see _ELEVENLABS note):
-    "wren_dawn": "af_heart",
-    "joss_bridge": "bm_george",
-    "kael_sports": "af_heart",
-    "mira_culture": "af_heart",
-    "thorn_news": "bm_george",
-    "sera_field": "af_heart",
-    "archivist_deep": "bm_george",
-    "orin_music": "bm_george",
-    "zhe_observer": "af_heart",
-}
+def _voice_registry() -> dict[str, dict[str, str]]:
+    """Load (and cache) the voice registry: {logical_voice: {engine: vendor_id}}."""
+    global _voices_cache
+    path = settings.tts_voices_path
+    try:
+        key = (str(path), path.stat().st_mtime)
+    except OSError as exc:
+        raise RuntimeError(
+            f"voice registry not found at {path} (settings.tts_voices_path) — "
+            "the station cannot voice anything without it"
+        ) from exc
+
+    if _voices_cache is not None and _voices_cache[0] == key:
+        return _voices_cache[1]
+
+    import yaml
+
+    raw = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+    registry = {
+        str(logical): {str(eng): str(vid) for eng, vid in (engines or {}).items()}
+        for logical, engines in raw.items()
+    }
+    if not registry:
+        raise RuntimeError(f"voice registry at {path} is empty — no voice can render")
+    _voices_cache = (key, registry)
+    log.debug("tts_voices_loaded", path=str(path), voices=len(registry))
+    return registry
+
+
+def known_voices() -> set[str]:
+    """The logical voice names the registry defines (seed-time validation hook)."""
+    return set(_voice_registry())
+
+
+def _vendor_voice(voice: str, provider: str) -> str:
+    """Resolve a logical voice to `provider`'s vendor id; fail loud otherwise."""
+    registry = _voice_registry()
+    try:
+        engines = registry[voice]
+    except KeyError:
+        raise ValueError(
+            f"unknown logical voice {voice!r}; expected one of {sorted(registry)} "
+            f"(registry: {settings.tts_voices_path})"
+        ) from None
+    try:
+        return engines[provider]
+    except KeyError:
+        raise ValueError(
+            f"logical voice {voice!r} has no {provider!r} mapping in "
+            f"{settings.tts_voices_path}"
+        ) from None
+
 
 # --- Emotion (D9.0) -----------------------------------------------------------
 # The logical emotion vocabulary — the small named set the writers' room may
@@ -237,13 +230,7 @@ def _synthesize_elevenlabs(
     from elevenlabs.client import ElevenLabs
     from elevenlabs.types import VoiceSettings
 
-    try:
-        voice_id = _ELEVENLABS_VOICE_IDS[voice]
-    except KeyError:
-        raise ValueError(
-            f"unknown logical voice {voice!r}; expected one of "
-            f"{sorted(_ELEVENLABS_VOICE_IDS)}"
-        ) from None
+    voice_id = _vendor_voice(voice, "elevenlabs")
 
     voice_settings = VoiceSettings(**_ELEVENLABS_EMOTIONS[emotion]) if emotion else None
 
@@ -282,12 +269,7 @@ def _synthesize_say(
     import subprocess
     import tempfile
 
-    try:
-        say_voice = _SAY_VOICES[voice]
-    except KeyError:
-        raise ValueError(
-            f"unknown logical voice {voice!r}; expected one of {sorted(_SAY_VOICES)}"
-        ) from None
+    say_voice = _vendor_voice(voice, "say")
 
     parent = os.path.dirname(out_path)
     if parent:
@@ -341,12 +323,7 @@ def _synthesize_kokoro(
     import numpy as np
     import soundfile as sf
 
-    try:
-        kokoro_voice = _KOKORO_VOICES[voice]
-    except KeyError:
-        raise ValueError(
-            f"unknown logical voice {voice!r}; expected one of {sorted(_KOKORO_VOICES)}"
-        ) from None
+    kokoro_voice = _vendor_voice(voice, "kokoro")
 
     # Voice id encodes language in its first char (a=American, b=British). The
     # pipeline's lang_code must match for correct grapheme-to-phoneme handling.

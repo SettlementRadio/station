@@ -178,6 +178,20 @@ ElevenLabs/`say`) and an optional `phonemes` string (used on Kokoro via its exac
 see the file's header for the workflow and alphabet). Unknown names pass through to the engine
 default unharmed; `TTS_LEXICON_ENABLED=false` switches the whole thing off.
 
+**The DJ roster (D9.2).** The cast is **bible-authored**: the 10 DJs live as persona cards in
+`docs/canon/90-cast.md`, each with a distinct voice on every engine via the **voice registry**
+(`config/voices.yaml` — logical voice → vendor preset, per engine; the old hardcoded dicts in
+`tts.py` are gone). **Add a DJ:** author a card in the bible (the `Logical voice` line is required)
++ add that voice's entry to `config/voices.yaml`, then `make seed-canon` — which **fails loud** if
+the bible and the registry disagree, so a typo'd voice is caught at seed time, not on air. **Edit /
+remove** a DJ the same way (edit/delete the card, re-seed); a grid program still naming a removed
+cast id fails loud at generation and the slot falls back — never dead air. **Put a DJ on air** by
+scheduling them in `docs/programming/grid.yaml` (hosts are cast ids; the grid is read live). The
+Bridge (weekend mornings, joss + mira) is the first show carrying the new cast. The runtime
+management UI is Phase E — this file-based flow is the current model. Note the 8 new DJs'
+ElevenLabs ids are premade-roster picks not yet heard (the key lacks `voices_read`) — confirm at
+the C6 funded listen; Kokoro presets are verified locally.
+
 **4. World-state database (Postgres).** From Phase B the world (canon, cast, events) lives in a
 local PostgreSQL database, seeded from the **canon bible**. Install and start it with Homebrew, then
 create the database:
