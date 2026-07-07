@@ -211,6 +211,13 @@ class Settings(BaseSettings):
     # format FMT=talk` paths carry no position (flow=None) and always read as a
     # complete little segment, enabled or not.
     convo_continuity_enabled: bool = True
+    # D12.2 — thread pacing: how many CONSECUTIVE talk segments one thread may hold
+    # (opener included) before the showrunner is forced to transition to a fresh
+    # subject — so a topic neither dies after one segment nor overstays. A spent
+    # thread (the hosts signed it off — `open_thread` false) transitions earlier. A
+    # non-talk slot between two talk slots doesn't reset the count (the thread
+    # carries across a song), and a new program always opens a fresh thread.
+    convo_continuity_max_segments: int = 3
     # When a spoken settlement-time check is allowed in a talk segment (D12.1):
     #   never    — no spoken time checks
     #   handover — only at a dawn/dusk handover

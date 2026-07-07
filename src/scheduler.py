@@ -277,22 +277,39 @@ def _show_flow(
     air_cursor: datetime,
     last_content_program: str | None,
     handoff: flow_mod.Handoff | None,
+    thread_run: int,
 ) -> ShowFlow:
-    """The D12.0 `ShowFlow` for a grid content slot: show position + carried hand-off.
+    """The `ShowFlow` for a grid content slot: position, hand-off, thread decision.
 
-    `open` when this is the first content slot of a NEW program instance (the program
-    differs from the last placed content slot); `close` when the NEXT content slot is
-    estimated to fall in a different program; `continue` otherwise. The `close`
+    D12.0 — `open` when this is the first content slot of a NEW program instance (the
+    program differs from the last placed content slot); `close` when the NEXT content
+    slot is estimated to fall in a different program; `continue` otherwise. The `close`
     look-ahead uses the default slot length as the horizon — best-effort, since a
     slot's real duration isn't known until it renders (flow is advisory, never a hard
-    dependency, per the D12 principles). The carried `handoff` is the previous talk
-    slot's thread (None on a cold start / after a clear).
+    dependency, per the D12 principles).
+
+    D12.2 — decide whether this slot CONTINUES the carried thread: only mid-show
+    (`continue`/`close`, never a fresh program `open`), with a live hand-off whose
+    thread is still open, and within the `convo_continuity_max_segments` pacing budget.
+    A new program always opens fresh; a spent or over-budget thread transitions.
     """
     is_first = program.id != last_content_program
     est_end = air_cursor + timedelta(seconds=settings.segment_default_length_target_sec)
     is_last = programming.program_for(est_end).id != program.id
     position = flow_mod.show_position(is_first=is_first, is_last=is_last)
-    return ShowFlow(position=position, handoff=handoff)
+    continue_thread = (
+        settings.convo_continuity_enabled
+        and position != flow_mod.OPEN
+        and handoff is not None
+        and handoff.open_thread
+        and thread_run < settings.convo_continuity_max_segments
+    )
+    return ShowFlow(
+        position=position,
+        handoff=handoff,
+        thread_run=thread_run,
+        continue_thread=continue_thread,
+    )
 
 
 def onair_hosts(program: Program, fmt: str) -> list[str]:
@@ -375,6 +392,9 @@ def top_up(now: datetime | None = None) -> list[dict]:
         if isinstance(flow_state.get("handoff"), dict)
         else None
     )
+    # D12.2 — how many talk segments the current thread has already aired (the pacing
+    # budget counter); persisted so a thread paces correctly across top-up runs.
+    flow_thread_run: int = int(flow_state.get("thread_run", 0))
     # C3: count CONTENT segments placed since the last disclosure ident, persisted
     # across runs so the spoken-disclosure cadence is steady regardless of pruning.
     content_since_ident = state.get("content_since_ident", 0)
@@ -628,10 +648,15 @@ def top_up(now: datetime | None = None) -> list[dict]:
             )
             if name is not None:
                 speakers = _program_speakers(program, name)
-                # D12.0 — where this slot sits in the show + the thread to carry in.
-                # Grid mode only; the flat rotation stays standalone (flow=None).
+                # D12.0/D12.2 — where this slot sits in the show, the thread to carry
+                # in, and whether to continue it. Grid mode only; the flat rotation
+                # stays standalone (flow=None).
                 slot_flow = _show_flow(
-                    program, air_cursor, flow_last_program, flow_handoff
+                    program,
+                    air_cursor,
+                    flow_last_program,
+                    flow_handoff,
+                    flow_thread_run,
                 )
         else:
             name = rotation[rot_i % len(rotation)]
@@ -713,6 +738,15 @@ def top_up(now: datetime | None = None) -> list[dict]:
             flow_last_program = program.id
             if name == "talk":
                 flow_handoff = flow_mod.handoff_from_segment(seg, program.id)
+                # D12.2 — advance the thread pacing counter. A slot that fell to an
+                # evergreen (no hand-off) breaks the thread → 0; a slot that CONTINUED
+                # the thread grows it; any other talk slot starts a fresh thread at 1.
+                if flow_handoff is None:
+                    flow_thread_run = 0
+                elif slot_flow is not None and slot_flow.continue_thread:
+                    flow_thread_run += 1
+                else:
+                    flow_thread_run = 1
 
         # Self-describing sidecar so prune() can read this render's air end once it
         # has aired out of the live schedule (C2.5). Written with the pinned slot
@@ -741,7 +775,8 @@ def top_up(now: datetime | None = None) -> list[dict]:
             duration_sec=round(duration, 1),
             runway_sec=round(runway_sec),
             flow_position=slot_flow.position if slot_flow is not None else None,
-            open_thread=flow_handoff.open_thread if flow_handoff else None,
+            continue_thread=slot_flow.continue_thread if slot_flow else None,
+            thread_run=flow_thread_run,
         )
 
     # D12.0 — persist the talk-continuity substrate so the next top-up resumes the
@@ -749,6 +784,7 @@ def top_up(now: datetime | None = None) -> list[dict]:
     clock_state["_flow"] = {
         "last_content_program": flow_last_program,
         "handoff": flow_handoff.to_dict() if flow_handoff is not None else None,
+        "thread_run": flow_thread_run,
     }
     state["entries"] = upcoming
     state["rotation_index"] = rot_i % len(rotation)

@@ -159,11 +159,15 @@ def _flow_recording_generator(tmp_path, *, duration=1200.0):
     return calls, _gen
 
 
-def _wire(monkeypatch, tmp_path, generator):
+def _wire(monkeypatch, tmp_path, generator, grid_text=_GRID, *, max_segments=3):
     grid_path = tmp_path / "grid.yaml"
-    grid_path.write_text(_GRID, encoding="utf-8")
+    grid_path.write_text(grid_text, encoding="utf-8")
     monkeypatch.setattr(scheduler.settings, "programming_grid_path", grid_path)
     programming.reload()
+    monkeypatch.setattr(scheduler.settings, "convo_continuity_enabled", True)
+    monkeypatch.setattr(
+        scheduler.settings, "convo_continuity_max_segments", max_segments
+    )
 
     monkeypatch.setattr(scheduler, "make_format_segment", generator)
     monkeypatch.setattr(scheduler.settings, "programming_enabled", True)
@@ -322,3 +326,161 @@ def test_open_policy_does_not_grant_top_of_hour_continue(monkeypatch):
     monkeypatch.setattr(convo.settings, "convo_flow_timecheck", "open")
     directive = convo._time_check_directive(_frame(), ShowFlow(CONTINUE), _TOP_OF_HOUR)
     assert not _has_timecheck(directive)
+
+
+# --- D12.2: showrunner thread directive + orchestrator pickup (pure) ---------
+
+
+def _handoff(*, open_thread=True, topic="the reclaim", tail="Wren: more to say."):
+    return Handoff(tail=tail, topic=topic, open_thread=open_thread, program="p")
+
+
+def test_showrunner_thread_fresh_without_flow():
+    block, task = convo._showrunner_thread(None)
+    assert block == ""
+    assert "Pick exactly ONE" in task
+
+
+def test_showrunner_thread_continue_deepens_same_beat():
+    flow = ShowFlow(CONTINUE, handoff=_handoff(), continue_thread=True)
+    block, task = convo._showrunner_thread(flow)
+    assert "CONTINUE" in block and "the reclaim" in block
+    assert "SAME thread" in task and "Pick exactly ONE" not in task
+
+
+def test_showrunner_thread_transition_moves_on():
+    # Handoff present but not continuing (budget/spent) -> a deliberate transition.
+    flow = ShowFlow(CONTINUE, handoff=_handoff(), continue_thread=False)
+    block, task = convo._showrunner_thread(flow)
+    assert "FRESH subject" in block or "move ON" in block
+    assert "Pick exactly ONE" in task  # still a fresh pick
+
+
+def test_showrunner_thread_fresh_when_disabled(monkeypatch):
+    monkeypatch.setattr(convo.settings, "convo_continuity_enabled", False)
+    flow = ShowFlow(CONTINUE, handoff=_handoff(), continue_thread=True)
+    block, task = convo._showrunner_thread(flow)
+    assert block == "" and "Pick exactly ONE" in task
+
+
+def test_pickup_only_on_a_continuing_continue_slot():
+    cont = ShowFlow(
+        CONTINUE, handoff=_handoff(tail="Vell: right there."), continue_thread=True
+    )
+    got = convo._pickup_section(cont)
+    assert "PICK UP" in got and "Vell: right there." in got
+
+
+def test_pickup_empty_on_open_close_transition_and_none():
+    ho = _handoff()
+    assert convo._pickup_section(None) == ""
+    assert (
+        convo._pickup_section(ShowFlow(OPEN, handoff=ho, continue_thread=False)) == ""
+    )
+    assert (
+        convo._pickup_section(ShowFlow(CLOSE, handoff=ho, continue_thread=True)) == ""
+    )
+    # a continue slot that is NOT continuing (transition/soft-open) gets no pickup
+    assert (
+        convo._pickup_section(ShowFlow(CONTINUE, handoff=ho, continue_thread=False))
+        == ""
+    )
+
+
+# --- D12.2: scheduler pacing / continuation decision (integration) ----------
+
+# One program, all-talk, tiling the whole day: positions are open then continue,
+# so the thread pacing is the only thing moving continue_thread.
+_ONE_PROGRAM = """
+programs:
+  night:
+    name: "The Long Night"
+    hosts: [vell, wren]
+    framing: solo
+    clock: [talk]
+  default:
+    name: "Settlement Radio"
+    hosts: [vell, wren]
+    framing: legacy
+    rotation: [talk]
+grid:
+  daily:
+    "00:00-24:00": night
+"""
+
+# talk alternating with music, so the thread must carry ACROSS the music slot.
+_TALK_MUSIC = """
+programs:
+  night:
+    name: "The Long Night"
+    hosts: [vell, wren]
+    framing: solo
+    clock: [talk, music]
+  default:
+    name: "Settlement Radio"
+    hosts: [vell, wren]
+    framing: legacy
+    rotation: [talk]
+grid:
+  daily:
+    "00:00-24:00": night
+"""
+
+
+def test_thread_paces_out_at_the_budget(monkeypatch, tmp_path):
+    calls, gen = _flow_recording_generator(tmp_path)
+    # depth 2h at 1200s/slot => 6 talk slots; max_segments=3.
+    _wire(monkeypatch, tmp_path, gen, _ONE_PROGRAM, max_segments=3)
+    monkeypatch.setattr(scheduler.settings, "buffer_depth_hours", 2.0)
+
+    scheduler.top_up(now=datetime(2026, 6, 22, 0, 5))
+
+    decisions = [c["flow"].continue_thread for c in calls]
+    # open starts fresh; the thread holds for 3 (opener + 2), then transitions; repeat.
+    assert decisions[:6] == [False, True, True, False, True, True]
+
+
+def test_thread_carries_across_a_music_slot(monkeypatch, tmp_path):
+    calls, gen = _flow_recording_generator(tmp_path)
+    _wire(monkeypatch, tmp_path, gen, _TALK_MUSIC, max_segments=3)
+    monkeypatch.setattr(scheduler.settings, "buffer_depth_hours", 1.5)
+
+    scheduler.top_up(now=datetime(2026, 6, 22, 0, 5))
+
+    talk_decisions = [c["flow"].continue_thread for c in calls if c["format"] == "talk"]
+    # the 2nd talk continues the 1st's thread even though a music slot aired between.
+    assert talk_decisions[0] is False  # the open
+    assert talk_decisions[1] is True  # continues across the music
+
+
+def test_evergreen_talk_breaks_the_thread(monkeypatch, tmp_path):
+    # A generator whose 2nd talk slot falls to an evergreen (format != "talk").
+    calls: list[dict] = []
+
+    def gen(name, now_iso, *, topic=None, speakers=None, flow=None):
+        calls.append({"format": name, "flow": flow})
+        n = len(calls)
+        fmt = "evergreen" if n == 2 else name
+        path = tmp_path / f"{name}-{n:03d}.mp3"
+        path.write_bytes(b"\x00")
+        return Segment(
+            id=f"{name}-{n:03d}",
+            format=fmt,
+            length_target_sec=1200,
+            air_time=now_iso,
+            script="Vell: a line.\nWren: another, still going.",
+            audio_path=str(path),
+            actual_duration_sec=1200.0,
+            meta={"beat": "a thread"},
+        )
+
+    _wire(monkeypatch, tmp_path, gen, _ONE_PROGRAM, max_segments=5)
+    monkeypatch.setattr(scheduler.settings, "buffer_depth_hours", 1.2)
+
+    scheduler.top_up(now=datetime(2026, 6, 22, 0, 5))
+
+    decisions = [c["flow"].continue_thread for c in calls]
+    # slot1 open (fresh); slot2 tries to continue but evergreens -> thread broken;
+    # slot3 must NOT continue a segment that didn't really air.
+    assert decisions[0] is False
+    assert decisions[2] is False

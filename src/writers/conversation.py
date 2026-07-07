@@ -38,7 +38,7 @@ from datetime import datetime
 
 from .. import evergreen, freshness
 from ..config import settings
-from ..flow import OPEN, ShowFlow
+from ..flow import CONTINUE, OPEN, ShowFlow
 from ..logging_setup import get_logger
 from ..providers import llm, tts
 from ..safety import safety_check
@@ -117,12 +117,56 @@ def _situation(frame: ShowFrame, ctx: AssembledContext) -> str:
 # --- Step 1: showrunner -----------------------------------------------------
 
 
+def _showrunner_thread(flow: ShowFlow | None) -> tuple[str, str]:
+    """The showrunner's D12.2 thread context + task, for `(thread_block, task_block)`.
+
+    Three cases: continue the ongoing thread (deepen the SAME beat), transition off a
+    thread that has run its course (a deliberate move to a fresh subject), or the
+    normal fresh pick (a lone slot, an open, or no active thread). Standalone /
+    disabled always takes the fresh pick, so the direct paths are unchanged.
+    """
+    fresh_task = (
+        "Pick exactly ONE current event or world fact for them to glance off, and a "
+        "HUMAN angle — a feeling, a small concrete detail, a gentle disagreement, "
+        "something one of them can't stop thinking about — not just a fact to report. "
+        "The angle should suit both hosts AND the time of day above; do not assume "
+        "night, morning, or a handover unless the time and the on-air note say so. "
+        "Reply with a SHORT brief (2-4 sentences): the topic, the human angle, and "
+        "who opens. Do not write any dialogue."
+    )
+    if flow is None or not settings.convo_continuity_enabled or flow.handoff is None:
+        return "", fresh_task
+    ho = flow.handoff
+    if flow.continue_thread:
+        thread_block = (
+            "CONTINUE the on-air conversation already in progress — the hosts have not "
+            "changed the subject. The thread so far:\n"
+            f"  topic: {ho.topic or '(the previous exchange)'}\n"
+            f"  they just said:\n{ho.tail}\n\n"
+        )
+        task_block = (
+            "Give the NEXT beat on THIS SAME thread: deepen it, follow where it just "
+            "went, or take the next angle — do NOT open a new topic. Reply with a "
+            "SHORT brief (2-4 sentences): the next angle, the human hook, and who "
+            "picks it back up. Do not write any dialogue."
+        )
+        return thread_block, task_block
+    # The thread has run its course (spent, or the pacing budget is up) — move on.
+    thread_block = (
+        "The hosts have been on one thread for a while "
+        f'("{ho.topic or "the last subject"}"). It has run its course: move ON to a '
+        "FRESH subject now — a natural, deliberate transition, not a jarring reset.\n\n"
+    )
+    return thread_block, fresh_task
+
+
 def showrunner(
     ctx: AssembledContext,
     now: datetime,
     *,
     frame: ShowFrame | None = None,
     recent_block: str = "",
+    flow: ShowFlow | None = None,
 ) -> str:
     """Pick tonight's beat: ONE event/angle for the two DJs, framed for the hour.
 
@@ -136,11 +180,18 @@ def showrunner(
     to avoid re-picking, from the airplay memory (`freshness.recent_topics_block`). It
     goes in the per-call system (not the cached core), so the cache still hits; empty on
     a cold start, in which case the showrunner picks freely as before.
+
+    `flow` (D12.2) carries the talk hand-off + thread-pacing decision. When the slot
+    should CONTINUE the prior thread the showrunner deepens the SAME beat instead of
+    picking a fresh one; when the thread is spent / the pacing budget is up it
+    transitions deliberately to a new subject; `None` (direct paths) always picks
+    fresh.
     """
     names = _names(ctx)
     frame = frame or _frame_for(ctx, now)
     situation = _situation(frame, ctx)
     freshness_section = f"{recent_block}\n\n" if recent_block else ""
+    thread_block, task_block = _showrunner_thread(flow)
     system = (
         "You are the showrunner for Settlement Radio, a tribute sci-fi radio "
         f"station. Choose the beat for a short on-air exchange between {names}.\n\n"
@@ -148,14 +199,9 @@ def showrunner(
         f"({frame.part_of_day}).\n"
         f"On air right now: {situation}.\n\n"
         f"What's true right now:\n{ctx.dynamic or '(nothing notable)'}\n\n"
+        f"{thread_block}"
         f"{freshness_section}"
-        "Pick exactly ONE current event or world fact for them to glance off, and a "
-        "HUMAN angle — a feeling, a small concrete detail, a gentle disagreement, "
-        "something one of them can't stop thinking about — not just a fact to report. "
-        "The angle should suit both hosts AND the time of day above; do not assume "
-        "night, morning, or a handover unless the time and the on-air note say so. "
-        "Reply with a SHORT brief (2-4 sentences): the topic, the human angle, and "
-        "who opens. Do not write any dialogue."
+        f"{task_block}"
     )
     beat = llm.generate(
         "Pick tonight's beat.",
@@ -165,7 +211,11 @@ def showrunner(
         max_tokens=settings.convo_showrunner_max_tokens,
     )
     beat = beat.strip()
-    log.info("convo_showrunner_done", chars=len(beat))
+    log.info(
+        "convo_showrunner_done",
+        chars=len(beat),
+        continue_thread=(flow.continue_thread if flow is not None else None),
+    )
     return beat
 
 
@@ -226,6 +276,34 @@ def _time_check_directive(
     )
 
 
+def _pickup_section(flow: ShowFlow | None) -> str:
+    """The D12.2 'pick up where you left off' block for a continuing `continue` slot.
+
+    Only fires on a `continue` slot that is actually CONTINUING a thread (a real
+    hand-off, within the pacing budget): the hosts open by carrying the prior
+    exchange forward, not re-introducing the topic or themselves. Empty otherwise —
+    an `open` starts fresh, a `close` has its own wrap backbone, and a transition /
+    missing hand-off degrades to the cold soft-open the backbone already gives (no
+    'welcome back', never a broken reference to a segment that didn't air).
+    """
+    if (
+        flow is None
+        or not settings.convo_continuity_enabled
+        or flow.handoff is None
+        or flow.position != CONTINUE
+        or not flow.continue_thread
+    ):
+        return ""
+    return (
+        "PICK UP where you left off — this is the SAME conversation continuing, you "
+        "never left the booth. Do NOT re-introduce the topic or yourselves and do NOT "
+        "greet the audience. The last thing said was:\n"
+        f"{flow.handoff.tail}\n"
+        "Open by carrying that straight forward — a reaction, the next thought, a "
+        "callback — then move the thread on.\n\n"
+    )
+
+
 def orchestrate(
     ctx: AssembledContext,
     beat: str,
@@ -266,10 +344,12 @@ def orchestrate(
     to their card. Small + variable, so it rides HERE in the per-call system (the
     cache lever holds); "" keeps the memory-less shape.
 
-    `flow` (D12.1) is the slot's show position (from D12.0). It makes the spoken
-    settlement-time check POSITIONAL — dropped on cold `continue`/`close` slots so a
-    flowing show doesn't restate the hour every segment. `None` (the direct paths)
-    keeps the pre-D12 always-a-time-check-near-open/handover behaviour.
+    `flow` (D12.1/D12.2) is the slot's show position + talk thread. It makes the
+    spoken settlement-time check POSITIONAL — dropped on cold `continue`/`close`
+    slots so a flowing show doesn't restate the hour every segment (D12.1). On a
+    `continue` slot that is CONTINUING a thread it also opens by picking up the prior
+    exchange instead of re-introducing the topic (D12.2). `None` (the direct paths)
+    keeps the pre-D12 always-a-time-check-near-open/handover, self-contained shape.
     """
     names = _names(ctx)
     labels = [f"{c.name}:" for c in ctx.speakers]
@@ -303,6 +383,7 @@ def orchestrate(
     #     [BUILT — D9.4: the `memory` block below, rendered by writers/memory.py.]
     #   * D10 (figures/quotes): an attributable quote a host can reference.
     freshness_section = f"{recent_openings}\n\n" if recent_openings else ""
+    pickup = _pickup_section(flow)
     system = (
         "You are the writers' room for Settlement Radio, scripting a SPOKEN "
         f"on-air exchange between two hosts — {names}. Write the dialogue ONLY.\n\n"
@@ -312,6 +393,7 @@ def orchestrate(
         "match the hour above; do not write a night or dawn-handover scene unless "
         "the on-air note says so.\n\n"
         f"Tonight's beat (from the showrunner):\n{beat}\n\n"
+        f"{pickup}"
         f"{freshness_section}"
         f"What's true right now:\n{ctx.dynamic or '(nothing notable)'}\n\n"
         f"{memory}"
@@ -655,7 +737,7 @@ def compose_segment(
     # "" degrades to the memory-less room. The same block goes to the
     # orchestrator AND the continuity editor (misremembering flags).
     memory = memory_mod.memory_section(ctx.speakers, now)
-    beat = showrunner(ctx, now, frame=frame, recent_block=recent_topics)
+    beat = showrunner(ctx, now, frame=frame, recent_block=recent_topics, flow=flow)
 
     attempts = settings.convo_continuity_max_attempts
     revision_note: str | None = (
@@ -757,10 +839,13 @@ def compose_segment(
                     else None
                 ),
                 "memory_used": bool(memory),
-                # D12.0 — the slot's show position (open/continue/close), recorded
-                # for visibility/tests; None on the standalone path. The prompts are
-                # unchanged in D12.0 — D12.1/D12.2 make the room read it.
+                # D12.0/D12.2 — the slot's show position (open/continue/close) and
+                # whether it CONTINUED the prior thread, recorded for visibility/tests;
+                # None on the standalone path.
                 "flow_position": flow.position if flow is not None else None,
+                "flow_continue_thread": (
+                    flow.continue_thread if flow is not None else None
+                ),
                 "lead": frame.lead,
                 "handover": frame.is_handover,
                 "safety_stage": safety.stage,

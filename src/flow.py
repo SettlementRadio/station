@@ -97,12 +97,20 @@ class ShowFlow:
     """Where a content slot sits in its program run, plus the thread to carry in.
 
     `position` is `open`/`continue`/`close`; `handoff` is the previous talk segment's
-    hand-off (None on a cold start or after the thread was cleared). D12.0 only
-    computes + carries this; D12.1/D12.2 make the writers' room read it.
+    hand-off (None on a cold start or after the thread was cleared).
+
+    D12.2 thread pacing: `thread_run` is how many talk segments the CURRENT thread has
+    already aired (before this slot), and `continue_thread` is whether this slot should
+    CONTINUE that thread (deepen the prior beat, pick up cold) rather than open or
+    transition to a fresh one. The scheduler owns the counter and makes the decision
+    (position + `open_thread` + the `convo_continuity_max_segments` budget); the
+    writers' room just reads `continue_thread` + `handoff`.
     """
 
     position: str
     handoff: Handoff | None = None
+    thread_run: int = 0
+    continue_thread: bool = False
 
 
 def show_position(*, is_first: bool, is_last: bool) -> str:

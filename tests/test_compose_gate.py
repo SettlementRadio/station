@@ -28,7 +28,9 @@ def _ctx() -> AssembledContext:
 def _patch_common(monkeypatch):
     """Stub the model/TTS-touching steps shared by every case."""
     monkeypatch.setattr(
-        convo, "showrunner", lambda ctx, now, *, frame=None, recent_block="": "the beat"
+        convo,
+        "showrunner",
+        lambda ctx, now, *, frame=None, recent_block="", flow=None: "the beat",
     )
     monkeypatch.setattr(
         convo,
