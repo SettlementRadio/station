@@ -300,6 +300,22 @@ demand). Order below is roughly the build order; the dependency graph is in §4.
 - **Depends on:** **D1–D10 built** (it documents the *as-built* surface). Leans on **C5** for the
   "running the station" section. **Re-verified at the soft launch (CM).**
 
+### D12 — Talk Continuity / Show Flow (`PHASE_D_CONTINUITY_TASKS.md`) — post-D11 addendum
+- **Goal:** consecutive talk segments in one program read as **one flowing show**, not N independent
+  mini-shows — a product-quality gap found while operating the built station (each segment opened,
+  time-stamped and closed, so a program of talk felt like reset-after-reset).
+- **Builds:** a thin FLOW layer over the atomic segment — a per-slot show POSITION (open/continue/close)
+  + a carried talk hand-off in `clock_state` (D12.0); a POSITIONAL backbone + an occasional (not
+  per-segment) time-check (D12.1); the SAME thread continued across segments with a pacing budget
+  (D12.2); D5-freshness reconciled so it doesn't veto the active thread (D12.3); spoken program
+  sign-on/sign-off + a talk-first backbone that no longer assumes a song follows (D12.4); the
+  `continuity-demo` + a sixth `talk_flow` acceptance property (D12.5). New dials: `convo_continuity_*`,
+  `convo_flow_*`. Also: the news desk became a dedicated anchor (Thorn) and the grid a many-vertical,
+  per-day-rotating, talk-first week; guests/interviews are now per-program (`guest_chance`).
+- **Depends on:** **D6** (programs + clocks give position-in-show), the **C2 scheduler**; reconciles
+  with **D5**. Segments stay atomic + independently gated — flow is best-effort context, never a hard
+  dependency.
+
 ## 4. Dependency graph + tracker
 
 **Two parallel tracks**, mirroring how C split:
@@ -340,6 +356,7 @@ done and Claude (chat) can generate the `_TASKS.md` now.
 | D9 Voice & Emotion + Roster | `PHASE_D_VOICE_ROSTER_TASKS.md` | D3 (memory); C6 (emotion); D10 (guests) | ✅ | ✅ | **Built** (D9.0–D9.5; emotion wired end-to-end, AUDIBLE only on the flagship engine — the C6 listen also retunes the curves + confirms the 8 new premade voice ids) |
 | D10 Figures & Quotes | `PHASE_D_FIGURES_QUOTES_TASKS.md` | D3 (D2 rec.; D9 for soundbites) | ✅ | ✅ | **Built** (D10.0–D10.2, D10.4; D10.3 soundbite DELIVERED via D9.3 — a figure+quote airs as a voiced guest) |
 | D11 Operator/Admin Manual (capstone) | `PHASE_D_ADMIN_MANUAL_TASKS.md` | D1–D10 built | ✅ | ✅ | **Built** (D11.0–D11.4; manual verified + `make acceptance` gate green; re-verify at CM) |
+| D12 Talk Continuity / Show Flow (addendum) | `PHASE_D_CONTINUITY_TASKS.md` | D6, C2 scheduler; reconciles D5 | ✅ | ✅ | **Built** (D12.0–D12.5; consecutive talk plays as one show — positional open/close, threaded hand-off, occasional time-check, sign-on/off; dedicated Thorn news desk + talk-first many-vertical grid + per-program guests; `make continuity-demo`; sixth `talk_flow` acceptance property) |
 
 **Done-when for Phase D (from ROADMAP):** the world visibly progresses on its own (fresh, evolving
 stories the news + DJs reference with correct past/now/future framing); conversations draw on a real

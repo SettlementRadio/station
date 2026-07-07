@@ -226,6 +226,15 @@ class Settings(BaseSettings):
     # Default `hourly`: a real show time-stamps at the top of the hour and at the
     # handover, not every three minutes. A cold `continue` slot never time-checks.
     convo_flow_timecheck: str = "hourly"
+    # D12.4 — a spoken program SIGN-ON at a program's first slot ("welcome to The
+    # Long Night") and SIGN-OFF at its last ("that's The Long Night for now"), naming
+    # the show so it reads as a hosted program with a start and an end, landing right
+    # after the D7 theme/sting that already opens the boundary. False = the generic
+    # positional open/close (D12.1) with no program name. NOTE: talk-first station —
+    # the talk backbone does NOT assume a song follows (a music slot introduces its
+    # own track); intra-show "coming up…/back to it" sign-posting is deferred to
+    # Phase E (needs reliable next-slot look-ahead), per the D12.4 scope gate.
+    convo_flow_signon: bool = True
 
     # --- Content-safety gate (C0: real automated check on every draft) ---------
     # CLAUDE.md "Content safety": before any public broadcast, generated text must
@@ -246,7 +255,16 @@ class Settings(BaseSettings):
     # convo_* settings above). Speakers are cast ids whose cards/voices drive the
     # segment; word-count guidance and the length-target DIAL are per format so
     # the three read as tonally distinct (a tight news desk vs. a short music bed).
-    format_news_speaker_id: str = "vell"  # the single DJ on the news desk
+    format_news_speaker_id: str = "thorn"  # the news desk's default anchor
+    # D12.4 — the DEDICATED news desk: the cast id(s) who read the on-the-hour
+    # bulletin, INDEPENDENT of whichever show is on air. Like a real station, the
+    # `news` slot cuts to a fixed newsreader (their card gives the consistent news
+    # register) and then hands back to the show's hosts — instead of the current
+    # program's lead reading the news. Empty list = the pre-D12.4 behaviour (the
+    # program lead reads its own bulletin — the clean rollback). Only the first
+    # `news`-arity ids are used (news is single-voice), so `["thorn"]` = Thorn on
+    # every bulletin, all day.
+    news_anchor_ids: list[str] = ["thorn"]
     format_news_headline_count: int = 3  # legacy B5 dial; D4 uses news_story_count
     # A full ~5-minute hourly bulletin. Spoken news runs ~140-160 wpm, and LLMs tend to
     # undershoot a word target, so aim high (~800-1000 words → ~5-6 min) and give the

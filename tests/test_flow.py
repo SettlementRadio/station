@@ -16,6 +16,7 @@ from src.flow import CLOSE, CONTINUE, OPEN, Handoff, ShowFlow, handoff_from_segm
 from src.formats import talk as talk_fmt
 from src.segment import Segment
 from src.world import programming
+from src.world.context import AssembledContext
 from src.world.framing import ShowFrame
 from src.writers import conversation as convo
 
@@ -484,3 +485,140 @@ def test_evergreen_talk_breaks_the_thread(monkeypatch, tmp_path):
     # slot3 must NOT continue a segment that didn't really air.
     assert decisions[0] is False
     assert decisions[2] is False
+
+
+# --- D12.3: freshness (D5) reconciled with continuity (integration) ----------
+
+
+def _capture_steers(monkeypatch):
+    """Stub compose_segment's model/DB seams; capture the freshness steers routed in.
+
+    `recent_topics_block` echoes its `exclude` arg and `recent_openings_block` a fixed
+    marker, so the test can read what the showrunner/orchestrator each received.
+    """
+    from src.safety import SafetyResult
+    from src.world.store import CastMember
+    from src.writers.conversation import ContinuityResult
+
+    seen = {}
+    vell = CastMember("vell", "Vell", "card", "vell_night", [])
+    wren = CastMember("wren", "Wren", "card", "dj_two", [])
+    ctx = AssembledContext(cached_context="core", dynamic="now", speakers=[vell, wren])
+
+    monkeypatch.setattr(
+        convo.freshness,
+        "recent_topics_block",
+        lambda now, *, exclude=None: f"TOPICS|exclude={exclude}",
+    )
+    monkeypatch.setattr(
+        convo.freshness, "recent_openings_block", lambda now, fmt: "OPENINGS"
+    )
+
+    def _showrunner(ctx, now, *, frame=None, recent_block="", flow=None):
+        seen["topics"] = recent_block
+        return "the beat"
+
+    def _orchestrate(ctx, beat, now, *, recent_openings="", **kwargs):
+        seen["openings"] = recent_openings
+        return "Vell: hi.\nWren: hey."
+
+    monkeypatch.setattr(convo, "showrunner", _showrunner)
+    monkeypatch.setattr(convo, "orchestrate", _orchestrate)
+    monkeypatch.setattr(
+        convo, "safety_check", lambda t: SafetyResult(True, "OK", "llm")
+    )
+    monkeypatch.setattr(
+        convo,
+        "continuity_check",
+        lambda s, c, **k: ContinuityResult(True, "sonnet", "OK"),
+    )
+    monkeypatch.setattr(
+        convo, "_render_turns", lambda turns, seg_id, *, default_emotion=None: "/x.mp3"
+    )
+    monkeypatch.setattr(
+        convo.guest_mod, "maybe_guest", lambda ctx, now, fmt, chance=None: None
+    )
+    monkeypatch.setattr(convo.memory_mod, "memory_section", lambda speakers, now: "")
+    return ctx, seen
+
+
+_COMPOSE_NOW = datetime(2026, 6, 22, 14, 0)
+
+
+def test_continuing_thread_exempts_topic_and_drops_openings(monkeypatch):
+    ctx, seen = _capture_steers(monkeypatch)
+    monkeypatch.setattr(convo.settings, "convo_continuity_enabled", True)
+    flow = ShowFlow(
+        CONTINUE,
+        handoff=Handoff(tail="Wren: more.", topic="the reclaim", open_thread=True),
+        continue_thread=True,
+    )
+    convo.compose_segment(ctx, _COMPOSE_NOW, seg_id="talk-c", flow=flow)
+    assert seen["topics"] == "TOPICS|exclude=the reclaim"  # active thread exempt
+    assert seen["openings"] == ""  # a cold pickup has no opening to freshen
+
+
+def test_transition_slot_keeps_both_freshness_steers(monkeypatch):
+    ctx, seen = _capture_steers(monkeypatch)
+    monkeypatch.setattr(convo.settings, "convo_continuity_enabled", True)
+    # a continue slot that is NOT continuing (a transition) starts a new subject:
+    # both steers apply so it can't loop a recent topic or opening.
+    flow = ShowFlow(
+        CONTINUE,
+        handoff=Handoff(tail="Wren: done.", topic="the reclaim", open_thread=False),
+        continue_thread=False,
+    )
+    convo.compose_segment(ctx, _COMPOSE_NOW, seg_id="talk-t", flow=flow)
+    assert seen["topics"] == "TOPICS|exclude=None"
+    assert seen["openings"] == "OPENINGS"
+
+
+def test_standalone_path_keeps_both_freshness_steers(monkeypatch):
+    ctx, seen = _capture_steers(monkeypatch)
+    convo.compose_segment(ctx, _COMPOSE_NOW, seg_id="talk-s", flow=None)
+    assert seen["topics"] == "TOPICS|exclude=None"
+    assert seen["openings"] == "OPENINGS"
+
+
+# --- D12.4: program sign-on / sign-off + talk-first backbone -----------------
+
+
+def test_open_signs_on_by_program_name():
+    got = talk_fmt._backbone_for(ShowFlow(OPEN, program_name="The Long Night"))
+    assert "SIGN ON" in got and "The Long Night" in got
+
+
+def test_close_signs_off_by_program_name():
+    got = talk_fmt._backbone_for(ShowFlow(CLOSE, program_name="The Long Night"))
+    assert "SIGN OFF" in got and "The Long Night" in got
+
+
+def test_signon_suppressed_when_disabled(monkeypatch):
+    monkeypatch.setattr(talk_fmt.settings, "convo_flow_signon", False)
+    got = talk_fmt._backbone_for(ShowFlow(OPEN, program_name="The Long Night"))
+    assert "The Long Night" not in got and "SIGN ON" not in got
+
+
+def test_signon_absent_without_a_program_name():
+    got = talk_fmt._backbone_for(ShowFlow(OPEN, program_name=None))
+    assert "SIGN ON" not in got
+
+
+def test_no_talk_backbone_assumes_a_song_follows():
+    # Talk-first: nothing promises "…and now some music" (a music slot self-intros).
+    flows = [
+        None,
+        ShowFlow(OPEN, program_name="X"),
+        ShowFlow(CONTINUE),
+        ShowFlow(CLOSE, program_name="X"),
+    ]
+    for f in flows:
+        text = talk_fmt._backbone_for(f).lower()
+        assert "music" not in text and "a song" not in text and "a track" not in text
+
+
+def test_scheduler_stamps_the_program_name_on_the_flow(monkeypatch, tmp_path):
+    calls, gen = _flow_recording_generator(tmp_path)
+    _wire(monkeypatch, tmp_path, gen, _ONE_PROGRAM)
+    scheduler.top_up(now=datetime(2026, 6, 22, 0, 5))
+    assert calls[0]["flow"].program_name == "The Long Night"

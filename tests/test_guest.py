@@ -62,6 +62,17 @@ def test_zero_chance_yields_no_guest(monkeypatch):
     assert guest_mod.maybe_guest(_ctx(), NOW, "talk") is None
 
 
+def test_program_chance_overrides_the_global(monkeypatch):
+    # D12.4 — a show's own guest cadence beats the global rate, both ways:
+    monkeypatch.setattr(settings, "convo_guest_enabled", True)
+    # global says never, but an interview show forces a guest...
+    monkeypatch.setattr(settings, "convo_guest_chance", 0.0)
+    assert guest_mod.maybe_guest(_ctx(), NOW, "talk", chance=1.0) is not None
+    # ...and global says always, but a solo-desk show suppresses it.
+    monkeypatch.setattr(settings, "convo_guest_chance", 1.0)
+    assert guest_mod.maybe_guest(_ctx(), NOW, "talk", chance=0.0) is None
+
+
 def test_quotes_become_a_figure_soundbite(monkeypatch):
     _always(monkeypatch)
     g = guest_mod.maybe_guest(_ctx(quotes=[(QUOTE, FIGURE)]), NOW, "talk")

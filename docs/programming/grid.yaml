@@ -1,93 +1,337 @@
-# grid.yaml — Settlement Radio weekly programming grid (Phase D / D6).
+# grid.yaml — Settlement Radio weekly programming grid (Phase D / D6 · D12.4 retune)
 #
-# The human-edited source of truth for WHICH SHOW AIRS WHEN. Edit this file and
-# the next scheduler top-up airs it — the grid is read LIVE (an mtime-cached
-# loader in src/world/programming.py; no seed step). See README.md in this folder
-# for the full model (Program / Clock / grid slot), the clock grammar, and the
-# design decisions.
+# The human-edited source of truth for WHICH SHOW AIRS WHEN. Edit this file and the
+# next scheduler top-up airs it — the grid is read LIVE (an mtime-cached loader in
+# src/world/programming.py; no seed step). See README.md for the model + clock grammar.
 #
 # In-world wall clock == real wall clock (the world clock shifts the YEAR only), so
 # slots are plain weekday + HH:MM-HH:MM ranges. The grid must tile the week with no
 # gaps; the reserved `default` program backstops any hole so the scheduler never stalls.
 #
-# The weekday grid stays BACKWARD-COMPATIBLE with the two original hosts (vell/wren)
-# and the framing boundaries (dawn handover 05-07, dusk handover 20-22), so the
-# generalised framing (D6.1) reproduces the classic frames. The WIDER cast (joss,
-# kael, mira, thorn, sera, the-archivist, orin, zhe — docs/canon/90-cast.md) is on
-# the roster as of D9.2, each with a distinct voice (config/voices.yaml); The Bridge
-# (weekend mornings) is the first show that airs them — schedule more the same way.
-# `music` is BACK in the clocks as of D7.4: the slot plays a real curated
-# track (selector -> intro -> track -> back-announce; evergreen fallback if the
-# catalogue is empty — no silent gap).
+# ─────────────────────────────────────────────────────────────────────────────
+# THE STATION (docs/canon/SPIRIT.md, 00-station.md) — a TALK-FIRST station across
+# the dark between scattered worlds, ~600 years ahead: mature wonder, connection
+# across distance, deep time, the human heart in a vast setting. It runs like a real
+# speech-led station — MANY short, themed strands, each a believable VERTICAL of this
+# world, grounded in the canon domains:
+#
+#   Politics & governance (30-polities) · Conflict & the frontier (45-conflict) ·
+#   Law & crime (40-law) · Economy & trade (35-economy) · Science & the relay
+#   (75/78) · Travel & the peoples (05/20) · Culture, story & the arts (65/70) ·
+#   History & deep time (10) · Sport (Kael's circuit) · the cosmos (80) · faith (60).
+#
+# The day keeps a stable NEWS rhythm (breakfast & drive flagships, a midday desk,
+# bulletins on the hour) around a ROTATING SPECIALIST: two 2-hour slots a weekday
+# (10:00–12:00 and 14:00–16:00) cycle Mon→Fri, so across a week the listener hears
+# every vertical once — the way a real station runs a Tuesday economy hour, a
+# Wednesday history hour, and so on. Nothing repeats the same subject day after day.
+#
+# ─────────────────────────────────────────────────────────────────────────────
+# FORMAT & VOICES — read the `hosts` + the `[fmt]` tag on each show:
+#   • [desk]      a single anchor reading — the `news` bulletin is ALWAYS the
+#                 dedicated news desk (Thorn — settings.news_anchor_ids), never the
+#                 show's host; it cuts in on the hour and hands back.
+#   • [duo]       a TWO-DJ conversation (the `talk` format needs ≥2 hosts, lead
+#                 first — a one-host talk show falls back to the default cast).
+#   • [interview] a duo that regularly brings in a GUEST — an invited in-world
+#                 figure (a governor, a trader, an artist) for a short interview.
+#   • [dispatch]  a duo that regularly plays a RECORD — an attributable soundbite
+#                 from a story figure, or a field recording from a correspondent
+#                 (Sera/Zhe/Orin send dispatches across the relay, lag and all).
+#   • [music]     a single DJ (intro → a real track → back-announce).
+#
+# `guest_chance` (0..1, D12.4) sets how often a talk show runs that guest/record —
+# interview/dispatch shows run it often, a solo-reflective show runs none. It
+# overrides the global convo_guest_chance. The guest KIND is automatic: a played
+# soundbite when the hour's stories carry an attributable quote, else an invited
+# persona. (Guests only ever join `talk` segments; music/news ignore it.)
+#
+# `break_every: N` (D8.1) — sparse ad-break cadence; the handovers, short features,
+# deep night and music stay break-free. MUSIC is deliberately short: the catalogue is
+# ~57 tracks / ~2.5h total (config/tracks.yaml), so a long block would just repeat.
+# ─────────────────────────────────────────────────────────────────────────────
 
-# `break_every: N` (D8.1) — this show's AD-BREAK cadence: one sparse break (a
-# fresh-generated commercial/promo spot, bracketed by the d18 break stings)
-# after every N content segments while the show is on air. Absent/0 = the show
-# takes NO breaks. The grid owns the ad load — keep it sparse (texture, not
-# interruption); the handover shows and the fallback program stay break-free.
 programs:
+  # ══ NEWS & CURRENT AFFAIRS — the day's spine ═════════════════════════════════
+  morning_currents:
+    name: "Morning Currents"     # [interview] breakfast news & current affairs; an analyst joins
+    hosts: [thorn, wren]
+    framing: ensemble
+    daypart: morning
+    clock: [talk, talk, news@:00, talk, news@:30]
+    break_every: 6
+    guest_chance: 0.3
+
+  settlement_desk:
+    name: "The Settlement Desk"   # [dispatch] midday news + a field record from Sera on the road
+    hosts: [thorn, sera]
+    framing: ensemble
+    daypart: midday
+    clock: [news@:00, talk, talk, news@:30]
+    break_every: 6
+    guest_chance: 0.5
+
+  evening_currents:
+    name: "Evening Currents"      # [interview] the drive-time round-up of the settlement currents
+    hosts: [thorn, wren]
+    framing: ensemble
+    daypart: evening
+    clock: [talk, talk, news@:00, talk, news@:30]
+    break_every: 6
+    guest_chance: 0.3
+
+  common_ground:
+    name: "Common Ground"         # [interview] daily life across the worlds; an ordinary resident on air
+    hosts: [wren, mira]
+    framing: ensemble
+    daypart: morning
+    clock: [talk, talk, news@:00, talk]
+    break_every: 5
+    guest_chance: 0.6
+
+  # ══ THE VERTICALS — the rotating specialist strands (one theme a day) ════════
+  the_assembly:
+    name: "The Assembly"          # [interview] POLITICS & governance: the slow councils, the delegations, core vs frontier
+    hosts: [thorn, joss]
+    framing: ensemble
+    daypart: late morning
+    clock: [talk, talk, news@:00, talk]
+    break_every: 5
+    guest_chance: 0.7
+
+  the_exchange:
+    name: "The Exchange"          # [interview] ECONOMY & trade: the physics of scarcity, the long haul, the markets
+    hosts: [wren, joss]
+    framing: ensemble
+    daypart: late morning
+    clock: [talk, talk, news@:00, talk]
+    break_every: 5
+    guest_chance: 0.7
+
+  the_standing_watch:
+    name: "The Standing Watch"    # [dispatch] CONFLICT & the frontier: the arithmetic of distant war, tensions on the lanes
+    hosts: [thorn, zhe]
+    framing: ensemble
+    daypart: late morning
+    clock: [talk, talk, news@:00, talk]
+    guest_chance: 0.6
+
+  the_compact:
+    name: "The Compact"           # [interview] LAW & crime: the local nature of distant justice, the compacts, a case
+    hosts: [joss, sera]
+    framing: ensemble
+    daypart: late morning
+    clock: [talk, talk, news@:00, talk]
+    break_every: 5
+    guest_chance: 0.7
+
+  the_workshop:
+    name: "The Workshop"          # [interview] SCIENCE & the relay: ships, terraforming, machine-minds-as-tools
+    hosts: [wren, joss]
+    framing: ensemble
+    daypart: afternoon
+    clock: [talk, talk, news@:00, talk]
+    break_every: 5
+    guest_chance: 0.7
+
+  the_far_towns:
+    name: "The Far Towns"         # [dispatch] TRAVEL & the peoples: a world a week, sites, difference; Sera's field records
+    hosts: [sera, mira]
+    framing: ensemble
+    daypart: afternoon
+    clock: [talk, talk, news@:00, talk]
+    guest_chance: 0.7
+
+  the_long_view:
+    name: "The Long View"         # [duo] HISTORY & deep time: the ages of the worlds, the fossil-word "settlement"
+    hosts: [joss, the-archivist]
+    framing: ensemble
+    daypart: afternoon
+    clock: [talk, talk, news@:00, talk]
+    break_every: 4
+    guest_chance: 0.4
+
+  the_reading_room:
+    name: "The Reading Room"      # [interview] STORY & the literary arts: "the supremacy of story", an author on air
+    hosts: [mira, the-archivist]
+    framing: ensemble
+    daypart: afternoon
+    clock: [talk, talk, news@:00, talk]
+    guest_chance: 0.6
+
+  the_thread:
+    name: "The Thread"            # [dispatch] COMMUNICATION & the relay: the network that binds; voices from far worlds
+    hosts: [sera, joss]
+    framing: ensemble
+    daypart: late morning
+    clock: [talk, talk, news@:00, talk]
+    guest_chance: 0.6
+
+  the_commons:
+    name: "The Commons"           # [duo] DEBATE & ideas: the week in the currents, the big questions reasoned through
+    hosts: [joss, mira]
+    framing: ensemble
+    daypart: afternoon
+    clock: [talk, talk, news@:00, talk]
+    break_every: 5
+    guest_chance: 0.5
+
+  # ══ DAILY CULTURE, SPORT, MUSIC & LETTERS ════════════════════════════════════
+  the_gallery:
+    name: "The Gallery"           # [interview] the arts in depth: performance, new works, the celebrated figures
+    hosts: [mira, orin]
+    framing: ensemble
+    daypart: afternoon
+    clock: [talk, talk, news@:00, music, talk]
+    break_every: 5
+    guest_chance: 0.8
+
+  the_circuit:
+    name: "The Circuit"           # [interview] SPORT: the Inter-Settlement Games, the racing lanes, live (with the lag)
+    hosts: [kael, sera]
+    framing: ensemble
+    daypart: afternoon
+    clock: [talk, talk, news@:00, talk]
+    break_every: 5
+    guest_chance: 0.6
+
+  the_new_signal:
+    name: "The New Signal"        # [music] a SHORT daily feature — the day's arrivals / a top-of-the-dial run
+    hosts: [orin]
+    framing: solo
+    daypart: afternoon
+    clock: [music, music, music]
+
+  the_mailbag:
+    name: "The Mailbag"           # [dispatch] listener letters carried on the relay — recorded messages from the worlds
+    hosts: [vell, wren]
+    framing: ensemble
+    daypart: afternoon
+    clock: [talk, talk]
+    guest_chance: 0.4
+
+  # ══ THE NIGHT — warmth, letters, archives, the cosmos ════════════════════════
+  nightfall:
+    name: "Nightfall"             # [duo] the dusk handover: the day winds down into the night
+    hosts: [vell, wren]           # hosts[0]=incoming lead (vell), hosts[1]=outgoing (wren)
+    framing: handover
+    daypart: nightfall
+    clock: [talk, news@:00, talk, music, talk]
+    guest_chance: 0.1
+
   long_night:
-    name: "The Long Night"
-    hosts: [vell, wren]          # vell anchors solo; wren is the companion-of-record
+    name: "The Long Night"        # [duo] Vell's warm night — talk, letters, a little music
+    hosts: [vell, the-archivist]
     framing: solo
     daypart: deep night
-    clock: [talk, music, talk, news@:00]   # quiet: talk + a song; news pinned to the hour
-    break_every: 6               # rare — a wry late-night spot, the night stays quiet
+    clock: [talk, music, talk, news@:00, talk]
+    break_every: 6
+    guest_chance: 0.2
+
+  deep_hours:
+    name: "The Deep Hours"        # [duo] the Archivist and the deep archives; the strange late hours
+    hosts: [the-archivist, vell]
+    framing: solo
+    daypart: deep night
+    clock: [talk, music, talk, news@:00]
+    guest_chance: 0.1
+
+  deep_field:
+    name: "The Deep Field"        # [duo] pre-dawn: Zhe from the far edge on the cosmos, the dark, the sublime
+    hosts: [zhe, the-archivist]
+    framing: solo
+    daypart: deep night
+    clock: [talk, music, talk, news@:00]
+    guest_chance: 0.0
 
   first_light:
-    name: "First Light"
-    hosts: [wren, vell]          # hosts[0]=incoming lead (wren), hosts[1]=outgoing (vell)
-    framing: handover            # the old dawn handover, now a boundary program
+    name: "First Light"           # [duo] the dawn handover: the night hands to the day
+    hosts: [wren, vell]           # hosts[0]=incoming lead (wren), hosts[1]=outgoing (vell)
+    framing: handover
     daypart: first light
-    clock: [talk, music, news@:00]
+    clock: [talk, news@:00, talk, news@:30]
+    guest_chance: 0.1
 
-  daywatch:
-    name: "Daywatch"
-    hosts: [wren, vell]          # wren anchors the waking day; vell stays on for a stretch
-    framing: solo
-    daypart: daytime
-    clock: [talk, news@:00, music, talk]
-    break_every: 4               # the day carries the (still light) ad load
-
-  nightfall:
-    name: "Nightfall"
-    hosts: [vell, wren]          # hosts[0]=incoming lead (vell), hosts[1]=outgoing (wren)
-    framing: handover            # the old dusk handover, now a boundary program
-    daypart: nightfall
-    clock: [talk, music, news@:00]
-
+  # ══ WEEKEND ══════════════════════════════════════════════════════════════════
   the_bridge:
-    name: "The Bridge"           # D9.2 — the first show carrying the NEW cast:
-    hosts: [joss, mira]          # joss anchors (his card: weekends/archives); mira
-    framing: solo                # alongside for culture colour. Both are bible-
-    daypart: weekend morning     # authored DJs with distinct voices (voices.yaml).
-    clock: [talk, music, news@:00, talk]
-    break_every: 5
+    name: "The Bridge"            # [interview] weekend mornings: Joss the historian + Mira on the arts
+    hosts: [joss, mira]
+    framing: ensemble
+    daypart: weekend morning
+    clock: [talk, talk, news@:00, music, talk]
+    break_every: 6
+    guest_chance: 0.6
 
-  # Reserved fallback — returned by program_for(now) when no slot matches, so the
-  # scheduler never stalls. Its clock is the weighted-rotation fallback (seeded from
-  # settings.buffer_rotation) and its framing is `legacy` — the hour-derived night/
-  # dawn/day/dusk frame (framing.show_frame), so a fallback slot behaves EXACTLY like
-  # today's flat rotation. With an empty grid the station is unchanged. (README §5.)
+  the_far_signal:
+    name: "The Far Signal"        # [dispatch] dispatches from the field (Sera) and the far edge (Zhe) — records played
+    hosts: [sera, zhe]
+    framing: ensemble
+    daypart: evening
+    clock: [talk, talk, news@:00, talk]
+    guest_chance: 0.7
+
+  deep_listening:
+    name: "Deep Listening"        # [music] Mira's curated weekend hour — reflective, close listening
+    hosts: [mira]                 # (same pool as The New Signal for now — see the music note in the header)
+    framing: solo
+    daypart: weekend
+    clock: [music, music, news@:00]
+
+  the_gathering:
+    name: "The Gathering"         # [duo] weekend reflection — faith, meaning & art as human universals (60/65)
+    hosts: [the-archivist, vell]
+    framing: solo
+    daypart: evening
+    clock: [talk, talk, news@:00, talk]
+    guest_chance: 0.2
+
+  # Reserved fallback — returned when no slot matches, so the scheduler never stalls.
   default:
     name: "Settlement Radio"
-    hosts: [vell, wren]          # night host, then day host (legacy handover order)
+    hosts: [vell, wren]
     framing: legacy
-    rotation: [talk, news, music]  # weighted-rotation fallback (no explicit clock)
+    rotation: [talk, talk, news, music]
 
-# The weekly tiling: weekday range -> time range -> program id. `daily` = all seven
-# days; ranges (mon-fri) and aliases (weekdays / weekends) are also allowed. A range
-# may wrap past midnight (22:00-05:00 = start hour through the end hour next day).
+# ─────────────────────────────────────────────────────────────────────────────
+# THE WEEKLY TILING (no gaps). `daily` = the night spine + handovers, every day.
+# `weekdays` fills the working day EXCEPT the two specialist windows (10:00-12:00,
+# 14:00-16:00), which each per-day key (mon…fri) sets to a rotating vertical.
+# `weekends` gives Sat/Sun their own daytime. A narrower weekday set always wins.
+# ─────────────────────────────────────────────────────────────────────────────
 grid:
+  # The night + edges, identical all week (20:00 → 07:00):
   daily:
-    "22:00-05:00": long_night    # night: vell solo
-    "05:00-07:00": first_light   # dawn handover: vell -> wren
-    "07:00-20:00": daywatch      # waking day: wren solo
-    "20:00-22:00": nightfall     # dusk handover: wren -> vell
+    "20:00-22:00": nightfall       # dusk handover
+    "22:00-00:00": long_night      # Vell's warm night
+    "00:00-02:00": deep_hours      # the deep archives
+    "02:00-05:00": deep_field      # pre-dawn cosmos
+    "05:00-07:00": first_light     # dawn handover
 
-  # Weekend override (D9.2): Saturday + Sunday mornings belong to The Bridge —
-  # the first slot on the grid voiced by the NEW cast (joss + mira). The rest of
-  # the weekend still follows the daily tiling above. Grow this the same way:
-  # author the show above, hosts by cast id — the grid is read live, no seed step.
+  # Weekday working day (mon-fri) — the 10-12 & 14-16 windows are per-day (below):
+  weekdays:
+    "07:00-09:00": morning_currents  # breakfast flagship
+    "09:00-10:00": common_ground     # daily-life magazine
+    "12:00-13:00": settlement_desk   # midday news + field
+    "13:00-14:00": the_gallery       # a daily hour of the arts
+    "16:00-17:00": the_circuit       # sport
+    "17:00-17:30": the_new_signal    # SHORT music
+    "17:30-18:00": the_mailbag       # listener letters
+    "18:00-20:00": evening_currents  # drive flagship
+
+  # The rotating specialist — two verticals a day, cycling across the week:
+  mon: { "10:00-12:00": the_assembly,       "14:00-16:00": the_workshop }     # politics · science
+  tue: { "10:00-12:00": the_exchange,       "14:00-16:00": the_far_towns }    # economy · travel
+  wed: { "10:00-12:00": the_standing_watch, "14:00-16:00": the_long_view }    # conflict · history
+  thu: { "10:00-12:00": the_compact,        "14:00-16:00": the_reading_room } # law/crime · story
+  fri: { "10:00-12:00": the_thread,         "14:00-16:00": the_commons }      # the relay · debate
+
+  # Weekend daytime (sat-sun) — features, culture, sport, dispatches:
   weekends:
-    "07:00-12:00": the_bridge    # joss + mira; daywatch resumes at noon
+    "07:00-09:00": the_bridge        # weekend culture & history
+    "09:00-11:00": the_far_towns     # the worlds & their peoples (weekend deep-dive)
+    "11:00-12:00": deep_listening    # curated music hour
+    "12:00-13:00": settlement_desk   # weekend midday news
+    "13:00-15:00": the_circuit       # weekend sport: the Games
+    "15:00-16:00": the_new_signal    # SHORT music
+    "16:00-18:00": the_far_signal    # dispatches from the field & the far edge
+    "18:00-20:00": the_gathering     # weekend reflection

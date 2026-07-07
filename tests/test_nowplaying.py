@@ -15,7 +15,7 @@ from datetime import datetime, timedelta
 from src import nowplaying
 from src.disclosure import DISCLOSURE_LINE
 
-NOW = datetime(2026, 6, 22, 14, 30, 0)  # Monday afternoon -> the Daywatch program
+NOW = datetime(2026, 6, 22, 5, 30, 0)  # Monday first light -> the First Light program
 
 # The internal keys the scheduler persists — the feed must expose only a safe subset.
 _INTERNAL_KEYS = {"id", "audio_path", "actual_duration_sec", "length_target_sec"}
@@ -27,8 +27,8 @@ def _schedule(now=NOW):
             {
                 "id": "talk-001",
                 "format": "talk",
-                "program": "daywatch",
-                "program_name": "Daywatch",
+                "program": "first_light",
+                "program_name": "First Light",
                 "audio_path": "/segments/talk-001.mp3",
                 "air_time": (now - timedelta(minutes=2)).isoformat(),
                 "actual_duration_sec": 300.0,
@@ -37,8 +37,8 @@ def _schedule(now=NOW):
             {
                 "id": "news-002",
                 "format": "news",
-                "program": "daywatch",
-                "program_name": "Daywatch",
+                "program": "first_light",
+                "program_name": "First Light",
                 "audio_path": "/segments/news-002.mp3",
                 "air_time": (now + timedelta(minutes=3)).isoformat(),
                 "actual_duration_sec": 120.0,
@@ -60,20 +60,20 @@ def _stub_names(monkeypatch, names):
 
 
 def test_now_and_next_from_the_schedule(monkeypatch):
-    _stub_names(monkeypatch, {"vell": "Vell", "wren": "Wren"})
+    _stub_names(monkeypatch, {"vell": "Vell", "wren": "Wren", "thorn": "Thorn"})
     feed = nowplaying.build_feed(NOW, _schedule())
 
     assert feed["station"] == nowplaying.STATION_NAME
     assert feed["disclosure"] == DISCLOSURE_LINE  # in sync with the web copy
-    assert feed["now"]["program"] == "Daywatch"
+    assert feed["now"]["program"] == "First Light"
     assert feed["now"]["format"] == "talk"
     assert feed["now"]["format_label"] == "Talk"
-    # talk is two-voice: both program hosts show (Daywatch = wren, vell), by name.
+    # talk is two-voice: both program hosts show (First Light = wren, vell), by name.
     assert feed["now"]["hosts"] == ["Wren", "Vell"]
     # what's next is the news desk...
     assert [n["format"] for n in feed["next"]] == ["news"]
-    # ...a single-voice desk, so only the lead host is on air.
-    assert feed["next"][0]["hosts"] == ["Wren"]
+    # ...read by the DEDICATED news anchor (Thorn), not the show host (D12.4).
+    assert feed["next"][0]["hosts"] == ["Thorn"]
     assert feed["next"][0]["format_label"] == "The Settlement News"
 
 
@@ -96,8 +96,8 @@ def test_next_count_is_bounded(monkeypatch):
             {
                 "id": f"talk-1{i}",
                 "format": "talk",
-                "program": "daywatch",
-                "program_name": "Daywatch",
+                "program": "first_light",
+                "program_name": "First Light",
                 "audio_path": f"/segments/talk-1{i}.mp3",
                 "air_time": (NOW + timedelta(minutes=10 + i)).isoformat(),
                 "actual_duration_sec": 300.0,
@@ -169,5 +169,5 @@ def test_write_feed_writes_valid_json(monkeypatch, tmp_path):
 
     on_disk = json.loads(feed_path.read_text(encoding="utf-8"))
     assert on_disk == returned
-    assert on_disk["now"]["program"] == "Daywatch"
+    assert on_disk["now"]["program"] == "First Light"
     assert on_disk["disclosure"] == DISCLOSURE_LINE

@@ -235,11 +235,16 @@ that loads bible-authored figures is future work; the schema + split are in plac
 
 ## Programming the grid
 
-The station runs a **weekly programming grid**: each in-world hour maps to a **named program**
-(*The Long Night*, *First Light*, *Daywatch*, *Nightfall*) with **hosts**, **framing**
-(solo / handover), and a **clock** — a format sequence with run-lengths (`music x3` = a three-song
-sweep) and pinned top-of-hour slots (`news@:00`). The scheduler reads the grid at each slot and
-routes the program's hosts into generation + framing.
+The station runs a **weekly programming grid**: a talk-first week of many short, themed programs —
+news/current-affairs flagships, subject *verticals* (politics, economy, conflict, law, science,
+travel, the arts…), sport, short music features, the night shows — each a **named program** with
+**hosts**, **framing** (solo / handover / ensemble), and a **clock** (a format sequence with
+run-lengths `music x3` and pinned slots `news@:00` / `news@:30`). A stable news rhythm surrounds a
+**rotating specialist** (two 2-hour weekday windows cycle Mon→Fri) so a listener hears every vertical
+across the week. Two format rules matter: **`talk` is a two-DJ conversation (needs ≥2 hosts, lead
+first)**; **`news` is read by the dedicated news desk (Thorn), not the show's host** — the bulletin
+cuts in on the hour and hands back. An interview/dispatch show sets its own guest cadence
+(`guest_chance`); a solo-desk show sets none.
 
 ### Edit the grid  → Phase E panel
 The grid is a hand-edited YAML — **the only thing you edit** (a web editor is Phase E). Workflow
@@ -250,20 +255,24 @@ $EDITOR docs/programming/grid.yaml     # add/rename a program, retune a clock, m
 Shape (full model — programs, the clock grammar, the tiling — in `docs/programming/README.md`):
 ```yaml
 programs:
-  daywatch:
-    name: "Daywatch"
-    hosts: [wren, vell]              # cast ids (docs/canon/90-cast.md); hosts[0] = lead/anchor
-    framing: solo                    # solo | handover | ensemble | legacy (the default program)
-    clock: [talk, news@:00, talk]    # the hour-clock: sequence + run-lengths + pinned slots
-    break_every: 4                   # ad-break cadence (see Commercials; absent/0 = no breaks)
+  the_gallery:
+    name: "The Gallery"              # cast ids (docs/canon/90-cast.md); hosts[0] = lead/anchor
+    hosts: [mira, orin]              # `talk` needs ≥2 hosts; a music show needs exactly 1
+    framing: ensemble               # solo | handover | ensemble | legacy (the default program)
+    clock: [talk, talk, news@:00, talk, music]   # sequence + run-lengths + pinned slots
+    break_every: 5                   # ad-break cadence (see Commercials; absent/0 = no breaks)
+    guest_chance: 0.8                # 0..1 — how often this talk show runs a guest/played record
 grid:
   daily:                             # daily | weekdays | weekends | mon-fri | sat | mon,wed
-    "07:00-20:00": daywatch          # weekday range -> HH:MM-HH:MM (may wrap midnight) -> program id
+    "07:00-20:00": the_gallery       # weekday range -> HH:MM-HH:MM (may wrap midnight) -> program id
+  mon: { "14:00-16:00": the_workshop }  # a per-day key (narrower) overrides `weekdays`/`daily`
 ```
 Rules: the grid should **tile the week with no gaps** (the reserved `default` program backstops any
 hole — the scheduler never stalls); each program id is unique; formats are the `formats.FORMATS`
 keys (`talk`/`news`/`music`). Marker tokens in a clock (`sting`/`bed`/`ident`) are accepted but
 skipped by the scheduler — actual sting/bed/ident placement is dial-driven (see *Music & culture*).
+**Music is short by design** — the catalogue is ~2.5h total, so keep music to short features (a
+30-min top-5, a weekend hour), never multi-hour blocks that would just repeat.
 
 ### See it (token-free)
 ```bash
@@ -277,9 +286,35 @@ make programming-demo   # the weekly daypart map, the clock walking across the d
   program's mix).
 - **`PROGRAMMING_GRID_PATH`** — the grid YAML (default `docs/programming/grid.yaml`).
 - **`PROGRAMMING_DEFAULT_PROGRAM`** — the reserved never-stall fallback program id (`default`).
+- **`NEWS_ANCHOR_IDS`** — the dedicated news desk (default `["thorn"]`): every `news` bulletin is
+  read by this anchor, independent of the show on air. Empty = the show's lead reads its own bulletin
+  (the pre-D12.4 behaviour).
 
 The grid is **config, not world**: both `seed-canon` and `reset-world` leave it alone; git is its
 backup. No DB rows in Phase D (`make seed-grid` + the DB projection land in Phase E).
+
+### Talk continuity / show flow (D12)  → Phase E panel
+Consecutive talk segments in one program play as **one flowing show**, not N mini-shows: the show
+opens once (a spoken sign-on by name), the middle segments come in **cold** and carry the same thread
+forward, a settlement-time check fires only occasionally, and it signs off once at the end. It's
+best-effort context layered on the atomic segment — a missing hand-off just opens the next segment
+standalone.
+- **`CONVO_CONTINUITY_ENABLED`** — master toggle (default `true`). `false` = the pre-D12 shape (every
+  talk segment self-contained, opens + closes) — the clean rollback.
+- **`CONVO_CONTINUITY_MAX_SEGMENTS`** — how many consecutive talk segments one thread may hold
+  (opener included) before a forced transition to a fresh subject (default `3`).
+- **`CONVO_FLOW_TIMECHECK`** — when a spoken time-check is allowed: `never | handover | open | hourly`
+  (default `hourly` — the top of the hour + handovers, not every segment).
+- **`CONVO_FLOW_SIGNON`** — spoken program sign-on/sign-off by name at a show's first/last slot
+  (default `true`).
+- **`CONVO_GUEST_CHANCE`** — the *global* guest/interview rate; a program's own `guest_chance` (grid)
+  overrides it per show.
+
+See it (a few Claude calls, no TTS, writes nothing):
+```bash
+make continuity-demo    # 5 consecutive talk slots of one show, scripts back-to-back:
+                        # one sign-on, cold middles that carry the thread, one close
+```
 
 ---
 

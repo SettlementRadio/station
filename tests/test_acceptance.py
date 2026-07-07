@@ -110,6 +110,44 @@ def test_no_repetition_fails_on_back_to_back_song():
     assert "song" in r.detail
 
 
+# --- talk_flow (D12) --------------------------------------------------------
+def _talk_run(program, positions, *, start=None):
+    """Consecutive talk slots in one program, each stamped with its show position."""
+    start = start or datetime(2026, 7, 1, 22, 0, 0)
+    out = []
+    for i, pos in enumerate(positions):
+        e = _entry(f"{program}-{i}", "talk", start + timedelta(minutes=5 * i), 120.0)
+        e["program"] = program
+        e["flow_position"] = pos
+        out.append(e)
+    return out
+
+
+def test_talk_flow_passes_when_a_show_opens_once():
+    # open → continue → continue → close: one show, not four mini-shows.
+    tl = _talk_run("long_night", ["open", "continue", "continue", "close"])
+    r = acc._check_talk_flow(tl)
+    assert r.ok
+    assert "one open per show" in r.detail
+
+
+def test_talk_flow_fails_on_a_mid_show_reopen():
+    # a second `open` inside the same program run = the reset D12 removed.
+    tl = _talk_run("long_night", ["open", "continue", "open", "close"])
+    r = acc._check_talk_flow(tl)
+    assert not r.ok
+    assert "re-opened" in r.detail
+
+
+def test_talk_flow_resets_open_at_each_new_program():
+    # each program's FIRST talk may open; that is not a re-open.
+    tl = _talk_run("long_night", ["open", "continue"]) + _talk_run(
+        "first_light", ["open", "continue"], start=datetime(2026, 7, 2, 5, 0, 0)
+    )
+    r = acc._check_talk_flow(tl)
+    assert r.ok
+
+
 # --- stories_evolve ---------------------------------------------------------
 def test_stories_evolve_passes_with_moving_present():
     now = datetime(2026, 7, 6, 20, 0, 0)
@@ -183,7 +221,7 @@ def test_schedule_sane_fails_on_zero_duration():
 
 # --- end-to-end (DB-gated) --------------------------------------------------
 def test_run_acceptance_end_to_end():
-    """A short isolated run on the real spine — all five properties must pass.
+    """A short isolated run on the real spine — all six properties must pass.
 
     Skips cleanly without Postgres/pgvector; otherwise it seeds nothing of its own and
     rolls the whole world back (isolated), so it never touches the operator's DB.
@@ -202,4 +240,4 @@ def test_run_acceptance_end_to_end():
     assert report.telemetry["content_slots"] > 0
     failures = [f"{r.name}: {r.detail}" for r in report.results if not r.ok]
     assert report.ok, "acceptance properties failed:\n" + "\n".join(failures)
-    assert len(report.results) == 5
+    assert len(report.results) == 6

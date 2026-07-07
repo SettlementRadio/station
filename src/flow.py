@@ -111,6 +111,16 @@ class ShowFlow:
     handoff: Handoff | None = None
     thread_run: int = 0
     continue_thread: bool = False
+    # D12.4 — the on-air program's display name, so an `open`/`close` slot can sign
+    # ON/OFF by name ("welcome to The Long Night" / "that's The Long Night for now").
+    # None on the direct paths, keeping a generic open/close.
+    program_name: str | None = None
+    # D12.4 — the program's guest/interview cadence (0..1): how often this show
+    # brings in a non-host voice — a played soundbite/record from a story figure, or
+    # an invited interviewee. None = the global `convo_guest_chance`. Lets an
+    # interview-forward show (culture, politics) run guests often and a solo-desk
+    # show run none, straight from the grid.
+    guest_chance: float | None = None
 
 
 def show_position(*, is_first: bool, is_last: bool) -> str:

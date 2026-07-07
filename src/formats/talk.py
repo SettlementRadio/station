@@ -1,10 +1,14 @@
 """The `talk` program format (PHASE_B_TASKS.md B5) — a two-DJ show, wrapping B4.
 
-Backbone: open → banter on a current event/fact → a music lead-in line → close.
-This is the B4 conversation orchestrator (`writers/conversation.py`) given an
-explicit structural directive: the format does not re-implement the writers' room
-(showrunner → dialogue → continuity → two-voice render), it reuses it via
-`conversation.compose_segment`, then tags the Segment with the format template.
+Backbone: open → banter on a current event/fact → a natural close. Since D12 the
+backbone is POSITIONAL (driven by the slot's `ShowFlow`): a program opens once, the
+middle segments come in cold and carry the thread, and it closes once — with a
+spoken sign-on/sign-off by program name (D12.4). Talk-first: the backbone does NOT
+assume a song follows (a music slot introduces its own track). This is the B4
+conversation orchestrator (`writers/conversation.py`) given an explicit structural
+directive: the format does not re-implement the writers' room (showrunner → dialogue
+→ continuity → two-voice render), it reuses it via `conversation.compose_segment`,
+then tags the Segment with the format template.
 """
 
 from __future__ import annotations
@@ -12,7 +16,7 @@ from __future__ import annotations
 from datetime import datetime
 
 from ..config import settings
-from ..flow import CLOSE, CONTINUE, OPEN, ShowFlow
+from ..flow import CLOSE, OPEN, ShowFlow
 from ..logging_setup import get_logger
 from ..segment import Segment
 from ..world.context import AssembledContext
@@ -21,13 +25,19 @@ from . import common
 
 log = get_logger(__name__)
 
+# TALK-FIRST (D12.4): the backbones do NOT assume a song follows. Settlement Radio
+# is mostly talk — a music slot is occasional and introduces its OWN track
+# (formats/music.py), and news/breaks introduce themselves — so a talk segment ends
+# on its content, never on a promise of "…and now some music" that a talk→talk
+# hand-off would break. (Intra-show "coming up…" sign-posting, which needs reliable
+# next-slot look-ahead, is deferred to Phase E per the D12.4 scope gate.)
+
 # The STANDALONE backbone (flow=None, or D12 disabled): a complete little segment
-# that opens AND closes — today's shape, kept for the direct B4/B5 paths and a lone
-# slot. Handed to the B4 orchestrator as its `extra_directive`.
+# that opens AND closes — for the direct B4/B5 paths and a lone slot. Handed to the
+# B4 orchestrator as its `extra_directive`.
 _BACKBONE_STANDALONE = (
     "Open warmly; let the two of you banter and build on a single current event "
-    "or world fact; slide into a natural lead-in to a piece of music (described "
-    "in-world, not named); then a short close. Keep the settlement-time check near "
+    "or world fact; then a short, natural close. Keep the settlement-time check near "
     "the open or the handover."
 )
 
@@ -39,42 +49,62 @@ _BACKBONE_STANDALONE = (
 # place. Tunable constants, not scattered literals (config.py convention).
 _BACKBONE_OPEN = (
     "This segment OPENS the show. Open warmly and set the tone, then let the two of "
-    "you banter and build on a single current event or world fact; slide into a "
-    "natural lead-in to a piece of music (described in-world, not named). Do NOT "
-    "sign off, close, or say goodbye — the show continues after this."
+    "you banter and build on a single current event or world fact. Do NOT sign off, "
+    "close, or say goodbye — the show continues after this."
 )
 _BACKBONE_CONTINUE = (
     "This is the MIDDLE of a show already in progress — the two of you never left "
     "the booth. Do NOT greet the audience, re-introduce yourselves or the topic, or "
-    "open the show again: come in COLD, mid-thought, as if picking back up after a "
-    "song ('…anyway, the thing about that is…'). Banter and build on a single "
-    "current event or world fact, then slide into a natural in-world music lead-in "
-    "and hand off WITHOUT signing off — no goodbye, the show keeps going."
+    "open the show again: come in COLD, mid-thought, as if picking back up "
+    "('…anyway, the thing about that is…'). Banter and build on a single current "
+    "event or world fact, then carry the thread on — do NOT sign off, the show keeps "
+    "going."
 )
 _BACKBONE_CLOSE = (
     "This segment CLOSES the show. Come in COLD (no fresh greeting — you've been on "
     "air all along), have a last exchange on a single current event or world fact, "
-    "slide into a final in-world music lead-in, then give a genuine, warm close and "
-    "sign-off — this is the end of the show."
+    "then give a genuine, warm close and sign-off — this is the end of the show."
 )
 
-_POSITIONAL_BACKBONES = {
-    OPEN: _BACKBONE_OPEN,
-    CONTINUE: _BACKBONE_CONTINUE,
-    CLOSE: _BACKBONE_CLOSE,
-}
+
+def _signon_backbone(program_name: str | None) -> str:
+    """The `open` backbone, with a D12.4 SIGN-ON by name when the program is known."""
+    if not program_name:
+        return _BACKBONE_OPEN
+    return (
+        f"{_BACKBONE_OPEN} As you open, SIGN ON the programme by name — welcome the "
+        f'listeners to "{program_name}" naturally, in your own words (not a jingle), '
+        "just once."
+    )
+
+
+def _signoff_backbone(program_name: str | None) -> str:
+    """The `close` backbone, with a D12.4 SIGN-OFF by name when the program is known."""
+    if not program_name:
+        return _BACKBONE_CLOSE
+    return (
+        f"{_BACKBONE_CLOSE} As you close, SIGN OFF the programme by name — a warm "
+        f'"that\'s \\"{program_name}\\" for now" beat, just once.'
+    )
 
 
 def _backbone_for(flow: ShowFlow | None) -> str:
-    """The structural backbone for this slot's show position (D12.1).
+    """The structural backbone for this slot's show position (D12.1 + D12.4).
 
     Standalone (no `flow`) or the D12 rollback (`convo_continuity_enabled=False`)
     keeps the self-contained open→close shape; otherwise the positional backbone for
-    `flow.position` drives one open at the top, cold middles, and one close.
+    `flow.position` drives one open at the top, cold middles, and one close. On the
+    `open`/`close` slots, D12.4 signs the program ON/OFF by name (when
+    `convo_flow_signon` is on and the program name is known).
     """
     if flow is None or not settings.convo_continuity_enabled:
         return _BACKBONE_STANDALONE
-    return _POSITIONAL_BACKBONES.get(flow.position, _BACKBONE_STANDALONE)
+    name = flow.program_name if settings.convo_flow_signon else None
+    if flow.position == OPEN:
+        return _signon_backbone(name)
+    if flow.position == CLOSE:
+        return _signoff_backbone(name)
+    return _BACKBONE_CONTINUE
 
 
 def talk(now: datetime, ctx: AssembledContext, flow: ShowFlow | None = None) -> Segment:

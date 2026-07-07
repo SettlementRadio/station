@@ -39,10 +39,14 @@ def _patch_common(monkeypatch):
     )
     # D5.2 — keep these gate tests off the DB: the freshness steers are exercised in
     # test_freshness/test_conversation; here they're not the subject.
-    monkeypatch.setattr(convo.freshness, "recent_topics_block", lambda now: "")
+    monkeypatch.setattr(
+        convo.freshness, "recent_topics_block", lambda now, *, exclude=None: ""
+    )
     monkeypatch.setattr(convo.freshness, "recent_openings_block", lambda now, fmt: "")
     # D9.3 — host-only by default (the guest path has its own test below).
-    monkeypatch.setattr(convo.guest_mod, "maybe_guest", lambda ctx, now, fmt: None)
+    monkeypatch.setattr(
+        convo.guest_mod, "maybe_guest", lambda ctx, now, fmt, chance=None: None
+    )
     # D9.4 — memory off the DB here; its assembly is exercised in test_memory.
     monkeypatch.setattr(convo.memory_mod, "memory_section", lambda speakers, now: "")
 
@@ -148,7 +152,9 @@ def test_guest_must_be_bracketed_by_hosts(monkeypatch):
 
     _patch_common(monkeypatch)
     guest = Guest(label="Guest", voice="guest_one", kind="invited", brief="b")
-    monkeypatch.setattr(convo.guest_mod, "maybe_guest", lambda ctx, now, fmt: guest)
+    monkeypatch.setattr(
+        convo.guest_mod, "maybe_guest", lambda ctx, now, fmt, chance=None: guest
+    )
     monkeypatch.setattr(convo, "safety_check", lambda text: _ok_safety())
     monkeypatch.setattr(
         convo,
@@ -176,7 +182,9 @@ def test_guest_turns_render_when_bracketed(monkeypatch):
 
     _patch_common(monkeypatch)
     guest = Guest(label="Guest", voice="guest_one", kind="invited", brief="b")
-    monkeypatch.setattr(convo.guest_mod, "maybe_guest", lambda ctx, now, fmt: guest)
+    monkeypatch.setattr(
+        convo.guest_mod, "maybe_guest", lambda ctx, now, fmt, chance=None: guest
+    )
     monkeypatch.setattr(convo, "safety_check", lambda text: _ok_safety())
     monkeypatch.setattr(
         convo,

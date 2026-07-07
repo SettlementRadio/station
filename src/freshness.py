@@ -14,6 +14,14 @@ DISTINCT from the news desk's coverage memory (D4): that tracks INTENDED per-sto
 recurrence (which story to re-report, how it evolves); this is broad, cross-format,
 output-phrasing freshness (don't reuse this opening/phrasing). D5 layers on D4.
 
+D12 division of labour (talk continuity): D5 targets DAY-SCALE looping — don't circle
+back to other material aired across the hours. It must NOT veto the beat the hosts are
+actively continuing this instant (D12.2), so `recent_topics_block(exclude=...)` drops
+the ACTIVE thread's topic from the avoid-list while that thread is live, and the caller
+suppresses the opening-fingerprint steer on a cold `continue` slot (which has no
+"opening"). New-thread openings + transitions still get the full freshness steer, so a
+fresh thread never starts like a recent one. (See writers/conversation.py, D12.3.)
+
 Feature extraction is deliberately CHEAP — string heuristics over what the producers
 already put on the `Segment` (`meta["beat"]`, `meta["stories"]`, the script), never an
 extra LLM call (per CLAUDE.md routing, reach for `haiku` only if heuristics prove
@@ -302,16 +310,25 @@ def _avoid_block(kind: str, items: list[str]) -> str:
     return f"{head}\n{bullets}"
 
 
-def recent_topics_block(now: datetime) -> str:
+def recent_topics_block(now: datetime, *, exclude: str | None = None) -> str:
     """Recent topics/beats (all formats) to steer the showrunner off (D5.2).
 
     Returns "" when the memory is empty or freshness is disabled — the showrunner then
     just picks freely (the cold-start path).
+
+    `exclude` (D12.3) is the ACTIVE thread's topic to keep OUT of the avoid-list while
+    the hosts are continuing it — so anti-repetition targets day-scale looping, not the
+    beat they are mid-conversation on. Normalized to the same handle the memory stores,
+    then filtered. `None` (an `open`/transition slot, or the direct path) avoids nothing
+    extra, so a fresh thread still can't start like a recently-aired topic.
     """
     if not settings.freshness_enabled:
         return ""
     records = _read_recent(now)
     topics = _distinct((r.topic for r in records), settings.freshness_recent_limit)
+    excluded = _short_handle(exclude) if exclude else None
+    if excluded:
+        topics = [t for t in topics if t.strip().lower() != excluded]
     return _avoid_block("topic", topics)
 
 

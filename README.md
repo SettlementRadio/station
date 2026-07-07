@@ -43,18 +43,27 @@ around the clock. Segment length is a parameter, so the same pipeline serves an 
 a near-live drop. Details in [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
 
 ## Programming the station
-The station is a **programmed weekly grid**, not a flat loop. Each in-world hour maps to a **named
-program** (*The Long Night*, *First Light*, *Daywatch*, *Nightfall*) with its own hosts, framing, and a
-**clock** — a real-radio format sequence with run-lengths (`music x3` = a three-song sweep) and pinned
-top-of-hour slots (`news@:00`). The scheduler reads the grid at each slot and routes the program's hosts
-into generation, so *who* and *what* airs change by daypart.
+The station is a **programmed weekly grid**, not a flat loop — a talk-first week of many short, themed
+programs: news/current-affairs flagships, subject *verticals* (politics, economy, conflict, law,
+science, travel, the arts…), sport, short music features, and the night shows. Each is a **named
+program** with hosts, framing, and a **clock** — a real-radio format sequence with run-lengths
+(`music x3`) and pinned slots (`news@:00` / `news@:30`). A stable news rhythm surrounds a **rotating
+specialist** (cycling Mon→Fri) so the whole world is heard across a week. Two rules: **`talk` is a
+two-DJ conversation**; **`news` is read by the dedicated news desk (Thorn), not the show's host** — it
+cuts in on the hour and hands back.
 
+- **One flowing show** — consecutive talk segments in a program play as **one show**, not N mini-shows:
+  it opens once (a spoken sign-on), the middle segments come in cold and carry the same thread forward,
+  and it signs off once (D12). An interview/dispatch show also brings in guests/played records on its
+  own cadence (`guest_chance`).
 - **Edit the grid** — the human-edited source of truth is one YAML file,
   [`docs/programming/grid.yaml`](docs/programming/grid.yaml) (model + clock grammar in
   [`docs/programming/README.md`](docs/programming/README.md)). Edit → live (reloaded on change, no
   restart). Full grid *management* (a drag-the-grid web editor) is **Phase E**; in Phase D you edit the file.
 - **See it, token-free** — `make programming-demo` prints the weekly daypart map, the clock walking across
-  a program boundary (pinned news landing on the hour), run-lengths, and the console + feed.
+  a program boundary (pinned news landing on the hour), run-lengths, and the console + feed;
+  `make continuity-demo` prints a show's consecutive talk scripts back-to-back so the single-show flow
+  is visible (a few Claude calls, no TTS).
 - **Operator console** (private, read-only) — `make console` shows on-air/next, buffer runway, the
   last-run heartbeat, and the world story log. Never internet-exposed.
 - **Public now-playing feed** — `make now-playing` writes `segments/nowplaying.json` (refreshed on every

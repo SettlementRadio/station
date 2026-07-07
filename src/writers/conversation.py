@@ -728,11 +728,26 @@ def compose_segment(
     # D5.2 — anti-repetition steers from the airplay memory, read once for this slot:
     # recent topics/angles for the beat pick, recent talk openings for the first line.
     # Both degrade to "" on a cold start, so a fresh station generates as it did before.
-    recent_topics = freshness.recent_topics_block(now)
-    recent_openings = freshness.recent_openings_block(now, fmt)
+    #
+    # D12.3 — reconcile freshness with continuity so the two don't fight. When this slot
+    # is CONTINUING a live thread (D12.2): (a) keep the active thread's topic OUT of the
+    # showrunner's avoid-list — anti-repetition should stop day-scale looping, not veto
+    # the beat the hosts are mid-conversation on; and (b) drop the opening-fingerprint
+    # steer entirely — a cold pickup has no "opening" to freshen. An `open`/transition
+    # (or the direct path, flow=None) keeps BOTH steers, so a NEW thread still can't
+    # start like a recently-aired topic or opening. News (D4) is untouched — its
+    # coverage recurrence is its own memory.
+    continuing = flow is not None and flow.continue_thread
+    active_topic = flow.handoff.topic if continuing and flow.handoff else None
+    recent_topics = freshness.recent_topics_block(now, exclude=active_topic)
+    recent_openings = "" if continuing else freshness.recent_openings_block(now, fmt)
     # D9.3 — decide ONCE per slot whether a guest/soundbite joins (sparse,
-    # air-time-seeded, so retries keep the same guest); None = host-only.
-    seg_guest = guest_mod.maybe_guest(ctx, now, fmt)
+    # air-time-seeded, so retries keep the same guest); None = host-only. D12.4 — the
+    # program's own interview cadence (flow.guest_chance) overrides the global rate,
+    # so an interview show runs guests often and a solo-desk show runs none.
+    seg_guest = guest_mod.maybe_guest(
+        ctx, now, fmt, chance=(flow.guest_chance if flow is not None else None)
+    )
     # D9.4 — the hosts' lived history from the story log, read once per slot;
     # "" degrades to the memory-less room. The same block goes to the
     # orchestrator AND the continuity editor (misremembering flags).

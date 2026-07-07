@@ -77,21 +77,25 @@ def _stable_voice(key: str, pool: list[str]) -> str:
     return pool[zlib.crc32(key.encode("utf-8")) % len(pool)]
 
 
-def maybe_guest(ctx: AssembledContext, now: datetime, fmt: str) -> Guest | None:
+def maybe_guest(
+    ctx: AssembledContext, now: datetime, fmt: str, *, chance: float | None = None
+) -> Guest | None:
     """Decide whether this segment carries a guest, and who — None for host-only.
 
-    Sparse by design: a deterministic air-time-seeded draw against
-    `settings.convo_guest_chance` (same slot → same decision; unit-checkable, the
-    selector-jitter pattern). Only the `talk` format carries guests. When the
-    context has attributable quotes (D10.2), the newest pair becomes a FIGURE
-    soundbite — world-grounded; otherwise the room invites a one-off persona.
+    Sparse by design: a deterministic air-time-seeded draw against the guest chance
+    (same slot → same decision; unit-checkable, the selector-jitter pattern). Only the
+    `talk` format carries guests. When the context has attributable quotes (D10.2), the
+    newest pair becomes a FIGURE soundbite — world-grounded; otherwise the room invites
+    a one-off persona.
+
+    `chance` (D12.4) is the PROGRAM's interview cadence, overriding the global
+    `settings.convo_guest_chance` — so an interview-forward show runs guests often and a
+    solo-desk show runs none. None keeps the global default.
     """
     if not settings.convo_guest_enabled or fmt != "talk":
         return None
-    if (
-        random.Random(f"guest-{now.isoformat()}").random()
-        >= settings.convo_guest_chance
-    ):
+    threshold = chance if chance is not None else settings.convo_guest_chance
+    if random.Random(f"guest-{now.isoformat()}").random() >= threshold:
         return None
     pool = _pool_voices()
     if not pool:

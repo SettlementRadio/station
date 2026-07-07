@@ -3,18 +3,20 @@
 Beyond each pack's unit tests, Phase D must pass ONE end-to-end run that proves the
 whole pipeline holds together *over time* — the dress rehearsal before the C9 live
 7-day soak. This module drives the real spine — **world tick → news → freshness →
-grid → music/commercials** — across an accelerated 24–48h window and asserts the five
+grid → music/commercials** — across an accelerated 24–48h window and asserts the six
 integration properties that only an end-to-end run catches:
 
   1. **No dead gaps** — the schedule is continuous audio; the never-dead fallback never
      fired for a *generation* gap (no evergreen slot in the content stream).
   2. **No repetition loops** — talk openings, news wording, and song/artist picks don't
      cycle (D5 + the news desk + the track selector actually working together).
-  3. **Stories evolve** — running stories advance through their arc across the window,
+  3. **Talk flow** — consecutive talk slots in one program read as ONE show: a show
+     opens once, it doesn't re-open (and time-stamp) every segment (D12).
+  4. **Stories evolve** — running stories advance through their arc across the window,
      with past/now/future beats correctly framed (D3 + D4).
-  4. **Cost stays bounded** — the call telemetry over the window is within envelope (no
+  5. **Cost stays bounded** — the call telemetry over the window is within envelope (no
      runaway regeneration / call storms).
-  5. **Schedule output is sane** — every slot has a measured duration, air order is
+  6. **Schedule output is sane** — every slot has a measured duration, air order is
      monotonic, and the disclosure ident lands on its configured cadence.
 
 **How it stays cheap + repeatable.** The one thing we do NOT exercise is the *writing
@@ -47,6 +49,7 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from unittest import mock
 
+from . import flow
 from .config import settings
 from .logging_setup import get_logger
 from .production import mix as mix_mod
@@ -130,7 +133,7 @@ class PropertyResult:
 
 @dataclass
 class AcceptanceReport:
-    """The whole run: the five verdicts + the telemetry they were judged on."""
+    """The whole run: the six verdicts + the telemetry they were judged on."""
 
     window_hours: float
     results: list[PropertyResult] = field(default_factory=list)
@@ -498,7 +501,7 @@ def run_acceptance(
     start: datetime | None = None,
     dump_path: str | None = None,
 ) -> AcceptanceReport:
-    """Run the accelerated window end-to-end and return the five-property report.
+    """Run the accelerated window end-to-end and return the six-property report.
 
     Imports the scheduler lazily so patching the provider seams is already in force
     before any generation runs. Accumulates every placed slot across the window (past
@@ -564,6 +567,7 @@ def run_acceptance(
     report.results = [
         _check_no_dead_gaps(timeline, start, end),
         _check_no_repetition(timeline, final_world["openings"]),
+        _check_talk_flow(timeline),
         _check_stories_evolve(final_world, advanced_total, end),
         _check_cost_bounded(telemetry),
         _check_schedule_sane(timeline),
@@ -599,7 +603,7 @@ def _snapshot_world(now: datetime) -> dict:
     }
 
 
-# --- The five property checks (pure — unit-testable in isolation) -----------
+# --- The six property checks (pure — unit-testable in isolation) -----------
 def _check_no_dead_gaps(
     timeline: list[dict], start: datetime, end: datetime
 ) -> PropertyResult:
@@ -759,6 +763,45 @@ def _check_cost_bounded(telemetry: dict) -> PropertyResult:
         "cost_bounded",
         True,
         f"{per:.1f} LLM calls per content slot ({calls}/{content}), within envelope",
+    )
+
+
+def _check_talk_flow(timeline: list[dict]) -> PropertyResult:
+    """Consecutive talk slots in ONE program read as one show, not N mini-shows (D12).
+
+    Groups the timeline into program RUNS (a maximal stretch of one program id) and
+    checks the talk slots' show position: a show OPENS once — no talk slot AFTER the
+    first in a run may be `open` (a re-open would mean the "it's 2 a.m. …, welcome"
+    reset D12 removed). `open` is the signal the writers' room keys the greeting AND
+    the time-check off, so this one check covers both. Inconclusive (but not failing)
+    if the window happens to hold no multi-talk run.
+    """
+    runs: list[list[str | None]] = []
+    cur_prog: object = object()  # sentinel distinct from any program id / None
+    cur: list[str | None] = []
+    for e in timeline:
+        prog = e.get("program")
+        if prog != cur_prog:
+            if cur:
+                runs.append(cur)
+            cur, cur_prog = [], prog
+        if e.get("format") == "talk":
+            cur.append(e.get("flow_position"))
+    if cur:
+        runs.append(cur)
+
+    reopens = sum(1 for r in runs for p in r[1:] if p == flow.OPEN)
+    multi = sum(1 for r in runs if len(r) >= 2)
+    if reopens:
+        return PropertyResult(
+            "talk_flow", False, f"{reopens} talk slot(s) re-opened mid-show"
+        )
+    if multi == 0:
+        return PropertyResult(
+            "talk_flow", True, "no multi-talk program run in window (inconclusive)"
+        )
+    return PropertyResult(
+        "talk_flow", True, f"one open per show across {multi} multi-talk run(s)"
     )
 
 

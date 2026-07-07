@@ -40,7 +40,7 @@ LIQ_LOG    := $(RUN_DIR)/liquidsoap.log
 PLAYER_URL := http://127.0.0.1:8000/
 STREAM_URL := http://127.0.0.1:8000/settlement.mp3
 
-.PHONY: help generate serve air play play-convo stop status console now-playing seed seed-canon reset-world seed-tracks seed-sponsors demo context conversation format buffer schedule ident prune fallback health world-tick news-demo figures-demo freshness-demo programming-demo commercials-demo acceptance
+.PHONY: help generate serve air play play-convo stop status console now-playing seed seed-canon reset-world seed-tracks seed-sponsors demo context conversation format buffer schedule ident prune fallback health world-tick news-demo figures-demo freshness-demo continuity-demo programming-demo commercials-demo acceptance
 
 # B5 format default: `make format` builds a talk segment; override with FMT=news
 # or FMT=music. Pass a TOPIC=... to steer canon retrieval.
@@ -82,6 +82,7 @@ help:
 	@echo "  make news-demo show the news desk reframe stories across a simulated day (D4)"
 	@echo "  make figures-demo show the world's people speak — attributed quotes (D10)"
 	@echo "  make freshness-demo show anti-repetition keep talk openings/beats varied (D5)"
+	@echo "  make continuity-demo show consecutive talk slots play as ONE flowing show (D12)"
 	@echo "  make programming-demo show the weekly grid: programs/hosts by daypart (D6; token-free)"
 	@echo "  make commercials-demo hear a fresh spot + see the sparse break + a Powered-by read (D8)"
 	@echo "  make acceptance run the integrated 24-48h acceptance simulation — the Phase-D gate (D11.3)"
@@ -158,6 +159,15 @@ figures-demo:
 freshness-demo:
 	@echo "==> Anti-repetition demo (D5)…"
 	$(PY) -m src.freshness_demo
+
+# D12.5 proof: generate a program's worth of CONSECUTIVE talk slots at an advancing
+# clock and print the scripts back-to-back, so the single-show FLOW is visible — one
+# open (sign-on), cold middles that carry the thread, one close; a time-check only at
+# the top. A few Claude calls per slot (showrunner + orchestrator), NO TTS, NO gates,
+# and writes NOTHING. Needs ANTHROPIC_API_KEY + `make seed`.
+continuity-demo:
+	@echo "==> Talk-continuity demo (D12)…"
+	$(PY) -m src.continuity_demo
 
 # B2 proof: render the Lumen Festival at two `now` values and show the relative
 # phrase flip ("in five days" -> "yesterday"). Needs `make seed` first.

@@ -129,6 +129,10 @@ def _entry(seg: Segment) -> dict:
         # D7.4 — the spun track's PUBLIC lore (title/artist/album/era), set by the
         # music format; None elsewhere. The now-playing feed shows it (D6.4).
         "track": seg.meta.get("track"),
+        # D12 — the talk slot's show position (open/continue/close), stamped by the
+        # writers' room; None for non-talk / the flat path. Lets the acceptance flow
+        # check and any inspector see that a show opens once, not every segment.
+        "flow_position": seg.meta.get("flow_position"),
         "audio_path": seg.audio_path,
         "air_time": seg.air_time,
         # Schedule on MEASURED duration; fall back to the target only if a probe
@@ -266,6 +270,11 @@ def _program_speakers(program: Program, name: str) -> list[str] | None:
     """
     default = list(FORMATS[name].speaker_ids())
     need = len(default)
+    # D12.4 — the news bulletin is read by the DEDICATED news desk, not the show's
+    # lead: a real station cuts to a fixed newsreader (consistent register) and hands
+    # back. `news_anchor_ids` empty = the pre-D12.4 program-lead read (the rollback).
+    if name == "news" and settings.news_anchor_ids:
+        return list(settings.news_anchor_ids)[:need] or None
     hosts = list(program.hosts)
     if need > 0 and len(hosts) >= need:
         return hosts[:need]
@@ -309,6 +318,8 @@ def _show_flow(
         handoff=handoff,
         thread_run=thread_run,
         continue_thread=continue_thread,
+        program_name=program.name,  # D12.4 — for the spoken sign-on/sign-off by name
+        guest_chance=program.guest_chance,  # D12.4 — this show's interview cadence
     )
 
 

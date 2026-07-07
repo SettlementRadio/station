@@ -5,7 +5,9 @@ Two things must hold:
      across weekday/hour boundaries, tiles the week with no gaps, and never stalls
      (a hole, an unknown program, or a missing grid file all fall back to `default`).
   2. The generalised `framing.program_frame` preserves the two-host C1 behaviour
-     EXACTLY for the shipped grid — the strongest guarantee that D1–D5 are unchanged.
+     EXACTLY for a `legacy` two-host program — the strongest guarantee that D1–D5
+     are unchanged. (The shipped grid itself is now a multi-cast, talk-first week,
+     D12.4, so the parity invariant is pinned to a legacy program, not the schedule.)
 
 The grid read is pure config, so we point `settings.programming_grid_path` at a
 written fixture and pin the mapping directly (no DB, no Claude/TTS).
@@ -155,10 +157,23 @@ def test_clock_parses_runs_pins_and_markers(grid_file):
 
 
 def test_shipped_grid_tiles_the_weekday_with_expected_programs(real_grid):
+    # The D12.4 talk-first weekday (Monday): a steady night spine + dawn handover,
+    # then a granular working day whose 14:00-16:00 slot is the per-day specialist
+    # (Monday = The Workshop).
     expected = {
-        **dict.fromkeys((22, 23, 0, 1, 2, 3, 4), "long_night"),
+        **dict.fromkeys((22, 23), "long_night"),
+        **dict.fromkeys((0, 1), "deep_hours"),
+        **dict.fromkeys((2, 3, 4), "deep_field"),
         **dict.fromkeys((5, 6), "first_light"),
-        **dict.fromkeys(range(7, 20), "daywatch"),
+        **dict.fromkeys((7, 8), "morning_currents"),
+        9: "common_ground",
+        **dict.fromkeys((10, 11), "the_assembly"),  # Monday AM specialist: politics
+        12: "settlement_desk",
+        13: "the_gallery",
+        **dict.fromkeys((14, 15), "the_workshop"),  # Monday PM specialist: science
+        16: "the_circuit",
+        17: "the_new_signal",
+        **dict.fromkeys((18, 19), "evening_currents"),
         **dict.fromkeys((20, 21), "nightfall"),
     }
     for h in range(24):
@@ -176,18 +191,29 @@ def test_shipped_grid_tiles_the_whole_week_with_no_gaps(real_grid):
             assert prog.id != default, f"gap at weekday {now.weekday()} hour {hour}"
 
 
-def test_program_frame_matches_legacy_show_frame_across_the_day(real_grid):
-    """program_frame over the SHIPPED weekday grid == the old two-host show_frame.
+def test_program_frame_matches_legacy_show_frame_across_the_day():
+    """A `legacy` two-host program frames EXACTLY as the old two-host show_frame.
 
-    Directly asserts D6.1's hard requirement: with the two current hosts the frame
-    is unchanged (same lead/companion/handover/part_of_day/situation), so the
-    writers' room (D1-D5) is untouched. The shipped grid's boundaries align with the
-    canon dawn/dusk windows, which is what makes the two representations agree.
+    Directly asserts D6.1's hard requirement — the frame is unchanged for the
+    legacy/default path (same lead/companion/handover/part_of_day/situation), so the
+    writers' room (D1-D5) is untouched. Decoupled from the SHIPPED schedule on
+    purpose: the grid is now an intentionally multi-cast, talk-first week (D12.4), so
+    the invariant is pinned to a legacy program directly rather than to whatever the
+    shipped grid happens to air. (The default program still routes here — see
+    `test_legacy_framing_routes_back_through_show_frame`.)
     """
+    legacy = programming.Program(
+        id="default",
+        name="Settlement Radio",
+        hosts=("vell", "wren"),
+        framing="legacy",
+        daypart="",
+        clock=(),
+        rotation=("talk", "news"),
+    )
     for h in range(24):
         now = _mon(h)
-        prog = programming.program_for(now)
-        got = framing.program_frame(now, prog)
+        got = framing.program_frame(now, legacy)
         want = framing.show_frame(now, night_host="vell", day_host="wren")
         assert got == want, f"hour {h}: {got} != {want}"
 

@@ -38,6 +38,44 @@ A typical *build* session will be short, e.g.:
 
 ---
 
+## 2026-07-07 — Phase D — D12 built: talk continuity / show flow (consecutive talk plays as ONE show)
+**Focus:** built the D12 sub-pack end-to-end (D12.0–D12.5) — the thin flow layer that makes consecutive
+talk segments in a program read as one flowing show instead of N reset-after-reset mini-shows.
+**Built:**
+- **D12.0 substrate** — a per-slot show POSITION (open/continue/close) derived at the scheduler
+  placement site + a compact talk HAND-OFF (last lines, beat, `open_thread`) persisted in `clock_state`;
+  a new `src/flow.py` (`ShowFlow`/`Handoff`), threaded via an optional `flow` param on
+  `make_format_segment`. No output change.
+- **D12.1 positional** — the talk backbone + the spoken time-check are now positional (one open, cold
+  middles, one close; time-check only at the hour/handover). New dials `convo_continuity_enabled`,
+  `convo_flow_timecheck`.
+- **D12.2 thread** — the showrunner CONTINUES the same beat across segments (pickup from the hand-off)
+  until a `convo_continuity_max_segments` pacing budget forces a clean transition; the thread carries
+  across a music slot and resets at a new program.
+- **D12.3 reconcile** — D5 freshness no longer vetoes the active thread (topic excluded from the
+  avoid-list while continuing; opening steer dropped on cold continues); still bites on day-scale loops.
+- **D12.4 sign-on/off + talk-first** — spoken program sign-on/sign-off by name; the backbone no longer
+  assumes a song follows. **Plus two operator-driven fixes found in review:** the `news` bulletin now
+  reads from a DEDICATED anchor (`news_anchor_ids` = Thorn) in every show, not the show's host; and
+  guests/interviews became **per-program** (`guest_chance`).
+- **D12.5 verify** — `make continuity-demo` (consecutive scripts back-to-back, token-lean, writes
+  nothing); a sixth `talk_flow` acceptance property (a show opens once, never re-opens mid-run); docs.
+- **The grid, rebuilt (operator review):** a talk-first, many-vertical week (politics/economy/conflict/
+  law/science/travel/arts/history/…), a per-day ROTATING specialist, music cut to short features (the
+  catalogue is ~2.5h total), every DJ cast to role, formats tagged (desk/duo/interview/dispatch/music).
+**Changed:** new `src/flow.py`, `src/continuity_demo.py`; `writers/conversation.py` (positional
+backbone/time-check + thread + guest cadence), `formats/talk.py`, `scheduler.py` (position + hand-off +
+news-desk routing + `flow_position` on entries), `world/programming.py` (`guest_chance`), `config.py`
+(the `convo_continuity_*`/`convo_flow_*`/`news_anchor_ids` dials), `acceptance.py` (+`talk_flow`),
+`docs/programming/grid.yaml` (full rewrite), README + ADMIN_MANUAL + overview tracker. **389 tests
+green; ruff clean.**
+**Why:** the disconnection undercut the premise — a station you'd leave on. The flow layer keeps the
+atomicity/resilience the scheduler depends on while adding the show flow real radio has; the news desk +
+verticals + per-program guests make the schedule believable to an actual listener.
+**Next:** listen to a real `make continuity-demo` / `make buffer` run and tune the guest rates + thread
+budget by ear; optionally the music new-vs-vintage selector filter (needs more older-era tracks).
+Commit: (this session)  ·  Clips: —
+
 ## 2026-07-07 — Phase D — D12 planned: talk continuity / show flow (a gap found while operating)
 **Focus:** operating the built station surfaced a real product-quality gap — consecutive talk segments
 don't flow. Diagnosed the cause in the as-built code and wrote the full sub-pack to fix it

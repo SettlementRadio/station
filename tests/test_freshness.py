@@ -162,6 +162,32 @@ def test_recent_topics_block_lists_distinct_topics(monkeypatch):
     assert block.count("- ") == 2  # de-duped, None dropped
 
 
+def test_recent_topics_block_excludes_the_active_thread(monkeypatch):
+    # D12.3 — while continuing a thread, its topic must NOT be in the avoid-list, but
+    # the OTHER day-scale topics still are (freshness keeps biting on looping).
+    monkeypatch.setattr(
+        freshness,
+        "_read_recent",
+        lambda now, fmt=None: [
+            _rec(topic="the relay drift"),
+            _rec(topic="the harvest failure"),
+        ],
+    )
+    # exclude passed as the raw multi-line beat; normalized to the stored handle.
+    block = freshness.recent_topics_block(
+        NOW, exclude="The Relay Drift\nangle: who fixes it\nVell opens"
+    )
+    assert "the relay drift" not in block  # the active thread is exempt
+    assert "the harvest failure" in block  # day-scale looping still steered off
+
+
+def test_recent_topics_exclude_none_keeps_everything(monkeypatch):
+    monkeypatch.setattr(
+        freshness, "_read_recent", lambda now, fmt=None: [_rec(topic="the drift")]
+    )
+    assert "the drift" in freshness.recent_topics_block(NOW, exclude=None)
+
+
 def test_recent_openings_block_is_format_scoped(monkeypatch):
     captured = {}
 

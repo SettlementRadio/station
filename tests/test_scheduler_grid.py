@@ -163,6 +163,27 @@ def test_program_hosts_are_routed_into_generation(monkeypatch, tmp_path):
     assert by_format["music"] == ["wren"]
 
 
+def test_news_reads_from_the_dedicated_desk_not_the_show_lead(monkeypatch):
+    # D12.4 — the bulletin cuts to the fixed newsreader (Thorn) in ANY show, while
+    # talk stays the show's own hosts; empty news_anchor_ids rolls back to the lead.
+    prog = programming.Program(
+        id="x",
+        name="X",
+        hosts=("wren", "vell"),
+        framing="ensemble",
+        daypart="",
+        clock=(),
+        rotation=(),
+    )
+    monkeypatch.setattr(scheduler.settings, "news_anchor_ids", ["thorn"])
+    assert scheduler._program_speakers(prog, "news") == ["thorn"]
+    assert scheduler.onair_hosts(prog, "news") == ["thorn"]  # console/feed agree
+    assert scheduler._program_speakers(prog, "talk") == ["wren", "vell"]
+
+    monkeypatch.setattr(scheduler.settings, "news_anchor_ids", [])
+    assert scheduler._program_speakers(prog, "news") == ["wren"]  # rollback: the lead
+
+
 def test_clock_cursor_persists_across_top_up_runs(monkeypatch, tmp_path):
     calls, gen = _recording_generator(tmp_path)
     # Tiny depth: one segment per run, so the sequence must advance via persisted state.

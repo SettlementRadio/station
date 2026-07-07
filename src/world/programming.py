@@ -108,6 +108,10 @@ class Program:
     clock: tuple[ClockStep, ...]
     rotation: tuple[str, ...]
     break_every: int = 0  # D8.1: content segments between ad breaks; 0 = none
+    # D12.4: this show's guest/interview cadence (0..1) — how often a talk segment
+    # brings in a non-host voice (a played soundbite/record from a story figure, or
+    # an invited interviewee). None (key absent) = the global `convo_guest_chance`.
+    guest_chance: float | None = None
 
 
 @dataclass(frozen=True)
@@ -168,6 +172,16 @@ def _parse_program(pid: str, data: dict) -> Program:
             "programming_bad_break_every", program=pid, value=data.get("break_every")
         )
         break_every = 0
+    guest_chance: float | None = None
+    if data.get("guest_chance") is not None:
+        try:
+            guest_chance = min(max(float(data["guest_chance"]), 0.0), 1.0)
+        except (TypeError, ValueError):
+            log.warning(
+                "programming_bad_guest_chance",
+                program=pid,
+                value=data.get("guest_chance"),
+            )
     return Program(
         id=pid,
         name=name,
@@ -177,6 +191,7 @@ def _parse_program(pid: str, data: dict) -> Program:
         clock=clock,
         rotation=rotation,
         break_every=break_every,
+        guest_chance=guest_chance,
     )
 
 
