@@ -27,7 +27,7 @@ def _fake_generator(tmp_path, *, duration=120.0, fail_formats=()):
     """
     counter = {"n": 0}
 
-    def _gen(name, now_iso, *, topic=None, speakers=None):
+    def _gen(name, now_iso, *, topic=None, speakers=None, flow=None):
         if name in fail_formats:
             raise RuntimeError(f"simulated generation failure for {name!r}")
         counter["n"] += 1

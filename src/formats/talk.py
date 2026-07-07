@@ -11,6 +11,7 @@ from __future__ import annotations
 
 from datetime import datetime
 
+from ..flow import ShowFlow
 from ..logging_setup import get_logger
 from ..segment import Segment
 from ..world.context import AssembledContext
@@ -28,12 +29,18 @@ _BACKBONE = (
 )
 
 
-def talk(now: datetime, ctx: AssembledContext) -> Segment:
-    """Generate one two-DJ talk `Segment` for `now` on the open→…→close backbone."""
+def talk(now: datetime, ctx: AssembledContext, flow: ShowFlow | None = None) -> Segment:
+    """Generate one two-DJ talk `Segment` for `now` on the open→…→close backbone.
+
+    `flow` (D12.0) carries the slot's show position + the prior talk hand-off; it is
+    handed to `compose_segment` for the writers' room. `None` keeps the standalone
+    open→close shape (the direct B5 path). D12.0 only threads it — the positional
+    backbone (D12.1) and thread continuation (D12.2) read it in later tasks.
+    """
     seg_id = common.make_seg_id("talk", now)
     log.info("format_talk_start", seg_id=seg_id, speakers=[c.id for c in ctx.speakers])
     seg = conversation.compose_segment(
-        ctx, now, seg_id=seg_id, extra_directive=_BACKBONE
+        ctx, now, seg_id=seg_id, extra_directive=_BACKBONE, flow=flow
     )
     seg.meta["format_template"] = "talk"
     log.info("format_talk_done", seg_id=seg_id, turns=seg.meta.get("turns"))

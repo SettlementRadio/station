@@ -28,6 +28,7 @@ from datetime import datetime
 
 from .. import evergreen
 from ..config import settings
+from ..flow import ShowFlow
 from ..logging_setup import get_logger
 from ..production import media, mix, selector
 from ..providers import llm, tts
@@ -138,8 +139,15 @@ def _stitch(parts: list[str], voice: str, track: Track, seg_id: str) -> str:
     return str(out_path)
 
 
-def music(now: datetime, ctx: AssembledContext) -> Segment:
-    """Generate one music `Segment`: a real track, introduced and back-announced."""
+def music(
+    now: datetime, ctx: AssembledContext, flow: ShowFlow | None = None
+) -> Segment:
+    """Generate one music `Segment`: a real track, introduced and back-announced.
+
+    `flow` (D12.0) is accepted for the uniform format seam but unused today (the
+    talk thread is a two-DJ-conversation concept; a music slot carries it across
+    untouched — see the D12 pack).
+    """
     dj_card = common.require_speaker(ctx, "music")
     seg_id = common.make_seg_id("music", now)
     marker = settings.format_music_song_marker

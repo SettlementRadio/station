@@ -23,6 +23,7 @@ from dataclasses import dataclass
 from datetime import datetime
 
 from ..config import settings
+from ..flow import ShowFlow
 from ..logging_setup import get_logger
 from ..providers import tts
 from ..segment import Segment
@@ -44,7 +45,9 @@ log = get_logger(__name__)
 class FormatSpec:
     """One format: its builder and the cast ids it needs assembled into context."""
 
-    build: Callable[[datetime, AssembledContext], Segment]
+    # D12.0 — builders take an optional `flow` (show position + talk hand-off);
+    # only `talk` reads it, the rest accept-and-ignore it so the seam is uniform.
+    build: Callable[[datetime, AssembledContext, ShowFlow | None], Segment]
     speaker_ids: Callable[[], Sequence[str]]
 
 
@@ -89,6 +92,7 @@ def make_format_segment(
     *,
     topic: str | None = None,
     speakers: Sequence[str] | None = None,
+    flow: ShowFlow | None = None,
 ) -> Segment:
     """Build a `Segment` for the named format at `now_iso`.
 
@@ -102,6 +106,11 @@ def make_format_segment(
     drives *who's on air* — the scheduler passes the active program's hosts here
     (already sliced to what the format needs). When None, the format's own default
     `speaker_ids()` is used, so the direct B4/B5 paths are unchanged.
+
+    `flow` (D12.0) is the show-position + talk hand-off substrate: where this slot
+    sits in its program run and the thread the previous talk segment left off. Only
+    the `talk` builder reads it; `None` keeps today's standalone open→close shape,
+    so the direct `make conversation` / `make format` paths are unchanged.
     """
     if name not in FORMATS:
         raise ValueError(f"unknown format {name!r}; expected one of {sorted(FORMATS)}")
@@ -110,7 +119,7 @@ def make_format_segment(
     speaker_ids = list(speakers) if speakers else list(spec.speaker_ids())
     log.info("format_dispatch", name=name, topic=topic, speakers=speaker_ids)
     ctx = context.assemble(now, topic=topic, speakers=speaker_ids)
-    return stamp_duration(spec.build(now, ctx))
+    return stamp_duration(spec.build(now, ctx, flow))
 
 
 __all__ = ["FORMATS", "FormatSpec", "make_format_segment", "stamp_duration"]

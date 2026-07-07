@@ -32,6 +32,7 @@ from datetime import datetime
 
 from .. import evergreen
 from ..config import settings
+from ..flow import ShowFlow
 from ..logging_setup import get_logger
 from ..production import media, mix
 from ..providers import llm
@@ -244,11 +245,19 @@ def spot(now: datetime, ctx: AssembledContext, *, mode: str) -> Segment:
     )
 
 
-def commercial(now: datetime, ctx: AssembledContext) -> Segment:
-    """The `commercial` registry entry — a fictional in-world product spot."""
+def commercial(
+    now: datetime, ctx: AssembledContext, flow: ShowFlow | None = None
+) -> Segment:
+    """The `commercial` registry entry — a fictional in-world product spot.
+
+    `flow` (D12.0) is accepted for the uniform format seam but unused: a spot is a
+    break, not part of the talk thread.
+    """
     return spot(now, ctx, mode=MODE_COMMERCIAL)
 
 
-def promo(now: datetime, ctx: AssembledContext) -> Segment:
-    """The `promo` registry entry — a station self-promo."""
+def promo(
+    now: datetime, ctx: AssembledContext, flow: ShowFlow | None = None
+) -> Segment:
+    """The `promo` registry entry — a station self-promo (`flow` unused; see above)."""
     return spot(now, ctx, mode=MODE_PROMO)

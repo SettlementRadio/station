@@ -46,7 +46,7 @@ grid:
 
 
 def _generator(tmp_path, *, duration=600.0):
-    def _gen(name, now_iso, *, topic=None, speakers=None):
+    def _gen(name, now_iso, *, topic=None, speakers=None, flow=None):
         seg_id = f"{name}-{now_iso[11:19].replace(':', '')}"
         path = tmp_path / f"{seg_id}.mp3"
         path.write_bytes(b"\x00")

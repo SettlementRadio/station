@@ -38,6 +38,7 @@ from datetime import datetime
 
 from .. import evergreen, freshness
 from ..config import settings
+from ..flow import ShowFlow
 from ..logging_setup import get_logger
 from ..providers import llm, tts
 from ..safety import safety_check
@@ -542,6 +543,7 @@ def compose_segment(
     length_target_sec: int | None = None,
     extra_directive: str | None = None,
     fmt: str = "talk",
+    flow: ShowFlow | None = None,
 ) -> Segment:
     """Turn an already-assembled context into a two-DJ talk `Segment`.
 
@@ -551,6 +553,11 @@ def compose_segment(
     are already chosen) and may pass a `seg_id`, a `length_target_sec` DIAL, and an
     `extra_directive` (a structural backbone for the orchestrator — the B5 `talk`
     template uses it). `fmt` is the `Segment.format` label.
+
+    `flow` (D12.0) is the show-position + talk hand-off substrate. D12.0 only
+    RECORDS it on the segment meta (so it is visible/testable) and does NOT change
+    any prompt — the positional backbone (D12.1) and thread continuation (D12.2)
+    consume it in later tasks. `None` keeps today's standalone open→close shape.
 
     C0 — the GATE. Each attempt's draft must clear BOTH gates: the content-safety
     check (`safety.safety_check`) and continuity. A safety flag re-rolls a fresh
@@ -693,6 +700,10 @@ def compose_segment(
                     else None
                 ),
                 "memory_used": bool(memory),
+                # D12.0 — the slot's show position (open/continue/close), recorded
+                # for visibility/tests; None on the standalone path. The prompts are
+                # unchanged in D12.0 — D12.1/D12.2 make the room read it.
+                "flow_position": flow.position if flow is not None else None,
                 "lead": frame.lead,
                 "handover": frame.is_handover,
                 "safety_stage": safety.stage,

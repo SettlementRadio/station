@@ -30,6 +30,7 @@ from datetime import datetime
 
 from .. import evergreen, freshness
 from ..config import settings
+from ..flow import ShowFlow
 from ..logging_setup import get_logger
 from ..providers import llm
 from ..safety import safety_check
@@ -336,8 +337,11 @@ def _coverage_meta(selected: list[SelectedStory]) -> dict:
     }
 
 
-def news(now: datetime, ctx: AssembledContext) -> Segment:
+def news(now: datetime, ctx: AssembledContext, flow: ShowFlow | None = None) -> Segment:
     """Generate one story-log-driven news `Segment` for `now` (D4.1–D4.3).
+
+    `flow` (D12.0) is accepted for the uniform format seam but unused — news
+    continuity is its own coverage memory (D4), not the talk thread (see D12 pack).
 
     C0 — the GATE. Each attempt's draft must clear BOTH the content-safety check and
     the desk continuity check (against canon + prior coverage). A safety flag re-rolls

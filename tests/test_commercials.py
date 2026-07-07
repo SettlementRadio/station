@@ -142,7 +142,7 @@ _BREAKY = Program(
 )
 
 
-def _fake_make_format_segment(name, now_iso, *, topic=None, speakers=None):
+def _fake_make_format_segment(name, now_iso, *, topic=None, speakers=None, flow=None):
     from pathlib import Path
 
     seg_id = f"{name}-{now_iso.replace(':', '').replace('-', '')}"

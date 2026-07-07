@@ -60,7 +60,7 @@ def _recording_generator(tmp_path, *, duration=120.0):
     """A stand-in `make_format_segment` that records (format, speakers) per call."""
     calls: list[dict] = []
 
-    def _gen(name, now_iso, *, topic=None, speakers=None):
+    def _gen(name, now_iso, *, topic=None, speakers=None, flow=None):
         calls.append({"format": name, "speakers": speakers, "air_time": now_iso})
         path = tmp_path / f"{name}-{len(calls):03d}.mp3"
         path.write_bytes(b"\x00")

@@ -72,10 +72,12 @@ import time
 from datetime import datetime, timedelta
 from pathlib import Path
 
+from . import flow as flow_mod
 from .config import settings
 from .disclosure import disclosure_ident_segment
 from .evergreen import EVERGREEN_NAME_PREFIX
 from .fallback import ensure_fallback_assets
+from .flow import ShowFlow
 from .formats import FORMATS, make_format_segment
 from .formats.sponsor import pick_sponsor, sponsor_read_segment
 from .freshness import record_segment as record_airplay_features
@@ -218,7 +220,10 @@ def _write_playlist(entries: list[dict]) -> Path:
 
 
 def _generate_slot(
-    name: str, air_cursor: datetime, speakers: list[str] | None = None
+    name: str,
+    air_cursor: datetime,
+    speakers: list[str] | None = None,
+    flow: ShowFlow | None = None,
 ) -> Segment | None:
     """Produce one segment for `name` at `air_cursor`, bounded-retrying on error.
 
@@ -227,11 +232,15 @@ def _generate_slot(
     failure (Claude/TTS/DB). We retry it `schedule_failure_max_retries` times, then
     give up on this slot (the caller skips it — never dead air). `speakers` (D6.2) is
     the active program's hosts routed into the format; None keeps the format default.
+    `flow` (D12.0) is the slot's show-position + talk hand-off substrate (only the
+    talk format reads it); None keeps the standalone shape.
     """
     attempts = settings.schedule_failure_max_retries + 1
     for attempt in range(1, attempts + 1):
         try:
-            seg = make_format_segment(name, air_cursor.isoformat(), speakers=speakers)
+            seg = make_format_segment(
+                name, air_cursor.isoformat(), speakers=speakers, flow=flow
+            )
             seg.air_time = air_cursor.isoformat()  # pin the slot's air-time
             return seg
         except Exception as exc:
@@ -261,6 +270,29 @@ def _program_speakers(program: Program, name: str) -> list[str] | None:
     if need > 0 and len(hosts) >= need:
         return hosts[:need]
     return None
+
+
+def _show_flow(
+    program: Program,
+    air_cursor: datetime,
+    last_content_program: str | None,
+    handoff: flow_mod.Handoff | None,
+) -> ShowFlow:
+    """The D12.0 `ShowFlow` for a grid content slot: show position + carried hand-off.
+
+    `open` when this is the first content slot of a NEW program instance (the program
+    differs from the last placed content slot); `close` when the NEXT content slot is
+    estimated to fall in a different program; `continue` otherwise. The `close`
+    look-ahead uses the default slot length as the horizon — best-effort, since a
+    slot's real duration isn't known until it renders (flow is advisory, never a hard
+    dependency, per the D12 principles). The carried `handoff` is the previous talk
+    slot's thread (None on a cold start / after a clear).
+    """
+    is_first = program.id != last_content_program
+    est_end = air_cursor + timedelta(seconds=settings.segment_default_length_target_sec)
+    is_last = programming.program_for(est_end).id != program.id
+    position = flow_mod.show_position(is_first=is_first, is_last=is_last)
+    return ShowFlow(position=position, handoff=handoff)
 
 
 def onair_hosts(program: Program, fmt: str) -> list[str]:
@@ -331,6 +363,18 @@ def top_up(now: datetime | None = None) -> list[dict]:
             prev_cursor = datetime.fromisoformat(clock_state["_last_cursor"])
         except ValueError:
             prev_cursor = None
+    # D12.0 — the talk-continuity substrate, persisted in clock_state alongside the
+    # clocks so it survives across top-up runs: the program of the last placed
+    # CONTENT slot (→ is this slot the OPEN of a new program instance?) and the last
+    # talk hand-off (the thread the next talk segment can pick up). Both live under
+    # the underscore-keyed `_flow`, so they never collide with a program id.
+    flow_state = clock_state.get("_flow") or {}
+    flow_last_program: str | None = flow_state.get("last_content_program")
+    flow_handoff: flow_mod.Handoff | None = (
+        flow_mod.Handoff.from_dict(flow_state["handoff"])
+        if isinstance(flow_state.get("handoff"), dict)
+        else None
+    )
     # C3: count CONTENT segments placed since the last disclosure ident, persisted
     # across runs so the spoken-disclosure cadence is steady regardless of pruning.
     content_since_ident = state.get("content_since_ident", 0)
@@ -539,6 +583,7 @@ def top_up(now: datetime | None = None) -> list[dict]:
         program: Program | None = None
         new_pstate: dict | None = None
         speakers: list[str] | None = None
+        slot_flow: ShowFlow | None = None
         if settings.programming_enabled:
             program = programming.program_for(air_cursor)
             # D7.2 — program boundary: when the show at the cursor CHANGES, open it
@@ -583,10 +628,15 @@ def top_up(now: datetime | None = None) -> list[dict]:
             )
             if name is not None:
                 speakers = _program_speakers(program, name)
+                # D12.0 — where this slot sits in the show + the thread to carry in.
+                # Grid mode only; the flat rotation stays standalone (flow=None).
+                slot_flow = _show_flow(
+                    program, air_cursor, flow_last_program, flow_handoff
+                )
         else:
             name = rotation[rot_i % len(rotation)]
 
-        seg = _generate_slot(name, air_cursor, speakers) if name else None
+        seg = _generate_slot(name, air_cursor, speakers, slot_flow) if name else None
         if seg is None:
             # The slot failed (infra error) or the program yielded nothing airable —
             # advance past it (commit the clock/rotation step so we don't retry the
@@ -652,6 +702,18 @@ def top_up(now: datetime | None = None) -> list[dict]:
         else:
             rot_i += 1
 
+        # D12.0 — advance the talk-continuity substrate on a placed CONTENT slot:
+        # remember this program as the last content program (so the next new program
+        # OPENs), and refresh the talk hand-off. A talk atom that succeeded yields a
+        # real hand-off; one that fell to an evergreen (or parsed empty) yields None
+        # → the thread clears so the next talk opens fresh. A non-talk slot leaves
+        # the hand-off intact, so the thread carries across it (real radio keeps a
+        # thread over a song). Grid mode only; the flat rotation carries no thread.
+        if program is not None:
+            flow_last_program = program.id
+            if name == "talk":
+                flow_handoff = flow_mod.handoff_from_segment(seg, program.id)
+
         # Self-describing sidecar so prune() can read this render's air end once it
         # has aired out of the live schedule (C2.5). Written with the pinned slot
         # air_time already set on the segment by `_generate_slot`.
@@ -678,8 +740,16 @@ def top_up(now: datetime | None = None) -> list[dict]:
             air_time=entry["air_time"],
             duration_sec=round(duration, 1),
             runway_sec=round(runway_sec),
+            flow_position=slot_flow.position if slot_flow is not None else None,
+            open_thread=flow_handoff.open_thread if flow_handoff else None,
         )
 
+    # D12.0 — persist the talk-continuity substrate so the next top-up resumes the
+    # thread and the OPEN detection (JSON-serialisable, like `_last_cursor`).
+    clock_state["_flow"] = {
+        "last_content_program": flow_last_program,
+        "handoff": flow_handoff.to_dict() if flow_handoff is not None else None,
+    }
     state["entries"] = upcoming
     state["rotation_index"] = rot_i % len(rotation)
     state["clock_state"] = clock_state
