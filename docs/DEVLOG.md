@@ -38,6 +38,43 @@ A typical *build* session will be short, e.g.:
 
 ---
 
+## 2026-07-07 — Phase D — D12 planned: talk continuity / show flow (a gap found while operating)
+**Focus:** operating the built station surfaced a real product-quality gap — consecutive talk segments
+don't flow. Diagnosed the cause in the as-built code and wrote the full sub-pack to fix it
+(`docs/PHASE_D_CONTINUITY_TASKS.md`), to build in a standalone session.
+**The issue (operator-observed):** each talk segment opens with a time-stamp ("it's … hour…"), runs a
+2–3 min exchange, then *closes* — and the next segment *resets* with a brand-new topic. It plays like N
+independent mini-shows back-to-back, not one radio show that carries a thread across its music + breaks.
+**Root cause (not a bug — a missing layer):** segments are generated as self-contained mini-shows, and
+four things fight continuity — (1) `showrunner` picks ONE fresh beat with **no knowledge of the previous
+segment**; (2) `formats/talk.py` `_BACKBONE` hard-codes open→banter→close *every* segment; (3)
+`orchestrate`'s `time_check` puts "it's X hour" near *every* open; (4) D5 freshness steers each segment
+to *avoid* recent topics — nudging toward a NEW topic every 3 min, i.e. AGAINST continuity. It's built
+this way on purpose (atomic, resilient, gate-per-segment, evergreen-swappable); D5 solved "don't repeat
+yourself," but "flow across segments" was never a pack.
+**Decisions (the fix, as D12):**
+- **A thin flow layer over atomic segments — NOT a rewrite.** Segments stay independently gated +
+  hot-swappable + evergreen-able; continuity is best-effort context that never blocks generation. It
+  rides the existing `showrunner → orchestrate` injection points (no new engine), and the cross-segment
+  hand-off lives in the scheduler's persisted `clock_state` (no new table).
+- **Two layers, cheap→deep.** Layer 1 (D12.1): make open/close/time-check **positional** off the D6
+  program clock — one open at the top of a show, cold middles, one close at the end, time-check only at
+  the hour/handover (kills ~80% of the "reset" feeling for ~½ day). Layer 2 (D12.2): **thread the
+  conversation** — carry the previous segment's tail + topic forward so the showrunner *continues* the
+  beat until it's spent, then transitions on purpose.
+- **Resolve the freshness↔continuity tension (D12.3):** freshness targets *day-scale* looping, not the
+  active thread; the showrunner may continue the current beat while still not re-running yesterday's.
+- **Numbered D12** — a post-capstone addendum; the pack's last task adds its overview tracker row + §3
+  brief (kept out of the other docs for now, per the build-it-in-its-own-session plan).
+**Changed:** **new** `docs/PHASE_D_CONTINUITY_TASKS.md` (D12.0–D12.5, with the load-bearing decisions,
+config section `convo_continuity_*`, seams, and an explicit "NOT in D12"). No code yet.
+**Why:** the disconnection undercuts the whole premise — a station you'd leave on. Fixing it as a planned
+sub-pack (not a quick hack) keeps the atomicity/resilience the scheduler depends on while adding the show
+flow real radio has.
+**Next:** build D12 in a standalone session — start D12.0 (show position + hand-off substrate), then the
+Layer-1 win (D12.1).
+Commit: (this session — planning only)  ·  Clips: —
+
 ## 2026-07-07 — Phase D — D11 built: the operator manual + the integrated acceptance gate (the capstone)
 **Focus:** close Phase D. Consolidate every pack's captured how-tos into one verified operator manual
 (D11.0–D11.2), then build the integrated 24–48h acceptance simulation that proves the whole spine

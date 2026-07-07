@@ -816,3 +816,17 @@ tracks:
     duration_sec: null
     audio_path: "assets/music/hearth-and-hull__lets-pass-it-on.mp3"
     licence_note: null
+
+  - id: mara-vale__signal-through-the-dust
+    title: "Signal Through the Dust"
+    artist: "Mara Vale"
+    artist_figure_id: null
+    album: "Red Weather Sessions"
+    era: "age-of-relays"
+    in_world_year: 2626
+    mood: "yearning"
+    tags: [mars, relay-culture, blues-rock, age-of-relays, hopeful]
+    story_blurb: "A smoky relay-road blues song about hearing one beloved voice through Martian storm static."
+    duration_sec: null
+    audio_path: "assets/music/mara-vale__signal-through-the-dust.mp3"
+    licence_note: null
