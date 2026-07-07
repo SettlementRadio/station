@@ -38,7 +38,7 @@ from datetime import datetime
 
 from .. import evergreen, freshness
 from ..config import settings
-from ..flow import ShowFlow
+from ..flow import OPEN, ShowFlow
 from ..logging_setup import get_logger
 from ..providers import llm, tts
 from ..safety import safety_check
@@ -171,6 +171,60 @@ def showrunner(
 
 # --- Step 2: orchestrator ---------------------------------------------------
 
+# D12.1 — a talk slot airing within this many minutes of the top of the hour counts
+# as "the top of the hour" for the `hourly` time-check policy. A domain constant
+# (config.py convention): the schedule places slots back-to-back, so this is a
+# tolerance, not an operator dial.
+_TOP_OF_HOUR_WINDOW_MIN = 5
+
+
+def _timecheck_allowed(position: str | None, frame: ShowFrame, now: datetime) -> bool:
+    """Whether a spoken settlement-time check is allowed for this positional slot.
+
+    Driven by `settings.convo_flow_timecheck` (never|handover|open|hourly). A dawn/
+    dusk handover always time-stamps (that IS the moment); otherwise only an `open`
+    slot (open/hourly), or a slot near the top of the hour (hourly), qualifies — a
+    cold `continue`/`close` slot mid-show never does.
+    """
+    policy = settings.convo_flow_timecheck
+    if policy == "never":
+        return False
+    if frame.is_handover:
+        return True
+    if policy == "handover":
+        return False
+    if position == OPEN:
+        return True
+    if policy == "hourly" and now.minute < _TOP_OF_HOUR_WINDOW_MIN:
+        return True
+    return False
+
+
+def _time_check_directive(
+    frame: ShowFrame, flow: ShowFlow | None, now: datetime
+) -> str:
+    """The settlement-time-check instruction for the orchestrator (D12.1).
+
+    Standalone (no `flow`) or the D12 rollback keeps the pre-D12 behaviour — always a
+    time check, near the handover or the open. With a position, the check is included
+    only where the policy allows; elsewhere the orchestrator is told NOT to time-stamp
+    (it's mid-show, the hour was already established), which is what stops every
+    consecutive segment restarting with "it's X hour".
+    """
+    if flow is None or not settings.convo_continuity_enabled:
+        return (
+            "A real time check ('settlement time') belongs near the handover."
+            if frame.is_handover
+            else "A real time check ('settlement time') belongs near the open."
+        )
+    if _timecheck_allowed(flow.position, frame, now):
+        where = "the handover" if frame.is_handover else "the open"
+        return f"A real time check ('settlement time') belongs near {where}."
+    return (
+        "Do NOT give a settlement-time check here — you're mid-show and the hour is "
+        "already established; just keep the conversation going."
+    )
+
 
 def orchestrate(
     ctx: AssembledContext,
@@ -183,6 +237,7 @@ def orchestrate(
     recent_openings: str = "",
     guest: Guest | None = None,
     memory: str = "",
+    flow: ShowFlow | None = None,
 ) -> str:
     """Write the two-DJ exchange in one call; return speaker-labelled dialogue.
 
@@ -210,6 +265,11 @@ def orchestrate(
     (`writers/memory.py`) — each host's lived history from the story log, joined
     to their card. Small + variable, so it rides HERE in the per-call system (the
     cache lever holds); "" keeps the memory-less shape.
+
+    `flow` (D12.1) is the slot's show position (from D12.0). It makes the spoken
+    settlement-time check POSITIONAL — dropped on cold `continue`/`close` slots so a
+    flowing show doesn't restate the hour every segment. `None` (the direct paths)
+    keeps the pre-D12 always-a-time-check-near-open/handover behaviour.
     """
     names = _names(ctx)
     labels = [f"{c.name}:" for c in ctx.speakers]
@@ -231,11 +291,7 @@ def orchestrate(
         if revision_note
         else ""
     )
-    time_check = (
-        "A real time check ('settlement time') belongs near the handover."
-        if frame.is_handover
-        else "A real time check ('settlement time') belongs near the open."
-    )
+    time_check = _time_check_directive(frame, flow, now)
     # --- Delivery register lives HERE (the on-air "way they speak"); the persona
     # itself lives in the cast cards (docs/canon/90-cast.md). Future Phase D packs
     # SLOT THEIR INPUTS INTO this prompt — they don't replace it — so keep the
@@ -617,6 +673,7 @@ def compose_segment(
             recent_openings=recent_openings,
             guest=seg_guest,
             memory=memory,
+            flow=flow,
         ).strip()
 
         safety = safety_check(script)

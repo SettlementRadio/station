@@ -84,6 +84,7 @@ def test_continuity_flag_regenerates_with_note_then_falls_back(monkeypatch):
         recent_openings="",
         guest=None,
         memory="",
+        flow=None,
     ):
         seen_notes.append(revision_note)
         return SCRIPT
@@ -123,6 +124,7 @@ def test_safety_flag_regenerates_fresh_then_succeeds(monkeypatch):
         recent_openings="",
         guest=None,
         memory="",
+        flow=None,
     ):
         notes.append(revision_note)
         return SCRIPT

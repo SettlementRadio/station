@@ -199,6 +199,27 @@ class Settings(BaseSettings):
     convo_memory_per_host: int = 3
     convo_memory_window_days: int = 60
 
+    # --- Talk continuity (D12) -------------------------------------------------
+    # D12 makes consecutive talk segments in ONE program read as a single flowing
+    # show instead of N standalone mini-shows: one open at the top, cold hand-offs
+    # between the middle segments, one close at the end, and only an occasional
+    # time-check. The scheduler derives each slot's position (open/continue/close)
+    # from the program clock (D12.0) and threads it into the writers' room; the
+    # backbone + time-check become POSITIONAL (D12.1). `convo_continuity_enabled=
+    # False` is the clean rollback to the pre-D12 per-segment open→close shape
+    # (every talk segment self-contained). The direct `make conversation` / `make
+    # format FMT=talk` paths carry no position (flow=None) and always read as a
+    # complete little segment, enabled or not.
+    convo_continuity_enabled: bool = True
+    # When a spoken settlement-time check is allowed in a talk segment (D12.1):
+    #   never    — no spoken time checks
+    #   handover — only at a dawn/dusk handover
+    #   open     — a program's OPEN slot (and handovers)
+    #   hourly   — open slots, handovers, AND a slot airing near the top of the hour
+    # Default `hourly`: a real show time-stamps at the top of the hour and at the
+    # handover, not every three minutes. A cold `continue` slot never time-checks.
+    convo_flow_timecheck: str = "hourly"
+
     # --- Content-safety gate (C0: real automated check on every draft) ---------
     # CLAUDE.md "Content safety": before any public broadcast, generated text must
     # pass a safety gate. The gate is a fast keyword pre-filter + a cheap LLM pass

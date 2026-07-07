@@ -13,8 +13,11 @@ from datetime import datetime
 
 from src import flow, scheduler
 from src.flow import CLOSE, CONTINUE, OPEN, Handoff, ShowFlow, handoff_from_segment
+from src.formats import talk as talk_fmt
 from src.segment import Segment
 from src.world import programming
+from src.world.framing import ShowFrame
+from src.writers import conversation as convo
 
 # --- The pure position logic ------------------------------------------------
 
@@ -232,3 +235,90 @@ def test_flat_rotation_carries_no_flow(monkeypatch, tmp_path):
 
     assert calls, "expected some slots to be generated"
     assert all(c["flow"] is None for c in calls)
+
+
+# --- D12.1: positional backbone selection -----------------------------------
+
+
+def test_backbone_is_standalone_without_flow():
+    assert talk_fmt._backbone_for(None) == talk_fmt._BACKBONE_STANDALONE
+
+
+def test_backbone_is_standalone_when_continuity_disabled(monkeypatch):
+    monkeypatch.setattr(talk_fmt.settings, "convo_continuity_enabled", False)
+    got = talk_fmt._backbone_for(ShowFlow(OPEN))
+    assert got == talk_fmt._BACKBONE_STANDALONE
+
+
+def test_backbone_positional_open_continue_close():
+    assert "OPENS" in talk_fmt._backbone_for(ShowFlow(OPEN))
+    middle = talk_fmt._backbone_for(ShowFlow(CONTINUE))
+    assert "MIDDLE" in middle and "COLD" in middle
+    assert "CLOSES" in talk_fmt._backbone_for(ShowFlow(CLOSE))
+
+
+# --- D12.1: positional / policy-gated time-check ----------------------------
+
+_NOON = datetime(2026, 6, 22, 14, 30)  # mid-afternoon, mid-hour (no pin)
+_TOP_OF_HOUR = datetime(2026, 6, 22, 14, 2)  # within the top-of-hour window
+
+
+def _frame(*, is_handover=False, part="afternoon"):
+    return ShowFrame(
+        part_of_day=part,
+        lead="wren",
+        companion="vell",
+        is_handover=is_handover,
+        situation="{lead} anchors",
+    )
+
+
+def _has_timecheck(directive: str) -> bool:
+    """A directive INCLUDES a time-check (vs. instructing not to give one)."""
+    return "belongs near" in directive and "do not" not in directive.lower()
+
+
+def test_timecheck_standalone_always_present():
+    # No flow (direct path): keep the pre-D12 always-a-time-check behaviour.
+    assert _has_timecheck(convo._time_check_directive(_frame(), None, _NOON))
+
+
+def test_timecheck_dropped_on_a_cold_continue(monkeypatch):
+    monkeypatch.setattr(convo.settings, "convo_flow_timecheck", "hourly")
+    monkeypatch.setattr(convo.settings, "convo_continuity_enabled", True)
+    directive = convo._time_check_directive(_frame(), ShowFlow(CONTINUE), _NOON)
+    assert not _has_timecheck(directive)
+    assert "do not" in directive.lower()
+
+
+def test_timecheck_present_on_the_open(monkeypatch):
+    monkeypatch.setattr(convo.settings, "convo_flow_timecheck", "open")
+    directive = convo._time_check_directive(_frame(), ShowFlow(OPEN), _NOON)
+    assert "belongs near the open" in directive
+
+
+def test_handover_always_timechecks_regardless_of_position(monkeypatch):
+    monkeypatch.setattr(convo.settings, "convo_flow_timecheck", "open")
+    directive = convo._time_check_directive(
+        _frame(is_handover=True, part="first light"), ShowFlow(CONTINUE), _NOON
+    )
+    assert "belongs near the handover" in directive
+
+
+def test_never_policy_suppresses_even_the_open(monkeypatch):
+    monkeypatch.setattr(convo.settings, "convo_flow_timecheck", "never")
+    directive = convo._time_check_directive(_frame(), ShowFlow(OPEN), _NOON)
+    assert not _has_timecheck(directive)
+
+
+def test_hourly_allows_a_top_of_hour_continue(monkeypatch):
+    monkeypatch.setattr(convo.settings, "convo_flow_timecheck", "hourly")
+    directive = convo._time_check_directive(_frame(), ShowFlow(CONTINUE), _TOP_OF_HOUR)
+    assert _has_timecheck(directive)
+
+
+def test_open_policy_does_not_grant_top_of_hour_continue(monkeypatch):
+    # `open` is stricter than `hourly`: a mid-show continue never time-checks.
+    monkeypatch.setattr(convo.settings, "convo_flow_timecheck", "open")
+    directive = convo._time_check_directive(_frame(), ShowFlow(CONTINUE), _TOP_OF_HOUR)
+    assert not _has_timecheck(directive)

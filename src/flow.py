@@ -43,9 +43,9 @@ CLOSE = "close"
 # constant (config.py convention #1), not an operator dial.
 _HANDOFF_TAIL_LINES = 2
 
-# A light sign-off heuristic for `open_thread` (D12.0). Today every talk segment
-# closes (formats/talk.py `_BACKBONE`), so a tail that reads like a sign-off means
-# the thread wrapped. D12.2 replaces this with an orchestrator-emitted flag.
+# A light sign-off heuristic for `open_thread` (D12.0): a tail that reads like an
+# on-air sign-off means the thread wrapped (a standalone or `close` slot signs off).
+# D12.2 replaces this heuristic with an orchestrator-emitted flag.
 _SIGNOFF_RE = re.compile(
     r"\b(good ?night|good ?morning|see you|catch you|that's (all|it)|until (next|then)|"
     r"back (after|in a|soon)|take care|stay (safe|warm|with us)|signing off|"
