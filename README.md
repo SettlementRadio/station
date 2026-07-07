@@ -128,8 +128,11 @@ only, never a real brand, franchise, or person.
 ## Run it locally
 The station backend (the Python pipeline + Liquidsoap playout) runs on macOS (Apple Silicon)
 with Homebrew. Generation and playout are decoupled, so you can generate a segment, then serve it.
-For a one-page command cheat-sheet (every `make` target, the test commands, env knobs, and
-troubleshooting), see [`docs/HOWTO.md`](docs/HOWTO.md).
+Two docs, split by intent: for **operating** the running station (seed modes & the world, the bible,
+the grid, tracks/sponsors, voice, the console, recovery, the acceptance gate) see the operator
+manual, [`docs/ADMIN_MANUAL.md`](docs/ADMIN_MANUAL.md); for **developing** the repo (a one-page
+cheat-sheet of every `make` target, the test commands, env knobs, and troubleshooting) see
+[`docs/HOWTO.md`](docs/HOWTO.md).
 
 **1. System packages.** Note: **Python 3.12, not 3.13** — the Kokoro TTS package requires
 `>=3.10,<3.13`.

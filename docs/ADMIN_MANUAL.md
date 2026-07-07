@@ -2,8 +2,10 @@
 
 > **How to OPERATE Settlement Radio**, organised by operator task — every entry is a goal + the
 > exact command/file/steps. Development (repo setup, generating segments by hand, tests, lint)
-> lives in [`docs/HOWTO.md`](HOWTO.md). *(D11.1 structure; each how-to is run + corrected against
-> the live stack in D11.2.)*
+> lives in [`docs/HOWTO.md`](HOWTO.md).
+>
+> **Last verified:** 2026-07-07 (D11), against the local stack. **Re-verify at soft launch (CM),**
+> when unattended operation begins: re-run the how-tos here, then bump this date.
 >
 > **Tag convention — `→ Phase E panel`:** any how-to that is a *hand-edit-a-file / re-run-a-seed / set
 > an env dial* workflow carries this tag. These are deliberate interim mechanics; the Phase E operator
@@ -445,6 +447,21 @@ a hard rule).
   webhook/uptime ping; exits non-zero when unhealthy (so a cron timer can act on it).
 - Playout logs: `.run/icecast.log`, `.run/liquidsoap.log`. Pipeline jobs log structured JSON to
   the console (readable form: `LOG_JSON=false`; verbosity: `LOG_LEVEL=debug|info|warning|error`).
+
+### Pre-launch dress rehearsal (the acceptance gate)
+The integrated 24–48h simulation — the Phase-D gate to run before the C9 live soak and after any
+change to the spine. It drives the real pipeline (world tick → news → freshness → grid →
+music/commercials) across an accelerated window and asserts five properties: **no dead gaps · no
+repetition loops · stories evolve · cost bounded · schedule sane**.
+```bash
+make acceptance            # 24h window; make acceptance HOURS=48 for the wider run
+```
+- **No cost, no live calls, non-destructive:** the model + TTS seams are mocked, and the whole
+  simulated world runs in one rolled-back transaction — it never touches your world or schedule.
+  Needs a reachable Postgres. Exits non-zero and names the failing property + reason on any failure.
+- The same checks run in CI as `tests/test_acceptance.py` (each property is unit-tested both ways
+  plus a short end-to-end run). Debug a failure with `--dump PATH` to write the placed timeline JSON:
+  `.venv/bin/python -m src.acceptance --hours 24 --dump /tmp/timeline.json`.
 
 ### Peek inside the world (read-only snippets)
 The story log the tick wrote:

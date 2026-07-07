@@ -339,7 +339,7 @@ done and Claude (chat) can generate the `_TASKS.md` now.
 | D8 Commercials & Sponsorship | `PHASE_D_COMMERCIALS_TASKS.md` | D6, D7 (CM for real sponsors) | ✅ | ✅ | **Built** (D8.0–D8.3; sponsors table ships empty — real sponsors at CM; L3/L4 spot levels await D9/D10 + a brand clip) |
 | D9 Voice & Emotion + Roster | `PHASE_D_VOICE_ROSTER_TASKS.md` | D3 (memory); C6 (emotion); D10 (guests) | ✅ | ✅ | **Built** (D9.0–D9.5; emotion wired end-to-end, AUDIBLE only on the flagship engine — the C6 listen also retunes the curves + confirms the 8 new premade voice ids) |
 | D10 Figures & Quotes | `PHASE_D_FIGURES_QUOTES_TASKS.md` | D3 (D2 rec.; D9 for soundbites) | ✅ | ✅ | **Built** (D10.0–D10.2, D10.4; D10.3 soundbite DELIVERED via D9.3 — a figure+quote airs as a voiced guest) |
-| D11 Operator/Admin Manual (capstone) | `PHASE_D_ADMIN_MANUAL_TASKS.md` | D1–D10 built | ✅ | ☐ | Do last (re-verify at CM) |
+| D11 Operator/Admin Manual (capstone) | `PHASE_D_ADMIN_MANUAL_TASKS.md` | D1–D10 built | ✅ | ✅ | **Built** (D11.0–D11.4; manual verified + `make acceptance` gate green; re-verify at CM) |
 
 **Done-when for Phase D (from ROADMAP):** the world visibly progresses on its own (fresh, evolving
 stories the news + DJs reference with correct past/now/future framing); conversations draw on a real
@@ -363,6 +363,10 @@ decision**. None of these block starting D — build against local Postgres + th
 the server track wires them to the box when it lands.
 
 ---
+
+**Operating the built world:** the how-to for every operator task across D1–D11 lives in one place —
+the operator manual, [`docs/ADMIN_MANUAL.md`](ADMIN_MANUAL.md) (the D11 capstone). The pre-C9-soak
+acceptance gate is `make acceptance` (D11.3).
 
 *How to use this file going forward:* when a sub-pack's dependencies are built, ask Claude (chat) to
 generate the next `PHASE_D_<NAME>_TASKS.md` from this overview (the Goal/Builds/Docs/Seams/Depends

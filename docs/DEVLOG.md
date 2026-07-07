@@ -38,6 +38,45 @@ A typical *build* session will be short, e.g.:
 
 ---
 
+## 2026-07-07 — Phase D — D11 built: the operator manual + the integrated acceptance gate (the capstone)
+**Focus:** close Phase D. Consolidate every pack's captured how-tos into one verified operator manual
+(D11.0–D11.2), then build the integrated 24–48h acceptance simulation that proves the whole spine
+holds together over time (D11.3), and link/polish/lock it (D11.4).
+**Decisions:**
+- **Two operator docs, split by intent, ONE source each:** `docs/ADMIN_MANUAL.md` is *operating*
+  (reorganised by operator TASK — running the station, seeding & the world, authoring the bible,
+  programming the grid, music, commercials, voice, monitoring, recovery, admin/security — not by
+  sub-pack); `docs/HOWTO.md` is *developing* (setup, tests, lint, ad-hoc generation). Cross-linked,
+  never duplicated. Every hand-edit/env-dial workflow keeps its `→ Phase E panel` tag — the manual
+  IS the Phase-E control-surface requirements list.
+- **Verify, don't guess (D11.2):** ran every how-to against the live local stack (seed modes, a real
+  world tick, the console/feed/health, the demos, a voiced `format`, the reset-world guard). This
+  surfaced a real latent bug — the `tick_db` fixture cleared tick-owned events/stories/state but NOT
+  `figures`/`quotes`, so a committed dev-DB tick broke a "nothing written" assertion (fixed).
+- **The acceptance gate mocks ONLY the two provider seams** (`llm.generate` + `tts`/`mix.join_clips`)
+  and runs EVERYTHING ELSE for real — story selection, temporal framing, the grid + clocks, freshness
+  steering, the music selector, the gates — so the five properties (no dead gaps · no repetition loops
+  · stories evolve · cost bounded · schedule sane) are genuinely exercised. No live calls, no cost;
+  the whole simulated world runs in one rolled-back transaction (never touches the real world), and a
+  FIXED start date makes it deterministic + repeatable.
+- **A gate that can't fail is worthless:** each of the five evaluators is unit-tested BOTH ways —
+  passes clean data AND fails loudly on a planted defect (a silent gap, a track loop, a frozen world,
+  a call storm, a backwards schedule).
+**Changed:** `docs/ADMIN_MANUAL.md` (task-organised, verified), `docs/HOWTO.md` (reconciled to
+dev-only), `pyproject.toml` (pytest `pythonpath` so `.venv/bin/pytest` finds `src`),
+`tests/test_world_tick.py` (fixture figures/quotes fix); **new** `src/acceptance.py` +
+`tests/test_acceptance.py` + `make acceptance` (HOURS=…); README + this overview footer link the
+manual → **343 tests green**, 24h & 48h windows pass.
+**Why:** an unattended 24/7 station is only as trustworthy as the runbook you rely on at 3 a.m. and
+the dress rehearsal you run before going live — the manual makes the ops surface knowable, the
+acceptance sim makes "it all still fits together" a one-command check before the C9 soak.
+**📣 Postable:** `make acceptance` — a 24-hour radio station simulated in seconds, asserting it never
+goes silent, never loops, and its world keeps moving — the pre-flight check before it broadcasts for
+real. "How do you test a station that runs forever? You fast-forward a day."
+**Next:** Phase D is code-complete — the C5–C9 server track (provision the VPS, YouTube relay, web
+player, the C9 live soak) and the C6 launch-voice decision. Re-verify the manual at soft launch (CM).
+Commit: (this session)  ·  Clips: (record a `make acceptance` run)
+
 ## 2026-07-06 — Phase D — D9 built: voice & emotion + the DJ roster (the cast comes alive)
 **Focus:** build the whole D9 sub-pack (D9.0–D9.5): emotion wired end-to-end, the pronunciation
 lexicon, the data-driven voice registry with a distinct preset per DJ, guest/non-host voices (the

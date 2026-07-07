@@ -40,7 +40,7 @@ LIQ_LOG    := $(RUN_DIR)/liquidsoap.log
 PLAYER_URL := http://127.0.0.1:8000/
 STREAM_URL := http://127.0.0.1:8000/settlement.mp3
 
-.PHONY: help generate serve air play play-convo stop status console now-playing seed seed-canon reset-world seed-tracks seed-sponsors demo context conversation format buffer schedule ident prune fallback health world-tick news-demo figures-demo freshness-demo programming-demo commercials-demo
+.PHONY: help generate serve air play play-convo stop status console now-playing seed seed-canon reset-world seed-tracks seed-sponsors demo context conversation format buffer schedule ident prune fallback health world-tick news-demo figures-demo freshness-demo programming-demo commercials-demo acceptance
 
 # B5 format default: `make format` builds a talk segment; override with FMT=news
 # or FMT=music. Pass a TOPIC=... to steer canon retrieval.
@@ -84,6 +84,7 @@ help:
 	@echo "  make freshness-demo show anti-repetition keep talk openings/beats varied (D5)"
 	@echo "  make programming-demo show the weekly grid: programs/hosts by daypart (D6; token-free)"
 	@echo "  make commercials-demo hear a fresh spot + see the sparse break + a Powered-by read (D8)"
+	@echo "  make acceptance run the integrated 24-48h acceptance simulation — the Phase-D gate (D11.3)"
 	@echo "  make air       schedule + serve — the live scheduler-driven stream (C2)"
 
 # Seed/refresh the world-state DB from the canon bible (docs/canon/ folder, or the
@@ -298,6 +299,19 @@ now-playing:
 # no Claude/TTS), DB-optional (host names resolve from the cast if a DB is reachable).
 programming-demo:
 	@$(PY) -m src.programming_demo
+
+# D11.3: the integrated acceptance simulation — the Phase-D gate before the C9 soak.
+# Drives the real spine (world tick -> news -> freshness -> grid -> music/commercials)
+# across an accelerated 24-48h window and asserts five integration properties (no dead
+# gaps, no repetition loops, stories evolve, cost bounded, schedule sane). The two
+# provider seams (llm + tts) are MOCKED, so it makes NO live Anthropic/TTS calls and
+# costs nothing; it needs a reachable Postgres and runs its whole world in one
+# rolled-back txn (never touches your world/schedule). Exits non-zero on any failure.
+# Tune with HOURS=… (default 24; try 48). e.g. `make acceptance HOURS=48`.
+HOURS ?= 24
+acceptance:
+	@echo "==> Integrated acceptance simulation ($(HOURS)h window, D11.3)…"
+	$(PY) -m src.acceptance --hours $(HOURS)
 
 # D8.3: the commercials & sponsorship demo — generate ONE commercial + ONE promo
 # (live Anthropic + TTS calls; needs `make seed`), show where the grid places the
