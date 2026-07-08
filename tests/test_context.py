@@ -138,3 +138,39 @@ def test_select_canon_falls_back_to_all_when_no_hits(monkeypatch):
     monkeypatch.setattr(store, "all_canon", lambda conn: sentinel)
 
     assert context._select_canon(object(), "loneliness") is sentinel
+
+
+# --- CO1: model-input equivalence goldens (fixed clock + fixture world) ------
+# The CO2 cache split may change how the stable core is CACHED, never what the
+# model SEES. These goldens pin the exact bytes `assemble` produces for each
+# format's speaker set today (pre-split), on the `co1_world` fixture (conftest).
+# After CO2, the concatenation of whatever parts the context exposes must still
+# equal these bytes — see tests/test_llm_cache.py for the seam-side half.
+
+
+def _golden_core(world, ids: list[str]) -> str:
+    # The pre-split rendering shape, restated LITERALLY (bible, then one
+    # "## Character —" section per speaker, joined by blank lines). This is the
+    # golden: if _render_core (or its CO2 successor) changes a byte, this fails.
+    parts = [world.bible] + [
+        f"## Character — {world.cast[i].name}\n\n{world.cast[i].card_text}" for i in ids
+    ]
+    return "\n\n".join(parts)
+
+
+def test_co1_cached_core_bytes_pinned_per_format(co1_world):
+    for fmt, ids in co1_world.speaker_sets.items():
+        ctx = context.assemble(co1_world.now, speakers=ids)
+        assert ctx.cached_context == _golden_core(co1_world, ids), fmt
+
+
+def test_co1_dynamic_bytes_pinned(co1_world):
+    # The dynamic slice rides AFTER the cache breakpoint (in the per-call
+    # system), so CO2 must leave it untouched too — pin it byte-for-byte.
+    ctx = context.assemble(co1_world.now, speakers=["vell"])
+    assert ctx.dynamic == (
+        "Current events (reference naturally, don't recite):\n"
+        "- Lumen Festival — in five days (upcoming): Lamps are lit.\n\n"
+        "World facts you simply know:\n"
+        "- Radio connects the settlements."
+    )

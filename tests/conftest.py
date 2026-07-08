@@ -59,6 +59,78 @@ def audio_factory(tmp_path_factory):
 
 
 @pytest.fixture()
+def co1_world(monkeypatch):
+    """CO1 — a small FIXED fixture world for the model-input equivalence goldens.
+
+    Mocks the bible loader + the store seam to deterministic fixture data (the
+    "fixed seed"), so `context.assemble` runs DB-free and byte-reproducibly on a
+    fixed clock. `speaker_sets` mirrors the B5 format registry defaults (talk =
+    vell+wren, news = thorn, music/commercial = vell) — deliberately literal,
+    because per-speaker-set prefix bytes are exactly what the CO pack is about.
+    Shared by tests/test_context.py and tests/test_llm_cache.py.
+    """
+    from datetime import datetime, timedelta
+    from types import SimpleNamespace
+
+    from src.world import clock, context
+    from src.world.store import CanonFact, CastMember, Event
+
+    bible = (
+        "# Settlement Radio — Series Bible\n\n"
+        "Humanity is alone; the settlements keep each other company by radio."
+    )
+    cast = {
+        "vell": CastMember(
+            "vell", "Vell", "Warm night-shift host; wry, hopeful.", "voice-a"
+        ),
+        "wren": CastMember(
+            "wren", "Wren", "Quick, curious co-host; loves the archives.", "voice-b"
+        ),
+        "thorn": CastMember("thorn", "Thorn", "Dry, precise news anchor.", "voice-c"),
+    }
+    now = datetime(2026, 7, 8, 21, 0)
+    event = Event(
+        "lumen",
+        "Lumen Festival",
+        "Lamps are lit.",
+        clock.to_inworld(now) + timedelta(days=5),
+        "upcoming",
+        [],
+    )
+    facts = [CanonFact("c1", "Radio connects the settlements.", [])]
+
+    class _Conn:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *exc):
+            return False
+
+    monkeypatch.setattr(context.canon_source, "load_bible", lambda *a: bible)
+    monkeypatch.setattr(context.store, "connect", lambda: _Conn())
+    monkeypatch.setattr(
+        context.store, "get_cast_member", lambda conn, sid: cast.get(sid)
+    )
+    monkeypatch.setattr(context.store, "events_in_range", lambda conn, a, b: [event])
+    monkeypatch.setattr(context.store, "all_canon", lambda conn: list(facts))
+    monkeypatch.setattr(
+        context.store, "attributed_quotes_near", lambda conn, a, b, limit=0: []
+    )
+
+    return SimpleNamespace(
+        bible=bible,
+        cast=cast,
+        now=now,
+        speaker_sets={
+            "talk": ["vell", "wren"],
+            "news": ["thorn"],
+            "music": ["vell"],
+            "commercial": ["vell"],
+        },
+    )
+
+
+@pytest.fixture()
 def assets_tree(tmp_path, audio_factory, monkeypatch):
     """A fixture `assets/` tree with the D7 clips the tests place, wired into settings.
 
