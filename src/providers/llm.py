@@ -26,6 +26,48 @@ log = get_logger(__name__)
 
 _client: anthropic.Anthropic | None = None
 
+# --- Usage telemetry (CO0: the prompt-cache cost lever's eyes) ---------------
+# The prompt-cache economics turn on three token fields the API reports per call:
+# `input_tokens` (full price), `cache_creation_input_tokens` (~1.25x write) and
+# `cache_read_input_tokens` (~0.1x read). `generate` logs them on every call and
+# also notifies any registered listener, so the cost probe (`src/costprobe.py`)
+# can roll them up without parsing logs. The event is a plain dict of counts —
+# provider-agnostic, so nothing vendor-specific leaks through the seam.
+
+UsageListener = Callable[[dict], None]
+
+_usage_listeners: list[UsageListener] = []
+
+
+def add_usage_listener(listener: UsageListener) -> None:
+    """Register a callback invoked with a usage event after each `generate` call."""
+    _usage_listeners.append(listener)
+
+
+def remove_usage_listener(listener: UsageListener) -> None:
+    """Unregister a previously added usage listener."""
+    _usage_listeners.remove(listener)
+
+
+def _usage_fields(usage) -> dict[str, int]:
+    """The token split from an API `usage` object, as plain ints (0 when absent)."""
+    return {
+        "input_tokens": getattr(usage, "input_tokens", 0) or 0,
+        "output_tokens": getattr(usage, "output_tokens", 0) or 0,
+        "cache_creation_input_tokens": getattr(usage, "cache_creation_input_tokens", 0)
+        or 0,
+        "cache_read_input_tokens": getattr(usage, "cache_read_input_tokens", 0) or 0,
+    }
+
+
+def _emit_usage(event: dict) -> None:
+    """Notify usage listeners; a listener failure never breaks a generation."""
+    for listener in list(_usage_listeners):
+        try:
+            listener(event)
+        except Exception as exc:  # noqa: BLE001 — telemetry must not sink the call
+            log.warning("llm_usage_listener_failed", error=str(exc))
+
 
 def _get_client() -> anthropic.Anthropic:
     """Lazily build the SDK client (api key from settings, falling back to env)."""
@@ -101,7 +143,7 @@ def generate(
         prompt_chars=len(prompt),
     )
 
-    def _do_stream() -> str:
+    def _do_stream() -> tuple[str, dict[str, int]]:
         # Re-built fresh per attempt: a retry restarts the stream cleanly (any
         # partial output from a failed attempt is discarded).
         parts: list[str] = []
@@ -110,10 +152,16 @@ def generate(
                 parts.append(text)
                 if on_token is not None:
                     on_token(text)
-        return "".join(parts)
+            # The final message carries the usage split the cache economics turn
+            # on (CO0) — a bare `cached=bool` can't show a silent cache miss.
+            usage = _usage_fields(stream.get_final_message().usage)
+        return "".join(parts), usage
 
-    text = call_with_retry("llm.generate", _do_stream)
-    log.info("llm_generate_done", tier=tier, model=model_id, output_chars=len(text))
+    text, usage = call_with_retry("llm.generate", _do_stream)
+    log.info(
+        "llm_generate_done", tier=tier, model=model_id, output_chars=len(text), **usage
+    )
+    _emit_usage({"source": "generate", "tier": tier, "model": model_id, **usage})
     return text
 
 
@@ -308,8 +356,23 @@ def _generate_batch_api(
         for r in reqs
     ]
     ok = sum(1 for r in out if r.ok)
+    # CO0 — rollup of the cache-economics token split across the whole batch.
+    totals = {
+        key: sum(r.usage.get(key, 0) for r in out)
+        for key in (
+            "input_tokens",
+            "output_tokens",
+            "cache_creation_input_tokens",
+            "cache_read_input_tokens",
+        )
+    }
     log.info(
-        "llm_batch_done", batch_id=batch.id, total=len(out), ok=ok, failed=len(out) - ok
+        "llm_batch_done",
+        batch_id=batch.id,
+        total=len(out),
+        ok=ok,
+        failed=len(out) - ok,
+        **totals,
     )
     return out
 
@@ -323,10 +386,7 @@ def _map_batch_result(result) -> BatchResult:
     text = "".join(b.text for b in message.content if b.type == "text").strip()
     usage: dict[str, int] = {}
     if getattr(message, "usage", None) is not None:
-        u = message.usage
-        usage = {
-            "input_tokens": getattr(u, "input_tokens", 0) or 0,
-            "output_tokens": getattr(u, "output_tokens", 0) or 0,
-            "cache_read_input_tokens": getattr(u, "cache_read_input_tokens", 0) or 0,
-        }
+        # The same three cache-economics fields `generate` logs (CO0), so the
+        # batch path's spend is just as visible as the live path's.
+        usage = _usage_fields(message.usage)
     return BatchResult(result.custom_id, text, ok=True, usage=usage)

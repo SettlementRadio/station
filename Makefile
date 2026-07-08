@@ -40,7 +40,7 @@ LIQ_LOG    := $(RUN_DIR)/liquidsoap.log
 PLAYER_URL := http://127.0.0.1:8000/
 STREAM_URL := http://127.0.0.1:8000/settlement.mp3
 
-.PHONY: help generate serve air play play-convo stop status console now-playing seed seed-canon reset-world seed-tracks seed-sponsors demo context conversation format buffer schedule ident prune fallback health world-tick news-demo figures-demo freshness-demo continuity-demo programming-demo commercials-demo acceptance
+.PHONY: help generate serve air play play-convo stop status console now-playing seed seed-canon reset-world seed-tracks seed-sponsors demo context costprobe conversation format buffer schedule ident prune fallback health world-tick news-demo figures-demo freshness-demo continuity-demo programming-demo commercials-demo acceptance
 
 # B5 format default: `make format` builds a talk segment; override with FMT=news
 # or FMT=music. Pass a TOPIC=... to steer canon retrieval.
@@ -180,6 +180,13 @@ demo:
 context:
 	@echo "==> Assembled writer context (B3)…"
 	$(PY) -m src.world.context
+
+# CO0 — prompt-cache cost probe: one mixed cycle (talk+news+music+commercial)
+# run twice back-to-back, printing the cache_creation/cache_read token split per
+# format. Makes real (small) Anthropic calls; needs a seeded world + .env.
+costprobe:
+	@echo "==> Prompt-cache cost probe (CO0)…"
+	$(PY) -m src.costprobe
 
 # B4: generate a two-DJ conversation segment (showrunner → orchestrator →
 # continuity → two-voice render). Makes live Anthropic calls; needs `make seed`.
