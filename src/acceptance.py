@@ -188,6 +188,8 @@ class _MockGen:
         system: str | None = None,
         model: str | None = None,
         cached_context: str | None = None,
+        bible: str | None = None,
+        cards: str | None = None,
         max_tokens: int | None = None,
         on_token=None,
         timeout: float | None = None,
@@ -196,7 +198,10 @@ class _MockGen:
         self._n += 1
         p = prompt.lower()
         s = (system or "").lower()
-        ctx = f"{system or ''}\n{cached_context or ''}"
+        # CO2 — the stable core now arrives as bible + cards (or the legacy single
+        # cached_context); fold every shape in so the heuristics still see it.
+        core = cached_context or f"{bible or ''}{cards or ''}"
+        ctx = f"{system or ''}\n{core}"
 
         # 1. Gates (safety + every continuity editor) → clear it.
         if "continuity editor" in s or "draft to review" in p:

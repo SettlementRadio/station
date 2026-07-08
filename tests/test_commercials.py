@@ -35,7 +35,7 @@ CARD = CastMember(
 
 def _ctx() -> AssembledContext:
     return AssembledContext(
-        cached_context="canon", dynamic="A quiet day on the relay.", speakers=[CARD]
+        bible="canon", dynamic="A quiet day on the relay.", speakers=[CARD]
     )
 
 

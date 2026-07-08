@@ -260,7 +260,8 @@ def _run_continuity(
         f"Draft to check:\n\n{script}",
         system=system,
         model=tier,
-        cached_context=ctx.cached_context,
+        bible=ctx.bible,
+        cards=ctx.cards_block,
         max_tokens=settings.news_continuity_max_tokens,
     )
     return note.strip()
@@ -382,7 +383,8 @@ def news(now: datetime, ctx: AssembledContext, flow: ShowFlow | None = None) -> 
             "Write the news bulletin now.",
             system=system,
             model=settings.llm_default_tier,
-            cached_context=ctx.cached_context,
+            bible=ctx.bible,
+            cards=ctx.cards_block,
             max_tokens=settings.format_news_max_tokens,
         ).strip()
 

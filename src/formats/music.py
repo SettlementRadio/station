@@ -178,7 +178,8 @@ def music(
             "Write the music intro and back-announce now.",
             system=system,
             model=settings.llm_default_tier,
-            cached_context=ctx.cached_context,
+            bible=ctx.bible,
+            cards=ctx.cards_block,
             max_tokens=settings.format_music_max_tokens,
         )
     )

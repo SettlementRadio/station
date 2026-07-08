@@ -399,7 +399,7 @@ def _propose(ctx: _TickContext) -> list[ProposedStory]:
         "Generate tonight's new happenings as a JSON array.",
         system=system,
         model=settings.world_tick_propose_tier,
-        cached_context=ctx.bible,
+        bible=ctx.bible,  # CO2: the shared bible cache block
         max_tokens=settings.world_tick_propose_max_tokens,
     )
     proposals = _parse_proposals(raw)[:hi]
@@ -435,7 +435,7 @@ def _regenerate(
         "Rewrite the rejected happenings as a JSON array.",
         system=system,
         model=settings.world_tick_propose_tier,
-        cached_context=ctx.bible,
+        bible=ctx.bible,  # CO2: the shared bible cache block
         max_tokens=settings.world_tick_propose_max_tokens,
     )
     return _parse_proposals(raw)[: len(flagged)]
@@ -490,7 +490,7 @@ def _run_gate(
                 custom_id=str(i),
                 prompt=text_for(i),
                 system=system_for(i),
-                cached_context=ctx.bible,
+                bible=ctx.bible,  # CO2: the shared bible cache block
                 model=settings.world_tick_continuity_tier,
                 max_tokens=settings.world_tick_continuity_max_tokens,
             )
@@ -590,7 +590,7 @@ def _advance_generate(
             system=_advance_system(
                 s, prior_beats.get(s.id, []), prior_figures.get(s.id, []), ctx, tick_no
             ),
-            cached_context=ctx.bible,
+            bible=ctx.bible,  # CO2: the shared bible cache block
             model=settings.world_tick_propose_tier,
             max_tokens=settings.world_tick_continuity_max_tokens
             + settings.world_tick_propose_max_tokens // 2,

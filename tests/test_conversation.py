@@ -107,9 +107,7 @@ def test_is_ok_reads_the_continuity_verdict():
 
 
 def _ctx() -> AssembledContext:
-    return AssembledContext(
-        cached_context="", dynamic="the relay is warm", speakers=CARDS
-    )
+    return AssembledContext(bible="", dynamic="the relay is warm", speakers=CARDS)
 
 
 def _capture_system(monkeypatch) -> dict:

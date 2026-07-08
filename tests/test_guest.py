@@ -40,7 +40,7 @@ QUOTE = Quote(
 
 def _ctx(quotes=()) -> AssembledContext:
     return AssembledContext(
-        cached_context="", dynamic="now", speakers=[VELL, WREN], quotes=list(quotes)
+        bible="", dynamic="now", speakers=[VELL, WREN], quotes=list(quotes)
     )
 
 

@@ -174,3 +174,12 @@ def test_co1_dynamic_bytes_pinned(co1_world):
         "World facts you simply know:\n"
         "- Radio connects the settlements."
     )
+
+
+def test_co2_bible_and_cards_block_rejoin_to_cached_context(co1_world):
+    # CO2 — the split parts must reconstitute the pre-split single string exactly:
+    # the shared bible block + the per-speaker-set cards block == cached_context.
+    for fmt, ids in co1_world.speaker_sets.items():
+        ctx = context.assemble(co1_world.now, speakers=ids)
+        assert ctx.bible + ctx.cards_block == ctx.cached_context, fmt
+        assert ctx.bible == co1_world.bible, fmt  # bible is the raw, shared prose

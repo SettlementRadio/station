@@ -113,7 +113,7 @@ def test_memory_db_failure_never_kills_a_slot(monkeypatch):
 
 
 def _ctx() -> AssembledContext:
-    return AssembledContext(cached_context="", dynamic="now", speakers=[VELL, KAEL])
+    return AssembledContext(bible="", dynamic="now", speakers=[VELL, KAEL])
 
 
 def _capture(monkeypatch) -> dict:
@@ -121,7 +121,14 @@ def _capture(monkeypatch) -> dict:
 
     def fake_generate(user, *, system, **kwargs):
         seen["system"] = system
-        seen["cached"] = kwargs.get("cached_context")
+        # CO2 — the stable core arrives as bible + cards now (or the legacy single
+        # cached_context); fold every shape in so "memory stays out of the cache"
+        # is actually asserted against the cached blocks.
+        seen["cached"] = (
+            (kwargs.get("cached_context") or "")
+            + (kwargs.get("bible") or "")
+            + (kwargs.get("cards") or "")
+        )
         return "OK"
 
     monkeypatch.setattr(convo.llm, "generate", fake_generate)

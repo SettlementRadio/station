@@ -22,7 +22,7 @@ SCRIPT = "Vell: Evening, you.\nWren: Morning, Vell."
 
 
 def _ctx() -> AssembledContext:
-    return AssembledContext(cached_context="core", dynamic="now", speakers=[VELL, WREN])
+    return AssembledContext(bible="core", dynamic="now", speakers=[VELL, WREN])
 
 
 def _patch_common(monkeypatch):

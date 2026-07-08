@@ -109,3 +109,48 @@ def test_co1_no_cached_context_means_plain_system(capture):
     blocks = capture.requests[-1]["system"]
     assert [b["text"] for b in blocks] == ["only the per-call part"]
     assert all("cache_control" not in b for b in blocks)
+
+
+# --- CO2: the split is transparent — two blocks == one, byte-for-byte ---------
+
+
+def test_co2_bible_plus_cards_equals_single_cached_context(co1_world, capture):
+    # The core equivalence claim: for every speaker set, sending the stable core
+    # as two blocks (bible + cards) reaches the model byte-identical to sending it
+    # as the one `cached_context` it replaces. Same tokens, same order.
+    for fmt, ids in co1_world.speaker_sets.items():
+        ctx = context.assemble(co1_world.now, speakers=ids)
+
+        llm.generate("p", system="S", bible=ctx.bible, cards=ctx.cards_block)
+        two_block = "".join(b["text"] for b in capture.requests[-1]["system"])
+
+        llm.generate("p", system="S", cached_context=ctx.cached_context)
+        one_block = "".join(b["text"] for b in capture.requests[-1]["system"])
+
+        assert two_block == one_block == ctx.cached_context + "S", fmt
+
+
+def test_co2_bible_is_its_own_block_before_the_cards(co1_world, capture):
+    # The bible caches as a SEPARATE, shared block ahead of the cards — that is
+    # what lets every speaker set (and the world tick) read one bible entry.
+    ctx = context.assemble(co1_world.now, speakers=["vell", "wren"])
+    llm.generate("p", system="S", bible=ctx.bible, cards=ctx.cards_block)
+    blocks = capture.requests[-1]["system"]
+
+    assert blocks[0]["text"] == ctx.bible  # the shared block, raw bible
+    assert "cache_control" in blocks[0]  # cached
+    assert blocks[1]["text"] == ctx.cards_block  # the per-speaker-set block
+    assert "cache_control" in blocks[1]  # cached
+    assert blocks[2]["text"] == "S"  # the volatile per-call part
+    assert "cache_control" not in blocks[2]  # never cached
+
+
+def test_co2_bible_block_is_identical_across_speaker_sets(co1_world, capture):
+    # The whole point: the bible block bytes do NOT depend on who's speaking, so
+    # talk / news / music / commercial / the world tick all share one cache entry.
+    bibles = set()
+    for ids in co1_world.speaker_sets.values():
+        ctx = context.assemble(co1_world.now, speakers=ids)
+        llm.generate("p", system="S", bible=ctx.bible, cards=ctx.cards_block)
+        bibles.add(capture.requests[-1]["system"][0]["text"])
+    assert len(bibles) == 1  # one shared bible block across every speaker set

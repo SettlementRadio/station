@@ -40,21 +40,42 @@ from .store import CanonFact, CastMember, Event, Figure, Quote
 log = get_logger(__name__)
 
 
+# The separator between the bible and each character card in the stable core.
+# It is the ONE place the core's byte layout is defined, so the two cache blocks
+# (CO2) and the back-compat `cached_context` join stay in lockstep. See below.
+_CORE_SEP = "\n\n"
+
+
 @dataclass(frozen=True)
 class AssembledContext:
     """The world slice for one generation: a cached core + the dynamic now.
 
-    `cached_context` is for `llm.generate(..., cached_context=...)`; `dynamic` is
-    woven into the per-call system prompt. The structured fields (`speakers`,
-    `events`, `canon`) are exposed too, so later callers (the B4 conversation
-    orchestrator, B5 formats) can reuse the same query without re-fetching.
+    The stable core is exposed in TWO parts so the prompt cache can share it (CO2,
+    docs/CACHE_OPTIMIZATION_TASKS.md):
 
-    `speakers` holds one card for the single-DJ writer (B3) or both for a two-DJ
-    conversation (B4); `speaker` is a convenience for the single-DJ case.
+    * `bible` — the series bible, byte-identical across every speaker set and the
+      world tick, so it caches ONCE as a shared block.
+    * `cards_text` — the speaking DJs' character cards (joined, no leading
+      separator), which vary per speaker set and cache as a second block.
+
+    `cached_context` (property) rejoins them into the pre-split single string, so
+    callers not yet migrated to the two-block seam keep working unchanged; it is
+    for `llm.generate(..., cached_context=...)`. `cards_block` (property) is the
+    cards region as it sits AFTER the bible block — the separator plus the cards —
+    so `bible + cards_block` reproduces `cached_context` byte-for-byte when passed
+    as two cache blocks (the CO1 equivalence invariant). `dynamic` is woven into
+    the per-call system prompt.
+
+    The structured fields (`speakers`, `events`, `canon`) are exposed too, so
+    later callers (the B4 conversation orchestrator, B5 formats) can reuse the same
+    query without re-fetching. `speakers` holds one card for the single-DJ writer
+    (B3) or both for a two-DJ conversation (B4); `speaker` is a convenience for the
+    single-DJ case.
     """
 
-    cached_context: str
     dynamic: str
+    bible: str = ""
+    cards_text: str = ""
     speakers: list[CastMember] = field(default_factory=list)
     events: list[Event] = field(default_factory=list)
     canon: list[CanonFact] = field(default_factory=list)
@@ -66,6 +87,27 @@ class AssembledContext:
     def speaker(self) -> CastMember | None:
         """The first (or only) speaking DJ — for single-DJ callers like B3."""
         return self.speakers[0] if self.speakers else None
+
+    @property
+    def cached_context(self) -> str:
+        """The stable core as ONE string (pre-CO2 shape): bible + cards joined.
+
+        A back-compat join so the single-`cached_context` seam path keeps working
+        while call sites migrate to the two-block `bible` + `cards_block` shape.
+        Byte-identical to the pre-split `_render_core` output.
+        """
+        return _join_core(self.bible, self.cards_text)
+
+    @property
+    def cards_block(self) -> str:
+        """The cards region as it follows the shared bible block: separator + cards.
+
+        Empty when there are no cards. For a non-empty `bible` (always, in
+        production), `bible + cards_block == cached_context` byte-for-byte, so
+        emitting the two as separate cache blocks is transparent to the model
+        (CO1). Pass this as `llm.generate(..., cards=ctx.cards_block)`.
+        """
+        return f"{_CORE_SEP}{self.cards_text}" if self.cards_text else ""
 
 
 def assemble(
@@ -112,7 +154,7 @@ def assemble(
     # Recompute each event's status live so the writer never sees a stale snapshot.
     near_events = [events_mod.progressed(e, now) for e in raw_events]
 
-    cached_context = _render_core(bible, cards)
+    cards_text = _render_cards(cards)
     dynamic = _render_dynamic(near_events, canon, quotes, now)
 
     log.info(
@@ -121,12 +163,16 @@ def assemble(
         events=len(near_events),
         canon=len(canon),
         quotes=len(quotes),
-        cached_chars=len(cached_context),
+        # CO2 — the stable core is now two cache blocks; log both spans so a silent
+        # size regression in either is visible.
+        bible_chars=len(bible),
+        cards_chars=len(cards_text),
         dynamic_chars=len(dynamic),
     )
     return AssembledContext(
-        cached_context=cached_context,
         dynamic=dynamic,
+        bible=bible,
+        cards_text=cards_text,
         speakers=cards,
         events=near_events,
         canon=canon,
@@ -215,11 +261,26 @@ def _select_quotes(
 # --- Rendering --------------------------------------------------------------
 
 
-def _render_core(bible: str, cards: list[CastMember]) -> str:
-    """The cached stable core: series bible + each speaking DJ's character card."""
-    parts = [bible]
-    parts += [f"## Character — {c.name}\n\n{c.card_text}" for c in cards]
-    return "\n\n".join(p for p in parts if p).strip()
+def _render_cards(cards: list[CastMember]) -> str:
+    """The speaking DJs' character cards, joined (no leading separator).
+
+    The per-speaker-set half of the stable core (CO2). Empty when there are no
+    cards. `_join_core` re-attaches it to the bible for the back-compat single
+    string; the two-block seam path pairs it with the bible as a second cache
+    block via `AssembledContext.cards_block`.
+    """
+    return _CORE_SEP.join(f"## Character — {c.name}\n\n{c.card_text}" for c in cards)
+
+
+def _join_core(bible: str, cards_text: str) -> str:
+    """Rejoin the two stable-core parts into the pre-split single string.
+
+    Byte-identical to the pre-CO2 `_render_core`: bible then cards, `_CORE_SEP`
+    between non-empty parts, outer `strip()`. Both parts arrive already stripped
+    (the bible from `canon_source.load_bible`, each card from its parser), so the
+    outer strip is a no-op in practice — kept for exact equivalence.
+    """
+    return _CORE_SEP.join(p for p in (bible, cards_text) if p).strip()
 
 
 def _render_dynamic(
@@ -263,7 +324,9 @@ if __name__ == "__main__":
     # Runnable check: print the assembled context for Vell, now.
     #   .venv/bin/python -m src.world.context      (or: make context)
     ctx = assemble(datetime.now(), speakers=settings.writer_speaker_id)
-    print("===== CACHED CORE (stable) =====\n")
-    print(ctx.cached_context)
+    print("===== BIBLE (shared cache block) =====\n")
+    print(ctx.bible)
+    print("\n===== CARDS (per-speaker-set cache block) =====\n")
+    print(ctx.cards_text)
     print("\n===== DYNAMIC (this call) =====\n")
     print(ctx.dynamic)

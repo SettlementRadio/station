@@ -146,7 +146,8 @@ def write_segment_script(
             "Write tonight's segment now.",
             system=system,
             model=settings.llm_default_tier,  # CLAUDE.md: the default writing brain
-            cached_context=ctx.cached_context,  # cost lever: stable-core cache
+            bible=ctx.bible,  # cost lever: the SHARED cached bible block (CO2)
+            cards=ctx.cards_block,  # the per-speaker-set cached cards block
             max_tokens=settings.writer_max_tokens,
             on_token=on_token,
         )

@@ -85,6 +85,8 @@ def generate(
     system: str | None = None,
     model: str | None = None,
     cached_context: str | None = None,
+    bible: str | None = None,
+    cards: str | None = None,
     max_tokens: int | None = None,
     on_token: Callable[[str], None] | None = None,
     timeout: float | None = None,
@@ -96,8 +98,16 @@ def generate(
         system: optional system instructions (the small, per-call part).
         model: logical tier "haiku" | "sonnet" | "opus" — mapped to a real ID.
             Defaults to `settings.llm_default_tier`.
-        cached_context: large, stable text (e.g. the canon) sent as a
-            prompt-cache breakpoint, so repeat calls pay ~0.1x on that input.
+        cached_context: large, stable text (e.g. the canon) sent as ONE
+            prompt-cache breakpoint. The pre-CO2 single-prefix path — still
+            supported for callers not yet split into bible + cards.
+        bible: the series bible — the stable text SHARED across every caller, sent
+            as its own cache block so it caches once and every speaker set reads it
+            (CO2). Pair with `cards`.
+        cards: the per-speaker-set text (character cards) that follows the bible,
+            sent as a second cache block. Passing `bible`/`cards` takes precedence
+            over `cached_context`; concatenated they equal the `cached_context`
+            they replace, so the model input is unchanged (CO1).
         max_tokens: output cap. Defaults to `settings.llm_max_tokens`.
         on_token: optional callback invoked with each text delta as it streams.
             Lets callers show progress so a multi-second generation doesn't look
@@ -111,18 +121,18 @@ def generate(
     the socket the whole time and look hung). The full text is still returned as
     one string — streaming is an internal implementation detail of the seam.
 
-    The Phase A cost lever lives here: `cached_context` is placed first in the
-    system prompt with a cache_control breakpoint, and the smaller `system`
-    text follows it — only the part after the breakpoint pays full price on a
-    cache hit. (Prefixes below the model's minimum cacheable size won't cache;
-    that's fine — the path is in use and grows into Phase B for free.)
+    The cost lever lives here: the stable prefix (bible + cards, or a single
+    `cached_context`) is placed first in the system prompt with a cache_control
+    breakpoint per block, and the smaller `system` text follows it — only the part
+    after the breakpoint pays full price on a cache hit. (Prefixes below the
+    model's minimum cacheable size won't cache; that's fine.)
     """
     tier = model if model is not None else settings.llm_default_tier
     max_tokens = max_tokens if max_tokens is not None else settings.llm_max_tokens
     timeout = timeout if timeout is not None else settings.llm_timeout_sec
     model_id = settings.model_id(tier)  # raises ValueError on an unknown tier
 
-    system_blocks = _system_blocks(cached_context, system)
+    system_blocks = _system_blocks(cached_context, system, bible=bible, cards=cards)
 
     kwargs: dict = {
         "model": model_id,
@@ -139,7 +149,7 @@ def generate(
         tier=tier,
         model=model_id,
         max_tokens=max_tokens,
-        cached=bool(cached_context),
+        cached=bool(cached_context or bible or cards),
         prompt_chars=len(prompt),
     )
 
@@ -165,16 +175,46 @@ def generate(
     return text
 
 
-def _system_blocks(cached_context: str | None, system: str | None) -> list[dict]:
+def _system_blocks(
+    cached_context: str | None,
+    system: str | None,
+    *,
+    bible: str | None = None,
+    cards: str | None = None,
+) -> list[dict]:
     """Build cache-aware system blocks: stable content first (with the cache
-    breakpoint), volatile content after it.
+    breakpoint(s)), volatile content after it.
 
     Caching is a prefix match, so the stable canon must physically precede the
-    per-call instructions. Shared by `generate` and `generate_batch` so both pay
-    full price only on the small variable part once the prefix is cached.
+    per-call instructions. Two stable-prefix shapes are supported (CO2):
+
+    * **Two blocks** — when `bible`/`cards` are given, the bible caches as its own
+      breakpoint (shared across every speaker set) and the cards as a second one.
+      This is the shared-bible cost lever.
+    * **One block** — `cached_context` caches as a single breakpoint (the pre-CO2
+      path), for callers not yet split.
+
+    The blocks are emitted verbatim in order, and the API concatenates system text
+    blocks with nothing between them, so `bible + cards` (or the lone
+    `cached_context`) reaches the model byte-identical to the single string it
+    replaces (CO1). Well under the API's 4-breakpoint limit (this uses ≤2). Shared
+    by `generate` and `generate_batch`.
     """
     blocks: list[dict] = []
-    if cached_context:
+    if bible or cards:
+        # Two-block stable prefix: the bible is the SHARED entry; the cards are the
+        # per-speaker-set tail (they carry the leading separator, so the blocks
+        # concatenate to the same bytes as the single `cached_context`).
+        for text in (bible, cards):
+            if text:
+                blocks.append(
+                    {
+                        "type": "text",
+                        "text": text,
+                        "cache_control": {"type": "ephemeral"},
+                    }
+                )
+    elif cached_context:
         blocks.append(
             {
                 "type": "text",
@@ -211,6 +251,8 @@ class BatchRequest:
     prompt: str
     system: str | None = None
     cached_context: str | None = None
+    bible: str | None = None
+    cards: str | None = None
     model: str | None = None
     max_tokens: int | None = None
 
@@ -281,6 +323,8 @@ def _generate_batch_sync(reqs: list[BatchRequest]) -> list[BatchResult]:
                 system=r.system,
                 model=r.model,
                 cached_context=r.cached_context,
+                bible=r.bible,
+                cards=r.cards,
                 max_tokens=r.max_tokens,
             )
             results.append(BatchResult(custom_id=r.custom_id, text=text, ok=True))
@@ -312,7 +356,9 @@ def _generate_batch_api(
             else settings.llm_max_tokens,
             "messages": [{"role": "user", "content": r.prompt}],
         }
-        blocks = _system_blocks(r.cached_context, r.system)
+        blocks = _system_blocks(
+            r.cached_context, r.system, bible=r.bible, cards=r.cards
+        )
         if blocks:
             params["system"] = blocks
         api_requests.append(

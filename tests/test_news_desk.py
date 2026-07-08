@@ -330,7 +330,7 @@ def test_build_system_weaves_continuity_and_revision_note():
             "levee", stage=store.ARC_HAPPENING, angle="the levee row"
         ),
     )
-    ctx = AssembledContext(cached_context="BIBLE", dynamic="")
+    ctx = AssembledContext(bible="BIBLE", dynamic="")
     system = news._build_system(
         ctx, NOW, "Vell", [sel], revision_note="you renamed the levee story"
     )
@@ -342,7 +342,7 @@ def test_build_system_weaves_continuity_and_revision_note():
 def test_build_system_weaves_freshness_with_d4_vs_d5_distinction():
     # D5.2 — recent openings reach the desk prompt, and the note makes clear that
     # repeating a STORY is fine (D4) but the WORDING must vary (D5).
-    ctx = AssembledContext(cached_context="BIBLE", dynamic="")
+    ctx = AssembledContext(bible="BIBLE", dynamic="")
     system = news._build_system(
         ctx,
         NOW,
@@ -358,7 +358,7 @@ def test_build_system_weaves_freshness_with_d4_vs_d5_distinction():
 
 
 def test_build_system_omits_freshness_when_empty():
-    ctx = AssembledContext(cached_context="BIBLE", dynamic="")
+    ctx = AssembledContext(bible="BIBLE", dynamic="")
     system = news._build_system(ctx, NOW, "Vell", [])
     assert "Repeating a STORY" not in system  # no dangling freshness note
 
@@ -370,7 +370,7 @@ def _ctx_with_anchor() -> AssembledContext:
     anchor = store.CastMember(
         id="vell", name="Vell", card_text="dry, precise", logical_voice="vell_night"
     )
-    return AssembledContext(cached_context="BIBLE", dynamic="", speakers=[anchor])
+    return AssembledContext(bible="BIBLE", dynamic="", speakers=[anchor])
 
 
 def _one_selection() -> list[news_select.SelectedStory]:
@@ -405,7 +405,7 @@ def _wire_gate(monkeypatch, editor):
 
     writer_calls = {"n": 0}
 
-    def fake_generate(prompt, *, system, model, cached_context=None, max_tokens=None):
+    def fake_generate(prompt, *, system, model, max_tokens=None, **kwargs):
         if prompt.startswith("Draft to check"):
             draft = prompt.split("Draft to check:", 1)[1]
             return editor(draft)

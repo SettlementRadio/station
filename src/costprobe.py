@@ -79,11 +79,17 @@ def run_probe(now: datetime | None = None) -> list[dict]:
     try:
         for pass_no in (1, 2):
             for name in _PROBE_FORMATS:
+                ctx = contexts[name]
                 current.clear()
+                # Send the stable core exactly as production does post-CO2: the
+                # shared bible as its own block + the per-speaker-set cards. This is
+                # what makes pass 1 show the bible cache_created ONCE across formats
+                # (shared) instead of once per speaker set.
                 llm.generate(
                     _PROBE_PROMPT,
                     model=tier,
-                    cached_context=contexts[name].cached_context,
+                    bible=ctx.bible,
+                    cards=ctx.cards_block,
                     max_tokens=_PROBE_MAX_TOKENS,
                 )
                 row = {"pass": pass_no, "format": name, "tier": tier, **current}

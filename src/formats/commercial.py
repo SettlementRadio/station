@@ -195,7 +195,8 @@ def spot(now: datetime, ctx: AssembledContext, *, mode: str) -> Segment:
             "Write the spot now.",
             system=system,
             model=settings.llm_default_tier,
-            cached_context=ctx.cached_context,
+            bible=ctx.bible,
+            cards=ctx.cards_block,
             max_tokens=settings.format_commercial_max_tokens,
         )
     )

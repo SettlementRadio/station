@@ -503,7 +503,7 @@ def _capture_steers(monkeypatch):
     seen = {}
     vell = CastMember("vell", "Vell", "card", "vell_night", [])
     wren = CastMember("wren", "Wren", "card", "dj_two", [])
-    ctx = AssembledContext(cached_context="core", dynamic="now", speakers=[vell, wren])
+    ctx = AssembledContext(bible="core", dynamic="now", speakers=[vell, wren])
 
     monkeypatch.setattr(
         convo.freshness,

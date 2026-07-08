@@ -207,7 +207,8 @@ def showrunner(
         "Pick tonight's beat.",
         system=system,
         model=settings.llm_default_tier,
-        cached_context=ctx.cached_context,
+        bible=ctx.bible,
+        cards=ctx.cards_block,
         max_tokens=settings.convo_showrunner_max_tokens,
     )
     beat = beat.strip()
@@ -460,7 +461,8 @@ def orchestrate(
         "Write the exchange now.",
         system=system,
         model=settings.llm_default_tier,
-        cached_context=ctx.cached_context,
+        bible=ctx.bible,
+        cards=ctx.cards_block,
         max_tokens=settings.convo_max_tokens,
     )
     script = script.strip()
@@ -553,7 +555,8 @@ def _run_continuity(
         f"Draft to check:\n\n{script}",
         system=system,
         model=tier,
-        cached_context=ctx.cached_context,
+        bible=ctx.bible,
+        cards=ctx.cards_block,
         max_tokens=settings.convo_continuity_max_tokens,
     )
     return note.strip()

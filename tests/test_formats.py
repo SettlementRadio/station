@@ -52,7 +52,7 @@ def _music_ctx():
     from src.world.store import CastMember
 
     return AssembledContext(
-        cached_context="",
+        bible="",
         dynamic="",
         speakers=[
             CastMember(
@@ -101,7 +101,7 @@ def test_music_stitches_intro_bumper_track_back_in_order(
     monkeypatch.setattr(music.media, "track_audio_path", lambda t: track_file)
     monkeypatch.setattr(music.media, "sting", lambda name: bumper_file)
 
-    def fake_generate(prompt, *, system, model, cached_context, max_tokens):
+    def fake_generate(prompt, *, system, model, max_tokens, **kwargs):
         captured["system"] = system
         return "A song about one window.\n[SONG]\nThat was The Slow Star."
 
