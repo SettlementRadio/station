@@ -44,12 +44,19 @@ IDENTS: dict[str, str] = {
 }
 
 # Program themes — the opener that airs at a program boundary (D7.2 "top of
-# show"), keyed by the D6 grid's program ids (docs/programming/grid.yaml).
+# show"). This dict holds only the OVERRIDES: the batch-1 daypart files (whose
+# names don't match their program id) and the two reuse cases. Every other
+# program resolves by CONVENTION in `theme_for_program` — `themes/<program_id>.mp3`
+# (docs/JINGLE_PROMPTS_2.md) — so a new grid program wires its opener the moment
+# the clip lands, with no edit here.
 PROGRAM_THEMES: dict[str, str] = {
+    # Legacy daypart themes (batch-1 files, name ≠ program id) — kept as overrides.
     "long_night": "themes/b4_night.mp3",  # B4 — Vell's night signature
     "first_light": "themes/b5_first_light.mp3",  # B5 — Wren's sunrise lift
-    "daywatch": "themes/b5a_daywatch.mp3",  # B5a — the long steady day
     "nightfall": "themes/b5b_nightfall.mp3",  # B5b — the dusk handover
+    # Reuse existing special themes (no bespoke clip needed).
+    "the_mailbag": "themes/c11_letters.mp3",  # the Letters show reuses C11
+    "the_circuit": "themes/c12_games.mp3",  # the Sport show reuses C12
 }
 
 # Format themes — the opener for a *format* (not a daypart program): the news
@@ -63,7 +70,14 @@ FORMAT_THEMES: dict[str, str] = {
 # a soft bed under the night talk show, the talk bed under conversation. Beds are
 # selective by design — news (and anything unmapped) stays dry.
 PROGRAM_BEDS: dict[str, str] = {
+    # The warm night bed (B4) ducks under the deep-night talk shows. Reused for
+    # all of them for now: the daytime talk bed (FORMAT_BEDS) would be tonally
+    # wrong under the night, so map the night shows here to the night bed until
+    # dedicated per-show beds are curated.
     "long_night": "themes/b4_night_bed.mp3",
+    "deep_hours": "themes/b4_night_bed.mp3",
+    "deep_field": "themes/b4_night_bed.mp3",
+    "the_gathering": "themes/b4_night_bed.mp3",
 }
 FORMAT_BEDS: dict[str, str] = {
     "talk": "themes/c9_talk_bed.mp3",
@@ -89,13 +103,24 @@ STINGS: dict[str, str] = {
     "brand": "stings/d8_brand.mp3",
 }
 
-# Transition sweepers (A4 ×3) by the D6 grid's `daypart` label — the quick
-# segment-to-segment joins, picked by daypart energy (§0's three tiers).
+# Transition sweepers (A4 ×3) by the grid's `daypart` label — the quick
+# segment-to-segment joins, picked by daypart energy (§0's three tiers). Covers
+# the current grid's dayparts; anything unmapped falls to the mid sweeper.
 SWEEPERS: dict[str, str] = {
+    # deep-night — calm
     "deep night": "stings/a4_sweeper_calm.mp3",
-    "first light": "stings/a4_sweeper_mid.mp3",
+    # day energy — bright
+    "morning": "stings/a4_sweeper_bright.mp3",
+    "late morning": "stings/a4_sweeper_bright.mp3",
+    "midday": "stings/a4_sweeper_bright.mp3",
+    "afternoon": "stings/a4_sweeper_bright.mp3",
+    "weekend morning": "stings/a4_sweeper_bright.mp3",
     "daytime": "stings/a4_sweeper_bright.mp3",
+    # edges / transitions — mid
+    "first light": "stings/a4_sweeper_mid.mp3",
+    "evening": "stings/a4_sweeper_mid.mp3",
     "nightfall": "stings/a4_sweeper_mid.mp3",
+    "weekend": "stings/a4_sweeper_mid.mp3",
 }
 _SWEEPER_DEFAULT = "stings/a4_sweeper_mid.mp3"  # unmapped daypart (e.g. `default`)
 
@@ -137,8 +162,16 @@ def ident(name: str) -> Path | None:
 
 
 def theme_for_program(program_id: str) -> Path | None:
-    """The theme that opens a program boundary, by D6 grid program id."""
-    return _resolve(PROGRAM_THEMES.get(program_id), kind="theme", key=program_id)
+    """The theme that opens a program boundary, by grid program id.
+
+    An explicit `PROGRAM_THEMES` override wins (the legacy daypart files + the
+    reuse cases); otherwise the CONVENTION path `themes/<program_id>.mp3` — so a
+    new grid program wires its opener the moment the clip lands, no registry edit
+    (docs/JINGLE_PROMPTS_2.md). Missing file -> None (logged + skipped; the
+    boundary then falls back to the format theme — see placement.py).
+    """
+    rel = PROGRAM_THEMES.get(program_id, f"themes/{program_id}.mp3")
+    return _resolve(rel, kind="theme", key=program_id)
 
 
 def theme_for_format(fmt: str) -> Path | None:

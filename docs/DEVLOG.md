@@ -38,6 +38,34 @@ A typical *build* session will be short, e.g.:
 
 ---
 
+## 2026-07-08 — Phase D — Jingles extended to the whole grid (per-program themes, by convention)
+**Focus:** the sonic-identity code was built for the old 4-daypart grid; the grid has since grown to
+~28 named programs, so most shows opened cold (no theme). Wired every program to its own opener and
+generated the missing clips.
+**Decisions:**
+- **Convention over registry.** A program's theme resolves as `assets/themes/<program_id>.mp3` — the
+  filename *is* the wiring, so a new grid program needs no code edit (the human drops the clip in). An
+  explicit `PROGRAM_THEMES` dict now holds only OVERRIDES (the 3 legacy daypart files whose names ≠
+  program id, plus 2 reuse cases: `the_mailbag`→C11 letters, `the_circuit`→C12 games).
+- **Never open cold.** Added a format-theme fallback at the boundary (`placement.program_theme_segment`
+  → first content format's theme: news→C7, talk→C9, music→talk), so a program with no bespoke clip yet
+  still opens on-brand.
+- **Night beds.** Extended `production_bedded_programs` to the deep-night talk shows (`deep_hours`,
+  `deep_field`, `the_gathering`), all mapped to the existing B4 night bed (reused, not new media).
+- Dropped the stale `daywatch` theme key (gone from the grid); extended the A4 sweeper daypart map.
+**Changed:** `src/production/media.py` (convention resolution + repointed registry + beds + sweepers),
+`src/production/placement.py` (format fallback + `_first_content_format`), `src/config.py`
+(`production_bedded_programs`), `tests/test_production.py` (+convention / override-wins / format-fallback
+cases), new `docs/JINGLE_PROMPTS_2.md` (22 new per-program Suno styles) + `docs/PHASE_D_JINGLES_TASKS.md`
+(the J1–J6 tech pack), `docs/JINGLE_PROMPTS.md` (recorded the previously-undocumented D8 brand bug;
+noted the convention supersedes the daypart mapping). Human generated all 22 theme clips +
+`d8_brand.mp3`. **393 tests green; ruff clean; acceptance green.**
+**Why:** a station whose every show opens with silence doesn't sound like a station; the convention
+means the ~28-program grid (and any future program) gets its identity with zero code churn.
+**Next:** listen to a real `make buffer` run — confirm the boundary themes land and the night beds sit
+right; optionally curate dedicated `*_bed` variants for the deep-night shows (they reuse B4 for now).
+Commit: (pending)  ·  Clips: —
+
 ## 2026-07-08 — Phase C/D — Playout loop bug: fixed the scheduler↔playout seam (two layers, runtime-proven)
 **Focus:** the live stream replayed the same ~2-min talk segment over and over (an "exact repetition"
 loop). Diagnosed it to the scheduler↔playout seam — **not** a generation bug (the segment sidecars

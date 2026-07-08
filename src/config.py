@@ -657,11 +657,17 @@ class Settings(BaseSettings):
     # D7.3 — which slots get a bed under the speech. DOUBLY opt-in, and
     # deliberately conservative (over-bedding is worse than none): a slot is
     # bedded only when its PROGRAM is listed AND its FORMAT is listed — so with
-    # the defaults, only the night show's talk gets the soft B4 bed; its news
+    # the defaults, only the deep-night talk gets the soft B4 night bed; news
     # stays dry, and the whole day stays dry. WHICH bed comes from the D7.0
     # mapping (the program's own bed, else the format's); the LEVEL is the D7.1
-    # `production_bed_gain_db` dial. Empty either list to switch bedding off.
-    production_bedded_programs: list[str] = ["long_night"]
+    # `production_bed_gain_db` dial. Empty either list to switch bedding off. The
+    # listed night shows all map to the B4 night bed (media.PROGRAM_BEDS).
+    production_bedded_programs: list[str] = [
+        "long_night",
+        "deep_hours",
+        "deep_field",
+        "the_gathering",
+    ]
     production_bedded_formats: list[str] = ["talk"]
     # D7.4 — the music selector: "the brain that decides what to play"
     # (src/production/selector.py — a rule-based, deterministic policy over the

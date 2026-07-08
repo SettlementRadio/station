@@ -19,7 +19,7 @@ from src.config import settings
 from src.production import media, mix, placement
 from src.providers import tts
 from src.segment import Segment
-from src.world.programming import Program
+from src.world.programming import ClockStep, Program
 
 NOW = datetime(2026, 7, 5, 3, 0)
 
@@ -104,10 +104,65 @@ def test_media_resolves_registered_clips(assets_tree):
 
 
 def test_media_missing_file_degrades_to_none(assets_tree):
-    # Registered in the mapping, but its file is absent from the fixture tree.
+    # advisory: a registered sting whose file is absent from the partial fixture.
     assert media.sting("advisory") is None
-    assert media.theme_for_program("daywatch") is None
+    # a program with neither an override nor a convention file on disk.
+    assert media.theme_for_program("nonexistent_show") is None
     assert media.sting("not-a-registered-name") is None
+
+
+def test_theme_resolves_by_convention(assets_tree, audio_factory):
+    # A program with no override resolves themes/<program_id>.mp3 by convention —
+    # the contract with JINGLE_PROMPTS_2.md: drop the clip in, it wires itself.
+    clip = audio_factory(seconds=0.5)
+    (assets_tree / "themes" / "the_gallery.mp3").write_bytes(clip.read_bytes())
+    assert media.theme_for_program("the_gallery").name == "the_gallery.mp3"
+
+
+def test_theme_override_wins_over_convention(assets_tree, audio_factory):
+    # the_circuit reuses c12_games via an override — it wins even when a
+    # convention file also exists on disk.
+    clip = audio_factory(seconds=0.5)
+    (assets_tree / "themes" / "c12_games.mp3").write_bytes(clip.read_bytes())
+    (assets_tree / "themes" / "the_circuit.mp3").write_bytes(clip.read_bytes())
+    assert media.theme_for_program("the_circuit").name == "c12_games.mp3"
+
+
+def _prog_with_clock(*formats: ClockStep, pid="the_new_show") -> Program:
+    return Program(
+        id=pid,
+        name="A New Show",
+        hosts=("thorn", "wren"),
+        framing="ensemble",
+        daypart="afternoon",
+        clock=tuple(formats),
+        rotation=(),
+    )
+
+
+def test_boundary_theme_falls_back_to_format(assets_tree, audio_factory):
+    # No bespoke/override theme for this program → open on its first content
+    # format's theme (talk → C9, news → C7); a marker step is skipped.
+    clip = audio_factory(seconds=0.5)
+    (assets_tree / "themes" / "c9_talk.mp3").write_bytes(clip.read_bytes())
+    (assets_tree / "themes" / "c7_news.mp3").write_bytes(clip.read_bytes())
+
+    talk_first = _prog_with_clock(
+        ClockStep(format="sting", is_marker=True), ClockStep(format="talk")
+    )
+    seg = placement.program_theme_segment(talk_first, NOW)
+    assert seg is not None and seg.audio_path.endswith("c9_talk.mp3")
+
+    news_first = _prog_with_clock(
+        ClockStep(format="news", pin_minute=0), ClockStep(format="talk")
+    )
+    seg = placement.program_theme_segment(news_first, NOW)
+    assert seg is not None and seg.audio_path.endswith("c7_news.mp3")
+
+    # A music-first show uses the talk theme (music opens with a bumper sting).
+    music_first = _prog_with_clock(ClockStep(format="music"))
+    seg = placement.program_theme_segment(music_first, NOW)
+    assert seg is not None and seg.audio_path.endswith("c9_talk.mp3")
 
 
 # --- D7.3: bed selection is doubly opt-in + honest re-measurement --------------
@@ -118,7 +173,7 @@ def test_bed_selection_is_doubly_opt_in(assets_tree, monkeypatch):
     monkeypatch.setattr(settings, "production_bedded_formats", ["talk"])
     assert placement.bed_clip_for("long_night", "talk").name == "b4_night_bed.mp3"
     assert placement.bed_clip_for("long_night", "news") is None  # news stays dry
-    assert placement.bed_clip_for("daywatch", "talk") is None  # program not listed
+    assert placement.bed_clip_for("morning_currents", "talk") is None  # not listed
 
 
 def test_apply_bed_mixes_and_restamps_the_final_audio(

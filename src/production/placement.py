@@ -42,6 +42,20 @@ _CLIP_LENGTH_TARGET_SEC = 10
 _HANDOVER_FRAMING = "handover"
 
 
+def _first_content_format(program: Program) -> str | None:
+    """The program's opening content format, for the theme fallback.
+
+    The first non-marker clock step's format (`news@:00` → `news`), else the
+    first weighted-rotation entry (the `default` program has no clock). None when
+    a program has neither. `music` maps to the talk theme upstream — a music slot
+    opens with a bumper sting, not a full theme.
+    """
+    for step in program.clock:
+        if not step.is_marker:
+            return step.format
+    return program.rotation[0] if program.rotation else None
+
+
 def _clip_segment(
     clip: Path, *, fmt: str, now: datetime, seg_id: str, meta: dict
 ) -> Segment:
@@ -78,8 +92,18 @@ def program_theme_segment(program: Program, now: datetime) -> Segment | None:
 
     Carries the program in its meta so the D6.3 console / D6.4 feed name the
     show the theme belongs to, same as a content slot.
+
+    Resolution: the program's own theme (bespoke clip or override), else a
+    fallback to its opening FORMAT's theme (news → C7, talk → C9; a music-first
+    show uses the talk theme), so a program with no bespoke clip yet still opens
+    on-brand rather than cold. None only when neither resolves.
     """
     clip = media.theme_for_program(program.id)
+    if clip is None:
+        fmt = _first_content_format(program)
+        if fmt == "music":
+            fmt = "talk"  # music opens with a bumper sting, not a theme
+        clip = media.theme_for_format(fmt) if fmt else None
     if clip is None:
         return None
     return _clip_segment(

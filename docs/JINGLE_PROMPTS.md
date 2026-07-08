@@ -410,9 +410,27 @@ paths, e.g. `assets/idents/a1_signature.mp3`) — that table is the complete del
   through it; together they bracket a spot so a break feels like part of the show, not a cut away
   from it.
 
+#### D19. Sponsor Brand Bug — `d8_brand.mp3`  🎛️  *(D8 commercials, production level 4)*
+- **Type:** Micro brand sting (the sponsor bookend).
+- **Use:** the sparse ~2 s bug that bookends a sponsor read at `format_commercial_production_level: 4`
+  (`STINGS["brand"]` in `src/production/media.py`) — the ONLY prerecorded ad audio; until it exists the
+  spot degrades to a plain voiced read. D8's philosophy is *texture, not interruption* ("Powered by") —
+  a warm sonic signature, never a hard commercial klaxon.
+- **Style:**
+  `instrumental, no vocals, very short 2-second brand bug sting, warm retro-futuristic, single soft glass bell motif resolving, gentle analog pad swell, friendly and unobtrusive, "powered by" warmth, clean quick tail, tape warmth, 96 BPM`
+- **Instrumental:** ON.
+- **Length:** 2–3 s (tight — no lingering tail; it bookends a spot).
+- **Expected outcome:** a tiny warm "Settlement Radio" signature that lands on the A1 bell motif — says
+  *whose* station carried the message, in under two seconds.
+
 ---
 
 ## 3. Mapping to the app (so these slot in without a rewrite)
+
+> **Per-program themes moved to `docs/JINGLE_PROMPTS_2.md`.** The grid grew to ~28 named programs; each
+> now has its own opening theme, resolved by **convention** (`assets/themes/<program_id>.mp3`) — see
+> `docs/PHASE_D_JINGLES_TASKS.md`. The table below is the batch-1 identity/format/utility set; the
+> old daypart-only mapping (`daywatch` etc.) is superseded by the per-program convention.
 
 Program ids below are the as-built D6 grid (`docs/programming/grid.yaml`): `long_night` (22–05),
 `first_light` (05–07), `daywatch` (07–20), `nightfall` (20–22); news is pinned `news@:00` in every
@@ -488,6 +506,7 @@ All under `assets/` (gitignored; curated media — backed up, never GC'd; C2.5 `
 | D17 Special Coverage Theme | `assets/themes/d17_special_coverage.mp3` |
 | D18 Break Sting — in | `assets/stings/d18_break_in.mp3` |
 | D18 Break Sting — out | `assets/stings/d18_break_out.mp3` |
+| D19 Sponsor Brand Bug | `assets/stings/d8_brand.mp3` |
 
 (The loop-bed variants are separate trims of the same generation — cut a longer take of B4/C9, keep the
 front 8–12 s as the opener and a clean 30–45 s cycle as the `_bed`.) Songs live separately in
