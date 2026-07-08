@@ -55,13 +55,21 @@ end
 # every top-up (pruning aired entries from the front, appending fresh ones). We read
 # it with reload_mode="watch", so each rewrite is picked up live with no restart, and
 # mode="normal" so we play through it IN ORDER (the scheduler's decision, not a name/
-# mtime guess). When the playlist is missing OR empty (scheduler never run, or the
-# buffer has fully drained), the source is simply unavailable and the chain falls
-# through to the never-dead tiers below.
+# mtime guess).
+#
+# loop=false is load-bearing: a `playlist` LOOPS by default, so a stale list (the
+# scheduler died, or generation stalled) would silently REPLAY from the top forever
+# instead of ever draining — the buffer never "empties", so the chain below never
+# gets a turn. With loop=false the source plays through ONCE and then goes unavailable
+# (source.fail), so a drained buffer falls through to the evergreen pool instead of
+# replaying the same segments. A live scheduler top-up rewrites the file, and
+# reload_mode="watch" re-populates the queue, so normal operation never reaches the
+# end (the buffer stays hours ahead) and, if it briefly does, we recover the instant
+# fresh audio is written. So: missing/empty/drained playlist -> chain falls through.
 scheduled =
   if file.exists(playlist_path) then
     log("Airing scheduler playlist: #{playlist_path}")
-    playlist(mode="normal", reload_mode="watch", playlist_path)
+    playlist(mode="normal", loop=false, reload_mode="watch", playlist_path)
   else
     log("No schedule playlist at #{playlist_path} yet — run `make schedule`.")
     source.fail()

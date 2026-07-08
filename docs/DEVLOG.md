@@ -38,6 +38,48 @@ A typical *build* session will be short, e.g.:
 
 ---
 
+## 2026-07-08 — Phase C/D — Playout loop bug: fixed the scheduler↔playout seam (two layers, runtime-proven)
+**Focus:** the live stream replayed the same ~2-min talk segment over and over (an "exact repetition"
+loop). Diagnosed it to the scheduler↔playout seam — **not** a generation bug (the segment sidecars
+show the thread evolving normally) — and fixed it on both sides, with a runtime proof so it can't
+silently regress in the C5 server work.
+**Root cause (two compounding faults):**
+- **Churn (my earlier "incremental playlist" fix over-fired).** I had made `top_up` rewrite
+  `segments/playlist.txt` after *every* segment so a cold `make schedule` could start airing early.
+  But Liquidsoap watches that file (`reload_mode="watch"`) and **resets to the top of the list on each
+  reload**, so during a multi-hour cold fill the constant rewrites pinned playout to entry #0 — the
+  show's opener — replaying it instead of advancing.
+- **No drain escape.** `playlist` defaults to `loop=true`, so a stale/frozen list (scheduler killed —
+  the operator had Ctrl-Z'd it — or generation stalled) **replays forever** rather than draining, so
+  the never-dead fallback chain below it never got a turn.
+**Decisions / fixes:**
+- **Scheduler:** write the playlist once when audio first lands, then only every
+  `schedule_playlist_write_every` (=5) segments — not every one — so playout can advance between
+  reloads; and `_write_playlist(entries, now)` now **drops fully-aired entries** so the head is always
+  "playing now", never a stale opener a reload could snap back to.
+- **Playout (`config/radio.liq`):** `loop=false` on the **scheduled** tier only (evergreen keeps
+  looping — it's the safety net). A drained list now plays through **once** and goes unavailable, so the
+  chain falls through to the evergreen pool instead of replaying real content. `reload_mode="watch"`
+  still **revives** it the instant a top-up writes fresh audio.
+**Changed:** `src/scheduler.py` (throttled + aired-dropping playlist writes), `src/config.py`
+(`schedule_playlist_write_every`), `config/radio.liq` (`loop=false` + rewritten rationale comment),
+`tests/test_scheduler.py` (+`_write_playlist` aired-drop test). **390 tests green; ruff clean;
+`liquidsoap --check` clean.**
+**Why:** an unattended 24/7 station must never air an exact repeat — that instantly breaks the "live
+mind" premise. The real operating model is the always-on scheduler (C5 systemd), where the buffer stays
+hours ahead and never drains; `loop=false` is the belt to that suspenders, so even a dead generator
+degrades to the evergreen safety clip, not a stuck groove.
+**Verified at runtime (not just types):** two headless Liquidsoap 2.4.4 runs with `on_track` logging —
+(1) a one-clip list drains → **falls to EVERGREEN and stays** (no replay); (2) writing a fresh clip
+mid-run **recovers to SCHEDULED within one track**. So the fix both stops the loop and leaves normal
+operation untouched.
+**📣 Postable:** the debugging arc — "why is my AI radio station stuck repeating one segment?" → the
+`reload_mode="watch"` reset-to-top gotcha + `playlist loop=false` → a runtime proof harness. A clean
+"two-layer fix + prove it" story. (Commit for this session.)
+**Next:** operator to restart cleanly (`make stop` → drop stale buffer → `make schedule INTERVAL=300` +
+`make serve`) and confirm by ear; the always-on scheduler.timer/liquidsoap.service belong to C5.
+Commit: (pending)  ·  Clips: —
+
 ## 2026-07-07 — Phase D — D12 built: talk continuity / show flow (consecutive talk plays as ONE show)
 **Focus:** built the D12 sub-pack end-to-end (D12.0–D12.5) — the thin flow layer that makes consecutive
 talk segments in a program read as one flowing show instead of N reset-after-reset mini-shows.

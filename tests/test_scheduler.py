@@ -482,3 +482,33 @@ def test_unmeasured_entry_falls_back_to_target_for_timing(tmp_path):
     }
     assert scheduler._duration_of(entry) == 150.0
     assert scheduler._end_of(entry) == NOW + timedelta(seconds=150)
+
+
+def test_write_playlist_drops_aired_entries_from_the_head(monkeypatch, tmp_path):
+    # Liquidsoap resets to the top of the playlist on every reload, so an already-aired
+    # entry at the head would make a reload snap playout back to it (the loop bug). When
+    # `now` is given, fully-aired entries drop so the first line is what's on now.
+    monkeypatch.setattr(
+        scheduler.settings, "schedule_playlist_path", tmp_path / "playlist.txt"
+    )
+    entries = []
+    for i in range(3):
+        p = tmp_path / f"seg-{i}.mp3"
+        p.write_bytes(b"\x00")
+        entries.append(
+            {
+                "audio_path": str(p),
+                "air_time": (NOW + timedelta(minutes=2 * i)).isoformat(),
+                "actual_duration_sec": 120.0,
+            }
+        )
+    # At NOW+3min the first entry (14:00–14:02) has fully aired; the other two have not.
+    scheduler._write_playlist(entries, NOW + timedelta(minutes=3))
+    lines = (tmp_path / "playlist.txt").read_text().splitlines()
+    assert lines == [
+        str((tmp_path / "seg-1.mp3").resolve()),
+        str((tmp_path / "seg-2.mp3").resolve()),
+    ]
+    # Without `now`, nothing is dropped (back-compat: the whole buffer is listed).
+    scheduler._write_playlist(entries)
+    assert len((tmp_path / "playlist.txt").read_text().splitlines()) == 3

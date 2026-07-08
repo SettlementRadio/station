@@ -18,11 +18,16 @@ only) and NO gates, so it is far cheaper than `make buffer`. Needs `ANTHROPIC_AP
 + a seeded world (`make seed`). Writes NOTHING (no airplay, no schedule), so there is
 nothing to roll back.
 
-Run:  .venv/bin/python -m src.continuity_demo   (or: make continuity-demo)
+The station follows the real wall clock (only the YEAR shifts), so at night you get
+the NIGHT shows. Pass an hour to preview a DAYTIME show:
+    make continuity-demo                          # whatever is on now
+    .venv/bin/python -m src.continuity_demo 10:00 # The Assembly (politics), 10 a.m.
+    .venv/bin/python -m src.continuity_demo 13:00 # The Gallery (arts), 1 p.m.
 """
 
 from __future__ import annotations
 
+import sys
 from datetime import datetime, timedelta
 
 from . import flow as flow_mod
@@ -49,9 +54,27 @@ def _position(i: int, n: int) -> str:
     return CONTINUE
 
 
-def main() -> int:
+def _base_time(argv: list[str]) -> datetime:
+    """The demo's start time: an optional `HH:MM` arg (today), else now.
+
+    The station follows the real wall clock (only the YEAR shifts), so at 2 a.m. the
+    NIGHT shows are on. Pass an hour to preview a DAYTIME show (`10:00` = The Assembly,
+    `13:00` = The Gallery) — so you can see the new grid + the flow at any hour.
+    """
+    if argv:
+        try:
+            hh, _, mm = argv[0].partition(":")
+            return datetime.now().replace(
+                hour=int(hh), minute=int(mm or 0), second=0, microsecond=0
+            )
+        except ValueError:
+            print(f"  (ignoring bad time {argv[0]!r}; expected HH:MM)\n")
+    return datetime.now()
+
+
+def main(argv: list[str] | None = None) -> int:
     """Generate the show, printing each positional script; writes nothing."""
-    base = datetime.now()
+    base = _base_time(argv if argv is not None else sys.argv[1:])
     program = programming.program_for(base)
     hosts = list(program.hosts)
     if len(hosts) < 2:  # a solo/music program -> fall back to the two default hosts
@@ -59,7 +82,8 @@ def main() -> int:
 
     print(
         f"\nTalk-continuity demo (D12) — {_N_SEGMENTS} consecutive talk slots of "
-        f'"{program.name}" at an\nadvancing clock. Watch: ONE open (sign-on), COLD '
+        f'"{program.name}" from {base:%H:%M}\n(pass HH:MM to preview another hour). '
+        "Watch: ONE open (sign-on), COLD "
         "middles that pick up the thread,\nONE close — and a time-check only at the "
         "open. (Writes nothing.)\n"
         f"convo_continuity_enabled={settings.convo_continuity_enabled}  "

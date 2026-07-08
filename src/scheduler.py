@@ -202,19 +202,27 @@ def split_schedule(now: datetime, state: dict) -> tuple[dict | None, list[dict]]
     return current, upcoming
 
 
-def _write_playlist(entries: list[dict]) -> Path:
+def _write_playlist(entries: list[dict], now: datetime | None = None) -> Path:
     """Write the ordered upcoming audio paths for Liquidsoap to re-read.
 
     One absolute path per line, in air order — the Layer 5 <-> playout seam. Only
     files that actually exist are listed (a vanished render is skipped, never aired
     as a gap). Always written, even empty, so playout has a stable file to watch.
+
+    When `now` is given, entries whose air window has already fully passed are
+    dropped, so the FIRST line is always the segment that should be playing now.
+    Liquidsoap watches this file and resets to the top of the list on every reload
+    (`reload_mode="watch"`), so a stale already-aired entry at the head would make a
+    reload snap playout back to it — the head must stay current.
     """
     path = settings.schedule_playlist_path
     path.parent.mkdir(parents=True, exist_ok=True)
     lines = [
         str(Path(e["audio_path"]).resolve())
         for e in entries
-        if e.get("audio_path") and Path(e["audio_path"]).exists()
+        if e.get("audio_path")
+        and Path(e["audio_path"]).exists()
+        and (now is None or _end_of(e) > now)
     ]
     path.write_text("\n".join(lines) + ("\n" if lines else ""), encoding="utf-8")
     return path
@@ -789,6 +797,16 @@ def top_up(now: datetime | None = None) -> list[dict]:
             continue_thread=slot_flow.continue_thread if slot_flow else None,
             thread_run=flow_thread_run,
         )
+        # Refresh the playout playlist so a first, cold `make schedule` can START
+        # airing on the first ready segment (and survive an interrupt) rather than
+        # wait for the whole multi-hour buffer + the end-of-run write. But do NOT
+        # rewrite on EVERY segment: Liquidsoap watches this file and resets to the top
+        # of the list on each reload, so churning it during a long cold fill pins
+        # playout to the first entry. Write once when audio first lands, then only
+        # every `schedule_playlist_write_every` segments — and drop already-aired
+        # entries (real wall clock) so a reload lands on what's playing now.
+        if added == 1 or added % settings.schedule_playlist_write_every == 0:
+            _write_playlist(upcoming, now)
 
     # D12.0 — persist the talk-continuity substrate so the next top-up resumes the
     # thread and the OPEN detection (JSON-serialisable, like `_last_cursor`).
@@ -811,7 +829,7 @@ def top_up(now: datetime | None = None) -> list[dict]:
     # check_last_run() reads this to detect a generator that has stopped running.
     state["last_topup_at"] = now.isoformat()
     _save_state(state)
-    playlist_path = _write_playlist(upcoming)
+    playlist_path = _write_playlist(upcoming, now)
 
     log.info(
         "schedule_topup_done",

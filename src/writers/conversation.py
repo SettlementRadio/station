@@ -250,6 +250,18 @@ def _timecheck_allowed(position: str | None, frame: ShowFrame, now: datetime) ->
     return False
 
 
+def _timecheck_shown(frame: ShowFrame, flow: ShowFlow | None, now: datetime) -> bool:
+    """Whether to HAND the room the exact clock time (else only the part of day).
+
+    Standalone / the D12 rollback keeps the exact time (pre-D12). With a position the
+    exact clock is shown only when a time-check is ALLOWED — so a cold `continue` slot
+    isn't tempted to state a time it was just told not to (D12.1 fix).
+    """
+    if flow is None or not settings.convo_continuity_enabled:
+        return True
+    return _timecheck_allowed(flow.position, frame, now)
+
+
 def _time_check_directive(
     frame: ShowFrame, flow: ShowFlow | None, now: datetime
 ) -> str:
@@ -271,8 +283,9 @@ def _time_check_directive(
         where = "the handover" if frame.is_handover else "the open"
         return f"A real time check ('settlement time') belongs near {where}."
     return (
-        "Do NOT give a settlement-time check here — you're mid-show and the hour is "
-        "already established; just keep the conversation going."
+        "Do NOT give a settlement-time check or state the clock time here — you're "
+        "mid-show, the hour is already established. Even if this host usually opens "
+        "with the time, come in COLD instead and keep the conversation going."
     )
 
 
@@ -384,14 +397,27 @@ def orchestrate(
     #   * D10 (figures/quotes): an attributable quote a host can reference.
     freshness_section = f"{recent_openings}\n\n" if recent_openings else ""
     pickup = _pickup_section(flow)
+    # D12.1 fix — only HAND the room the exact clock time when a time-check is allowed
+    # (open/handover/hourly). On a cold `continue` slot we tell it not to time-stamp,
+    # so showing "Settlement time right now: 2:14" (and a night card that opens with the
+    # time) fights that — hide the clock, give only the part of day.
+    if _timecheck_shown(frame, flow, now):
+        time_line = (
+            f"Settlement time right now: {clock.render_wall_clock(now)} "
+            f"({frame.part_of_day}).\n"
+        )
+    else:
+        time_line = (
+            f"It is {frame.part_of_day} (you are mid-show — do NOT state the clock "
+            "time or open with it, even if this host usually would).\n"
+        )
     system = (
         "You are the writers' room for Settlement Radio, scripting a SPOKEN "
         f"on-air exchange between two hosts — {names}. Write the dialogue ONLY.\n\n"
-        f"Settlement time right now: {clock.render_wall_clock(now)} "
-        f"({frame.part_of_day}).\n"
-        f"On air right now: {situation}. Frame the exchange for THIS time of day — "
-        "match the hour above; do not write a night or dawn-handover scene unless "
-        "the on-air note says so.\n\n"
+        f"{time_line}"
+        f"On air right now: {situation}. Frame the exchange for THIS part of day — "
+        "match the on-air note above; do not write a night or dawn-handover scene "
+        "unless it says so.\n\n"
         f"Tonight's beat (from the showrunner):\n{beat}\n\n"
         f"{pickup}"
         f"{freshness_section}"

@@ -316,6 +316,11 @@ class Settings(BaseSettings):
     buffer_depth_hours: float = 3.0  # rolling buffer depth, in hours of real audio
     schedule_topup_max_segments: int = 60  # hard stop on segments added per top-up
     schedule_failure_max_retries: int = 1  # retries of a failing slot before skipping
+    # During a cold fill the scheduler rewrites the playout playlist every N segments
+    # (not every one): Liquidsoap watches it and resets to the top on each reload, so
+    # rewriting too often pins playout to the first entry. Big enough to space reloads
+    # apart, small enough that an interrupted cold run still leaves a usable playlist.
+    schedule_playlist_write_every: int = 5
     schedule_playlist_path: Path = Field(
         default=_REPO_ROOT / "segments" / "playlist.txt"
     )
