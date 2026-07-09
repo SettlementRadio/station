@@ -70,6 +70,13 @@ class Settings(BaseSettings):
     llm_default_tier: str = "sonnet"  # the default writing brain
     llm_max_tokens: int = 4000
     llm_timeout_sec: float = 120.0
+    # CO3 — TTL for the SHARED bible prompt-cache block only (cards + dynamic keep
+    # the default 5-min ephemeral). The bible changes only on a canon edit + re-seed,
+    # so a 1h TTL trades a 2x write (vs 1.25x) for far fewer writes — a win above
+    # ~3 top-ups/hour, which continuous operation guarantees; it also keeps the bible
+    # warm across the nightly batch (batches can run up to an hour). "5m" reverts to
+    # the default TTL. See docs/CACHE_OPTIMIZATION_TASKS.md (CO3).
+    llm_cache_bible_ttl: str = "1h"
 
     # --- LLM Batch API (D3: the nightly world tick's cost lever) ----------------
     # The Batch API runs many requests asynchronously at 50% of standard price —

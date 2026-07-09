@@ -204,27 +204,27 @@ def _system_blocks(
     if bible or cards:
         # Two-block stable prefix: the bible is the SHARED entry; the cards are the
         # per-speaker-set tail (they carry the leading separator, so the blocks
-        # concatenate to the same bytes as the single `cached_context`).
-        for text in (bible, cards):
-            if text:
-                blocks.append(
-                    {
-                        "type": "text",
-                        "text": text,
-                        "cache_control": {"type": "ephemeral"},
-                    }
-                )
+        # concatenate to the same bytes as the single `cached_context`). The bible
+        # gets the longer TTL (CO3) since it changes only on a canon re-seed; the
+        # cards stay on the default 5-min ephemeral (they vary per speaker set).
+        if bible:
+            blocks.append(_cache_block(bible, ttl=settings.llm_cache_bible_ttl))
+        if cards:
+            blocks.append(_cache_block(cards))
     elif cached_context:
-        blocks.append(
-            {
-                "type": "text",
-                "text": cached_context,
-                "cache_control": {"type": "ephemeral"},
-            }
-        )
+        blocks.append(_cache_block(cached_context))
     if system:
         blocks.append({"type": "text", "text": system})
     return blocks
+
+
+def _cache_block(text: str, *, ttl: str | None = None) -> dict:
+    """A cached system text block. `ttl` ("1h"/"5m") overrides the default 5-min
+    ephemeral TTL; `None` leaves it at the default."""
+    cache_control: dict = {"type": "ephemeral"}
+    if ttl and ttl not in ("5m", "ephemeral"):
+        cache_control["ttl"] = ttl
+    return {"type": "text", "text": text, "cache_control": cache_control}
 
 
 # --- Batch path (D3: the nightly tick's cost lever) -------------------------

@@ -154,3 +154,37 @@ def test_co2_bible_block_is_identical_across_speaker_sets(co1_world, capture):
         llm.generate("p", system="S", bible=ctx.bible, cards=ctx.cards_block)
         bibles.add(capture.requests[-1]["system"][0]["text"])
     assert len(bibles) == 1  # one shared bible block across every speaker set
+
+
+# --- CO3: the 1h TTL rides on the bible block only ----------------------------
+
+
+def test_co3_bible_block_carries_the_configured_ttl(capture, monkeypatch):
+    # The long TTL keeps the static bible warm across top-ups; the cards (which
+    # vary per speaker set) stay on the default 5-min ephemeral.
+    monkeypatch.setattr(llm.settings, "llm_cache_bible_ttl", "1h")
+    llm.generate("p", system="S", bible="BIBLE", cards="\n\nCARDS")
+    bible_blk, cards_blk, sys_blk = capture.requests[-1]["system"]
+
+    assert bible_blk["cache_control"] == {"type": "ephemeral", "ttl": "1h"}
+    assert cards_blk["cache_control"] == {"type": "ephemeral"}  # default 5-min
+    assert "cache_control" not in sys_blk  # the volatile per-call part is never cached
+
+
+def test_co3_default_ttl_leaves_the_bible_on_plain_ephemeral(capture, monkeypatch):
+    # "5m" (or "ephemeral") reverts the bible to the default TTL — no ttl field, so
+    # it matches the world tick / any caller that didn't opt into the long TTL.
+    monkeypatch.setattr(llm.settings, "llm_cache_bible_ttl", "5m")
+    llm.generate("p", system="S", bible="BIBLE", cards="\n\nCARDS")
+    bible_blk = capture.requests[-1]["system"][0]
+    assert bible_blk["cache_control"] == {"type": "ephemeral"}
+
+
+def test_co3_single_cached_context_stays_on_default_ttl(capture, monkeypatch):
+    # The long TTL applies to the dedicated bible block only. The back-compat
+    # single-`cached_context` block (bible+cards combined) varies per speaker set,
+    # so it must NOT inherit the 1h TTL.
+    monkeypatch.setattr(llm.settings, "llm_cache_bible_ttl", "1h")
+    llm.generate("p", system="S", cached_context="BIBLE\n\nCARDS")
+    blk = capture.requests[-1]["system"][0]
+    assert blk["cache_control"] == {"type": "ephemeral"}
