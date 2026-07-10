@@ -127,6 +127,14 @@ source of truth; the DB is the queryable projection.
    `- **In-world datetime:**` (ISO, in-world year = real + 600). Missing → seed fails loud.
 4. Reload: `make seed-canon`.
 
+**Prompt-cache note (self-heals, no action):** the bible is the shared prompt-cache block every DJ
+reads from (CO2). Editing `docs/canon/` changes those bytes, so the FIRST generation after a bible
+edit pays a one-time cache write to re-warm the shared block; every generation after that reads it
+cheaply again. That is expected — nothing to clear or restart. Cost visibility: the `cache_creation`
+vs `cache_read` token split is logged on every call (`make costprobe` runs a repeatable before/after
+probe). See [`docs/CACHE_OPTIMIZATION_TASKS.md`](CACHE_OPTIMIZATION_TASKS.md); the bible-block TTL dial
+is `settings.llm_cache_bible_ttl` (`.env`)  → Phase E panel.
+
 ### Add a new cornerstone file  → Phase E panel
 Drop a new `NN-stem.md` in `docs/canon/` (unique stem). Scaffold files ship with guidance above the
 first `## ` heading and an empty `## Canon facts` — they seed nothing until authored (see

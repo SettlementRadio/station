@@ -174,7 +174,52 @@ music) where a shared bible block would need one (~62k redundant cache-write tok
 cycle, at the 1.25× write premium). Commercial reads music's entry only because both happen to be
 `vell` (byte-identical prefix), not because the bible is shared. On pass 2 every format reads —
 but each from its own copy, so the redundancy repeats on every cache expiry and every speaker-set
-roster change. AFTER table (CO4) goes here beside it.
+roster change.
+
+### AFTER (CO4) — recorded 2026-07-09, `make costprobe`, tier=sonnet, post-split
+
+Same probe, same mixed cycle, same two passes — now on the CO2 two-block topology (shared bible +
+per-speaker-set cards).
+
+| pass | format | input | cache_creation | cache_read |
+|---|---|---:|---:|---:|
+| 1 | talk | 20 | 31,614 | 0 |
+| 1 | news | 20 | 332 | 30,952 |
+| 1 | music | 20 | 345 | 30,952 |
+| 1 | commercial | 20 | 0 | 31,297 |
+| 2 | talk | 20 | 0 | 31,614 |
+| 2 | news | 20 | 0 | 31,284 |
+| 2 | music | 20 | 0 | 31,297 |
+| 2 | commercial | 20 | 0 | 31,297 |
+| 1 | **total** | 80 | **32,291** | 93,201 |
+| 2 | **total** | 80 | **0** | 125,492 |
+
+**The shift.** The ~30,952-token bible is now `cache_creation`'d **once** (in talk's first call) and
+`cache_read` by news, music, and commercial — exactly the shared-block behaviour. Only the small
+per-speaker-set cards are written fresh (thorn 332, vell 345, the second talk card the rest). Pass-1
+`cache_creation` fell **94,195 → 32,291 tokens (−66%)**; the bible-specific write dropped from ~3×
+per cold cycle to 1× (≈62k fewer bible-write tokens per cold cycle). Pass 2 is all-reads in both
+tables (a warm cycle always shares within itself) — but CO3's 1h bible TTL now keeps it warm across
+top-ups, so cold cycles (the ones that pay the write) are far rarer than the old 5-min expiry.
+
+### Quality equivalence (CO4) — two proofs
+
+1. **Structural (the guarantee).** CO1's equivalence tests are green (`tests/test_llm_cache.py`,
+   `tests/test_context.py`, 21 passed): the concatenated model input is byte-identical before and
+   after the split, so generation cannot differ *by construction*.
+2. **Empirical (corroboration).** `make costprobe-ab` (fixed clock 2026-07-09 02:14, seeded world)
+   generates a segment for every speaker set **both ways** (two-block post-split vs single-block
+   pre-split). Result: **model input identical = yes** for all four formats (the runtime assertion
+   `bible + cards_block == cached_context` holds), and script similarity 0.02–0.16 — pure model
+   sampling noise (both arms produce coherent, in-character Settlement Radio passages of the same
+   kind; they differ only because generation is nondeterministic given identical input, exactly as
+   expected).
+
+**Pass/fail summary (for the DEVLOG).** PASS. Splitting the ~31k-token bible into its own shared
+`cache_control` block cut per-cold-cycle bible cache-writes from ~3× to 1× (pass-1 `cache_creation`
+94,195 → 32,291 tokens, −66%), and CO3's 1h TTL keeps that one write warm across top-ups instead of
+re-paying it every 5 minutes. Quality is unchanged and provably so: the model input is byte-identical
+across the split (CO1 tests green), corroborated by an A/B whose only differences are sampling noise.
 
 ---
 

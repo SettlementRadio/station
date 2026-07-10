@@ -106,7 +106,9 @@ def generate(
     *,
     system: str | None = None,
     model: str = "sonnet",   # "haiku" | "sonnet" | "opus" — mapped to real model IDs internally
-    cached_context: str | None = None,  # large stable text (canon/cards) → sent as a cache breakpoint
+    cached_context: str | None = None,  # legacy single stable prefix → one cache breakpoint
+    bible: str | None = None,   # CO2: the SHARED stable prefix → its own cache breakpoint (1h TTL)
+    cards: str | None = None,   # CO2: the per-speaker-set prefix → a second cache breakpoint
     max_tokens: int = 4000,
     on_token: Callable[[str], None] | None = None,  # streamed text deltas → caller progress
     timeout: float = 120.0,                          # per-request timeout (seconds)
@@ -124,11 +126,19 @@ def generate(
       sonnet → claude-sonnet-4-6           # DEFAULT: DJ scripts, showrunner, continuity
       opus   → claude-opus-4-8             # hard reasoning only; rare
     Cost rules:
-      - cached_context MUST be passed as a prompt-caching breakpoint (canon/cards/system),
-        so repeat calls pay ~0.1x on that input. (Phase A: in use.)
-      - Batch API (50% off) is a "revisit when it pays" lever, not a MUST: with free local Kokoro
-        the text bill is trivial, so B6/C deferred it — build it only when text volume (more DJs/
-        channels/near-live) justifies it. The cached-context path above is the standing cost lever.
+      - Prompt caching is the standing cost lever, and its as-built shape (CO2/CO3) is a
+        TWO-BREAKPOINT topology: the ~31k-token world bible is ONE shared `cache_control`
+        block (`bible=`, 1h TTL — it changes only on a canon re-seed) followed by the
+        per-speaker-set character cards as a SECOND block (`cards=`, default 5-min TTL).
+        Because the bible bytes are identical across every speaker set AND the world tick,
+        one shared entry serves them all — the bible is written once and read (~0.1x) by
+        the rest, instead of re-written per DJ line-up. The two blocks concatenate byte-for-
+        byte to the legacy single `cached_context`, so the model input is unchanged (asserted
+        by tests/test_llm_cache.py); the single-`cached_context` path stays for back-compat.
+        The TTL is `settings.llm_cache_bible_ttl`. See docs/CACHE_OPTIMIZATION_TASKS.md.
+      - Batch API (50% off) is used by the world tick and is a "revisit when it pays" lever
+        elsewhere: with free local Kokoro the text bill is trivial. Batching the ahead-of-time
+        scheduler generation (the buffer has ~3h lead time) is the next open text lever.
     """
 
 # src/providers/tts.py  (as built)

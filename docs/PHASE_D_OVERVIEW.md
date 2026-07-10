@@ -55,8 +55,14 @@ These hold across every sub-pack — restate them at the top of each `_TASKS.md`
   desk). Route by job (`haiku` for volume/low-stakes, `sonnet` for the writing brain, `opus` only for
   gnarly calls), **run the nightly tick through the Batch API (50% off)**, and **cache the stable
   canon/cards** so each call pays full price only for the small variable part. The Batch API was
-  weakened in Phase B (trivial text bill); D's volume **re-justifies it** — revisit per sub-pack. For
-  current model IDs, pricing, and the Batch/caching APIs, consult the `claude-api` skill — do not
+  weakened in Phase B (trivial text bill); D's volume **re-justifies it** — revisit per sub-pack.
+  **As-built caching topology (the CO cost-lever pack — `docs/CACHE_OPTIMIZATION_TASKS.md`):** the
+  stable prefix is now TWO shared `cache_control` blocks — the ~31k-token bible as ONE block (1h TTL,
+  byte-identical across every speaker set and the world tick, so it caches once) followed by the
+  per-speaker cards. Future sub-packs inherit this: pass the stable core as `llm.generate(bible=…,
+  cards=…)` (the single-`cached_context` path stays for back-compat), and any new generator gets the
+  shared-bible discount for free. The usage split (`cache_creation`/`cache_read`) is logged per call.
+  For current model IDs, pricing, and the Batch/caching APIs, consult the `claude-api` skill — do not
   answer model questions from memory.
 - **Gates apply to all new generated content.** Every new producer (news desk, world tick,
   commercials, sponsor reads) runs `safety.safety_check` and, where it's dialogue/canon-bound, the

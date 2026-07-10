@@ -40,7 +40,7 @@ LIQ_LOG    := $(RUN_DIR)/liquidsoap.log
 PLAYER_URL := http://127.0.0.1:8000/
 STREAM_URL := http://127.0.0.1:8000/settlement.mp3
 
-.PHONY: help generate serve air play play-convo stop status console now-playing seed seed-canon reset-world seed-tracks seed-sponsors demo context costprobe conversation format buffer schedule ident prune fallback health world-tick news-demo figures-demo freshness-demo continuity-demo programming-demo commercials-demo acceptance
+.PHONY: help generate serve air play play-convo stop status console now-playing seed seed-canon reset-world seed-tracks seed-sponsors demo context costprobe costprobe-ab conversation format buffer schedule ident prune fallback health world-tick news-demo figures-demo freshness-demo continuity-demo programming-demo commercials-demo acceptance
 
 # B5 format default: `make format` builds a talk segment; override with FMT=news
 # or FMT=music. Pass a TOPIC=... to steer canon retrieval.
@@ -187,6 +187,13 @@ context:
 costprobe:
 	@echo "==> Prompt-cache cost probe (CO0)…"
 	$(PY) -m src.costprobe
+
+# CO4 — A/B quality proof: generate a segment per speaker set BOTH ways
+# (two-block post-split vs single-block pre-split) on a fixed clock and diff.
+# Proves the cache split doesn't change what the model sees. Real Anthropic calls.
+costprobe-ab:
+	@echo "==> Prompt-cache A/B quality proof (CO4)…"
+	$(PY) -m src.costprobe ab
 
 # B4: generate a two-DJ conversation segment (showrunner → orchestrator →
 # continuity → two-voice render). Makes live Anthropic calls; needs `make seed`.

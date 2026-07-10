@@ -38,6 +38,52 @@ A typical *build* session will be short, e.g.:
 
 ---
 
+## 2026-07-10 — Cost lever — Shared-bible prompt cache (CO0–CO4): the bible stops being re-cached per DJ
+**Focus:** the ~31k-token world bible is the largest, most-stable block in every prompt, but it was
+being cached **per speaker set** — talk (`vell+wren`), news (`thorn`), music/commercial (`vell`) and
+the world tick each kept a private copy — so a mixed cycle re-wrote the whole bible several times over.
+Split the cache into two breakpoints (shared bible + per-speaker cards) so every caller reads one bible
+entry, and proved the change is cost-positive *and* quality-neutral before touching anything.
+**Decisions:**
+- **Two cache breakpoints, not one.** `context.assemble` now exposes the stable core as `bible` (raw,
+  byte-identical across every caller) + `cards_text` (the per-speaker cards); the seam emits them as two
+  `cache_control` blocks. `cached_context` stayed as a computed back-compat join so call sites migrated
+  incrementally. Concatenated, the two blocks are **byte-identical** to the old single string — so the
+  model input is unchanged *by construction*, not by hope.
+- **1h TTL on the bible block only** (`llm_cache_bible_ttl`, config-over-hardcoding); cards + dynamic
+  stay on the default 5-min ephemeral. The bible changes only on a canon re-seed, so a 1h TTL trades a
+  2× write for far fewer writes — and, crucially, keeps it warm across the ~15-min DJ rotation gap that
+  the old 5-min TTL blew through on every segment.
+- **World tick routed through `bible=` too**, so its bible block carries the same text *and* the same
+  cache_control (incl. TTL) as the segment writers' — so they actually share the entry.
+- **Measure-first discipline.** Added usage telemetry (`input`/`cache_creation`/`cache_read` split on
+  every call + batch rollup) and a repeatable cost probe BEFORE changing the topology; wrote the
+  byte-equivalence golden test BEFORE the split.
+**Changed:** `src/providers/llm.py` (two-part stable prefix in `generate`/`_system_blocks`/`BatchRequest`
++ usage telemetry), `src/world/context.py` (`bible`/`cards_text` fields, `cached_context`/`cards_block`
+properties), call sites `src/writer.py`, `src/formats/{music,commercial,news}.py`,
+`src/writers/conversation.py`, `src/world/world_tick.py`, `src/config.py` (`llm_cache_bible_ttl`),
+new `src/costprobe.py` (cost probe + CO4 A/B) + `make costprobe`/`costprobe-ab`, tests
+`tests/test_llm_cache.py` (new) + `tests/test_context.py` + fixture migrations, and the measurement
+tables in `docs/CACHE_OPTIMIZATION_TASKS.md`. **406 tests green; ruff clean.**
+**Why:** the bible was re-written per speaker set on every cold cycle, and the old 5-min TTL expired
+between a DJ's turns (~15 min apart) — so a continuously-running station paid near-full price for the
+bible on almost every segment. Measured on the real stack: **pass-1 `cache_creation` 94,195 → 32,291
+tokens (−66%)** — the bible is now written once and read by the other formats. At 12h/day continuous
+that is roughly **~$700/mo → ~$270/mo** in estimated LLM cost, almost entirely from the bible no longer
+being re-cached. Quality is provably unchanged: the byte-equivalence test is green (model input
+identical), corroborated by a fixed-clock A/B whose only script differences are model sampling noise.
+**📣 Postable:** clean cost-mechanism story — "we cut our AI text bill ~60% by changing *nothing* the
+model sees." The bible (90% of every prompt) was being cached separately for each DJ line-up and
+expiring between their turns; splitting it into one shared, hour-warm cache block made it byte-identical
+input at a third of the cost. The before/after token table + the "model input identical: yes, scripts
+differ only by sampling noise" A/B is the proof. (docs/CACHE_OPTIMIZATION_TASKS.md Measurements)
+**Next:** CO5 (document the two-breakpoint topology in ARCHITECTURE.md + ADMIN_MANUAL.md, note it in the
+Phase D overview cost-lever section). Then weigh the two further levers surfaced here: batching the
+ahead-of-time scheduler generation (50% off, the buffer has 3h of lead time) and tiering low-stakes
+calls (continuity/music/commercial) down to Haiku.
+Commit: (pending)  ·  Clips: —
+
 ## 2026-07-08 — Phase D — Jingles extended to the whole grid (per-program themes, by convention)
 **Focus:** the sonic-identity code was built for the old 4-daypart grid; the grid has since grown to
 ~28 named programs, so most shows opened cold (no theme). Wired every program to its own opener and

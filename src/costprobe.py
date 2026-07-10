@@ -124,7 +124,92 @@ def render_table(rows: list[dict]) -> str:
     return "\n".join(lines)
 
 
+# --- CO4: A/B quality proof (the split doesn't change what the model sees) ----
+# The structural proof is CO1's equivalence test: bible + cards is byte-identical
+# to the single cached_context, so the model input is unchanged by construction.
+# This A/B is the empirical corroboration — generate a real segment BOTH ways
+# (two-block post-split vs single-block pre-split) on a fixed clock, and diff. The
+# request text is identical, so any script difference is model sampling noise, not
+# the cache split. Both paths live in the seam today, so no pre-split checkout is
+# needed — the single-`cached_context` arm IS the pre-split behaviour.
+
+import difflib  # noqa: E402 — grouped with the CO4 A/B code it serves
+
+# A fixed clock for the A/B, so the run is repeatable (the "fixed seed" is the
+# seeded world + this pinned `now`). A night-shift time suits the station's voice.
+_AB_CLOCK = datetime(2026, 7, 9, 2, 14)
+
+_AB_INSTRUCTION = (
+    "You are writing for Settlement Radio. Using the world bible and character "
+    "card(s) in the cached context, and the current world slice below, write a "
+    "short (~120 word) in-character spoken passage for this moment. Spoken words "
+    "only — no stage directions, headings, or labels.\n\nWhat's true right now:\n"
+)
+
+
+def run_ab(now: datetime | None = None) -> list[dict]:
+    """Generate one segment per speaker set BOTH ways; return the pair + a diff.
+
+    For each format's speaker set, assemble the real context on the fixed clock,
+    then generate the same passage via the two-block path (`bible`/`cards`,
+    post-split) and the single-block path (`cached_context`, pre-split). The two
+    requests carry byte-identical model input (asserted here), so the diff isolates
+    pure sampling noise.
+    """
+    now = now or _AB_CLOCK
+    tier = settings.llm_default_tier
+    rows: list[dict] = []
+    for name in _PROBE_FORMATS:
+        ctx = context.assemble(now, speakers=list(FORMATS[name].speaker_ids()))
+        # The load-bearing structural fact, re-asserted at runtime: the two cache
+        # topologies feed the model the SAME bytes.
+        assert ctx.bible + ctx.cards_block == ctx.cached_context, name
+        system = f"{_AB_INSTRUCTION}{ctx.dynamic}"
+        user = "Write the passage now."
+
+        post = llm.generate(
+            user, system=system, model=tier, bible=ctx.bible, cards=ctx.cards_block
+        )
+        pre = llm.generate(
+            user, system=system, model=tier, cached_context=ctx.cached_context
+        )
+        ratio = difflib.SequenceMatcher(None, pre, post).ratio()
+        rows.append(
+            {
+                "format": name,
+                "identical_input": True,
+                "ratio": ratio,
+                "pre": pre,
+                "post": post,
+            }
+        )
+        log.info("costprobe_ab", format=name, similarity=round(ratio, 3))
+    return rows
+
+
+def render_ab(rows: list[dict]) -> str:
+    """Render the A/B: per-format input-equivalence + script-similarity + samples."""
+    lines = [
+        "| format | model input identical | script similarity |",
+        "|---|---|---:|",
+    ]
+    for r in rows:
+        mark = "yes" if r["identical_input"] else "NO"
+        lines.append(f"| {r['format']} | {mark} | {r['ratio']:.2f} |")
+    lines.append("")
+    for r in rows:
+        lines.append(f"### {r['format']}\n")
+        lines.append(f"**pre-split (single block):** {r['pre']}\n")
+        lines.append(f"**post-split (bible + cards):** {r['post']}\n")
+    return "\n".join(lines)
+
+
 if __name__ == "__main__":
-    # The table is this CLI's deliverable (stdout), like `make context`.
-    probe_rows = run_probe()
-    print(render_table(probe_rows))
+    import sys
+
+    # `python -m src.costprobe`      -> the cost probe (token split).
+    # `python -m src.costprobe ab`   -> the CO4 A/B quality proof (script diff).
+    if len(sys.argv) > 1 and sys.argv[1] == "ab":
+        print(render_ab(run_ab()))
+    else:
+        print(render_table(run_probe()))
