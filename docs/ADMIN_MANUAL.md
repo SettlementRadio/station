@@ -604,4 +604,7 @@ editing the file + `make seed-canon`, never by a reset.
   server, not world-readable (`chmod 600 .env`).
 - **AI disclosure stays on** (spoken ident + player line) — a hard rule on every public surface.
 - The **Phase E panel** (VPS-only, single-operator, private) replaces the hand-edit workflows —
-  it is specified by exactly the `→ Phase E panel` tags in this manual.
+  it is specified by exactly the `→ Phase E panel` tags in this manual. **Its task pack is
+  written: `docs/PHASE_E_PANEL_TASKS.md` (E1)** — forms-over-files (these hand-edit how-tos remain
+  the fallback path, so they stay in this manual even after the panel ships), loopback-only behind
+  an SSH tunnel, planned for the C9 soak week.

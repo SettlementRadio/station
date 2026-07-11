@@ -1,4 +1,4 @@
-# Settlement Radio — Phase A run commands (T6).
+# Settlement Radio — run commands (started as Phase A's T6; grown through Phase D).
 #
 #   make generate   Write a fresh ad-hoc segment for the current time (Claude → TTS).
 #   make serve      Start Icecast + Liquidsoap; airs the scheduler playlist (C2).

@@ -212,6 +212,10 @@ through the new control surface.
   edit/remove + run windows + weights — today `config/sponsors.yaml` + `make seed-sponsors`), tune the
   **ad-break cadence** (per-program `break_every` in `grid.yaml` + the `COMMERCIAL_BREAK_*` /
   `SPONSOR_READ_*` dials), and set the **spot production level** (`FORMAT_COMMERCIAL_PRODUCTION_LEVEL`).
+  **The pack is written: `docs/PHASE_E_PANEL_TASKS.md` (E1)** — forms-over-files, loopback-only +
+  SSH tunnel, the manual's 22 tags mapped to screens; **planned to be BUILT during the C9 soak week**
+  (hands-off waiting = free build capacity), so the panel is ready the day the station goes public.
+  The per-story approve/reject queue stays a later, separate opt-in pack.
 - **Listener interaction.** Inbound from the audience — requests, dedications, messages — read on air
   in character (the canon's "letters between worlds," made real), now that there *are* listeners.
 - **Scale & resilience.** More channels on the same engine; performance + cost at scale; resilience

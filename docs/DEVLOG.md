@@ -38,6 +38,50 @@ A typical *build* session will be short, e.g.:
 
 ---
 
+## 2026-07-11 — Audit — Full pre-broadcast system audit: code track clean, broadcasting blocked only on C5–C9
+**Focus:** a top-to-bottom audit before going public — security, LLM token efficiency, prod
+readiness against the roadmap, and bug/drift hunting. Verified live: **406 tests pass**, ruff
+clean, no secret patterns in the tree or the git history.
+**Decisions:**
+- **Verdict: the code is ready; the infrastructure is the gate.** Everything on the code track
+  (A, A2, B, C0–C4, D1–D12 incl. the D12 talk-continuity addendum) is built, tracked ✅, and
+  tested; `make acceptance` (the simulated 24–48h soak) is green. "Start broadcasting" = the
+  C5–C9 server track, none of which exists yet — so the next work is ops, not code.
+- **Security passed** with three items pinned to the C5 checklist: (1) `config/icecast.xml`
+  ships `hackme` for source/relay/**admin** — real secrets on the VPS, admin never
+  internet-reachable; (2) the whole scheduler timeline is **naive local time** (18
+  `datetime.now()` sites, zero tzinfo) — run the VPS in **UTC** or a DST jump shifts the runway
+  math and every air_time by an hour; (3) minor: the OK-prefix verdict parsers
+  (safety/continuity/tick) would pass a reply starting "Okay, but…" — cheap hardening candidate.
+  Everything else held up under reading: SQL fully parameterized behind the store seam, DB
+  passwords redacted in logs, the public now-playing feed is allow-list-by-construction, the
+  gates fail closed at the slot level.
+- **LLM efficiency confirmed near-optimal — no wasted calls found** across all 10 `llm.generate`
+  call sites: every one rides the two-breakpoint cache (shared ~31k bible @1h TTL + cards);
+  routing honored (sonnet default, haiku safety pass, opus ONLY as a flag-confirm); the tick's
+  gate/advances batched at 50% off. The one open lever stays the documented one: the 24/7
+  scheduler generation is synchronous/full-price — batching it (~3h lead time) halves the main
+  recurring text bill; revisit AFTER the C9 soak with real telemetry from the box.
+**Changed:** fixed the doc drift the audit found — `docs/ARCHITECTURE.md` status header (said
+"Phases C–E planned" though C0–C4 + D are built), `.env.example` (`NEWS_STORY_COUNT` default
+3→4; `BUFFER_ROTATION` still said music was dropped — stale since D7.4), the Makefile header;
+this entry. **Also wrote the first Phase E pack:** `docs/PHASE_E_PANEL_TASKS.md` (E1, the operator
+panel — the human wants to run the station from a web UI, not YAML buffers). Load-bearing calls:
+**forms-over-files** (the YAML/markdown sources + existing seeds stay the truth; the panel is a UI
+over the ADMIN_MANUAL workflows, whose hand-edit paths remain the fallback), **private by network
+position** (loopback-only + SSH tunnel, no auth system, never in `/web`), destructive actions keep
+typed-confirmation friction, and validation reuses the real loaders (grid/voices/tracks parsers) —
+never a second validator. Timing: **build E1 during the C9 soak week** (7 hands-off days = free
+build capacity; panel ready the day the station goes public). ROADMAP Phase E + ADMIN_MANUAL now
+point at the pack. Story approve/reject stays a later opt-in pack; bible PROSE editing stays the
+human's text editor by design.
+**Why:** the human wants to start broadcasting; the audit's job was to say "yes/no and what's
+between here and there." The answer is a short, concrete list instead of a vague feeling —
+and it protects C5 from rediscovering the icecast/UTC traps mid-deploy.
+**Next:** start the Phase C server track at C5 (`docs/PHASE_C_TASKS.md`), with the icecast
+passwords + UTC items added to its checklist.
+Commit: (this session)  ·  Clips: (none — audit session)
+
 ## 2026-07-10 — Cost lever — Shared-bible prompt cache (CO0–CO4): the bible stops being re-cached per DJ
 **Focus:** the ~31k-token world bible is the largest, most-stable block in every prompt, but it was
 being cached **per speaker set** — talk (`vell+wren`), news (`thorn`), music/commercial (`vell`) and

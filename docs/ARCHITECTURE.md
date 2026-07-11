@@ -2,10 +2,13 @@
 
 The long-term design and the two seams that must not be violated. Each layer carries a per-phase
 status line. The point of writing it down is so the small early code is shaped to grow into the big
-system without rewrites. **Status: Phase A complete, Phase B ("The Mind") complete; Phases C–E are
-planned in detail (`docs/ROADMAP.md` + the phase packs) and previewed in each layer's forward note
-below.** Layers 1–3 are now real (vector retrieval excepted); Layers 4–6 are still Phase A's minimal
-forms; Layer 0 (listener inbound) arrives in Phase E.
+system without rewrites. **Status: Phases A, A2 and B complete; Phase C's code track (C0–C4 —
+gates, framing, the rolling scheduler + GC, disclosure, never-dead + health) complete; Phase D
+("The Living World", D1–D12) complete — see the tracker in `docs/PHASE_D_OVERVIEW.md`. Open:
+the Phase C server track (C5–C9 — VPS deploy, the C6 voice decision, YouTube relay, web player,
+the 7-day soak).** Layers 1–5 are real (vector retrieval live since D2); Layer 6 is local Icecast
+until C7–C8; Layer 0 (listener inbound) arrives in Phase E. The per-layer notes below carry their
+own phase-by-phase history — read each layer's latest phase note for its as-built state.
 
 ## Layered design
 
