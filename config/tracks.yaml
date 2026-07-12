@@ -830,3 +830,538 @@ tracks:
     duration_sec: null
     audio_path: "assets/music/mara-vale__signal-through-the-dust.mp3"
     licence_note: null
+
+  # --- Old-system sessions · songs of Earth's home system (batch added 2026-07) ---
+  - id: the-low-orbit-kings__europa-morning-light
+    title: "Europa Morning Light"
+    artist: "The Low Orbit Kings"
+    artist_figure_id: null
+    album: "Windows Under Ice"
+    era: "age-of-relays"
+    in_world_year: 2626
+    mood: "bright"
+    tags: [europa, colony-life, light-rock, hopeful, age-of-relays]
+    story_blurb: "A bright colony anthem for ordinary mornings beneath Europa's ice."
+    duration_sec: null
+    audio_path: "assets/music/the-low-orbit-kings__europa-morning-light.mp3"
+    licence_note: null
+
+  - id: jun-pelayo__dockside-gravity-blues
+    title: "Dockside Gravity Blues"
+    artist: "Jun Pelayo"
+    artist_figure_id: null
+    album: "Bay Six After Midnight"
+    era: "age-of-relays"
+    in_world_year: 2626
+    mood: "mellow"
+    tags: [saturn, dockworker, blues, working-class, age-of-relays]
+    story_blurb: "A working dockhand's blues from a Saturn transfer station, full of freight, debt, and stubborn humor."
+    duration_sec: null
+    audio_path: "assets/music/jun-pelayo__dockside-gravity-blues.mp3"
+    licence_note: null
+
+  - id: greenhouse-nine__we-built-the-rain
+    title: "We Built the Rain"
+    artist: "Greenhouse Nine"
+    artist_figure_id: null
+    album: "Valley Votes"
+    era: "age-of-relays"
+    in_world_year: 2626
+    mood: "hopeful"
+    tags: [terraforming, ecology, folk-rock, civic-life, age-of-relays]
+    story_blurb: "A settlement folk-rock favorite about ecological repair as patient democratic labor."
+    duration_sec: null
+    audio_path: "assets/music/greenhouse-nine__we-built-the-rain.mp3"
+    licence_note: null
+
+  - id: the-belter-revival__static-saints
+    title: "Static Saints"
+    artist: "The Belter Revival"
+    artist_figure_id: null
+    album: "Maintenance Bay Gospel"
+    era: "age-of-relays"
+    in_world_year: 2626
+    mood: "driving"
+    tags: [belters, garage-rock, pirate-radio, working-class, age-of-relays]
+    story_blurb: "A rough-edged station favorite from the belt, celebrating imperfect voices and unofficial broadcasts."
+    duration_sec: null
+    audio_path: "assets/music/the-belter-revival__static-saints.mp3"
+    licence_note: null
+
+  - id: sela-orin__light-on-titan-bay
+    title: "Light on Titan Bay"
+    artist: "Sela Orin"
+    artist_figure_id: null
+    album: "Orange Weather"
+    era: "age-of-relays"
+    in_world_year: 2626
+    mood: "melancholy"
+    tags: [titan, blues-ballad, harbor-life, homesick, age-of-relays]
+    story_blurb: "A tender Titan harbor ballad about distance, return, and the lights that make colonies feel inhabited."
+    duration_sec: null
+    audio_path: "assets/music/sela-orin__light-on-titan-bay.mp3"
+    licence_note: null
+
+  - id: riko-say-and-the-civic-band__treaty-line-shuffle
+    title: "Treaty Line Shuffle"
+    artist: "Riko Say & The Civic Band"
+    artist_figure_id: null
+    album: "Minutes From the Floor"
+    era: "age-of-relays"
+    in_world_year: 2626
+    mood: "joyful"
+    tags: [diplomacy, satire, blues-rock, civic-life, age-of-relays]
+    story_blurb: "A playful shuffle about messy inter-settlement diplomacy and the comedy of keeping peace alive."
+    duration_sec: null
+    audio_path: "assets/music/riko-say-and-the-civic-band__treaty-line-shuffle.mp3"
+    licence_note: null
+
+  - id: north-array__the-long-way-around-mars
+    title: "The Long Way Around Mars"
+    artist: "North Array"
+    artist_figure_id: null
+    album: "Beacon Star Road"
+    era: "age-of-relays"
+    in_world_year: 2626
+    mood: "mellow"
+    tags: [mars, light-rock, travel, freight-lanes, age-of-relays]
+    story_blurb: "A relaxed road-song equivalent for orbital freight crews taking the scenic route around Mars."
+    duration_sec: null
+    audio_path: "assets/music/north-array__the-long-way-around-mars.mp3"
+    licence_note: null
+
+  - id: asha-ko-and-the-second-sun__carbon-heart
+    title: "Carbon Heart"
+    artist: "Asha Ko & The Second Sun"
+    artist_figure_id: null
+    album: "Witness Protocol"
+    era: "age-of-relays"
+    in_world_year: 2626
+    mood: "driving"
+    tags: [ai-rights, blues-rock, ethics, civic-life, age-of-relays]
+    story_blurb: "A soul-rock anthem from the public debates around machine-mind personhood and civic recognition."
+    duration_sec: null
+    audio_path: "assets/music/asha-ko-and-the-second-sun__carbon-heart.mp3"
+    licence_note: null
+
+  - id: the-pressure-door-union__no-kings-in-the-airlock
+    title: "No Kings in the Airlock"
+    artist: "The Pressure Door Union"
+    artist_figure_id: null
+    album: "Air Belongs to Everybody"
+    era: "age-of-relays"
+    in_world_year: 2626
+    mood: "driving"
+    tags: [union, rock, worker-rights, station-life, age-of-relays]
+    story_blurb: "A hard blues-rock labor anthem popular among maintenance crews and pressure-systems workers."
+    duration_sec: null
+    audio_path: "assets/music/the-pressure-door-union__no-kings-in-the-airlock.mp3"
+    licence_note: null
+
+  - id: eli-renn__quiet-engines
+    title: "Quiet Engines"
+    artist: "Eli Renn"
+    artist_figure_id: null
+    album: "Night Shift Hymns"
+    era: "age-of-relays"
+    in_world_year: 2626
+    mood: "serene"
+    tags: [night-shift, soft-rock, station-life, contemplative, age-of-relays]
+    story_blurb: "A quiet soft-rock night-shift song about maintenance, peace, and the dignity of keeping systems alive."
+    duration_sec: null
+    audio_path: "assets/music/eli-renn__quiet-engines.mp3"
+    licence_note: null
+
+  - id: nima-vale__blues-for-a-broken-translator
+    title: "Blues for a Broken Translator"
+    artist: "Nima Vale"
+    artist_figure_id: null
+    album: "Lounge at Embassy Ring"
+    era: "age-of-relays"
+    in_world_year: 2626
+    mood: "joyful"
+    tags: [translation, diplomacy, comedy-blues, civic-life, age-of-relays]
+    story_blurb: "A comic blues number about a translation failure during inter-settlement talks that nearly starts a pastry dispute."
+    duration_sec: null
+    audio_path: "assets/music/nima-vale__blues-for-a-broken-translator.mp3"
+    licence_note: null
+
+  - id: the-corona-drivers__solar-flare-saturday
+    title: "Solar Flare Saturday"
+    artist: "The Corona Drivers"
+    artist_figure_id: null
+    album: "Shielding Up"
+    era: "age-of-relays"
+    in_world_year: 2626
+    mood: "joyful"
+    tags: [solar-weather, rock, community, station-life, age-of-relays]
+    story_blurb: "A loud weekend rock song about turning a solar-weather lockdown into a station-wide party."
+    duration_sec: null
+    audio_path: "assets/music/the-corona-drivers__solar-flare-saturday.mp3"
+    licence_note: null
+
+  - id: harmony-tract__the-ballad-of-dock-12
+    title: "The Ballad of Dock 12"
+    artist: "Harmony Tract"
+    artist_figure_id: null
+    album: "Small Emergencies"
+    era: "age-of-relays"
+    in_world_year: 2626
+    mood: "warm"
+    tags: [dock-life, folk-rock, emergency, community, age-of-relays]
+    story_blurb: "A humble folk-rock ballad about a minor dock failure and the quiet competence that kept everyone safe."
+    duration_sec: null
+    audio_path: "assets/music/harmony-tract__the-ballad-of-dock-12.mp3"
+    licence_note: null
+
+  - id: calder-moon__red-soil-blue-guitar
+    title: "Red Soil, Blue Guitar"
+    artist: "Calder Moon"
+    artist_figure_id: null
+    album: "Greenhouse Line"
+    era: "age-of-relays"
+    in_world_year: 2626
+    mood: "warm"
+    tags: [mars, blues-rock, working-class, terraforming, age-of-relays]
+    story_blurb: "A Martian roadhouse blues-rock track about greenhouse labor, family work, and pride in red soil."
+    duration_sec: null
+    audio_path: "assets/music/calder-moon__red-soil-blue-guitar.mp3"
+    licence_note: null
+
+  - id: vera-cross__dont-sell-the-sky
+    title: "Don't Sell the Sky"
+    artist: "Vera Cross"
+    artist_figure_id: null
+    album: "Commons in Orbit"
+    era: "age-of-relays"
+    in_world_year: 2626
+    mood: "driving"
+    tags: [commons, protest-rock, orbital-life, civic-life, age-of-relays]
+    story_blurb: "A sharp protest-rock single from the orbital commons movement against privatized star-view advertising."
+    duration_sec: null
+    audio_path: "assets/music/vera-cross__dont-sell-the-sky.mp3"
+    licence_note: null
+
+  - id: station-porch-trio__relay-coffee
+    title: "Relay Coffee"
+    artist: "Station Porch Trio"
+    artist_figure_id: null
+    album: "Low-Spin Cafe"
+    era: "age-of-relays"
+    in_world_year: 2626
+    mood: "warm"
+    tags: [relay-culture, blues, cafe, betweener, age-of-relays]
+    story_blurb: "A cozy cafe blues about waiting for delayed messages over bitter coffee in a low-spin station."
+    duration_sec: null
+    audio_path: "assets/music/station-porch-trio__relay-coffee.mp3"
+    licence_note: null
+
+  - id: mira-sol-and-harbor-light__children-of-the-pressure-dome
+    title: "Children of the Pressure Dome"
+    artist: "Mira Sol & Harbor Light"
+    artist_figure_id: null
+    album: "Born Between"
+    era: "age-of-relays"
+    in_world_year: 2626
+    mood: "hopeful"
+    tags: [colony-children, light-rock, education, future-generations, age-of-relays]
+    story_blurb: "An uplifting colony-generation anthem about growing up between inherited worlds and chosen futures."
+    duration_sec: null
+    audio_path: "assets/music/mira-sol-and-harbor-light__children-of-the-pressure-dome.mp3"
+    licence_note: null
+
+  - id: the-lagrange-saints__blackout-at-lagrange
+    title: "Blackout at Lagrange"
+    artist: "The Lagrange Saints"
+    artist_figure_id: null
+    album: "Backup Feed"
+    era: "age-of-relays"
+    in_world_year: 2626
+    mood: "driving"
+    tags: [lagrange-station, blues-rock, emergency, community, age-of-relays]
+    story_blurb: "A blues-rock retelling of a station blackout where accurate public information mattered as much as power."
+    duration_sec: null
+    audio_path: "assets/music/the-lagrange-saints__blackout-at-lagrange.mp3"
+    licence_note: null
+
+  - id: hearth-and-hull__keep-the-channel-warm
+    title: "Keep the Channel Warm"
+    artist: "Hearth & Hull"
+    artist_figure_id: null
+    album: "The Settlement Songbook"
+    era: "age-of-relays"
+    in_world_year: 2626
+    mood: "hopeful"
+    tags: [relay-culture, folk-rock, communication, hopeful, age-of-relays]
+    story_blurb: "A warm duet about communication as civic care across different colonies, cultures, and generations."
+    duration_sec: null
+    audio_path: "assets/music/hearth-and-hull__keep-the-channel-warm.mp3"
+    licence_note: null
+
+  # --- Alternate takes · second Suno generations of the 2026-07 batch, kept on catalogue ---
+
+  - id: asha-ko-and-the-second-sun__carbon-heart_1
+    title: "Carbon Heart (Alternate Take)"
+    artist: "Asha Ko & The Second Sun"
+    artist_figure_id: null
+    album: "Witness Protocol"
+    era: "age-of-relays"
+    in_world_year: 2626
+    mood: "driving"
+    tags: [ai-rights, blues-rock, ethics, civic-life, age-of-relays]
+    story_blurb: "The other take from the Witness Protocol sessions — same anthem, different fire. Listeners argue over which one the debates actually needed."
+    duration_sec: null
+    audio_path: "assets/music/asha-ko-and-the-second-sun__carbon-heart_1.mp3"
+    licence_note: null
+
+  - id: calder-moon__red-soil-blue-guitar_1
+    title: "Red Soil, Blue Guitar (Alternate Take)"
+    artist: "Calder Moon"
+    artist_figure_id: null
+    album: "Greenhouse Line"
+    era: "age-of-relays"
+    in_world_year: 2626
+    mood: "warm"
+    tags: [mars, blues-rock, working-class, terraforming, age-of-relays]
+    story_blurb: "The second pass at 'Red Soil, Blue Guitar' — looser on the guitar, cut after a long shift; the roadhouse kept both on the machine."
+    duration_sec: null
+    audio_path: "assets/music/calder-moon__red-soil-blue-guitar_1.mp3"
+    licence_note: null
+
+  - id: eli-renn__quiet-engines_1
+    title: "Quiet Engines (Alternate Take)"
+    artist: "Eli Renn"
+    artist_figure_id: null
+    album: "Night Shift Hymns"
+    era: "age-of-relays"
+    in_world_year: 2626
+    mood: "serene"
+    tags: [night-shift, soft-rock, station-life, contemplative, age-of-relays]
+    story_blurb: "The alternate take of 'Quiet Engines' — another slow walk through the same night shift; even Renn couldn't say which was calmer."
+    duration_sec: null
+    audio_path: "assets/music/eli-renn__quiet-engines_1.mp3"
+    licence_note: null
+
+  - id: greenhouse-nine__we-built-the-rain_1
+    title: "We Built the Rain (Alternate Take)"
+    artist: "Greenhouse Nine"
+    artist_figure_id: null
+    album: "Valley Votes"
+    era: "age-of-relays"
+    in_world_year: 2626
+    mood: "hopeful"
+    tags: [terraforming, ecology, folk-rock, civic-life, age-of-relays]
+    story_blurb: "The second session cut of 'We Built the Rain' — the band sang it again after the vote passed, and kept both versions in circulation."
+    duration_sec: null
+    audio_path: "assets/music/greenhouse-nine__we-built-the-rain_1.mp3"
+    licence_note: null
+
+  - id: harmony-tract__the-ballad-of-dock-12_1
+    title: "The Ballad of Dock 12 (Alternate Take)"
+    artist: "Harmony Tract"
+    artist_figure_id: null
+    album: "Small Emergencies"
+    era: "age-of-relays"
+    in_world_year: 2626
+    mood: "warm"
+    tags: [dock-life, folk-rock, emergency, community, age-of-relays]
+    story_blurb: "The alternate recording of 'The Ballad of Dock 12' — a second telling of the same small emergency, a little steadier in the verses."
+    duration_sec: null
+    audio_path: "assets/music/harmony-tract__the-ballad-of-dock-12_1.mp3"
+    licence_note: null
+
+  - id: hearth-and-hull__keep-the-channel-warm_1
+    title: "Keep the Channel Warm (Alternate Take)"
+    artist: "Hearth & Hull"
+    artist_figure_id: null
+    album: "The Settlement Songbook"
+    era: "age-of-relays"
+    in_world_year: 2626
+    mood: "hopeful"
+    tags: [relay-culture, folk-rock, communication, hopeful, age-of-relays]
+    story_blurb: "The other take from the Songbook sessions — the duo swapped verses this time through; both takes made the record."
+    duration_sec: null
+    audio_path: "assets/music/hearth-and-hull__keep-the-channel-warm_1.mp3"
+    licence_note: null
+
+  - id: jun-pelayo__dockside-gravity-blues_1
+    title: "Dockside Gravity Blues (Alternate Take)"
+    artist: "Jun Pelayo"
+    artist_figure_id: null
+    album: "Bay Six After Midnight"
+    era: "age-of-relays"
+    in_world_year: 2626
+    mood: "mellow"
+    tags: [saturn, dockworker, blues, working-class, age-of-relays]
+    story_blurb: "The later-night take of 'Dockside Gravity Blues' — cut after the bay emptied out, for whoever was still on shift to hear it."
+    duration_sec: null
+    audio_path: "assets/music/jun-pelayo__dockside-gravity-blues_1.mp3"
+    licence_note: null
+
+  - id: mira-sol-and-harbor-light__children-of-the-pressure-dome_1
+    title: "Children of the Pressure Dome (Alternate Take)"
+    artist: "Mira Sol & Harbor Light"
+    artist_figure_id: null
+    album: "Born Between"
+    era: "age-of-relays"
+    in_world_year: 2626
+    mood: "hopeful"
+    tags: [colony-children, light-rock, education, future-generations, age-of-relays]
+    story_blurb: "The alternate cut of 'Children of the Pressure Dome' — the same anthem sung once more for the second assembly of the season."
+    duration_sec: null
+    audio_path: "assets/music/mira-sol-and-harbor-light__children-of-the-pressure-dome_1.mp3"
+    licence_note: null
+
+  - id: nima-vale__blues-for-a-broken-translator_1
+    title: "Blues for a Broken Translator (Alternate Take)"
+    artist: "Nima Vale"
+    artist_figure_id: null
+    album: "Lounge at Embassy Ring"
+    era: "age-of-relays"
+    in_world_year: 2626
+    mood: "joyful"
+    tags: [translation, diplomacy, comedy-blues, civic-life, age-of-relays]
+    story_blurb: "The second take of 'Blues for a Broken Translator' — Vale couldn't keep a straight face the first time either; both takes shipped."
+    duration_sec: null
+    audio_path: "assets/music/nima-vale__blues-for-a-broken-translator_1.mp3"
+    licence_note: null
+
+  - id: north-array__the-long-way-around-mars_1
+    title: "The Long Way Around Mars (Alternate Take)"
+    artist: "North Array"
+    artist_figure_id: null
+    album: "Beacon Star Road"
+    era: "age-of-relays"
+    in_world_year: 2626
+    mood: "mellow"
+    tags: [mars, light-rock, travel, freight-lanes, age-of-relays]
+    story_blurb: "The alternate pass at 'The Long Way Around Mars' — the same scenic route taken at a slightly different cruising speed."
+    duration_sec: null
+    audio_path: "assets/music/north-array__the-long-way-around-mars_1.mp3"
+    licence_note: null
+
+  - id: riko-say-and-the-civic-band__treaty-line-shuffle_1
+    title: "Treaty Line Shuffle (Alternate Take)"
+    artist: "Riko Say & The Civic Band"
+    artist_figure_id: null
+    album: "Minutes From the Floor"
+    era: "age-of-relays"
+    in_world_year: 2626
+    mood: "joyful"
+    tags: [diplomacy, satire, blues-rock, civic-life, age-of-relays]
+    story_blurb: "The second-session 'Treaty Line Shuffle' — the Civic Band ran it back one more time before the floor closed; both takes stand in the minutes."
+    duration_sec: null
+    audio_path: "assets/music/riko-say-and-the-civic-band__treaty-line-shuffle_1.mp3"
+    licence_note: null
+
+  - id: sela-orin__light-on-titan-bay_1
+    title: "Light on Titan Bay (Alternate Take)"
+    artist: "Sela Orin"
+    artist_figure_id: null
+    album: "Orange Weather"
+    era: "age-of-relays"
+    in_world_year: 2626
+    mood: "melancholy"
+    tags: [titan, blues-ballad, harbor-life, homesick, age-of-relays]
+    story_blurb: "The other take of 'Light on Titan Bay' — sung again at the end of the session, when the harbor lights had actually come on."
+    duration_sec: null
+    audio_path: "assets/music/sela-orin__light-on-titan-bay_1.mp3"
+    licence_note: null
+
+  - id: station-porch-trio__relay-coffee_1
+    title: "Relay Coffee (Alternate Take)"
+    artist: "Station Porch Trio"
+    artist_figure_id: null
+    album: "Low-Spin Cafe"
+    era: "age-of-relays"
+    in_world_year: 2626
+    mood: "warm"
+    tags: [relay-culture, blues, cafe, betweener, age-of-relays]
+    story_blurb: "The long-sit version of 'Relay Coffee' — the trio kept playing while the message queue refused to clear; the cafe let the tape run."
+    duration_sec: null
+    audio_path: "assets/music/station-porch-trio__relay-coffee_1.mp3"
+    licence_note: null
+
+  - id: the-belter-revival__static-saints_1
+    title: "Static Saints (Alternate Take)"
+    artist: "The Belter Revival"
+    artist_figure_id: null
+    album: "Maintenance Bay Gospel"
+    era: "age-of-relays"
+    in_world_year: 2626
+    mood: "driving"
+    tags: [belters, garage-rock, pirate-radio, working-class, age-of-relays]
+    story_blurb: "The rougher take of 'Static Saints' — one more pass through the maintenance bay, mistakes left in on principle."
+    duration_sec: null
+    audio_path: "assets/music/the-belter-revival__static-saints_1.mp3"
+    licence_note: null
+
+  - id: the-corona-drivers__solar-flare-saturday_1
+    title: "Solar Flare Saturday (Alternate Take)"
+    artist: "The Corona Drivers"
+    artist_figure_id: null
+    album: "Shielding Up"
+    era: "age-of-relays"
+    in_world_year: 2626
+    mood: "joyful"
+    tags: [solar-weather, rock, community, station-life, age-of-relays]
+    story_blurb: "The second take of 'Solar Flare Saturday' — the party ran long, so the band played it again; this is the later one."
+    duration_sec: null
+    audio_path: "assets/music/the-corona-drivers__solar-flare-saturday_1.mp3"
+    licence_note: null
+
+  - id: the-lagrange-saints__blackout-at-lagrange_1
+    title: "Blackout at Lagrange (Alternate Take)"
+    artist: "The Lagrange Saints"
+    artist_figure_id: null
+    album: "Backup Feed"
+    era: "age-of-relays"
+    in_world_year: 2626
+    mood: "driving"
+    tags: [lagrange-station, blues-rock, emergency, community, age-of-relays]
+    story_blurb: "The alternate cut of 'Blackout at Lagrange' — the retelling retold; the Saints kept both accounts of the night on the record."
+    duration_sec: null
+    audio_path: "assets/music/the-lagrange-saints__blackout-at-lagrange_1.mp3"
+    licence_note: null
+
+  - id: the-low-orbit-kings__europa-morning-light_1
+    title: "Europa Morning Light (Alternate Take)"
+    artist: "The Low Orbit Kings"
+    artist_figure_id: null
+    album: "Windows Under Ice"
+    era: "age-of-relays"
+    in_world_year: 2626
+    mood: "bright"
+    tags: [europa, colony-life, light-rock, hopeful, age-of-relays]
+    story_blurb: "The other take of 'Europa Morning Light' — the same ordinary morning, caught a second time under the ice."
+    duration_sec: null
+    audio_path: "assets/music/the-low-orbit-kings__europa-morning-light_1.mp3"
+    licence_note: null
+
+  - id: the-pressure-door-union__no-kings-in-the-airlock_1
+    title: "No Kings in the Airlock (Alternate Take)"
+    artist: "The Pressure Door Union"
+    artist_figure_id: null
+    album: "Air Belongs to Everybody"
+    era: "age-of-relays"
+    in_world_year: 2626
+    mood: "driving"
+    tags: [union, rock, worker-rights, station-life, age-of-relays]
+    story_blurb: "The second-session cut of the union anthem — sung once more with the whole crew in the room; both versions get requested."
+    duration_sec: null
+    audio_path: "assets/music/the-pressure-door-union__no-kings-in-the-airlock_1.mp3"
+    licence_note: null
+
+  - id: vera-cross__dont-sell-the-sky_1
+    title: "Don't Sell the Sky (Alternate Take)"
+    artist: "Vera Cross"
+    artist_figure_id: null
+    album: "Commons in Orbit"
+    era: "age-of-relays"
+    in_world_year: 2626
+    mood: "driving"
+    tags: [commons, protest-rock, orbital-life, civic-life, age-of-relays]
+    story_blurb: "The alternate single cut of 'Don't Sell the Sky' — the second mix that went out on the commons feeds."
+    duration_sec: null
+    audio_path: "assets/music/vera-cross__dont-sell-the-sky_1.mp3"
+    licence_note: null
