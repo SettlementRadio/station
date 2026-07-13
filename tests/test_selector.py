@@ -58,6 +58,31 @@ def test_recent_track_is_avoided(monkeypatch):
     assert got == "fresh"
 
 
+def test_song_key_strips_only_a_take_suffix():
+    assert selector.song_key("asha-ko__carbon-heart_1") == "asha-ko__carbon-heart"
+    assert selector.song_key("asha-ko__carbon-heart") == "asha-ko__carbon-heart"
+    # A hyphenated number in the title is part of the song, not a take.
+    assert selector.song_key("harmony-tract__the-ballad-of-dock-12") == (
+        "harmony-tract__the-ballad-of-dock-12"
+    )
+
+
+def test_alternate_take_counts_as_its_main_version(monkeypatch):
+    # The main version just aired -> its _1 take is penalised too (recent ids
+    # arrive as song_keys, the shape _recent_spins produces).
+    tracks = [_track("song_1", mood="mellow"), _track("other", mood="mellow")]
+    got = _pick(tracks, monkeypatch, recent_track_ids=frozenset({"song"}))
+    assert got == "other"
+    # And the reverse: an aired take shields the main version.
+    tracks = [_track("song", mood="mellow"), _track("other", mood="mellow")]
+    got = _pick(
+        tracks,
+        monkeypatch,
+        recent_track_ids=frozenset({selector.song_key("song_1")}),
+    )
+    assert got == "other"
+
+
 def test_recent_artist_is_avoided(monkeypatch):
     tracks = [
         _track("by-vre", mood="mellow", artist="Halden Vre"),

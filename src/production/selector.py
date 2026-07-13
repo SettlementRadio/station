@@ -17,7 +17,9 @@ The policy (weights are the `music_select_*` dials in config.py):
     call — this runs inside the scheduler loop.
   * **Freshness** — a track or artist that aired within the D5 freshness window
     is penalised (the airplay memory records `music` slots' track id + artist —
-    src/freshness.py), so songs don't loop on a small catalogue.
+    src/freshness.py), so songs don't loop on a small catalogue. An alternate
+    take (id `X_1`) and its main version (`X`) count as ONE song here — playing
+    either marks both as recently aired (`song_key`).
   * **Era spread** — sitting in the same era as the LAST spin is penalised, so
     the air mixes eras instead of running all "24th-century classics".
   * **Featured** — an artist named in a running story is boosted (the world
@@ -90,6 +92,20 @@ _FEATURE_TAGS = frozenset({"featured", "pinned"})
 
 _WORD_RE = re.compile(r"[a-z0-9]+")
 
+# Alternate takes share the main version's id plus a `_<n>` suffix (the manifest
+# convention: `artist__title` / `artist__title_1`). Hyphenated numbers in a
+# title ("...dock-12") don't match — only an underscore-digit tail is a take.
+_TAKE_SUFFIX_RE = re.compile(r"_\d+$")
+
+
+def song_key(track_id: str) -> str:
+    """The freshness identity of a track: its id with any take suffix stripped.
+
+    `X` and `X_1` are two recordings of one song; the repeat-track penalty
+    treats them as the same so both takes never air near each other.
+    """
+    return _TAKE_SUFFIX_RE.sub("", track_id)
+
 
 @dataclass(frozen=True)
 class SelectionInputs:
@@ -97,7 +113,7 @@ class SelectionInputs:
 
     daypart: str = ""  # the active program's daypart label ("" = unknown)
     world_tone: str = "neutral"  # somber | upbeat | neutral (from the story log)
-    recent_track_ids: frozenset[str] = frozenset()  # aired in the freshness window
+    recent_track_ids: frozenset[str] = frozenset()  # song_keys aired in the window
     recent_artists: frozenset[str] = frozenset()
     last_era: str | None = None  # era of the most recent spin (variety spread)
     featured_artists: frozenset[str] = frozenset()  # named in a running story
@@ -127,7 +143,7 @@ def score_track(track: store.Track, inputs: SelectionInputs) -> float:
         s += settings.music_select_daypart_weight
     if track.mood in _TONE_MOODS.get(inputs.world_tone, frozenset()):
         s += settings.music_select_world_weight
-    if track.id in inputs.recent_track_ids:
+    if song_key(track.id) in inputs.recent_track_ids:
         s -= settings.music_select_repeat_track_penalty
     if track.in_world_artist in inputs.recent_artists:
         s -= settings.music_select_repeat_artist_penalty
@@ -183,15 +199,17 @@ def select_track(
 def _recent_spins(
     conn, now: datetime
 ) -> tuple[frozenset[str], frozenset[str], str | None]:
-    """(recent track ids, recent artists, last spin's era) from the D5 memory.
+    """(recent song keys, recent artists, last spin's era) from the D5 memory.
 
     The airplay memory records each placed `music` slot's track id (topic) and
-    artist (an `artist:` feature — src/freshness.py). The era of the most recent
-    spin is resolved back through the catalogue for the variety spread.
+    artist (an `artist:` feature — src/freshness.py). Track ids collapse to
+    their `song_key`, so an aired alternate take also shields its main version
+    (and vice versa). The era of the most recent spin is resolved back through
+    the catalogue for the variety spread.
     """
     within = timedelta(hours=settings.freshness_window_hours)
     records = store.recent_by_format(conn, now, "music", within=within)
-    track_ids = frozenset(r.topic for r in records if r.topic)
+    track_ids = frozenset(song_key(r.topic) for r in records if r.topic)
     artists = frozenset(
         f[len(ARTIST_FEATURE_PREFIX) :]
         for r in records
