@@ -86,9 +86,9 @@ The playlist is also an argument. By choosing certain songs and not others, the 
 6. **The Frontier Reels are fast, rhythmic, and danceable — music for hard work and harder celebration, playable on salvaged and improvised instruments.**
    - **Tags:** music, genre, frontier, dance, improvisation, salvage, joy
 7. **Instruments are shaped by what can be carried, made, and repaired: real wood and animal-derived materials are luxuries of the core, while the frontier works with engineered composites and substitutes.**
-   - **Tags:** music, instruments, materials, scarcity, adaptation, frontier
+   - **Tags:** music, instrument, materials, scarcity, adaptation, frontier
 8. **Forge is known for its resonance pipes — long alloy tubes that produce deep, organ-like tones, first built as signalling devices and later adapted for music.**
-   - **Tags:** music, instruments, forge, signature, adaptation, sound
+   - **Tags:** music, instrument, forge, signature, adaptation, sound
 9. **Some celebrated works were composed by collectives whose members never met in person, collaborating entirely by relay across the dark.**
    - **Tags:** music, collaboration, radio, distance, scene, legacy, loneliness
 10. **Movements rise and fall: the Purists held that only acoustic instruments were legitimate, the Synthesists embraced electronic sound, and the Localists argued each world should grow its own musical language.**
@@ -98,7 +98,7 @@ The playlist is also an argument. By choosing certain songs and not others, the 
 12. **The station's playlist is never random but curated — a claim about what matters and what the settled worlds should sound like, as much argument as entertainment.**
     - **Tags:** music, curation, meaning, broadcast, intention, culture
 13. **Lane-rock is the driving music of the freight crews — engine-rhythm anthems sung by whole crews, with "burn day" (the halfway turnover burn) as its great occasion.**
-    - **Tags:** music, genre, between, ships, work, joy, celebration
+    - **Tags:** music, genre, between, ship, work, joy, celebration
 14. **Pulse-dance grew from the Synthesist tradition on Meridian's storm coast — four-on-the-floor music for dancing indoors through the sealed storm season, joy made exactly where the world withholds it.**
     - **Tags:** music, genre, dance, technology, weather, community, joy
 15. **The void-lounge is the core's late-club standard — slow, smoky songs for the deep hours after the last ferry, carried by relay to every night shift in the settled worlds.**

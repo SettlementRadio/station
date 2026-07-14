@@ -8,9 +8,9 @@
 - **Name:** **Settlement Radio** — the talking companion station of the settled worlds.
 - **Year (in-world):** always `real year + 600`, computed at generation time — never written as
   a fixed number anywhere (a fixed year goes stale as real time moves).
-- **Premise:** a continuously broadcasting radio station for the scattered human settlements of
-  the late 27th century. It plays music, reads the news of the era, and keeps people company
-  across the dark between worlds.
+- **Premise:** a continuously broadcasting radio station for the scattered human settlements,
+  six centuries on from the real present. It plays music, reads the news of the era, and keeps
+  people company across the dark between worlds.
 - **Spirit / DNA:** optimism tempered by hard questions; wonder; moral seriousness; warmth. A
   tribute to the golden-age and new-wave authors — their *spirit*, never their characters or IP.
 - **Tone:** cozy, intelligent, a little wry. Not dystopian, not camp.
@@ -58,7 +58,7 @@ The signal carries on frequencies that bend through the relay network, hopping f
     track the relay network, but the telescope remains manual. DJs sometimes climb up to look at
     the worlds they speak to, reduced to points of light. It is considered good luck to sight your
     home world.
-    - **Tags:** observatory, dome, telescope, manual, instruments, relay, worlds, sky, home, luck, ritual
+    - **Tags:** observatory, dome, telescope, manual, instrument, relay, worlds, sky, home, luck, ritual
 11. Power comes from a compact reactor, but backup systems include hand-cranked generators for the
     emergency beacon — a ritual exercise performed monthly, though the beacon has never once been
     needed. The cranking is done to music, a tradition no one remembers starting.

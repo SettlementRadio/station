@@ -21,7 +21,7 @@ Other fossil-words persist in forms that betray their origins. *Ship* is still u
 
 ## Naming the worlds and their people
 
-The names of places reveal their histories. The worlds of the core bear names that reach for aspiration and origin: Concordance, Meridian, Halcyon. The frontier stations more often bear names that describe their conditions or their work: Cold Harbor, Far Reach, Breathe Easy. Some names are jokes that stuck, or warnings that went unheeded, or memorials to the dead. A station's name is rarely changed; the bureaucratic effort is too great, and the name has become part of the identity of the people who live under it.
+The names of places reveal their histories. The worlds of the core bear names that reach for aspiration and origin: Concordance, Meridian, Halcyon. The frontier's worlds and stations more often bear names that describe their conditions or their work: the ice world Cold Harbor, the stations Far Reach and Breathe Easy. Some names are jokes that stuck, or warnings that went unheeded, or memorials to the dead. A station's name is rarely changed; the bureaucratic effort is too great, and the name has become part of the identity of the people who live under it.
 
 Personal names follow patterns that reveal family origins and cultural affiliations. Core names tend toward the compound and descriptive: Anwen Sael-Okorie, Tomas Vidal-Renn. Frontier names are often shorter — sometimes single names taken by choice, sometimes a description of a function or a trait: Two, Sister Wire, Patch. Some frontier communities have naming conventions that mark generation — First, Second, Third — counting how long a family has been in the void. The Children of the Signal take names that reference transmission and frequency: Carrier, Bandwidth, Static.
 
@@ -56,11 +56,11 @@ The result is a language at once unified and various. Speakers across the settle
 4. **Standard is preserved in the core through education and broadcast; Frontier Common is simplified, heavy with loan-words; Station Dialects emerge in isolation with their own grammatical inventions.**
    - **Tags:** language, standard, frontier, dialect, isolation, grammar
 5. **Some words have drifted to mean opposite things: "settlement" suggests permanence in the core, impermanence on some frontier stations.**
-   - **Tags:** language, drift, meaning, settlement, misunderstanding
+   - **Tags:** language, drift, meaning, settlements, misunderstanding
 6. **Ship names range from utilitarian to poetic; personal names reveal origins through compound descriptive forms or short functional ones; place names describe conditions, functions, or memorials.**
-   - **Tags:** language, naming, ships, people, places, identity
+   - **Tags:** language, naming, ship, people, places, identity
 7. **Each world grows vocabulary for its own conditions — high-gravity exhaustion, enclosed-space psychology, frontier survival — words that spread slowly like sediment.**
-   - **Tags:** language, vocabulary, world, condition, loanword, spread
+   - **Tags:** language, vocabulary, worlds, condition, loanword, spread
 8. **Some concepts resist translation: a word for the between-state of death stretched to cover the long crossings, a word for duty and cosmic order stretched to cover the obligations of settlement, and technical terms used with theological precision by the Children of the Signal.**
    - **Tags:** language, translation, concept, religion, expansion, meaning, grief
 9. **The station introduces new vocabulary that spreads by broadcast: genre names, names for emotional states, cultural concepts that become part of the common tongue.**

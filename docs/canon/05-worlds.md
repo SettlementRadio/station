@@ -35,6 +35,10 @@ The station's position is strategic as well as technical. It sits where the traf
 
 The station's neutrality follows from its position. It belongs to no world because it cannot; its drift carries it through the spheres of many worlds, never staying long enough to fall under any of them. This neutrality is held by convention as much as by physics: the worlds accept the station's independence because they need it, because a station owned by any one world would be a weapon against the rest, because the common good of communication demands a common medium. The station is the closest thing to a shared institution the settled worlds possess, and its drifting existence is the physical shape of that role.
 
+## Living worlds and greened ones
+
+Most of the settled worlds were barren when the first ships arrived — rock and ice and thin chemistry, made liveable by generations of patient greening. But a few carried life of their own: seas of simple swimming things, slow mats and forests of native growth, shelled creatures on cold coasts. Nothing that thinks. Nothing that ever looked back. The native biospheres are the great exception, studied for centuries and protected by compact — the settlements built around them rather than over them, and their worlds carry the fact like a title. Local culture grows around the native life the way it grows around weather: shell-craft and shell instruments, storm-garden cuisine, children's names taken from creatures no other world has seen. The biologists are clear and the faiths have made their peace with it: life, it turns out, is not rare. Minds are. The dark has offered up plenty of the first and, so far, none of the second — which makes the worlds that live doubly precious, and the silence doubly strange.
+
 ## The scale of distance
 
 The settled worlds are scattered across a region that takes months to cross by the fastest ships — the better part of a year from the core to the deepest frontier. The worlds of the core are weeks apart; the frontier months; the unmapped dark years away, or forever. This scale shapes everything: the economics of trade, the politics of coordination, the culture of the Betweeners, the mind of those who live knowing that help, if it comes, will not come quickly.
@@ -56,10 +60,14 @@ The relays themselves are markers of this scale. They are set at intervals a sig
 5. **The core is self-sufficient in essentials, trading in luxuries and specialities, and serves as creditor to the frontier.**
    - **Tags:** worlds, core, trade, economy, sufficiency, frontier
 6. **The frontier is a zone of thinning settlement in degrees of remoteness — from monthly ship contact to the unmapped dark, where exploration is costly and risky.**
-   - **Tags:** worlds, frontier, dark, exploration, risk, settlement, courage
+   - **Tags:** worlds, frontier, dark, exploration, risk, settlements, courage
 7. **Routes between worlds follow the fuel-efficient lanes that orbital mechanics allow, mapped and maintained by the shipping lines, with most of the dark off the lanes.**
    - **Tags:** worlds, route, navigation, physics, shipping, between
 8. **The station drifts strategically where traffic is densest, holding its neutrality through position and convention as a shared institution.**
    - **Tags:** station, drift, position, neutrality, traffic, institution
 9. **The settled region spans months of sublight travel at the fastest — the better part of a year to its far edge; distance is crossed but never abolished.**
    - **Tags:** worlds, scale, distance, travel, time, separation
+10. **Most worlds were barren until humans greened them, but a few carry native life of their own — seas of simple creatures, slow native forests, shelled things on cold coasts, nothing that thinks — protected by compact and woven into local culture; life is not rare, minds are.**
+    - **Tags:** worlds, life, native, biosphere, nature, protection, wonder, solitude
+11. **The settled places number in the hundreds — worlds, moons, and major stations together, from planet-spanning core cities to ten-family outposts — and every settled child is taught that the count is approximate, because the far edge keeps its own ledger.**
+    - **Tags:** worlds, scale, settlements, count, core, frontier, variety

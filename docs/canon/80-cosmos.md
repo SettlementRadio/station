@@ -7,7 +7,7 @@
 
 The settled worlds occupy a small, close-gathered region of space — close enough that a ship can cross from one neighbour to the next in a matter of weeks and a signal in a matter of hours, far too close together to be measured against the immensity beyond. The children of the settlements learn this in school: how their ancestors crossed the void from a single world, how the generation ships scattered like seeds, how the relays were strung between them like beads on a thread. They learn the distances by heart — weeks to the nearest neighbour, a long season's voyage to the dense core of older worlds, and out past them the thin frontier where the settlements grow sparse and the dark begins.
 
-What they know is substantial. The nearby stars are mapped, the settled worlds and their habitable zones long catalogued, the physics of the relays understood well enough to maintain them, if not to build new ones. The expansion has stopped — not for lack of will, but because the relays cannot stretch further without growing too thin, the signal too faint. The settlements have reached the edge of what the network can hold. This is not spoken of as failure. It is spoken of as the shape of their habitable world.
+What they know is substantial. The nearby stars are mapped, the settled worlds and their habitable zones long catalogued, the physics of the relays understood well enough to maintain them, if not to build new ones. The *connected* expansion has stopped — not for lack of will, but because the relays cannot stretch further without growing too thin, the signal too faint. The network has reached the edge of what it can hold. Settlement itself has not stopped: expeditions still push past the last relay in trickles, founding outposts the network cannot reach, and word of them arrives years late by ship or not at all. This is not spoken of as failure. It is spoken of as the shape of their habitable world — and of the dark beyond it, where the worlds' knowing simply ends.
 
 ## The sky from the worlds
 
@@ -36,22 +36,22 @@ The correspondents in the field send back their own wonders. Sera, from the worl
 ## Canon facts
 
 1. **The worlds understand their cosmos well but not wholly; the great open questions — what the dark holds, whether anyone else is in it — remain unanswered and much argued.**
-   - **Tags:** cosmos, science, mystery, wonder, dark, unknown, questions, awe, hope
+   - **Tags:** cosmos, science, mystery, wonder, dark, unknown, question, awe, hope
 2. **From every settled world the same deep sky is a shared inheritance, and a settled child looks up at a night stranger and darker than Earth's.**
    - **Tags:** cosmos, sky, stars, wonder, home, inheritance, children, night
 3. **The era meets the sublime with optimism rather than dread — awe at a vast indifferent universe, held alongside the warmth of a human voice on the radio.**
    - **Tags:** cosmos, sublime, wonder, awe, hope, optimism, voice, warmth
-4. **The settled worlds form one small, close-gathered region with a definite edge; the expansion stopped not for lack of will but because the relay network cannot stretch further without the signal growing too faint — beyond the last relay lies the unmapped dark.**
-   - **Tags:** cosmos, settlements, edge, expansion, limits, relays, frontier, dark
+4. **The settled worlds form one small, close-gathered region with a definite edge — the relay network cannot stretch further without the signal growing too faint; settlement still trickles past the last relay, but those outposts fall out of contact, and beyond them lies the unmapped dark.**
+   - **Tags:** cosmos, settlements, edge, expansion, limits, relay, frontier, dark
 5. **No alien signal has ever been received — no voice, no ancient beacon, no echo of other minds in the dark; the silence shapes the era's imagination but is not taken as proof of solitude.**
    - **Tags:** cosmos, aliens, silence, solitude, mystery, imagination, listening
 6. **The oldest questions of physics — what most of the universe is made of, why its expansion quickens — remain unsolved, humbling reminders of the limits of knowledge.**
    - **Tags:** cosmos, mystery, expansion, unsolved, humility, limits, science
 7. **Children learn to read the sky: the steady light of a world, the flicker of a station's rotation, the slow traverse of a vessel between relays.**
-   - **Tags:** cosmos, sky, children, learning, reading, stars, stations, ships, identification
+   - **Tags:** cosmos, sky, children, learning, reading, stars, station, ship, identification
 8. **The station's observatory dome tracks the stars and keeps the wall of photographs showing how the view has changed as the station drifts; it is considered good luck to sight one's home world.**
    - **Tags:** cosmos, observatory, dome, stars, tracking, photographs, wall, drift, home, luck, ritual
 9. **The settlements have developed local traditions for living with cosmic scale — the Storm on Meridian, the long night on Cold Harbor — not scientific beliefs but ways of being in the universe.**
-   - **Tags:** cosmos, traditions, scale, meridian, storm, cold, harbor, night, presence, personification
+   - **Tags:** cosmos, tradition, scale, meridian, storm, cold, harbor, night, presence, personification
 10. **The DJs speak of the cosmos with reverence that is not worship — awe without doctrine, humility without despair — and the station itself is a monument to this optimism.**
     - **Tags:** cosmos, djs, reverence, awe, humility, optimism, station, voice, monument

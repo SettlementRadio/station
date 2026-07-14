@@ -60,17 +60,17 @@ The long peace is not permanent. The settled worlds are no utopia; they are huma
 4. **The War of the Three Stations established the principle that possession is provisional and the destruction of a station is a loss to all worlds.**
    - **Tags:** war, history, station, treaty, loss, lesson
 5. **The Embargo of the Freeholds, a fourteen-year siege, taught that economic weapons cut both ways, permanently altering relations between core and frontier.**
-   - **Tags:** embargo, history, freeholds, economics, lesson, politics
+   - **Tags:** embargo, history, freehold, economy, lesson, politics
 6. **The Pirate Wars were never fully won, only suppressed and managed through convoys, armed merchants, and systemic responses rather than military elimination.**
    - **Tags:** piracy, war, history, management, systemic, relay
 7. **Pirates are diverse — desperate merchants, abandoned-station descendants, political radicals, plain criminals — and understood as a symptom of larger economic and political failures.**
-   - **Tags:** piracy, cause, economics, politics, inequality, understanding
+   - **Tags:** piracy, cause, economy, politics, inequality, understanding
 8. **Blockades are patient work: ships stationed on the approaches, crews rotated through months of vigilance, costs weighed against the pressure applied over years.**
-   - **Tags:** blockade, strategy, patience, cost, siege, economics
+   - **Tags:** blockade, strategy, patience, cost, siege, economy
 9. **The Silence taught that force is the last resort, that war destroys what it seeks to save — hard-won wisdom, not idealism.**
    - **Tags:** war, silence, lesson, cost, wisdom, history
 10. **The long peace rests on mutual vulnerability, economic interdependence, the Settlement Council's voluntary mediation, and the relays' communication that prevents escalation.**
-    - **Tags:** peace, vulnerability, economics, council, relay, communication, hope
+    - **Tags:** peace, vulnerability, economy, council, relay, communication, hope
 11. **Memory of past wars keeps the peace through education, ritual, and commemoration that mourns loss rather than celebrating victory.**
     - **Tags:** peace, memory, war, education, ritual, mourning
 12. **The station serves peace by making the cost of conflict visible in advance — shared culture and voices across the dark turn an enemy into a person.**

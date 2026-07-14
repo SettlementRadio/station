@@ -49,6 +49,12 @@ Elders are valued for memory, for the stories they carry of other places and oth
 
 Love takes the forms that space allows. Couples form and part, partnerships last for years or for life, arrangements are negotiated and renegotiated by need and desire. The constraints of station life — the lack of privacy, the interdependence of survival, the small population that makes avoidance impossible — ask that relationships be handled with care. Jealousy, betrayal, conflict: these happen, but they are costly, and the community has an interest in their mending. The station is too small for permanent rupture; people must find ways to go on living together, working together, sharing meals together, even when love has failed.
 
+## Games and the circuits
+
+The settled worlds play. Every station gymnasium doubles as a court, every rec hall has its leagues, and the games are old ones adapted to new physics — ball games reinvented for spun gravity, races run in whatever medium a world provides. Meridian keeps its atmospheric racing league, fliers threading the storm systems that make its coast famous. Cold Harbor races on ice through the long night, engines singing on the frozen sea. The stations hold zero-g tournaments in their hub spaces, a sport planet-dwellers find beautiful and unwatchable in equal measure. Most of it is amateur, played after shift, argued about at the evening meal; the professionals are few and beloved, and a settlement's team is part of its name.
+
+The great occasion is the Inter-Settlement Games, held each fourth year and hosted by a different world in turn. Because bodies differ, events run in gravity classes — heavy, standard, light, and spun — so a heavy-worlder lifter and a light-world flier can each be champion on their own terms; it is one of the few institutions where the branches of humanity meet as equals and enjoy it. The lag is part of the sport. Results cross the dark by relay, records are ratified weeks after they are set, and rival settlements celebrate victories that happened a month ago as if they were tonight. The station's sports desk stitches the scattered seasons into one: same rules, same finish line, different sky.
+
 ## The small comforts and universal details
 
 Every station has its sound: the hum of life support, the rhythmic cycling of machinery, the occasional announcements, the voices of neighbours through walls. Residents learn to sleep through this noise, to find it comforting, to wake the instant the pattern changes. Silence on a station is alarming — a sign that something has failed, that the machinery has stopped, that the air will soon grow stale.
@@ -87,3 +93,9 @@ The settled worlds are hard, but they are not only hard. The warmth is in the sm
     - **Tags:** daily, love, relationship, community, constraint, negotiation, kindness, warmth
 12. **The warmth of settled life is in small things: shared meals, the morning drink, helping hands, children learning, elders remembering — survival and connection across the dark.**
     - **Tags:** daily, warmth, humanity, connection, survival, hope, comfort, companionship, kindness
+13. **The settlements play the same games under different skies — gym-court leagues everywhere, Meridian's atmospheric racing, Cold Harbor's ice circuits, the stations' zero-g tournaments — mostly amateur, argued about at the evening meal.**
+    - **Tags:** daily, sports, games, play, leisure, competition, community, joy
+14. **The Inter-Settlement Games are held each fourth year on a different host world, with events run in gravity classes — heavy, standard, light, and spun — one of the few institutions where the branches of humanity meet as equals.**
+    - **Tags:** sports, games, competition, gravity, peoples, unity, festival, tradition
+15. **The lag is part of sport: results cross the dark by relay, records are ratified weeks after they are set, and settlements celebrate month-old victories as if they were tonight — the station's sports desk stitches the scattered seasons into one.**
+    - **Tags:** sports, lag, relay, distance, celebration, station, broadcast, shared

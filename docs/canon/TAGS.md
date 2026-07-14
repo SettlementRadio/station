@@ -44,45 +44,85 @@ the shared vocabulary.
 
 **Place & distance** — `settlements`, `worlds`, `core`, `frontier`, `between`, `dark`, `void`,
 `station`, `relay`, `ship`, `route`, `orbit`, `home`, `earth`, `place`, `distance`, `scale`,
-`isolation`, `journey`, `neutrality`
+`isolation`, `journey`, `neutrality`, `edge`, `zone`, `position`, `halo`, `geography`, `space`,
+`environment`, `traffic`, `navigation`, `port`, `capital`, `night`, `darkness`, `ice`, `storm`,
+`weather`, `thaw`, `empty`, `gardens`, `lighthouse`
+
+**Named places** (one tag per named world/station — see `06-gazetteer.md`) — `concordance`,
+`meridian`, `cold`, `harbor` (Cold Harbor splits into two tags), `forge`, `halcyon`, `ashfall`
 
 **Time & history** — `time`, `clock`, `calendar`, `reckoning`, `founding`, `history`, `past`, `era`,
 `age`, `memory`, `origins`, `diaspora`, `change`, `loss`, `anniversary`, `rhythm`, `synchrony`,
-`simultaneity`, `scattered`
+`simultaneity`, `scattered`, `continuity`, `expansion`, `reconnection`, `archaeology`, `archives`,
+`preservation`, `remembrance`, `memorial`, `legend`, `myth`, `mythology`, `exodus`, `lesson`,
+`record`, `week`, `future`, `permanence`, `impermanence`, `figures`, `anonymity`, `absence`,
+`honour`
 
 **People & society** — `humanity`, `peoples`, `identity`, `kinship`, `family`, `community`,
-`belonging`, `generations`, `migration`, `adaptation`, `strangers`, `neighbours`, `djs`
+`belonging`, `generations`, `migration`, `adaptation`, `strangers`, `neighbours`, `djs`,
+`children`, `elders`, `household`, `gender`, `body`, `gravity`, `heavy`, `prejudice`,
+`difference`, `variety`, `subculture`, `culture`, `society`, `social`, `crew`, `captain`,
+`learning`, `education`
 
 **Feeling & theme** (the emotional palette) — `loneliness`, `solitude`, `longing`, `hope`, `wonder`,
 `awe`, `grief`, `mourning`, `comfort`, `warmth`, `nostalgia`, `companionship`, `melancholy`, `joy`,
-`courage`, `kindness`, `separation`, `waiting`, `silence`
+`courage`, `kindness`, `separation`, `waiting`, `silence`, `endurance`, `patience`, `trust`,
+`humility`, `optimism`, `acceptance`, `uncertainty`, `curiosity`, `love`, `luck`, `humour`,
+`safety`, `precious`, `hardship`
 
 **Communication & the station** — `radio`, `broadcast`, `signal`, `message`, `messages`, `letters`,
 `correspondence`, `news`, `connection`, `lag`, `delay`, `dedications`, `listeners`, `voice`,
-`communication`
+`communication`, `network`, `infrastructure`, `queue`, `encryption`, `routing`, `recording`,
+`library`, `programming`, `observatory`, `dome`, `telescope`, `beacon`, `reporting`, `currents`,
+`field`, `chorus`, `listening`
 
 **Governance & law** — `governance`, `polity`, `autonomy`, `council`, `compact`, `legitimacy`,
-`law`, `justice`, `rights`, `freedom`, `custom`, `order`, `exile`
+`law`, `justice`, `rights`, `freedom`, `custom`, `order`, `exile`, `authority`, `institution`,
+`politics`, `nations`, `enforcement`, `treaty`, `constitution`, `federalism`, `delegate`, `state`,
+`bureaucracy`, `corporation`, `cooperative`, `protectorate`, `freehold`, `consent`, `sanction`,
+`dispute`, `voluntary`, `crime`, `harm`, `punishment`, `restoration`, `individual`, `contract`,
+`code`, `market`
 
 **Economy & material** — `trade`, `scarcity`, `abundance`, `currency`, `fortune`, `resources`,
-`labour`, `work`, `inequality`, `local`, `cost`
+`labour`, `work`, `inequality`, `local`, `cost`, `economy`, `debt`, `credit`, `exchange`, `money`,
+`value`, `mass`, `transport`, `shipping`, `convoy`, `cargo`, `fuel`, `cartel`, `syndicate`,
+`salvage`, `investment`, `risk`, `luxury`, `essentials`, `hierarchy`, `dependence`, `funding`,
+`gift`, `aid`, `mutual`, `industry`, `materials`, `knowledge`, `information`, `power`, `control`
 
-**Conflict & peace** — `conflict`, `war`, `peace`, `mediation`, `blockade`, `piracy`, `danger`,
-`scars`
+**Conflict & peace** — `conflict`, `war`, `peace`, `mediation`, `blockade`, `embargo`, `piracy`,
+`danger`, `scars`, `siege`, `strategy`, `vulnerability`, `management`, `wisdom`, `cause`,
+`tragedy`, `warning`
 
 **Daily life & ritual** — `daily`, `food`, `rest`, `sleep`, `morning`, `leisure`, `ritual`,
 `hospitality`, `festival`, `celebration`, `tradition`, `lamps`, `lumen`, `lights`, `annual`,
-`togetherness`, `unity`, `shared`, `midnight`, `newyear`
+`togetherness`, `unity`, `shared`, `midnight`, `newyear`, `survival`, `maintenance`, `repair`,
+`shift`, `competence`, `constraint`, `sensory`, `reunion`, `renewal`, `monthly`, `manual`
+
+**Games & play** — `sports`, `games`, `play`, `competition`, `drama`, `commentary`, `dance`,
+`hollowball`, `racing`, `circuits`, `season`, `team`, `amateur`, `wager`, `host`
+
+**Knowledge & learning** — `knowledge`, `school`, `education`, `curriculum`, `academy`,
+`practical`, `teaching`, `scholars`, `circuit`, `apprenticeship`, `casebook`, `research`,
+`verification`, `replication`, `twin`, `profession`, `refusal`
 
 **Language, arts & music** — `language`, `dialect`, `drift`, `words`, `naming`, `fossil`, `habit`,
-`story`, `art`, `performance`, `scene`, `music`, `song`, `poetry`, `instrument`, `genre`
+`story`, `stories`, `art`, `performance`, `scene`, `music`, `song`, `poetry`, `instrument`,
+`genre`, `literature`, `novel`, `theatre`, `sculpture`, `visual`, `speculation`, `curation`,
+`canon`, `review`, `authenticity`, `aesthetics`, `interpretation`, `vocabulary`, `loanword`,
+`translation`, `grammar`, `speech`, `standard`, `movements`, `orchestra`, `minimalism`,
+`improvisation`, `sound`, `signature`, `collaboration`, `legacy`, `revival`, `rediscovery`
 
 **Faith & meaning** — `faith`, `belief`, `sacred`, `rite`, `religion`, `meaning`, `light`, `doubt`,
-`pilgrimage`
+`pilgrimage`, `theology`, `philosophy`, `mysticism`, `secular`, `humanism`, `covenant`,
+`orthodoxy`, `creed`, `wayfarers`, `duty`, `liminality`, `reverence`, `consciousness`, `death`,
+`question`, `depth`
 
 **Technology & cosmos** — `technology`, `travel`, `limits`, `machines`, `automation`, `energy`,
 `medicine`, `reliability`, `ethics`, `science`, `physics`, `fusion`, `cosmos`, `stars`, `sky`,
-`mystery`, `sublime`, `discovery`, `rumour`
+`mystery`, `sublime`, `discovery`, `rumour`, `reactor`, `generator`, `backup`, `simplicity`,
+`durability`, `complexity`, `engineering`, `skill`, `innovation`, `biology`, `biosphere`,
+`native`, `nature`, `life`, `protection`, `aliens`, `eclipse`, `astronomy`, `observation`,
+`unknown`, `imagination`, `expansion`, `exploration`
 
 ---
 
@@ -98,3 +138,32 @@ You don't need permission from the code — just:
 
 Avoid near-duplicates (`ship` vs `ships`, `letter` vs `letters`) — pick one form and stick to it.
 The palette above uses the plural where a fact naturally would (`letters`, `worlds`, `settlements`).
+
+---
+
+## 4. The census (keeping the palette honest)
+
+The palette drifts: writers coin tags mid-fact and forget to add them here. Periodically run the
+census below; any tag it reports that deserves reuse goes into a §2 group (and any near-duplicate
+pair it exposes — `ship`/`ships` — gets collapsed to the palette form across the files).
+
+```bash
+.venv/bin/python - <<'PY'
+import re
+from pathlib import Path
+sec = Path('docs/canon/TAGS.md').read_text().split('## 2.')[1].split('## 3.')[0]
+pal = set(re.findall(r'`([a-z0-9]+)`', sec))
+used = {}
+for p in sorted(Path('docs/canon').glob('[0-9]*.md')):
+    for ln in p.read_text().splitlines():
+        if '**Tags:**' in ln:
+            for t in re.findall(r'[a-z0-9]+', ln.split('**Tags:**')[1]):
+                used[t] = used.get(t, 0) + 1
+missing = sorted((t for t in used if t not in pal), key=lambda t: (-used[t], t))
+print(f"palette={len(pal)} used={len(used)} not-in-palette={len(missing)}")
+print(', '.join(f"{t}({used[t]})" for t in missing))
+PY
+```
+
+A one-off tag on a single fact is fine left out of the palette — the census is for spotting tags
+that recur (or should) without a shared spelling.

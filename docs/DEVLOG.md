@@ -38,6 +38,95 @@ A typical *build* session will be short, e.g.:
 
 ---
 
+## 2026-07-14 — Audit follow-up — Three new cornerstones: sports, legendary figures, knowledge (215 → 244 facts)
+**Focus:** built the three docs the audit's gap analysis recommended. **Seed clean (244 facts,
+embeddings match), 427 tests pass**, tick state untouched.
+**Decisions:**
+- **The cornerstone test, stated:** a topic gets a standalone file when a tick domain or DJ desk
+  generates content against it, or its facts are accumulating scattered — otherwise it's a section.
+  (This is why medicine stays inside 75-technology.)
+- **`52-sports.md`** — the `sports` tick domain and Kael's desk finally have structures: hollowball
+  (the stations' own sport, architectural home advantage), the three circuit kinds, the
+  season-as-ledger (provisional records, ratified weeks later), team/call-name naming conventions
+  (constrain the tick without hardcoding rosters), Games host rotation + the Reading of the Absent.
+- **`15-figures.md`** — the who-was-who file, with the **hard ownership rule in its header: the
+  bible names only the dead and the legendary; living named figures are tick state
+  (`figures`/`quotes`, D10), never hand-authored.** Twelve legend-framed entries (the Wayfinder, the
+  Quiet Engineer, Teller Ashe, Mother Ledger, the Chorus of Nine, the Anonymous of the Latecomers…)
+  binding the unnamed archetypes 70-music/65-arts/45-conflict already implied, each contested-on-
+  purpose so DJs can retell and doubt them safely. Station founders stay nameless (00-station f7).
+  Closes the ad-hoc name-coining risk: DJs reaching for a historical name now find one.
+- **`58-knowledge.md`** — learning + science as institutions: the Common Lessons curriculum,
+  correspondence science ("a result is not real until a stranger repeats it under another sun"),
+  twin discoveries (priority disputes disarmed by custom), core academies vs frontier practical
+  schools, Circuit Scholars, relay casebooks; the refused questions (no FTL research,
+  mind-engineering restricted) restated from 75/25 so the files agree.
+**Changed:** `docs/canon/15-figures.md`, `52-sports.md`, `58-knowledge.md` (new); README table +
+TAGS.md (two new groups: Games & play extended, Knowledge & learning) updated.
+**Why:** sports stories were already being tick-generated against three facts; unnamed history was
+an invitation for the LLM to coin contradictory names ad hoc; education/science was the audit's
+last flagged gap. All three consolidate what other files implied rather than fabricating fresh.
+**Next:** the standing plan — D13 or C5–C9.
+Commit: (this session) · Clips: (none)
+
+---
+
+## 2026-07-14 — Audit — Full canon audit: conflicts reconciled, palette refreshed, gazetteer added (197 → 215 facts)
+**Focus:** full audit of `docs/canon/` against the four gates (conflicts between topics, tag
+conventions, SPIRIT alignment, gaps) — then applied every finding. **Seed clean (215 canon facts,
+10 cast, 9 seed events, embeddings match), 427 tests pass**, tick-generated world state untouched.
+**Decisions:**
+- **The lag has two tiers, defined once in 78-communication.** The *broadcast* (wide, unaddressed,
+  repeated by every node) crosses the worlds in hours — a day or two to the far frontier; *addressed*
+  messages ride the queue — days core, weeks frontier, months dark zones. This was the canon's one
+  load-bearing contradiction (30-polities' same-evening Council speech and 10-history's "hours apart
+  by signal" vs 78's "frontier weeks"): both are now true, of different tiers. Field-host rule
+  restated in 90-cast in tier terms; letters stay weeks old; near-live sport stays possible.
+- **The Relay Authority is now a defined institution** (30-polities): chartered technical body under
+  the Council's Committee on the Relays — owns no relays (no one does), keeps standards, runs the
+  annual maintenance window, trains keepers, holds records, and operates Settlement Radio on a small
+  levy. Resolves the 00-station/90-cast mentions that pointed at nothing, and squares 78's
+  "no single body" with 95's coordinated maintenance.
+- **Expansion: the *network* has an edge, settlement doesn't.** 80-cosmos now says connected
+  expansion stopped at relay reach while settlement trickles past the last relay and falls out of
+  contact — reconciled with 10-history's ongoing frontier push.
+- **The Wayfarers.** The journey-is-destination faith is a named minority creed born among the
+  Betweeners, no longer attributed to the whole people (60-faith fact 5 had made a branch of
+  humanity a stigmatised cult — anti-SPIRIT caricature).
+- **Native life exists; minds don't.** New 05-worlds facts: a few worlds carry native biospheres
+  (nothing that thinks), protected by compact — pins the question Mira's "native fauna" line had
+  already leaked, without touching the humanity-is-alone premise. Also pinned scale ("settled places
+  number in the hundreds").
+- **New `06-gazetteer.md`** — one pinned entry per named place (Concordance, Meridian, Cold Harbor,
+  Forge, Halcyon, Ashfall, Far Reach, Breathe Easy, ES-447), consolidating attributes previously
+  scattered across nine files; new places must get an entry.
+- **Recurring events roll forward.** 95-events header now carries the policy (annual/seasonal dates
+  bump to the next instance; rare cycles keep a fresh past date, then roll); stale 2626 instances
+  rolled to 2627 (eclipse to 2637); "The Silence of Ashfall" renamed "The Ashfall Minute" to stop
+  overloading the Silence era-name.
+**Changed:** all 20 cornerstones touched + `06-gazetteer.md` new. Highlights beyond the decisions:
+35-economy got its counterweight (Children of the Signal keep the relays on gift-tithes by choice;
+Mutual Aid/cooperative facts; Clearing Day when a world pays out its debt) — it was the one file
+tilting grimdark; 20-peoples got the kinship/gender fact (the unmined Delany/Russ/Tiptree strain);
+50-daily-life got games & the Inter-Settlement Games in gravity classes (Kael's desk finally has
+canon behind it; `sports` is a tick domain); 01-time clarified Settlement Time kept Earth's year
+count; 00-station's "late 27th century" (wrong *and* stale) → floating phrasing; Wren's ship renamed
+*The Long Patience* (Culture-cadence echo); Kael "seeing"→"hearing" (it's radio); the Archivist's
+card now forbids resolving the mystery into a machine; 65-arts anchors the Synthesis quarrel on
+craft, not machine-creativity; -ize→-ise; tag near-dupes collapsed (ship/ships, relay/relays,
+world/worlds, zone/zones, freehold/freeholds, contract/contracts, question/questions,
+economy/economics, etc.); TAGS.md palette 182 → 428 with a new §4 census script; README table
+un-staled (all files authored, gazetteer row).
+**Why:** the writers' room can only stay consistent with what the bible actually pins. The audit
+found the contradictions clustered exactly where files were written independently (lag, relays,
+expansion, Cold Harbor's nature) — each a future on-air contradiction; and the world's grey needed
+guarding in both directions (economy too dark, Compacts fine, Betweeners caricatured).
+**Next:** the standing plan — D13 or C5–C9. The gazetteer is the template for pinning any world the
+tick starts mentioning often.
+Commit: (this session) · Clips: (none)
+
+---
+
 ## 2026-07-14 — D12 addendum — Flow audit: threads no longer die on "good morning"
 **Focus:** audited the cross-segment talk flow against the two operator-reported symptoms (the same
 conversation re-worded segment after segment; a thread silently abandoned for a new topic). Verdict:

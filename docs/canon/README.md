@@ -35,30 +35,33 @@ The prefix can be **any width** — `2`, `20`, `100`, `250` all work, and they o
 files as you like;** the only rule is that each file's *stem* (the name after the prefix, see §4) is
 unique across the folder. A new `100-alien-races.md` is exactly the intended way to grow the world.
 
-The folder ships with a full set of cornerstone files. **Four are authored** (the migrated stub);
-the rest are **scaffolds** — header + authoring guidance only, no world content yet, so they seed
-nothing until you fill them (see §7).
+The folder ships with a full set of cornerstone files, **all authored** (the scaffold guidance in
+§7 still applies to any *new* file you add).
 
 | File | Domain | State |
 |---|---|---|
-| `00-station.md` | The station's identity + premise facts | **authored** |
-| `01-time.md` | The +600y time concept | **authored** |
-| `05-worlds.md` | The settled worlds & the dark between (the "map") | scaffold |
-| `10-history.md` | Deep time: Earth, the diaspora, the ages | scaffold |
-| `20-peoples.md` | The branches of humanity | scaffold |
-| `25-other-minds.md` | Aliens, machine minds, the unknown (your call) | scaffold |
-| `30-polities.md` | Governance & nations across distance | scaffold |
-| `35-economy.md` | Trade, scarcity, currency | scaffold |
-| `40-law.md` | Law & justice at a distance | scaffold |
-| `45-conflict.md` | War & peace across weeks | scaffold |
-| `50-daily-life.md` | The texture of ordinary life | scaffold |
-| `55-language.md` | Tongues, drift & fossil-words | scaffold |
-| `60-faith.md` | The sacred & the search for meaning | scaffold |
-| `65-arts.md` | Story, image & the cultural memory (the tribute's home) | scaffold |
-| `70-music.md` | Music as a living culture (song lore → D7) | scaffold |
-| `75-technology.md` | The made world & its limits | scaffold |
-| `78-communication.md` | The relays & how word travels (premise-critical) | scaffold |
-| `80-cosmos.md` | The universe & the wonder (science, the sublime) | scaffold |
+| `00-station.md` | The station's identity + premise facts | authored |
+| `01-time.md` | The +600y time concept | authored |
+| `05-worlds.md` | The settled worlds & the dark between (the "map") | authored |
+| `06-gazetteer.md` | One pinned entry per **named** world/station | authored |
+| `10-history.md` | Deep time: Earth, the diaspora, the ages | authored |
+| `15-figures.md` | Legends & remembered names (**dead/legendary only** — living figures are tick state) | authored |
+| `20-peoples.md` | The branches of humanity | authored |
+| `25-other-minds.md` | Aliens, machine minds, the unknown (your call) | authored |
+| `30-polities.md` | Governance & nations across distance | authored |
+| `35-economy.md` | Trade, scarcity, currency | authored |
+| `40-law.md` | Law & justice at a distance | authored |
+| `45-conflict.md` | War & peace across weeks | authored |
+| `50-daily-life.md` | The texture of ordinary life (incl. games & sport) | authored |
+| `52-sports.md` | Games, circuits & the stitched season (backs the sports desk + tick domain) | authored |
+| `55-language.md` | Tongues, drift & fossil-words | authored |
+| `58-knowledge.md` | Learning, research & how knowing travels | authored |
+| `60-faith.md` | The sacred & the search for meaning | authored |
+| `65-arts.md` | Story, image & the cultural memory (the tribute's home) | authored |
+| `70-music.md` | Music as a living culture (song lore → D7) | authored |
+| `75-technology.md` | The made world & its limits | authored |
+| `78-communication.md` | The relays & how word travels (premise-critical) | authored |
+| `80-cosmos.md` | The universe & the wonder (science, the sublime) | authored |
 | `90-cast.md` | **The DJs** | `## Cast` → `cast` rows |
 | `95-events.md` | **The world timeline** | `## Events` → `events` rows |
 
