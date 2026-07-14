@@ -54,6 +54,13 @@ log = get_logger(__name__)
 # Defined here because they mirror the schema this module owns; the parser
 # (canon_source.py) and seed.py import them, so the row shape has one home.
 
+# The `cast.based` vocabulary: where a presenter physically is. `station` hosts
+# share the studio; `field` hosts (Sera, Orin, Zhe) are out among the worlds and
+# reach the air only across the relay lag — never live in the booth.
+BASED_STATION = "station"
+BASED_FIELD = "field"
+BASED_VALUES = (BASED_STATION, BASED_FIELD)
+
 
 @dataclass(frozen=True)
 class CanonFact:
@@ -66,13 +73,25 @@ class CanonFact:
 
 @dataclass(frozen=True)
 class CastMember:
-    """One DJ / presenter (a `cast` row)."""
+    """One DJ / presenter (a `cast` row).
+
+    `based` is where the presenter physically is: `station` (the default — in the
+    studio) or `field` (a travelling correspondent whose contributions cross the
+    relay LAG; canon 78-communication). The writers' room uses it to frame a
+    field host's turns as a dispatch/relay exchange, never live in-studio banter.
+    """
 
     id: str
     name: str
     card_text: str
     logical_voice: str
     tags: list[str] = field(default_factory=list)
+    based: str = BASED_STATION
+
+    @property
+    def is_field(self) -> bool:
+        """True when this presenter contributes from the field, across the lag."""
+        return self.based == BASED_FIELD
 
 
 @dataclass(frozen=True)
@@ -446,7 +465,8 @@ CREATE TABLE IF NOT EXISTS "cast" (
     name          text NOT NULL,
     card_text     text NOT NULL,
     logical_voice text NOT NULL,
-    tags          text[] NOT NULL DEFAULT '{}'
+    tags          text[] NOT NULL DEFAULT '{}',
+    based         text NOT NULL DEFAULT 'station'
 );
 
 CREATE TABLE IF NOT EXISTS events (
@@ -596,6 +616,11 @@ ALTER TABLE events ADD COLUMN IF NOT EXISTS story_id text
     REFERENCES stories(id) ON DELETE SET NULL;
 ALTER TABLE events ADD COLUMN IF NOT EXISTS beat_kind text;
 CREATE INDEX IF NOT EXISTS events_story_idx ON events (story_id);
+
+-- Field-host audit fix: where a presenter is based ('station' | 'field'), from the
+-- card's `Based:` bullet. Field hosts join only across the relay lag (canon 78),
+-- so the writers' room frames their segments as dispatches, never live banter.
+ALTER TABLE "cast" ADD COLUMN IF NOT EXISTS based text NOT NULL DEFAULT 'station';
 """
 
 # The world tables, in a stable order for a single TRUNCATE that reproduces the world
@@ -815,10 +840,12 @@ def insert_canon(conn: psycopg.Connection, facts: Iterable[CanonFact]) -> int:
 
 def insert_cast(conn: psycopg.Connection, members: Iterable[CastMember]) -> int:
     """Insert cast members; return how many rows were written."""
-    rows = [(m.id, m.name, m.card_text, m.logical_voice, m.tags) for m in members]
+    rows = [
+        (m.id, m.name, m.card_text, m.logical_voice, m.tags, m.based) for m in members
+    ]
     conn.cursor().executemany(
-        'INSERT INTO "cast" (id, name, card_text, logical_voice, tags) '
-        "VALUES (%s, %s, %s, %s, %s)",
+        'INSERT INTO "cast" (id, name, card_text, logical_voice, tags, based) '
+        "VALUES (%s, %s, %s, %s, %s, %s)",
         rows,
     )
     log.info("db_insert_cast", count=len(rows))
@@ -1269,24 +1296,25 @@ def canon_by_ids(conn: psycopg.Connection, ids: Iterable[str]) -> list[CanonFact
 def all_cast(conn: psycopg.Connection) -> list[CastMember]:
     """All cast members, ordered by id."""
     rows = conn.execute(
-        'SELECT id, name, card_text, logical_voice, tags FROM "cast" ORDER BY id'
+        'SELECT id, name, card_text, logical_voice, tags, based FROM "cast" ORDER BY id'
     ).fetchall()
     return [
-        CastMember(id, name, card, voice, list(tags))
-        for id, name, card, voice, tags in rows
+        CastMember(id, name, card, voice, list(tags), based)
+        for id, name, card, voice, tags, based in rows
     ]
 
 
 def get_cast_member(conn: psycopg.Connection, member_id: str) -> CastMember | None:
     """One cast member by id, or None."""
     row = conn.execute(
-        'SELECT id, name, card_text, logical_voice, tags FROM "cast" WHERE id = %s',
+        'SELECT id, name, card_text, logical_voice, tags, based FROM "cast" '
+        "WHERE id = %s",
         (member_id,),
     ).fetchone()
     if row is None:
         return None
-    id, name, card, voice, tags = row
-    return CastMember(id, name, card, voice, list(tags))
+    id, name, card, voice, tags, based = row
+    return CastMember(id, name, card, voice, list(tags), based)
 
 
 def get_event(conn: psycopg.Connection, event_id: str) -> Event | None:

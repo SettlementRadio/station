@@ -32,6 +32,7 @@ import re
 from datetime import datetime
 from pathlib import Path
 
+from . import store
 from .store import CanonFact, CastMember, Event
 
 
@@ -339,6 +340,14 @@ def _parse_cast(body: str) -> list[CastMember]:
         voice = _field(sub, "logical voice")
         if not voice:
             raise ValueError(f"cast member {name!r} is missing a 'Logical voice' field")
+        # `Based:` is optional (default: station). An unknown value fails loud —
+        # a typo here would silently put a field correspondent live in the booth.
+        based = (_field(sub, "based") or store.BASED_STATION).strip().strip("`").lower()
+        if based not in store.BASED_VALUES:
+            raise ValueError(
+                f"cast member {name!r} has unknown 'Based' value {based!r} "
+                f"(expected one of {store.BASED_VALUES})"
+            )
         members.append(
             CastMember(
                 id=_slug(name),
@@ -346,6 +355,7 @@ def _parse_cast(body: str) -> list[CastMember]:
                 card_text=sub.strip(),  # the whole card, for the writer later
                 logical_voice=voice.strip().strip("`"),
                 tags=_tags(_field(sub, "tags")),
+                based=based,
             )
         )
     return members

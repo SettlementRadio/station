@@ -38,6 +38,41 @@ A typical *build* session will be short, e.g.:
 
 ---
 
+## 2026-07-13 — Audit — DJ persona audit + the field-host fix: correspondents now cross the lag honestly
+**Focus:** audited the DJ implementation (definitions, memory/personality machinery, speech
+distinctiveness), validated live (two contrasting host pairs generated against the seeded world),
+then fixed everything found. **419 tests pass**, ruff clean.
+**Decisions:**
+- **Field hosts are a CAST property, not a grid property.** New optional card bullet
+  `- **Based:** field` (default `station`) flows card → parser → `cast.based` column (additive
+  migration) → `CastMember.is_field`. Any show that schedules a field host gets the dispatch
+  treatment automatically — the grid can't accidentally put Zhe live in the booth.
+- **The dispatch form is a "stitched relay correspondence":** both sides genuinely answer each
+  other (questions travelled out, answers came back before air), so conversational quality
+  survives, but the seams show ("by the time you hear this…") and the correspondent names ONE
+  location and stays there. Canon-blessed (78-communication's "pretending the lag does not
+  exist"), enforced by the orchestrator directive + a continuity-editor check + the frame's
+  situation prose.
+**Changed:** `90-cast.md` (Based bullets; per-host `Humour:` registers; Wren fast/tumbling, Joss
+terse, Thorn's close → "That's the current for this hour" so he stops sharing Joss's thread-tic),
+`canon_source.py`, `store.py` (schema + migration), `framing.py` (`ShowFrame.remote` + dispatch
+situations), `conversation.py` (`_dispatch_section`, editor check), `memory.py` (`_clip` no longer
+truncates "Dr. …" summaries to "Dr."), `music.py` (links now in the DJ's OWN card register, was
+hardcoded Vell-tone; field DJs' music shows are sent-in recordings), canon README, ADMIN_MANUAL,
+grid.yaml header; +13 tests.
+**Why:** the live probe caught Sera trading galley coffee with Kael in-studio — impossible under
+canon lag and exactly the kind of contradiction that makes the continuity gate thrash. Re-probed
+after the fix: Sera records from "a relay station common room on the edge of the Forge corridor",
+acknowledges the lag, no shared space — and the hosts still sound like themselves.
+**📣 Postable:** before/after of the same show slot — the impossible in-studio banter vs the
+stitched relay correspondence with its seams showing. The fiction got MORE sci-fi by being honest.
+**Next:** C5–C9 (server track). The interpersonal/self-memory gap is now a written pack — **D13**,
+`docs/PHASE_D_SELF_MEMORY_TASKS.md` (tracker row added; recommended after the C9 soak, buildable
+any time).
+Commit: (this session) · Clips: (none)
+
+---
+
 ## 2026-07-11 — Audit — Full pre-broadcast system audit: code track clean, broadcasting blocked only on C5–C9
 **Focus:** a top-to-bottom audit before going public — security, LLM token efficiency, prod
 readiness against the roadmap, and bug/drift hunting. Verified live: **406 tests pass**, ruff

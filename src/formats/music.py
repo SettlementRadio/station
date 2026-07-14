@@ -36,7 +36,7 @@ from ..safety import generate_safe
 from ..segment import Segment
 from ..world import clock
 from ..world.context import AssembledContext
-from ..world.store import Track
+from ..world.store import CastMember, Track
 from . import common
 
 log = get_logger(__name__)
@@ -74,23 +74,36 @@ def _lore_block(track: Track) -> str:
     return "\n".join(lines)
 
 
-def _build_system(ctx: AssembledContext, now: datetime, dj: str, track: Track) -> str:
+def _build_system(
+    ctx: AssembledContext, now: datetime, dj: CastMember, track: Track
+) -> str:
     marker = settings.format_music_song_marker
     world = f"\nWhat's true right now:\n{ctx.dynamic}\n" if ctx.dynamic else ""
+    # Audit fix: a field-based DJ (Orin) isn't live in the booth — their music
+    # show arrives as a sent-in recording, and the links say so, per canon lag.
+    dispatch = (
+        f"{dj.name} is a FIELD correspondent, not in the studio: these links were "
+        "RECORDED out among the worlds and sent to the station across the relay "
+        "lag. Let that colour them — name where they're recording from once, keep "
+        "it one place, never claim to be live in the booth.\n\n"
+        if dj.is_field
+        else ""
+    )
     return (
         "You are the writer for Settlement Radio, scripting the host "
-        f"{dj} introducing and then back-announcing a real piece of music from "
-        "the station's library. Write the SPOKEN SCRIPT ONLY — no stage "
+        f"{dj.name} introducing and then back-announcing a real piece of music "
+        "from the station's library. Write the SPOKEN SCRIPT ONLY — no stage "
         "directions, headings, speaker labels, or notes.\n\n"
         f"Settlement time right now: {clock.render_wall_clock(now)}.\n"
         f"{world}\n"
+        f"{dispatch}"
         "The song being played (use EXACTLY these details — never invent a "
         "different song, artist, or album):\n"
         f"{_lore_block(track)}\n\n"
         "Structure (fill this skeleton). You MUST separate the two spoken parts "
         f"with a line containing ONLY the marker {marker} — nothing else on that "
         "line:\n"
-        "  1. A short, warm intro that tells the song's story: the artist, where "
+        "  1. A short intro that tells the song's story: the artist, where "
         "it comes from, its era, why it suits this hour — lead the listener into "
         "it by name.\n"
         f"  2. {marker}\n"
@@ -100,7 +113,9 @@ def _build_system(ctx: AssembledContext, now: datetime, dj: str, track: Track) -
         "AI; stay entirely inside the fiction. "
         f"Target {settings.format_music_words_low}-"
         f"{settings.format_music_words_high} words across both spoken parts. Tone: "
-        "warm, low, unhurried — the voice between the tracks."
+        f"unmistakably {dj.name}'s OWN — follow the register, verbal tics, humour, "
+        "and cadence of their character card (cached above), matching the feel of "
+        "its sample lines; unhurried between tracks, but never a generic announcer."
     )
 
 
@@ -172,7 +187,7 @@ def music(
         artist=track.in_world_artist,
     )
 
-    system = _build_system(ctx, now, dj_card.name, track)
+    system = _build_system(ctx, now, dj_card, track)
     script, safety = generate_safe(
         lambda: llm.generate(
             "Write the music intro and back-announce now.",

@@ -38,6 +38,10 @@
 #   • [dispatch]  a duo that regularly plays a RECORD — an attributable soundbite
 #                 from a story figure, or a field recording from a correspondent
 #                 (Sera/Zhe/Orin send dispatches across the relay, lag and all).
+#                 NOTE: field hosts are enforced by the CAST CARD, not this file —
+#                 any host whose card says `Based: field` (Sera/Orin/Zhe) is
+#                 automatically written as a stitched relay dispatch (never live
+#                 in the booth) on ANY show you schedule them on.
 #   • [music]     a single DJ (intro → a real track → back-announce).
 #
 # `guest_chance` (0..1, D12.4) sets how often a talk show runs that guest/record —

@@ -146,3 +146,29 @@ def test_talk_prompts_omit_freshness_when_empty(monkeypatch):
     seen = _capture_system(monkeypatch)
     convo.showrunner(_ctx(), datetime(2026, 6, 30, 21, 0), recent_block="")
     assert "Recently on air" not in seen["system"]
+
+
+# --- Field hosts (the audit fix): the dispatch directive ---------------------
+
+SERA = CastMember("sera", "Sera", "card text", "sera_field", [], based="field")
+
+
+def test_orchestrate_flags_field_hosts_as_dispatch(monkeypatch):
+    seen = _capture_system(monkeypatch)
+    ctx = AssembledContext(bible="", dynamic="", speakers=[VELL, SERA])
+    convo.orchestrate(ctx, "the beat", datetime(2026, 6, 30, 21, 0))
+    assert "DISPATCH" in seen["system"]
+    assert "Sera is NOT in the studio" in seen["system"]
+    assert "never claims to be in the studio" in seen["system"]
+
+
+def test_orchestrate_omits_dispatch_when_all_in_studio(monkeypatch):
+    seen = _capture_system(monkeypatch)
+    convo.orchestrate(_ctx(), "the beat", datetime(2026, 6, 30, 21, 0))
+    assert "DISPATCH" not in seen["system"]
+
+
+def test_continuity_editor_checks_field_presence(monkeypatch):
+    seen = _capture_system(monkeypatch)
+    convo.continuity_check("Vell: hi.\nSera: hi.", _ctx())
+    assert "Based: field" in seen["system"]

@@ -338,3 +338,38 @@ def test_load_bible_prefers_folder_when_populated_else_file(tmp_path):
 
     empty = _make_folder(tmp_path, {}, name="empty")
     assert "## The station" in canon_source.load_bible(empty, single)  # file prose
+
+
+# --- Based: (the field-host audit fix) ---------------------------------------
+
+_BASED_DOC = """\
+## Cast — the DJs
+
+### Vell — the night shift
+
+- **Logical voice:** `vell_night`
+
+### Sera — the travelling correspondent
+
+- **Logical voice:** `sera_field`
+- **Based:** field
+"""
+
+
+def test_cast_based_parses_field_and_defaults_to_station(tmp_path):
+    path = tmp_path / "CANON.md"
+    path.write_text(_BASED_DOC + "\n## Events — the world timeline\n")
+    _, cast, _ = canon_source.load(path)
+    by_id = {c.id: c for c in cast}
+    assert by_id["vell"].based == "station"  # bullet absent -> the default
+    assert not by_id["vell"].is_field
+    assert by_id["sera"].based == "field"
+    assert by_id["sera"].is_field
+
+
+def test_cast_unknown_based_value_fails_loud(tmp_path):
+    doc = _BASED_DOC.replace("field", "starship")
+    path = tmp_path / "CANON.md"
+    path.write_text(doc + "\n## Events — the world timeline\n")
+    with pytest.raises(ValueError, match="unknown 'Based' value"):
+        canon_source.load(path)

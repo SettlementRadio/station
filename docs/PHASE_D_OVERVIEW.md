@@ -322,6 +322,22 @@ demand). Order below is roughly the build order; the dependency graph is in §4.
   with **D5**. Segments stay atomic + independently gated — flow is best-effort context, never a hard
   dependency.
 
+### D13 — Self & Interpersonal Memory (`PHASE_D_SELF_MEMORY_TASKS.md`) — post-D12 addendum
+- **Goal:** the hosts remember **themselves and each other** — opinions voiced, jokes that landed,
+  personal details revealed, what they last discussed with each colleague — the gap named by the
+  2026-07-13 DJ persona audit (D9.4 remembers the *world*; D12's thread dies at the program
+  boundary; nothing carries "you said last week…").
+- **Builds:** a `host_journal` runtime-accrual table (survives `seed-canon`, cleared by
+  `reset-world` — a new §2a row) (D13.0); a post-air `haiku` extraction at the `top_up` site
+  (D13.1); a D9.4-sibling recall block (`writers/journal.py`) — per-host + per-pair, bounded,
+  per-call-prompt only (D13.2); the journal shown to the continuity editor so self-contradiction
+  flags — which makes emergent self-canon durable AND safe (D13.3); demo + acceptance + docs
+  (D13.4). New dials: `convo_journal_*`. **Card wins over journal, always** — the journal never
+  edits the bible.
+- **Depends on:** C2 scheduler, D9.4 (the pattern), D12 (the capture site + `flow`); D2
+  recommended for semantic recall. Self-contained; recommended AFTER the C9 soak (design the
+  extraction against a week of real output), but nothing blocks building it sooner.
+
 ## 4. Dependency graph + tracker
 
 **Two parallel tracks**, mirroring how C split:
@@ -363,6 +379,7 @@ done and Claude (chat) can generate the `_TASKS.md` now.
 | D10 Figures & Quotes | `PHASE_D_FIGURES_QUOTES_TASKS.md` | D3 (D2 rec.; D9 for soundbites) | ✅ | ✅ | **Built** (D10.0–D10.2, D10.4; D10.3 soundbite DELIVERED via D9.3 — a figure+quote airs as a voiced guest) |
 | D11 Operator/Admin Manual (capstone) | `PHASE_D_ADMIN_MANUAL_TASKS.md` | D1–D10 built | ✅ | ✅ | **Built** (D11.0–D11.4; manual verified + `make acceptance` gate green; re-verify at CM) |
 | D12 Talk Continuity / Show Flow (addendum) | `PHASE_D_CONTINUITY_TASKS.md` | D6, C2 scheduler; reconciles D5 | ✅ | ✅ | **Built** (D12.0–D12.5; consecutive talk plays as one show — positional open/close, threaded hand-off, occasional time-check, sign-on/off; dedicated Thorn news desk + talk-first many-vertical grid + per-program guests; `make continuity-demo`; sixth `talk_flow` acceptance property) |
+| D13 Self & Interpersonal Memory (addendum) | `PHASE_D_SELF_MEMORY_TASKS.md` | C2 scheduler, D9.4, D12 (D2 rec.) | ✅ | — | **Ready** (from the 2026-07-13 DJ persona audit; recommended after the C9 soak so the extraction is designed against real output, but buildable now) |
 
 **Done-when for Phase D (from ROADMAP):** the world visibly progresses on its own (fresh, evolving
 stories the news + DJs reference with correct past/now/future framing); conversations draw on a real

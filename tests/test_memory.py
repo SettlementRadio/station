@@ -147,3 +147,15 @@ def test_continuity_editor_sees_the_memory(monkeypatch):
     convo.continuity_check("Vell: hi.", _ctx(), memory="MEM-MARKER")
     assert "MEM-MARKER" in seen["system"]
     assert "must not contradict" in seen["system"]
+
+
+def test_memory_clip_survives_abbreviations():
+    # The audit bug: a summary opening "Dr. …" used to clip to just "Dr.".
+    summary = (
+        "Dr. Imre Kall, a linguist, has published a field report on the tongue "
+        "of Breathe Easy. It documents forty years of drift in the vowel set."
+    )
+    clipped = memory_mod._clip(summary)
+    assert clipped.startswith("Dr. Imre Kall")
+    assert "field report" in clipped
+    assert "It documents" not in clipped  # still one sentence, not the re-report

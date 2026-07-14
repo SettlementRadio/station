@@ -26,6 +26,7 @@ room writes exactly as it did before D9.4.
 
 from __future__ import annotations
 
+import re
 from datetime import datetime
 
 from ..config import settings
@@ -56,14 +57,28 @@ def _rank_for(
 # remembered story is clipped to its first sentence (bounded by this cap) — it
 # keeps the prompt small (the pack's bound) and reads more like recall anyway.
 _SUMMARY_MAX_CHARS = 240
+# A "first sentence" shorter than this is an abbreviation artifact ("Dr.", an
+# initial), not a sentence — keep scanning for the real boundary (audit fix:
+# a summary opening with "Dr. Imre Kall…" used to clip to just "Dr."). Kept
+# small enough that a genuine short opening sentence still ends the clip.
+_MIN_SENTENCE_CHARS = 25
 
 
 def _clip(summary: str) -> str:
-    """The summary's first sentence, hard-capped at `_SUMMARY_MAX_CHARS`."""
-    first = summary.split(". ")[0].strip().rstrip(".") + "."
-    if len(first) <= _SUMMARY_MAX_CHARS:
-        return first
-    return first[: _SUMMARY_MAX_CHARS - 1].rstrip() + "…"
+    """The summary's first sentence, hard-capped at `_SUMMARY_MAX_CHARS`.
+
+    Sentence-end is the first `.`/`!`/`?` followed by whitespace that leaves a
+    plausible sentence behind (`_MIN_SENTENCE_CHARS`), so abbreviations and
+    initials don't truncate the memory to a fragment.
+    """
+    text = summary.strip()
+    for m in re.finditer(r"[.!?](?=\s)", text):
+        if m.end() >= _MIN_SENTENCE_CHARS:
+            text = text[: m.end()]
+            break
+    if len(text) <= _SUMMARY_MAX_CHARS:
+        return text if text.endswith((".", "!", "?", "…")) else text + "."
+    return text[: _SUMMARY_MAX_CHARS - 1].rstrip() + "…"
 
 
 def _line(story: Story, last_beat: datetime, now: datetime) -> str:

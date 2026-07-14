@@ -104,9 +104,14 @@ def _frame_for(ctx: AssembledContext, now: datetime) -> ShowFrame:
     the situation prose). The reserved `default` program's `legacy` framing routes
     back through the C1 two-host `show_frame`, so with the initial grid (the two
     hosts) — or no grid at all — the frame is exactly what it was before D6.
+
+    Field hosts (the audit fix): any assembled speaker whose card says
+    `Based: field` is passed as `remote`, so the frame's situation prose casts
+    them as a relay dispatch instead of an in-studio presence.
     """
     program = programming.program_for(now)
-    return framing.program_frame(now, program)
+    remote = tuple(c.id for c in ctx.speakers if c.is_field)
+    return framing.program_frame(now, program, remote=remote)
 
 
 def _situation(frame: ShowFrame, ctx: AssembledContext) -> str:
@@ -372,6 +377,7 @@ def orchestrate(
     label_help = " / ".join(labels)
     emotion_help = ", ".join(sorted(tts.EMOTIONS))  # D9.0: the allowed tag set
     guest_section = _guest_section(guest)
+    dispatch_section = _dispatch_section(ctx)
     frame = frame or _frame_for(ctx, now)
     situation = _situation(frame, ctx)
     backbone = (
@@ -425,6 +431,7 @@ def orchestrate(
         f"What's true right now:\n{ctx.dynamic or '(nothing notable)'}\n\n"
         f"{memory}"
         f"{guest_section}"
+        f"{dispatch_section}"
         "Write a REAL conversation — two people who've shared this booth for years "
         "and are easy with each other, NOT two narrators taking turns. Make it sound "
         "spoken, not written:\n"
@@ -468,6 +475,44 @@ def orchestrate(
     script = script.strip()
     log.info("convo_orchestrate_done", chars=len(script))
     return script
+
+
+def _dispatch_section(ctx: AssembledContext) -> str:
+    """The orchestrator prompt block for FIELD-based hosts ('' when all in-studio).
+
+    The audit fix for the field-host conflict: Sera/Orin/Zhe are correspondents
+    out among the worlds (`CastMember.based == "field"`), and canon fixes the
+    relay lag (78-communication: core hours/days, frontier weeks, dark zones
+    months) — so a field host can never trade live banter in the booth. The
+    canon-blessed radio form instead: a STITCHED RELAY CORRESPONDENCE — both
+    sides really did hear and answer each other, just not in real time, and the
+    station assembled the exchange for air. This keeps the full conversational
+    quality (it is a genuine back-and-forth) while staying honest about the lag.
+    """
+    field = [c for c in ctx.speakers if c.is_field]
+    if not field:
+        return ""
+    names = " and ".join(c.name for c in field)
+    verb = "are" if len(field) > 1 else "is"
+    return (
+        f"DISPATCH — {names} {verb} NOT in the studio: they are out among the "
+        "worlds, and their side of this exchange crossed the relay lag as "
+        "recordings (the lag is a fact of this world: hours to days from the "
+        "core, weeks from the frontier, months from the dark zones). Write the "
+        "exchange as the station AIRS it — a relay correspondence stitched "
+        "together for broadcast: questions travelled out, answers came back, so "
+        "both sides genuinely respond to each other and it reads as a real "
+        "conversation — but let the seams show once or twice ('by the time you "
+        "hear this…', 'when your question reached me…', a nod to how long the "
+        "answer took). HARD rules: the field correspondent never claims to be in "
+        "the studio and no one treats them as physically present — no shared "
+        "objects or space (no handing things over, no galley, no 'come in, "
+        "sit'); they name where they're recording from ONCE and stay in that one "
+        "place for the whole exchange (travel between worlds takes weeks — they "
+        "do not hop worlds between nearby segments; if the recent thread already "
+        "placed them somewhere, keep them there). Where anything else in this "
+        "brief implies a shared booth, THESE rules win.\n\n"
+    )
 
 
 def _guest_section(guest: Guest | None) -> str:
@@ -546,7 +591,11 @@ def _run_continuity(
         "You are the continuity editor for Settlement Radio. Check the draft below "
         "against the world bible and the character cards in the cached context: any "
         "contradiction of canon, a host acting out of character, a real-world or "
-        "anachronistic reference, or info-dumping/reciting facts. Reply with the "
+        "anachronistic reference, or info-dumping/reciting facts. A FIELD-based "
+        "correspondent (their card says `Based: field`) written as physically in "
+        "the studio — sharing objects or space with the studio host, treated as "
+        "live in the booth — is a continuity error: the relay lag makes it "
+        "impossible; their side must read as a recorded dispatch. Reply with the "
         "single word OK if it is consistent and in character, otherwise 'ISSUES:' "
         "followed by a terse list. Do not rewrite the draft.\n\n"
         f"{memory_block}"

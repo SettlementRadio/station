@@ -73,3 +73,53 @@ def test_a_full_day_never_calls_an_afternoon_a_handover():
     # The bug it fixes: no daytime hour may be framed as a handover.
     for h in range(7, 20):
         assert not _frame(h).is_handover
+
+
+# --- Field hosts (the audit fix): a remote presence frames as a dispatch -----
+
+
+def _program(hosts, framing_hint="ensemble"):
+    from types import SimpleNamespace
+
+    return SimpleNamespace(hosts=tuple(hosts), framing=framing_hint)
+
+
+def test_remote_companion_frames_as_a_dispatch_not_in_studio():
+    f = framing.program_frame(
+        datetime(2026, 6, 22, 10, 0), _program(["thorn", "zhe"]), remote=("zhe",)
+    )
+    assert f.remote == ("zhe",)
+    assert "dispatch" in f.situation and "relay" in f.situation
+    text = framing.resolve_situation(f, {"thorn": "Thorn", "zhe": "Zhe"})
+    assert "Thorn" in text and "Zhe" in text and "{" not in text
+
+
+def test_remote_lead_gives_the_hour_to_the_dispatch():
+    f = framing.program_frame(
+        datetime(2026, 6, 22, 3, 0),
+        _program(["zhe", "the-archivist"], "solo"),
+        remote=("zhe",),
+    )
+    assert "dispatch" in f.situation
+    assert "holds the booth" in f.situation  # the studio host stays the anchor point
+
+
+def test_both_hosts_remote_frames_as_carried_dispatches():
+    f = framing.program_frame(
+        datetime(2026, 6, 22, 17, 0), _program(["sera", "zhe"]), remote=("sera", "zhe")
+    )
+    assert f.remote == ("sera", "zhe")
+    assert "dispatches from" in f.situation
+
+
+def test_remote_ids_not_on_air_are_ignored():
+    f = framing.program_frame(
+        datetime(2026, 6, 22, 14, 0), _program(["vell", "wren"]), remote=("sera",)
+    )
+    assert f.remote == ()
+    assert "dispatch" not in f.situation
+
+
+def test_no_remote_keeps_the_in_studio_prose():
+    for h in (3, 10, 21):
+        assert "dispatch" not in _frame(h).situation

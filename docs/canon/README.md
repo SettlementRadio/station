@@ -123,9 +123,12 @@ parser keys on for every field, so keep the `- **`…`:**` shape exact (a bullet
 **Cast** (`### Name — role`) recognises:
 
 - `- **Logical voice:** vell_night` — **required** (maps to the TTS voice registry); missing → seed fails loud.
+- `- **Based:** station` — optional (`station` | `field`, defaults to `station`); an unknown value
+  fails loud. `field` marks a travelling correspondent who is never live in the booth — the writers'
+  room frames their segments as relay dispatches (the lag is canon, 78-communication).
 - `- **Tags:** night, warmth, stories` — optional.
 - The whole subsection body is also kept verbatim as the DJ's `card_text` (so the writers' room gets
-  the full character card — personality, verbal tics, sample lines, all of it).
+  the full character card — personality, verbal tics, humour, sample lines, all of it).
 
 **Events** (`### Title`) recognises:
 

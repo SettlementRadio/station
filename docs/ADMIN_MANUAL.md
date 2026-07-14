@@ -149,7 +149,11 @@ query side lowercases + splits on non-alphanumerics, so `Lumen-Festival` won't m
 ### Add / edit / remove a DJ  → Phase E panel
 1. Author/edit the card in `docs/canon/90-cast.md` (the `Logical voice` line is required;
    keep a few tick-DOMAIN words on the `Tags:` line — they drive that DJ's on-air memory
-   affinity, see the file's intro).
+   affinity, see the file's intro). Set `- **Based:** field` for a travelling correspondent
+   (default `station`): a field host is never written as live in the booth — the writers'
+   room frames their segments as recorded dispatches across the relay lag, automatically,
+   on whatever show the grid puts them. Give each card a distinct `Humour:` line too — it's
+   part of what keeps the hosts from sounding like clones.
 2. Add that voice to `config/voices.yaml` — one entry, all three engines (kokoro /
    elevenlabs / say). The file header documents picking presets.
 3. `make seed-canon` — FAILS LOUD if a card names a voice the registry doesn't have.
