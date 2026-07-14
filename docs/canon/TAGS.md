@@ -49,7 +49,8 @@ the shared vocabulary.
 `weather`, `thaw`, `empty`, `gardens`, `lighthouse`
 
 **Named places** (one tag per named world/station — see `06-gazetteer.md`) — `concordance`,
-`meridian`, `cold`, `harbor` (Cold Harbor splits into two tags), `forge`, `halcyon`, `ashfall`
+`meridian`, `cold`, `harbor` (Cold Harbor splits into two tags), `forge`, `halcyon`, `ashfall`,
+`mars`, `europa`, `titan`, `belt` (the old system)
 
 **Time & history** — `time`, `clock`, `calendar`, `reckoning`, `founding`, `history`, `past`, `era`,
 `age`, `memory`, `origins`, `diaspora`, `change`, `loss`, `anniversary`, `rhythm`, `synchrony`,

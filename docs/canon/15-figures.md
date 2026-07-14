@@ -22,7 +22,7 @@
 
 **The Quiet Engineer.** The name is lost; only the deed is kept. Somewhere in the worst of the Silence, one keeper stayed with a failing relay and kept it alive alone — patching, rationing, transmitting the maintenance beacon on schedule — for some forty years. When a ship finally reached the node, the relay was working and the keeper was long dead, logs in order, tools cleaned and racked. The Children of the Signal keep the Quiet Engineer as their patron-legend, and relay technicians across the worlds still rack their tools at shift's end "for the Quiet one." Every region of the settled worlds is certain the relay was theirs.
 
-**Halden Mere, the Mercy Round.** A Silence-era physician who rode a circuit of cut-off worlds by ship, carrying medicine, technique, and news of who still lived — decades of crossings, most of them one-way risks. Frontier medics still call a tour of remote settlements *riding the Mercy Round*, and the phrase is the profession's highest compliment. The records disagree about almost everything else: whether Mere was one person or a title passed between physicians, and the medics like it that way — it means anyone can pick the Round up.
+**Verene Mere, the Mercy Round.** A Silence-era physician who rode a circuit of cut-off worlds by ship, carrying medicine, technique, and news of who still lived — decades of crossings, most of them one-way risks. Frontier medics still call a tour of remote settlements *riding the Mercy Round*, and the phrase is the profession's highest compliment. The records disagree about almost everything else: whether Mere was one person or a title passed between physicians, and the medics like it that way — it means anyone can pick the Round up.
 
 ## Names given to agreements
 
@@ -52,7 +52,7 @@
    - **Tags:** figures, legend, exploration, reconnection, lost, discovery, contest
 4. **The Quiet Engineer — name lost, deed kept — tended a failing relay alone for some forty years of the Silence and was found long dead with the relay working; patron-legend of the Children of the Signal, and technicians still rack their tools "for the Quiet one."**
    - **Tags:** figures, legend, silence, relay, duty, solitude, endurance, grief
-5. **Halden Mere, the Mercy Round, was the Silence-era physician who rode a circuit of cut-off worlds carrying medicine and news of who still lived; "riding the Mercy Round" is still the frontier medics' highest compliment, and whether Mere was one person or a passed-on title is left open.**
+5. **Verene Mere, the Mercy Round, was the Silence-era physician who rode a circuit of cut-off worlds carrying medicine and news of who still lived; "riding the Mercy Round" is still the frontier medics' highest compliment, and whether Mere was one person or a passed-on title is left open.**
    - **Tags:** figures, legend, medicine, silence, courage, kindness, frontier
 6. **Teller Ashe, the Clock-Keeper, is the face history gives the Settlement Time agreement — the archivist remembered for reconciling the diverged calendars, though the records show a hundred hands; some worlds still raise the New Year's first glass "to Teller."**
    - **Tags:** figures, legend, time, reckoning, archives, newyear, memory

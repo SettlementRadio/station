@@ -33,6 +33,10 @@ A volcanic world that wears its name honestly. Generations ago an eruption burie
 
 Frontier stations whose names do the describing. Far Reach is exactly that — one of the last crewed nodes before the relay network thins into the dark zones, a place travellers pass through and remember. Breathe Easy began as a warning that went unheeded (its first air plant was famously unreliable) and became a joke that stuck, then a name no one would now change; its air, for the record, has been fine for generations.
 
+## The Old System
+
+Earth's home system — Earth itself, the red-soil greenhouses of Mars, the ice-roofed colonies of Europa, the orange harbours of Titan, the worked rocks of the Belt, the old Lagrange stations. It is inhabited, ordinary, and *not counted among the settled worlds*: the old system is what the settled worlds left, spoken of the way Earth is spoken of — origin, not neighbourhood — and it belongs to no core and no frontier. The journey there takes years, made rarely by the few who can afford it; the relay road to it is the longest and thinnest in the network, so word crosses in seasons, and its records and music arrive late and are treasured for it — a new old-system record is old news at home and brand new on the settled worlds' air, like a letter from a grandparent. What the songs describe — dock shifts under Saturn, terraforming votes, storm static on the Mars relay — is the settled worlds' own life in an older key, which is exactly why they love it.
+
 ## ES-447
 
 Not a settlement — a catalogue entry. An empty world at the far edge of the settled dark, known to listeners only because Zhe records there: no people, no lights, only the listening equipment and the wind. It stands in for all the places the charts name and no one has made home.
@@ -55,3 +59,5 @@ Not a settlement — a catalogue entry. An empty world at the far edge of the se
    - **Tags:** frontier, station, naming, humour, dark, edge
 8. **ES-447 is an empty catalogued world at the far edge of the settled dark, known only because Zhe records there — no settlement, only the listening equipment and the wind.**
    - **Tags:** worlds, edge, dark, empty, solitude, silence, catalogue
+9. **The Old System — Earth, Mars, Europa, Titan, the Belt, the old Lagrange stations — is inhabited but not counted among the settled worlds; the relay road to it is the longest and thinnest in the network, so its word crosses in seasons and its records arrive late and treasured, and the journey itself takes years.**
+   - **Tags:** earth, mars, europa, titan, belt, origins, distance, relay, music, nostalgia

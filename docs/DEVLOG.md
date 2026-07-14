@@ -38,6 +38,43 @@ A typical *build* session will be short, e.g.:
 
 ---
 
+## 2026-07-14 — Audit — Music catalogue audit: the old system enters canon, tracks realigned (95 tracks, 246 facts)
+**Focus:** audited `config/tracks.yaml` (95 tracks) against the canon and against how the code
+actually consumes each field (selector: mood/era/tags; writer: blurb/album/year). **All 95 tracks
+reseed playable, canon 244 → 246, 427 tests pass.**
+**Decisions:**
+- **The Old System is now canon** (gazetteer entry + 70-music "old-system sessions" scene + facts).
+  The 2026-07 Suno batch (~40 tracks) sings about Mars greenhouses, Europa ice colonies, Titan
+  harbours, the Belt — none of which existed in the bible. Audio is already generated, so canon
+  accommodates: Earth's home system is inhabited but *not counted among the settled worlds* (which
+  preserves Concordance's "oldest continuous settlement" title), the relay road to it is the longest
+  and thinnest (word in seasons, ships in years), and its records arrive late and treasured — which
+  is the in-world *point* of the batch. Consequence: old-system releases can't be dated 2626 and air
+  in 2626 — 37 rows re-dated to 2620–2623 (alternates share their original's session year).
+- **Dead moods fixed.** `celebratory` (5 tracks) and `yearning` (1) aren't in the selector's mood
+  vocabulary — those tracks were invisible to daypart/tone scoring. Remapped to `joyful`/`wistful`.
+- **The deep past floats again.** Exodus Hymns (2190/2205) and Reconnection pieces (2470/2475)
+  hard-dated the ages canon deliberately leaves undated (and squeezed "the voice for centuries" to
+  ~150 years). Years → null (the era label suffices, matching the `origin` row's precedent); "Four
+  hundred years old" → "Centuries old".
+- **Name collisions cleared:** figure Halden Mere → **Verene Mere** (vs track artist Halden Vre);
+  artists Sela Orin → **Sela Maren** (vs DJ Orin), Mira Sol → **Vesper Sol** (vs DJ Mira), The
+  Belter Revival → **The Belt Revival** (franchise-echoing demonym). Display names only — ids and
+  audio paths are opaque keys and unchanged. Kept Vela (vs Vell): distinct enough, established.
+- **Ysolde Mar's "The Long Way Round" is now explicitly the navigator's take on the Earth-origin
+  New Year piece** — the track, Orin's card line, and the Founding Remembrance event now tell one
+  story instead of three overlapping ones.
+**Changed:** `config/tracks.yaml` (years, moods, 4 artist renames, `ai-rights`→`machine-rights` and
+`belters`→`belt` tags, British spellings, 2 blurbs), `docs/canon/06-gazetteer.md` + `70-music.md`
+(Old System), `15-figures.md` (rename), `TAGS.md` (old-system place tags).
+**Why:** the catalogue is DJ-facing lore (blurb/album/era/year feed the writer verbatim), so every
+mismatch here becomes an on-air contradiction; and mood is the one field the selector *scores*, so
+a non-vocabulary mood silently exiles a track from its daypart.
+**Next:** the standing plan — D13 or C5–C9.
+Commit: (this session) · Clips: (none)
+
+---
+
 ## 2026-07-14 — Audit follow-up — Three new cornerstones: sports, legendary figures, knowledge (215 → 244 facts)
 **Focus:** built the three docs the audit's gap analysis recommended. **Seed clean (244 facts,
 embeddings match), 427 tests pass**, tick state untouched.

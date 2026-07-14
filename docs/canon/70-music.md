@@ -63,6 +63,13 @@ answered in slow motion, the distance doing its part. It is the young form, swee
 sentimental, and it carries the oldest truth the station knows: that connection across the dark is
 what all this machinery is *for*.
 
+And then there are the **old-system sessions** — the records that come down the longest relay road
+of all, from Earth's home system, where the old forms never died: blues, rock, the folk rounds,
+sung now about dock shifts under Saturn, greenhouse labour on Mars, mornings under Europa's ice.
+They arrive seasons late, old news at home and brand new out here, and the settled worlds treasure
+them exactly for that — the living kin of the Earth-roots tradition, proof that the old places are
+still singing about the same things: work, weather, waiting, and somebody far away.
+
 ## The station's playlist as cultural memory
 
 The music Settlement Radio plays is not random. It is curated, selected to create a particular mood, to tell a particular story about the settled worlds. The playlist includes the hits of the core, the anthems of the frontier, the obscure local scenes that deserve wider attention. It includes new releases and ancient recordings, music weeks old and music centuries old, all treated as part of a continuous tradition.
@@ -105,3 +112,5 @@ The playlist is also an argument. By choosing certain songs and not others, the 
     - **Tags:** music, genre, core, night, comfort, shared
 16. **Relay-pop is the young bright form — harmony songs about love across the lag, sweethearts keeping a standing hour on the thread across weeks of distance.**
     - **Tags:** music, genre, relay, distance, connection, love, longing
+17. **The old-system sessions are the records that arrive down the longest relay road, from Earth's home system where blues, rock, and the folk rounds never died — seasons late, old news at home and brand new on the settled worlds' air, the living kin of the Earth-roots tradition.**
+    - **Tags:** music, genre, earth, mars, origins, distance, lag, nostalgia, treasured
