@@ -38,6 +38,42 @@ A typical *build* session will be short, e.g.:
 
 ---
 
+## 2026-07-14 — D12 addendum — Flow audit: threads no longer die on "good morning"
+**Focus:** audited the cross-segment talk flow against the two operator-reported symptoms (the same
+conversation re-worded segment after segment; a thread silently abandoned for a new topic). Verdict:
+the D12 layer works as designed, but four holes remained — all fixed. **425 tests pass**, ruff clean.
+**Decisions:**
+- **Thread-end is POSITIONAL, never guessed from the words.** The D12.0 sign-off regex — probed
+  live — false-positived on "good morning" (Wren's signature greeting), "stay with us", "see you",
+  "take care", silently killing live threads mid-show: the operator's "abandoned conversation". Now
+  an `open`/`continue` slot (told not to sign off) keeps its thread open; a `close` wraps it. The
+  regex is deleted; the promised-but-never-built D12.2 replacement is finally moot.
+- **Transitions bridge instead of vanish.** A mid-show slot that is NOT continuing (pacing budget
+  spent) now tells the orchestrator the OLD topic (`_transition_section`), so the hosts pivot off it
+  in half a line — no more faking a resume of a conversation that never happened.
+- **Threads carry a covered-beats memory — shown to BOTH rooms.** `Handoff.covered` accumulates one
+  handle per aired beat while a thread continues; the showrunner gets it as a don't-re-tread list
+  AND the orchestrator's pickup section repeats it with an anti-echo rule ("never repeat or
+  re-phrase lines from the prior exchange") — the first demo run showed a continue slot re-running
+  the prior monologue, closing lines included, when only the showrunner was steered. Continue
+  briefs now lead with an `Angle:` line so the covered handles carry content, not staging.
+- **Stale hand-offs are dropped.** `Handoff.air_time` existed "so a stale hand-off can be
+  recognised" but nothing checked it; now `live_handoff` (new dial
+  `CONVO_CONTINUITY_HANDOFF_MAX_AGE_MIN`, default 60) stops a restart after downtime from resuming
+  yesterday's conversation mid-sentence inside the same daily program.
+**Changed:** `src/flow.py` (positional `open_thread`, `covered`, `beat_handle`, `live_handoff`;
+regex deleted), `src/scheduler.py` (capture passes position/prev/continued; staleness at
+`_show_flow`), `src/writers/conversation.py` (`_transition_section`; covered-beats block in the
+showrunner thread), `src/continuity_demo.py`, `src/config.py` (the new dial), ADMIN_MANUAL; +6
+tests (regression: ordinary phrases must not kill a thread).
+**Why:** the flow substrate decided thread life from a wordlist scan of the last two lines — the
+one part of D12 that guessed instead of knowing. Position is ground truth the scheduler already
+has.
+**Next:** D13 (`PHASE_D_SELF_MEMORY_TASKS.md`) or C5–C9, per the standing plan.
+Commit: (this session) · Clips: (none)
+
+---
+
 ## 2026-07-13 — Audit — DJ persona audit + the field-host fix: correspondents now cross the lag honestly
 **Focus:** audited the DJ implementation (definitions, memory/personality machinery, speech
 distinctiveness), validated live (two contrasting host pairs generated against the seeded world),

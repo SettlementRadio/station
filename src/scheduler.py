@@ -309,11 +309,18 @@ def _show_flow(
     (`continue`/`close`, never a fresh program `open`), with a live hand-off whose
     thread is still open, and within the `convo_continuity_max_segments` pacing budget.
     A new program always opens fresh; a spent or over-budget thread transitions.
+
+    Audit fix 4 — a STALE hand-off (older than `convo_continuity_handoff_max_age_min`
+    of air time: the scheduler was down, the buffer jumped) is dropped here, so a
+    restart inside the same daily program never resumes yesterday's conversation.
     """
     is_first = program.id != last_content_program
     est_end = air_cursor + timedelta(seconds=settings.segment_default_length_target_sec)
     is_last = programming.program_for(est_end).id != program.id
     position = flow_mod.show_position(is_first=is_first, is_last=is_last)
+    handoff = flow_mod.live_handoff(
+        handoff, air_cursor, settings.convo_continuity_handoff_max_age_min
+    )
     continue_thread = (
         settings.convo_continuity_enabled
         and position != flow_mod.OPEN
@@ -756,13 +763,24 @@ def top_up(now: datetime | None = None) -> list[dict]:
         if program is not None:
             flow_last_program = program.id
             if name == "talk":
-                flow_handoff = flow_mod.handoff_from_segment(seg, program.id)
+                # Audit fixes 1+3: open_thread is POSITIONAL (an open/continue slot
+                # was told not to sign off — no more regex guessing), and a continuing
+                # slot extends the thread's covered-beats memory from the prior
+                # hand-off so the showrunner can steer off already-aired beats.
+                continued = slot_flow is not None and slot_flow.continue_thread
+                flow_handoff = flow_mod.handoff_from_segment(
+                    seg,
+                    program.id,
+                    position=slot_flow.position if slot_flow is not None else None,
+                    prev=slot_flow.handoff if slot_flow is not None else None,
+                    continued=continued,
+                )
                 # D12.2 — advance the thread pacing counter. A slot that fell to an
                 # evergreen (no hand-off) breaks the thread → 0; a slot that CONTINUED
                 # the thread grows it; any other talk slot starts a fresh thread at 1.
                 if flow_handoff is None:
                     flow_thread_run = 0
-                elif slot_flow is not None and slot_flow.continue_thread:
+                elif continued:
                     flow_thread_run += 1
                 else:
                     flow_thread_run = 1

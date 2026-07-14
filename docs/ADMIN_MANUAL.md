@@ -314,7 +314,12 @@ standalone.
 - **`CONVO_CONTINUITY_ENABLED`** — master toggle (default `true`). `false` = the pre-D12 shape (every
   talk segment self-contained, opens + closes) — the clean rollback.
 - **`CONVO_CONTINUITY_MAX_SEGMENTS`** — how many consecutive talk segments one thread may hold
-  (opener included) before a forced transition to a fresh subject (default `3`).
+  (opener included) before a forced transition to a fresh subject (default `3`). A continuing
+  thread carries a covered-beats list (so it advances instead of circling), and a transition slot
+  is told the OLD topic so the hosts pivot off it in half a line instead of silently dropping it.
+- **`CONVO_CONTINUITY_HANDOFF_MAX_AGE_MIN`** — how old (minutes of air time) a persisted talk
+  hand-off may be and still be continued (default `60`; `0` disables). Protects a restart after
+  downtime from resuming yesterday's conversation mid-sentence.
 - **`CONVO_FLOW_TIMECHECK`** — when a spoken time-check is allowed: `never | handover | open | hourly`
   (default `hourly` — the top of the hour + handovers, not every segment).
 - **`CONVO_FLOW_SIGNON`** — spoken program sign-on/sign-off by name at a show's first/last slot

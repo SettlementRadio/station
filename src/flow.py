@@ -25,8 +25,8 @@ Pure and dependency-light (only reads a `Segment`), unit-testable the way
 
 from __future__ import annotations
 
-import re
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from datetime import datetime
 
 from .segment import Segment
 
@@ -43,15 +43,11 @@ CLOSE = "close"
 # constant (config.py convention #1), not an operator dial.
 _HANDOFF_TAIL_LINES = 2
 
-# A light sign-off heuristic for `open_thread` (D12.0): a tail that reads like an
-# on-air sign-off means the thread wrapped (a standalone or `close` slot signs off).
-# D12.2 replaces this heuristic with an orchestrator-emitted flag.
-_SIGNOFF_RE = re.compile(
-    r"\b(good ?night|good ?morning|see you|catch you|that's (all|it)|until (next|then)|"
-    r"back (after|in a|soon)|take care|stay (safe|warm|with us)|signing off|"
-    r"we'll leave (it|you)|from (all of )?us)\b",
-    re.IGNORECASE,
-)
+# The covered-beats memory (audit fix 3): how many beat handles a thread's hand-off
+# may accumulate, and how long each handle is. The pacing budget keeps a thread to a
+# few segments, so this is headroom, not a dial; the cap only guards a runaway.
+_COVERED_MAX = 6
+_BEAT_HANDLE_MAX_CHARS = 140
 
 
 @dataclass(frozen=True)
@@ -61,7 +57,12 @@ class Handoff:
     JSON-serialisable (persisted in `clock_state`): `tail` is the last spoken line(s)
     verbatim, `topic` the beat/angle handle (the showrunner's brief), `open_thread`
     whether there is more to say (vs. a wrapped sign-off). `program`/`air_time` mark
-    which slot it came from so a stale hand-off can be recognised.
+    which slot it came from so a stale hand-off is recognised (`live_handoff`).
+
+    `covered` (audit fix 3) is the thread's short working memory: one compact handle
+    per beat this thread has ALREADY aired, oldest first. The showrunner shows it as
+    a don't-re-tread list, so a three-segment thread advances instead of circling —
+    the tail alone can't carry what was said two segments ago.
     """
 
     tail: str
@@ -69,6 +70,7 @@ class Handoff:
     open_thread: bool
     program: str | None = None
     air_time: str | None = None
+    covered: tuple[str, ...] = field(default=())
 
     def to_dict(self) -> dict:
         """A plain dict for persistence in `clock_state` (JSON round-trips)."""
@@ -78,6 +80,7 @@ class Handoff:
             "open_thread": self.open_thread,
             "program": self.program,
             "air_time": self.air_time,
+            "covered": list(self.covered),
         }
 
     @classmethod
@@ -89,6 +92,7 @@ class Handoff:
             open_thread=bool(data.get("open_thread", False)),
             program=data.get("program"),
             air_time=data.get("air_time"),
+            covered=tuple(str(c) for c in (data.get("covered") or [])),
         )
 
 
@@ -136,12 +140,56 @@ def show_position(*, is_first: bool, is_last: bool) -> str:
     return CONTINUE
 
 
-def _is_signoff(text: str) -> bool:
-    """True when a tail reads like an on-air sign-off (the D12.0 open_thread guess)."""
-    return bool(_SIGNOFF_RE.search(text))
+# Lines a beat brief labels as the SUBJECT — preferred over staging prose ("Mira
+# is alone in the booth now…") when picking the covered-beats handle, so the
+# don't-re-tread list carries what the beat was ABOUT, not how it was staged.
+_BEAT_LABELS = ("topic:", "angle:", "beat:", "subject:", "next beat")
 
 
-def handoff_from_segment(seg: Segment, program: str | None = None) -> Handoff | None:
+def _clean_brief_line(line: str) -> str:
+    """One brief line with markdown/bullet noise stripped."""
+    return line.replace("**", "").strip().strip("-•:— ").strip()
+
+
+def beat_handle(beat: str) -> str:
+    """A compact one-line handle for a beat brief — the `covered` list's unit.
+
+    Prefers a line the brief labels as the subject (`Topic:` / `Angle:` / …),
+    falling back to the first non-empty line; stripped of markdown noise and
+    capped — enough to recognise the beat, never a transcript.
+    """
+
+    def _cap(text: str) -> str:
+        return (
+            text
+            if len(text) <= _BEAT_HANDLE_MAX_CHARS
+            else text[: _BEAT_HANDLE_MAX_CHARS - 1].rstrip() + "…"
+        )
+
+    first = ""
+    for line in beat.splitlines():
+        text = _clean_brief_line(line)
+        if not text:
+            continue
+        lowered = text.lower()
+        for label in _BEAT_LABELS:
+            if lowered.startswith(label):
+                labelled = _clean_brief_line(text[len(label) :])
+                if labelled:
+                    return _cap(labelled)
+        if not first:
+            first = text
+    return _cap(first) if first else ""
+
+
+def handoff_from_segment(
+    seg: Segment,
+    program: str | None = None,
+    *,
+    position: str | None = None,
+    prev: Handoff | None = None,
+    continued: bool = False,
+) -> Handoff | None:
     """Capture the talk hand-off from a rendered segment, or None if there isn't one.
 
     Returns None for anything that isn't a real talk render (an evergreen fallback
@@ -149,6 +197,16 @@ def handoff_from_segment(seg: Segment, program: str | None = None) -> Handoff | 
     persists an EMPTY hand-off so the next segment opens fresh (D12.0 resilience).
     The tail is the last `_HANDOFF_TAIL_LINES` non-empty script lines verbatim; the
     topic is the showrunner's beat brief (`meta["beat"]`).
+
+    `open_thread` is POSITIONAL (audit fix 1): an `open`/`continue` slot was
+    explicitly instructed NOT to sign off, so its thread stays open; a `close` slot
+    (or an unknown position — the standalone open→close shape) wrapped. The old
+    sign-off regex is gone — it false-positived on ordinary lines ("good morning",
+    "stay with us") and silently killed live threads mid-show.
+
+    `prev`/`continued` (audit fix 3) accumulate the thread's covered-beats memory:
+    a CONTINUING slot extends the prior hand-off's list with this segment's beat
+    handle; anything else starts the list fresh at just this beat.
     """
     if seg.format != "talk" or not seg.script:
         return None
@@ -157,13 +215,40 @@ def handoff_from_segment(seg: Segment, program: str | None = None) -> Handoff | 
         return None
     tail = "\n".join(lines[-_HANDOFF_TAIL_LINES:])
     topic = str(seg.meta.get("beat") or "").strip()
+
+    handle = beat_handle(topic)
+    prior = prev.covered if (continued and prev is not None) else ()
+    covered = tuple(c for c in (*prior, handle) if c)[-_COVERED_MAX:]
+
     return Handoff(
         tail=tail,
         topic=topic,
-        open_thread=not _is_signoff(tail),
+        open_thread=position in (OPEN, CONTINUE),
         program=program,
         air_time=seg.air_time,
+        covered=covered,
     )
+
+
+def live_handoff(
+    handoff: Handoff | None, now: datetime, max_age_min: int
+) -> Handoff | None:
+    """`handoff` if it is fresh enough to continue at `now`, else None (audit fix 4).
+
+    A hand-off older than `max_age_min` of air time is stale — the scheduler was down,
+    or the buffer jumped — and continuing it would resume yesterday's conversation
+    mid-sentence. An unparseable/missing `air_time` counts as stale (safe side);
+    `max_age_min <= 0` disables the check.
+    """
+    if handoff is None:
+        return None
+    if max_age_min <= 0:
+        return handoff
+    try:
+        age = now - datetime.fromisoformat(handoff.air_time or "")
+    except (TypeError, ValueError):
+        return None
+    return handoff if age.total_seconds() <= max_age_min * 60 else None
 
 
 __all__ = [
@@ -172,6 +257,8 @@ __all__ = [
     "OPEN",
     "Handoff",
     "ShowFlow",
+    "beat_handle",
     "handoff_from_segment",
+    "live_handoff",
     "show_position",
 ]

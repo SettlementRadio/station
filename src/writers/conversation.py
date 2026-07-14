@@ -38,7 +38,7 @@ from datetime import datetime
 
 from .. import evergreen, freshness
 from ..config import settings
-from ..flow import CONTINUE, OPEN, ShowFlow
+from ..flow import CONTINUE, OPEN, ShowFlow, beat_handle
 from ..logging_setup import get_logger
 from ..providers import llm, tts
 from ..safety import safety_check
@@ -143,17 +143,31 @@ def _showrunner_thread(flow: ShowFlow | None) -> tuple[str, str]:
         return "", fresh_task
     ho = flow.handoff
     if flow.continue_thread:
+        # Audit fix 3 — the thread's covered-beats memory: the tail alone can't
+        # carry what was said two segments ago, so without this a three-segment
+        # thread can circle the same points in fresh wording.
+        covered_block = ""
+        if ho.covered:
+            lines = "\n".join(f"    - {c}" for c in ho.covered)
+            covered_block = (
+                "  beats this thread has ALREADY aired — the next beat must ADVANCE "
+                "past these, never re-tread or re-phrase them:\n"
+                f"{lines}\n"
+            )
         thread_block = (
             "CONTINUE the on-air conversation already in progress — the hosts have not "
             "changed the subject. The thread so far:\n"
             f"  topic: {ho.topic or '(the previous exchange)'}\n"
+            f"{covered_block}"
             f"  they just said:\n{ho.tail}\n\n"
         )
         task_block = (
             "Give the NEXT beat on THIS SAME thread: deepen it, follow where it just "
-            "went, or take the next angle — do NOT open a new topic. Reply with a "
-            "SHORT brief (2-4 sentences): the next angle, the human hook, and who "
-            "picks it back up. Do not write any dialogue."
+            "went, or take the next angle — do NOT open a new topic, and do NOT "
+            "re-run a beat from the already-aired list above in new words. Reply "
+            "with a SHORT brief (2-4 sentences), and make its FIRST line "
+            "'Angle: …' naming the new angle in a few words; then the human hook, "
+            "and who picks it back up. Do not write any dialogue."
         )
         return thread_block, task_block
     # The thread has run its course (spent, or the pacing budget is up) — move on.
@@ -295,6 +309,37 @@ def _time_check_directive(
     )
 
 
+def _transition_section(flow: ShowFlow | None) -> str:
+    """The mid-show topic-pivot bridge for a slot that is NOT continuing (audit fix 2).
+
+    Fires when the hosts are mid-show (`continue`/`close`) with a prior thread that
+    has ended (the pacing budget was spent) and this slot opens a NEW subject: the
+    room is told what the old subject WAS, so it can pivot off it in half a line —
+    instead of faking a resume of a conversation that never happened, which read on
+    air as the old thread being silently abandoned. Empty for an `open` (a fresh
+    program opens fresh — nothing to bridge), a continuing slot (`_pickup_section`
+    owns that), and the standalone paths.
+    """
+    if (
+        flow is None
+        or not settings.convo_continuity_enabled
+        or flow.handoff is None
+        or flow.continue_thread
+        or flow.position == OPEN
+    ):
+        return ""
+    handle = beat_handle(flow.handoff.topic) or "the last subject"
+    return (
+        "You are MID-SHOW and the hosts have just spent a while on "
+        f'"{handle}". Tonight\'s beat above is a NEW subject: open with a brief, '
+        "natural pivot off the old one — half a line, in character ('anyway — we "
+        "could circle that all night…', 'right, enough of that; here's what else "
+        "came in') — then give the new subject your full attention. Do NOT reopen "
+        "or continue the old subject, and do NOT pretend you were already "
+        "mid-conversation on the NEW one — the pivot IS your cold open.\n\n"
+    )
+
+
 def _pickup_section(flow: ShowFlow | None) -> str:
     """The D12.2 'pick up where you left off' block for a continuing `continue` slot.
 
@@ -313,13 +358,27 @@ def _pickup_section(flow: ShowFlow | None) -> str:
         or not flow.continue_thread
     ):
         return ""
+    # Audit fix 3 (orchestrator side): the room also sees what the thread already
+    # aired — the showrunner steering the BEAT off covered ground isn't enough if
+    # the dialogue then re-treads it anyway (seen live: a continue slot re-ran the
+    # prior segment's monologue, closing lines included).
+    covered = ""
+    if flow.handoff.covered:
+        lines = "\n".join(f"- {c}" for c in flow.handoff.covered)
+        covered = (
+            "Ground this conversation has ALREADY covered — move FORWARD from it; "
+            f"do not re-tread or re-phrase any of it:\n{lines}\n"
+        )
     return (
         "PICK UP where you left off — this is the SAME conversation continuing, you "
         "never left the booth. Do NOT re-introduce the topic or yourselves and do NOT "
         "greet the audience. The last thing said was:\n"
         f"{flow.handoff.tail}\n"
         "Open by carrying that straight forward — a reaction, the next thought, a "
-        "callback — then move the thread on.\n\n"
+        "callback — then move the thread on. Never REPEAT or re-phrase lines from "
+        "the prior exchange (including the ones above): they already aired; say the "
+        "NEXT thing.\n"
+        f"{covered}\n"
     )
 
 
@@ -404,6 +463,7 @@ def orchestrate(
     #   * D10 (figures/quotes): an attributable quote a host can reference.
     freshness_section = f"{recent_openings}\n\n" if recent_openings else ""
     pickup = _pickup_section(flow)
+    transition = _transition_section(flow)
     # D12.1 fix — only HAND the room the exact clock time when a time-check is allowed
     # (open/handover/hourly). On a cold `continue` slot we tell it not to time-stamp,
     # so showing "Settlement time right now: 2:14" (and a night card that opens with the
@@ -427,6 +487,7 @@ def orchestrate(
         "unless it says so.\n\n"
         f"Tonight's beat (from the showrunner):\n{beat}\n\n"
         f"{pickup}"
+        f"{transition}"
         f"{freshness_section}"
         f"What's true right now:\n{ctx.dynamic or '(nothing notable)'}\n\n"
         f"{memory}"

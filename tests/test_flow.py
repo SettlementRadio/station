@@ -59,24 +59,37 @@ def test_handoff_captures_tail_topic_and_open_thread():
         "Vell: so the reclaim crews finally hit the aquifer.\n"
         "Wren: right, and that's the part nobody's talking about yet."
     )
-    ho = handoff_from_segment(seg, "night_show")
+    ho = handoff_from_segment(seg, "night_show", position=CONTINUE)
     assert ho is not None
     # tail = the last two spoken lines, verbatim.
     assert "nobody's talking about yet" in ho.tail
     assert "reclaim crews" in ho.tail
     assert ho.topic == "the water reclaim"
-    assert ho.open_thread is True  # not a sign-off -> more to say
+    assert ho.open_thread is True  # a continue slot was told not to sign off
     assert ho.program == "night_show"
     assert ho.air_time == "2026-06-22T14:00:00"
 
 
-def test_handoff_open_thread_false_on_a_signoff_tail():
+def test_handoff_open_thread_is_positional():
+    # Audit fix 1: thread-end is derived from the slot's POSITION, never guessed
+    # from the words. open/continue keep the thread open; close (and the unknown/
+    # standalone position) wrap it.
+    seg = _talk_segment("Vell: mid-thought.\nWren: exactly.")
+    assert handoff_from_segment(seg, "p", position=OPEN).open_thread is True
+    assert handoff_from_segment(seg, "p", position=CONTINUE).open_thread is True
+    assert handoff_from_segment(seg, "p", position=CLOSE).open_thread is False
+    assert handoff_from_segment(seg, "p").open_thread is False
+
+
+def test_handoff_survives_ordinary_phrases_that_look_like_signoffs():
+    # The regression the old regex caused: "good morning" (Wren's greeting), "stay
+    # with us", "take care" mid-show silently killed live threads.
     seg = _talk_segment(
-        "Wren: that's all from us tonight.\nVell: goodnight, settlement."
+        "Wren: Good morning, all you waking worlds — so where were we on the census?\n"
+        "Vell: Stay with us, because the next part of this story is stranger."
     )
-    ho = handoff_from_segment(seg, "night_show")
-    assert ho is not None
-    assert ho.open_thread is False
+    ho = handoff_from_segment(seg, "p", position=CONTINUE)
+    assert ho is not None and ho.open_thread is True
 
 
 def test_handoff_none_for_an_evergreen_fallback():
@@ -103,9 +116,57 @@ def test_handoff_roundtrips_through_a_dict():
         open_thread=True,
         program="night_show",
         air_time="2026-06-22T02:00:00",
+        covered=("the aquifer strike", "who pays for the pumps"),
     )
     restored = Handoff.from_dict(json.loads(json.dumps(ho.to_dict())))
     assert restored == ho
+
+
+def test_handoff_accumulates_covered_beats_while_continuing():
+    # Audit fix 3: a continuing slot extends the thread's covered-beats memory; a
+    # fresh thread starts it over at just its own beat.
+    first = handoff_from_segment(
+        _talk_segment("Vell: a.\nWren: b.", beat="**Topic:** the aquifer strike"),
+        "p",
+        position=OPEN,
+    )
+    assert first.covered == ("the aquifer strike",)
+    second = handoff_from_segment(
+        _talk_segment("Vell: c.\nWren: d.", beat="who pays for the pumps"),
+        "p",
+        position=CONTINUE,
+        prev=first,
+        continued=True,
+    )
+    assert second.covered == ("the aquifer strike", "who pays for the pumps")
+    fresh = handoff_from_segment(
+        _talk_segment("Vell: e.\nWren: f.", beat="a brand-new subject"),
+        "p",
+        position=CONTINUE,
+        prev=second,
+        continued=False,  # a transition starts a new thread
+    )
+    assert fresh.covered == ("a brand-new subject",)
+
+
+def test_live_handoff_drops_a_stale_thread():
+    # Audit fix 4: a hand-off older than the max age (downtime, a buffer jump) is
+    # not continued — never resume yesterday's conversation mid-sentence.
+    ho = Handoff(
+        tail="Wren: more.",
+        topic="t",
+        open_thread=True,
+        air_time="2026-06-22T02:00:00",
+    )
+    fresh_now = datetime(2026, 6, 22, 2, 30)
+    stale_now = datetime(2026, 6, 23, 2, 10)
+    assert flow.live_handoff(ho, fresh_now, 60) is ho
+    assert flow.live_handoff(ho, stale_now, 60) is None
+    assert flow.live_handoff(ho, stale_now, 0) is ho  # 0 disables the check
+    assert flow.live_handoff(None, fresh_now, 60) is None
+    # An unparseable air_time counts as stale (the safe side).
+    broken = Handoff(tail="x", topic="t", open_thread=True, air_time=None)
+    assert flow.live_handoff(broken, fresh_now, 60) is None
 
 
 # --- Scheduler integration: positions computed + hand-off persisted ---------
@@ -355,6 +416,72 @@ def test_showrunner_thread_transition_moves_on():
     block, task = convo._showrunner_thread(flow)
     assert "FRESH subject" in block or "move ON" in block
     assert "Pick exactly ONE" in task  # still a fresh pick
+
+
+def test_showrunner_thread_lists_covered_beats():
+    # Audit fix 3: a continuing thread shows what it already aired, so the next
+    # beat advances instead of circling the same points in fresh wording.
+    ho = Handoff(
+        tail="Wren: more.",
+        topic="the reclaim",
+        open_thread=True,
+        covered=("the aquifer strike", "who pays for the pumps"),
+    )
+    flow = ShowFlow(CONTINUE, handoff=ho, continue_thread=True)
+    block, _task = convo._showrunner_thread(flow)
+    assert "ALREADY aired" in block
+    assert "the aquifer strike" in block and "who pays for the pumps" in block
+
+
+def test_beat_handle_prefers_the_labelled_subject_line():
+    # The covered list must carry what the beat was ABOUT, not its staging prose.
+    brief = (
+        "Mira is alone in the booth now, a quiet coda before the music.\n"
+        "**Angle:** the fragment she had for years without knowing what it was\n"
+        "She confesses it, gently."
+    )
+    assert flow.beat_handle(brief) == (
+        "the fragment she had for years without knowing what it was"
+    )
+    # No labelled line -> the first non-empty line, markdown stripped.
+    assert flow.beat_handle("**just prose**\nmore prose") == "just prose"
+
+
+def test_pickup_section_shows_covered_ground_and_forbids_echo(monkeypatch):
+    monkeypatch.setattr(convo.settings, "convo_continuity_enabled", True)
+    ho = Handoff(
+        tail="Mira: Greaves knows.",
+        topic="t",
+        open_thread=True,
+        covered=("the fragment confession",),
+    )
+    section = convo._pickup_section(
+        ShowFlow(CONTINUE, handoff=ho, continue_thread=True)
+    )
+    assert "ALREADY covered" in section and "the fragment confession" in section
+    assert "Never REPEAT" in section  # the anti-echo rule rides with the tail
+
+
+# --- Audit fix 2: the mid-show transition bridge (pure) ----------------------
+
+
+def test_transition_section_bridges_off_the_old_topic(monkeypatch):
+    monkeypatch.setattr(convo.settings, "convo_continuity_enabled", True)
+    flow = ShowFlow(CONTINUE, handoff=_handoff(), continue_thread=False)
+    section = convo._transition_section(flow)
+    assert "the reclaim" in section  # the room can SEE what it's pivoting off
+    assert "pivot" in section.lower()
+
+
+def test_transition_section_empty_when_continuing_or_opening(monkeypatch):
+    monkeypatch.setattr(convo.settings, "convo_continuity_enabled", True)
+    continuing = ShowFlow(CONTINUE, handoff=_handoff(), continue_thread=True)
+    assert convo._transition_section(continuing) == ""  # pickup owns that
+    opening = ShowFlow(OPEN, handoff=_handoff(), continue_thread=False)
+    assert convo._transition_section(opening) == ""  # a new program opens fresh
+    assert convo._transition_section(None) == ""  # the standalone paths
+    no_thread = ShowFlow(CONTINUE, handoff=None, continue_thread=False)
+    assert convo._transition_section(no_thread) == ""  # nothing to bridge off
 
 
 def test_showrunner_thread_fresh_when_disabled(monkeypatch):

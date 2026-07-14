@@ -141,7 +141,9 @@ def main(argv: list[str] | None = None) -> int:
             script=script,
             meta={"beat": beat},
         )
-        new_handoff = flow_mod.handoff_from_segment(seg, program.id)
+        new_handoff = flow_mod.handoff_from_segment(
+            seg, program.id, position=position, prev=handoff, continued=continue_thread
+        )
         if new_handoff is None:
             thread_run = 0
         elif continue_thread:
