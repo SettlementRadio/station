@@ -272,6 +272,14 @@ class Settings(BaseSettings):
     # per host; on overflow the oldest drop (prune runs at capture). Keeps hosts
     # from accreting unbounded life-facts that crowd the hand-authored card.
     convo_journal_max_details_per_host: int = 12
+    # Recall bounds (D13.2 — the D9.4 dial pattern): how many journal entries each
+    # host recalls into a segment, and how far back "on-air history" reaches on the
+    # REAL broadcast timeline (`host_journal.air_time` — the D5 timeline).
+    convo_journal_per_host: int = 3
+    convo_journal_window_days: int = 30
+    # With a topic in play and vectors available, this many semantic hits from the
+    # `journal` corpus are blended into the ranking (0 = structured recency only).
+    convo_journal_top_k: int = 8
 
     # --- Content-safety gate (C0: real automated check on every draft) ---------
     # CLAUDE.md "Content safety": before any public broadcast, generated text must

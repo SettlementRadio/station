@@ -1,13 +1,24 @@
-"""The hosts' on-air journal (D13) — capture: what a host said STAYS said.
+"""The hosts' on-air journal (D13) — what a host said STAYS said.
 
-D13.1: after a scheduled talk segment clears both gates and renders, ONE cheap
-extraction (the `convo_journal_tier`, haiku per CLAUDE.md routing) distills the
-segment script into 0–N durable `host_journal` rows: opinions a host voiced,
-personal details they revealed, jokes with callback potential, and the gist of
-notable host-to-host exchanges. D13.2 recalls them into future segments; D13.3
-shows them to the continuity editor. This is the memory the persona audit named
-missing: the hosts remembered the *world* (D9.4) but not *themselves or each
-other*.
+Two halves, one memory. **Capture** (D13.1): after a scheduled talk segment
+clears both gates and renders, ONE cheap extraction (the `convo_journal_tier`,
+haiku per CLAUDE.md routing) distills the segment script into 0–N durable
+`host_journal` rows: opinions a host voiced, personal details they revealed,
+jokes with callback potential, and the gist of notable host-to-host exchanges.
+**Recall** (D13.2): `journal_section` renders those rows back into the room as
+the D9.4 sibling — per host a bounded, persona-weighted pick of their own past
+statements, plus a per-pair "what you two last talked about" line; the
+showrunner gets ONLY the pair line (`pair_section` — the beat-picker needs the
+relationship, not the full journal). D13.3 shows the same block to the
+continuity editor. This is the memory the persona audit named missing: the
+hosts remembered the *world* (D9.4) but not *themselves or each other*.
+
+Recall placement is deliberate (the prompt-cache lever, OVERVIEW §2): the block
+is small and VARIABLE, so it rides the per-call system prompt, never the cached
+bible/cards. Bounded by the `convo_journal_per_host` / `convo_journal_window_days`
+/ `convo_journal_top_k` dials; degrades to "" on disabled/empty/DB-failure, so
+the room writes exactly as the pre-D13 room did. The D5 boundary is stated in
+the block itself: a remembered topic is a CALLBACK, never a licence to re-run it.
 
 Discipline (the pack's load-bearing rules):
 
@@ -33,13 +44,15 @@ Discipline (the pack's load-bearing rules):
 from __future__ import annotations
 
 import json
-from datetime import datetime
+from datetime import datetime, timedelta
+from itertools import combinations
 
 from ..config import settings
 from ..logging_setup import get_logger
 from ..providers import embeddings, llm
 from ..segment import Segment
-from ..world import clock, store
+from ..world import clock, events, store
+from ..world.store import CastMember, JournalEntry
 
 log = get_logger(__name__)
 
@@ -279,3 +292,189 @@ def capture_segment(seg: Segment) -> int:
     except Exception as exc:  # noqa: BLE001 — the journal must never cost a segment
         log.warning("journal_capture_failed", seg_id=seg.id, error=str(exc))
         return 0
+
+
+# --- Recall (D13.2): the "what you've said before" block ----------------------
+# The D9.4 sibling — same shape, same discipline: read once per slot, rank per
+# host, render a small VARIABLE block for the per-call system prompt (the cache
+# lever holds), degrade to "" on anything. The division of labour stays sharp:
+# D9.4 is the hosts remembering the WORLD; this is the hosts remembering
+# THEMSELVES and each other. The block's steer states the D5 boundary — a
+# remembered topic is a callback, never a licence to re-run it.
+
+# A semantic hit from the `journal` corpus outranks a couple of card-tag overlaps
+# in the pick (topic relevance beats persona affinity when a topic is in play, but
+# a strong persona match still competes). A domain constant, not an operator dial.
+_SEMANTIC_BOOST = 2
+
+# How a kind reads inside the recall parenthetical — a joke needs "a running bit"
+# so the room calls it back AS a bit; the other kinds read naturally bare.
+_KIND_QUALIFIER = {store.JOURNAL_KIND_JOKE: ", a bit that landed"}
+
+
+def _phrase_for(entry: JournalEntry, now: datetime) -> str:
+    """The clock phrase for an entry ("yesterday", "last week") at real `now`.
+
+    Frames on the in-world face (`in_world_time`, filled at capture; derived from
+    `air_time` when absent — same constant offset) through the B2 clock renderer,
+    like every other dated thing the hosts say.
+    """
+    iw = entry.in_world_time or clock.to_inworld(entry.air_time)
+    return events.phrase_for_datetime(iw, now)
+
+
+def _entry_line(entry: JournalEntry, now: datetime) -> str:
+    """One journal entry as a prompt bullet, clock-framed for `now`."""
+    qualifier = _KIND_QUALIFIER.get(entry.kind, "")
+    return f"- ({_phrase_for(entry, now)}{qualifier}) {entry.text}"
+
+
+def _rank_for(
+    card: CastMember,
+    entries: list[JournalEntry],
+    per_host: int,
+    semantic_ids: set[int],
+) -> list[JournalEntry]:
+    """The entries THIS host recalls: relevance + persona-weighted, bounded, stable.
+
+    The D9.4 ranking pattern: card-tag overlap ranks (a sports memory sticks with
+    the sports host), a semantic hit for the slot's topic ranks harder
+    (`_SEMANTIC_BOOST`), and ties keep the store order (newest first).
+    """
+    tags = set(card.tags)
+
+    def score(e: JournalEntry) -> int:
+        boost = _SEMANTIC_BOOST if e.id is not None and e.id in semantic_ids else 0
+        return len(set(e.tags) & tags) + boost
+
+    ranked = sorted(enumerate(entries), key=lambda pair: (-score(pair[1]), pair[0]))
+    return [e for _i, e in ranked[:per_host]]
+
+
+# A semantic hit must actually RESEMBLE the topic to earn the boost: on a small
+# journal, top-k alone returns everything (making the boost a no-op), so hits
+# below this cosine similarity are discarded. A property of the embedding model's
+# similarity scale (unrelated sentences score ~0.0-0.2 on the chosen
+# L2-normalised model), so a domain constant, not an operator dial.
+_SEMANTIC_MIN_SCORE = 0.35
+
+
+def _semantic_ids(topic: str | None) -> set[int]:
+    """Journal row ids semantically near `topic` (best-effort; {} without vectors)."""
+    if not topic or settings.convo_journal_top_k <= 0:
+        return set()
+    try:
+        hits = embeddings.retrieve(
+            topic, k=settings.convo_journal_top_k, corpus=store.JOURNAL_CORPUS
+        )
+        return {
+            int(h.id)
+            for h in hits
+            if str(h.id).isdigit() and h.score >= _SEMANTIC_MIN_SCORE
+        }
+    except Exception as exc:  # noqa: BLE001 — vectors are recall quality, not memory
+        log.warning("journal_semantic_recall_failed", error=str(exc))
+        return set()
+
+
+def _pair_lines(
+    conn, speakers: list[CastMember], now: datetime, within: timedelta
+) -> list[str]:
+    """One line per host pair with shared history: what they last talked about."""
+    names = {c.id: c.name for c in speakers}
+    lines: list[str] = []
+    for a, b in combinations(speakers, 2):
+        shared = store.journal_for_pair(conn, a.id, b.id, now, within=within, limit=1)
+        if not shared:
+            continue
+        e = shared[0]
+        who = names.get(e.host_id, e.host_id)
+        lines.append(
+            f"- Last time {a.name} and {b.name} shared a segment "
+            f"({_phrase_for(e, now)}): {who} {e.text}"
+        )
+    return lines
+
+
+def journal_section(
+    speakers: list[CastMember], now: datetime, topic: str | None = None
+) -> str:
+    """The per-host "what you've said on air before" block ('' if none) — D13.2.
+
+    Reads each speaker's journal once (bounded by the window/per-host dials),
+    ranks per host (card-tag overlap + a semantic boost from the `journal` corpus
+    when a `topic` is in play and vectors are up — else pure structured recency),
+    and appends the per-pair "what you two last talked about" line where both
+    hosts share history. Rendered for the PER-CALL system prompt only. Any
+    failure (off, no DB, empty journal) degrades to "" — the pre-D13 room.
+    """
+    if not settings.convo_journal_enabled or not speakers:
+        return ""
+    per_host = settings.convo_journal_per_host
+    if per_host <= 0:
+        return ""
+    within = timedelta(days=settings.convo_journal_window_days)
+    semantic = _semantic_ids(topic)
+    try:
+        blocks: list[str] = []
+        with store.connect() as conn:
+            for card in speakers:
+                # Headroom over the per-host cut so the ranking has real choices
+                # (the D9.4 pattern); the read itself stays bounded.
+                candidates = store.journal_for_host(
+                    conn, card.id, now, within=within, limit=per_host * 4
+                )
+                picked = _rank_for(card, candidates, per_host, semantic)
+                if not picked:
+                    continue
+                lines = "\n".join(_entry_line(e, now) for e in picked)
+                blocks.append(f"What {card.name} has said on air before:\n{lines}")
+            pair = _pair_lines(conn, speakers, now, within)
+    except Exception as exc:  # noqa: BLE001 — recall must never kill a slot
+        log.warning("journal_recall_failed", error=str(exc))
+        return ""
+    if pair:
+        blocks.append("Between them:\n" + "\n".join(pair))
+    if not blocks:
+        return ""
+
+    body = "\n\n".join(blocks)
+    log.info(
+        "journal_recall_assembled",
+        hosts=len(speakers),
+        blocks=len(blocks),
+        semantic=len(semantic),
+    )
+    return (
+        "The hosts' own on-air history — things THEY said on past shows (they "
+        "must stay consistent with it). Reference naturally and SPARINGLY, as "
+        "people with a shared past: a callback, a held opinion, a running bit — "
+        "never a recap. Anything listed here already aired — call it back in "
+        f"passing, do NOT re-run it as this segment's topic:\n{body}\n\n"
+    )
+
+
+def pair_section(speakers: list[CastMember], now: datetime) -> str:
+    """The pair line(s) alone, for the showrunner ('' if none) — D13.2.
+
+    The beat-picker needs the hosts' RELATIONSHIP (what they last talked about,
+    so a beat can build on it), not their full journals — those go to the
+    orchestrator via `journal_section`. Same dials, same degrade-to-"".
+    """
+    if not settings.convo_journal_enabled or not speakers:
+        return ""
+    within = timedelta(days=settings.convo_journal_window_days)
+    try:
+        with store.connect() as conn:
+            lines = _pair_lines(conn, speakers, now, within)
+    except Exception as exc:  # noqa: BLE001 — recall must never kill a slot
+        log.warning("journal_recall_failed", error=str(exc))
+        return ""
+    if not lines:
+        return ""
+    return (
+        "The hosts' shared on-air history (context for the beat — build on the "
+        "relationship if it fits, but do NOT re-pick these topics):\n"
+        + "\n".join(lines)
+        + "\n\n"
+    )

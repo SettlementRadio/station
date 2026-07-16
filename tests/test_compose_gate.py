@@ -30,7 +30,7 @@ def _patch_common(monkeypatch):
     monkeypatch.setattr(
         convo,
         "showrunner",
-        lambda ctx, now, *, frame=None, recent_block="", flow=None: "the beat",
+        lambda ctx, now, *, frame=None, recent_block="", flow=None, **kw: "the beat",
     )
     monkeypatch.setattr(
         convo,
@@ -49,6 +49,10 @@ def _patch_common(monkeypatch):
     )
     # D9.4 — memory off the DB here; its assembly is exercised in test_memory.
     monkeypatch.setattr(convo.memory_mod, "memory_section", lambda speakers, now: "")
+    monkeypatch.setattr(
+        convo.journal_mod, "journal_section", lambda speakers, now, topic=None: ""
+    )
+    monkeypatch.setattr(convo.journal_mod, "pair_section", lambda speakers, now: "")
 
 
 def test_clean_draft_passes_both_gates(monkeypatch):
@@ -91,6 +95,7 @@ def test_continuity_flag_regenerates_with_note_then_falls_back(monkeypatch):
         guest=None,
         memory="",
         flow=None,
+        **kwargs,
     ):
         seen_notes.append(revision_note)
         return SCRIPT
@@ -131,6 +136,7 @@ def test_safety_flag_regenerates_fresh_then_succeeds(monkeypatch):
         guest=None,
         memory="",
         flow=None,
+        **kwargs,
     ):
         notes.append(revision_note)
         return SCRIPT

@@ -641,7 +641,7 @@ def _capture_steers(monkeypatch):
         convo.freshness, "recent_openings_block", lambda now, fmt: "OPENINGS"
     )
 
-    def _showrunner(ctx, now, *, frame=None, recent_block="", flow=None):
+    def _showrunner(ctx, now, *, frame=None, recent_block="", flow=None, **kwargs):
         seen["topics"] = recent_block
         return "the beat"
 
@@ -666,6 +666,10 @@ def _capture_steers(monkeypatch):
         convo.guest_mod, "maybe_guest", lambda ctx, now, fmt, chance=None: None
     )
     monkeypatch.setattr(convo.memory_mod, "memory_section", lambda speakers, now: "")
+    monkeypatch.setattr(
+        convo.journal_mod, "journal_section", lambda speakers, now, topic=None: ""
+    )
+    monkeypatch.setattr(convo.journal_mod, "pair_section", lambda speakers, now: "")
     return ctx, seen
 
 

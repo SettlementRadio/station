@@ -488,3 +488,269 @@ def test_parse_raises_on_malformed_payload():
         journal_mod.parse_entries(
             '{"host": "vell"}', hosts=["vell"], segment_id="s", air_time=_AIR
         )
+
+
+# --- D13.2: recall — the "what you've said before" block ----------------------
+# The D9.4 sibling's contracts: pure ranking/rendering (per-host pick with tag +
+# semantic weighting, clock framing, the pair line), the bounded degrade paths
+# (off / empty / DB failure → "" — the pre-D13 room), and the injection contracts
+# (the block rides the per-call prompt of the orchestrator, the pair line rides
+# the showrunner's, and neither ever touches the cached core — the cache lever).
+
+from src.world.context import AssembledContext  # noqa: E402
+from src.world.store import CastMember, JournalEntry  # noqa: E402
+from src.writers import conversation as convo  # noqa: E402
+
+VELL = CastMember("vell", "Vell", "card", "vell_night", ["night", "relay"])
+WREN = CastMember("wren", "Wren", "card", "wren_day", ["sports"])
+_IW_NOW = datetime(2626, 7, 16, 20, 0)  # the in-world face of _AIR (+600y)
+
+
+def _jentry(
+    host: str,
+    text: str,
+    *,
+    eid: int,
+    kind: str = store.JOURNAL_KIND_OPINION,
+    days_ago: int = 1,
+    other_host: str | None = None,
+    tags: list[str] | None = None,
+) -> JournalEntry:
+    return JournalEntry(
+        host_id=host,
+        kind=kind,
+        text=text,
+        segment_id=f"seg-{eid}",
+        air_time=_AIR - timedelta(days=days_ago),
+        other_host=other_host,
+        in_world_time=_IW_NOW - timedelta(days=days_ago),
+        tags=tags or [],
+        id=eid,
+    )
+
+
+class _FakeConn:
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *exc):
+        return False
+
+
+def _stub_reads(monkeypatch, per_host: dict, pairs: list | None = None):
+    """Stub the store seam: per-host entries and the pair read."""
+    monkeypatch.setattr(journal_mod.store, "connect", lambda: _FakeConn())
+    monkeypatch.setattr(
+        journal_mod.store,
+        "journal_for_host",
+        lambda conn, host, now, **kw: list(per_host.get(host, [])),
+    )
+    monkeypatch.setattr(
+        journal_mod.store,
+        "journal_for_pair",
+        lambda conn, a, b, now, **kw: list(pairs or []),
+    )
+
+
+def test_journal_section_renders_per_host_frames_and_steers(monkeypatch):
+    _stub_reads(
+        monkeypatch,
+        {
+            "vell": [
+                _jentry(
+                    "vell",
+                    "thinks the renewal vote is a ritual, not a rule",
+                    eid=1,
+                    days_ago=1,
+                )
+            ]
+        },
+    )
+    block = journal_mod.journal_section([VELL], _AIR)
+    assert "What Vell has said on air before:" in block
+    assert "yesterday" in block  # clock-framed on the in-world face
+    assert "thinks the renewal vote is a ritual" in block
+    assert "call it back in passing" in block  # the sparing-callback steer
+    assert "do NOT re-run it" in block  # the D5 boundary, stated in the block
+
+
+def test_journal_ranking_prefers_card_tag_overlap(monkeypatch):
+    _stub_reads(
+        monkeypatch,
+        {
+            "vell": [
+                _jentry("vell", "newer but off-persona", eid=1, days_ago=1),
+                _jentry(
+                    "vell",
+                    "older but about the relay",
+                    eid=2,
+                    days_ago=5,
+                    tags=["relay"],
+                ),
+            ]
+        },
+    )
+    monkeypatch.setattr(journal_mod.settings, "convo_journal_per_host", 1)
+    block = journal_mod.journal_section([VELL], _AIR)
+    assert "older but about the relay" in block  # persona weight beats recency
+    assert "newer but off-persona" not in block
+
+
+def test_journal_semantic_hit_outranks_tags(monkeypatch):
+    _stub_reads(
+        monkeypatch,
+        {
+            "vell": [
+                _jentry("vell", "a relay opinion", eid=1, days_ago=1, tags=["relay"]),
+                _jentry("vell", "the semantically relevant one", eid=2, days_ago=5),
+            ]
+        },
+    )
+    monkeypatch.setattr(journal_mod.settings, "convo_journal_per_host", 1)
+    monkeypatch.setattr(journal_mod, "_semantic_ids", lambda topic: {2})
+    block = journal_mod.journal_section([VELL], _AIR, topic="tonight's beat")
+    assert "the semantically relevant one" in block
+    assert "a relay opinion" not in block
+
+
+def test_semantic_ids_reads_the_retrieved_shape(monkeypatch):
+    # Pins the real `_semantic_ids` against the provider's `Retrieved` shape (its
+    # id field joins back to the journal row id) — a wholesale stub hid a field-name
+    # bug here once.
+    from src.providers.embeddings import Retrieved
+
+    monkeypatch.setattr(
+        journal_mod.embeddings,
+        "retrieve",
+        lambda topic, *, k, corpus: [
+            Retrieved(id="7", text="t", score=0.9),
+            Retrieved(id="8", text="t", score=0.1),  # below the floor: no boost
+            Retrieved(id="canon-oops", text="t", score=0.5),  # non-numeric: skipped
+        ],
+    )
+    assert journal_mod._semantic_ids("the vote") == {7}
+
+
+def test_journal_pair_line_and_joke_qualifier(monkeypatch):
+    _stub_reads(
+        monkeypatch,
+        {
+            "vell": [
+                _jentry(
+                    "vell",
+                    "calls the relay 'the long ear'",
+                    eid=1,
+                    kind=store.JOURNAL_KIND_JOKE,
+                )
+            ]
+        },
+        pairs=[
+            _jentry(
+                "wren",
+                "teased Vell about voting twice",
+                eid=9,
+                kind=store.JOURNAL_KIND_EXCHANGE,
+                days_ago=2,
+                other_host="vell",
+            )
+        ],
+    )
+    block = journal_mod.journal_section([VELL, WREN], _AIR)
+    assert "a bit that landed" in block  # the joke reads as a callback-able bit
+    assert "Last time Vell and Wren shared a segment" in block
+    assert "Wren teased Vell about voting twice" in block  # attributed by name
+
+
+def test_journal_section_degrades_to_empty(monkeypatch):
+    monkeypatch.setattr(journal_mod.settings, "convo_journal_enabled", False)
+    assert journal_mod.journal_section([VELL], _AIR) == ""
+
+    monkeypatch.setattr(journal_mod.settings, "convo_journal_enabled", True)
+    monkeypatch.setattr(journal_mod.settings, "convo_journal_per_host", 0)
+    assert journal_mod.journal_section([VELL], _AIR) == ""
+
+    monkeypatch.setattr(journal_mod.settings, "convo_journal_per_host", 3)
+    _stub_reads(monkeypatch, {})  # an empty journal
+    assert journal_mod.journal_section([VELL], _AIR) == ""
+
+    def _boom():
+        raise RuntimeError("db down")
+
+    monkeypatch.setattr(journal_mod.store, "connect", _boom)
+    assert journal_mod.journal_section([VELL], _AIR) == ""  # DB failure → pre-D13
+    assert journal_mod.pair_section([VELL, WREN], _AIR) == ""
+
+
+def test_pair_section_is_only_the_relationship(monkeypatch):
+    _stub_reads(
+        monkeypatch,
+        {"vell": [_jentry("vell", "a solo opinion, not for the showrunner", eid=1)]},
+        pairs=[
+            _jentry(
+                "vell",
+                "argued about the charts",
+                eid=2,
+                kind=store.JOURNAL_KIND_EXCHANGE,
+                other_host="wren",
+            )
+        ],
+    )
+    block = journal_mod.pair_section([VELL, WREN], _AIR)
+    assert "Vell argued about the charts" in block
+    assert "do NOT re-pick" in block  # the D5 boundary for the beat-picker
+    assert "solo opinion" not in block  # the relationship, never the full journal
+
+    _stub_reads(monkeypatch, {}, pairs=[])
+    assert journal_mod.pair_section([VELL, WREN], _AIR) == ""
+
+
+# --- D13.2: injection contracts (the cache lever holds) ------------------------
+
+
+def _ctx() -> AssembledContext:
+    return AssembledContext(bible="BIBLE", dynamic="now", speakers=[VELL, WREN])
+
+
+def _capture_llm(monkeypatch) -> dict:
+    seen: dict = {}
+
+    def fake_generate(user, *, system, **kwargs):
+        seen["system"] = system
+        seen["cached"] = (
+            (kwargs.get("cached_context") or "")
+            + (kwargs.get("bible") or "")
+            + (kwargs.get("cards") or "")
+        )
+        return "OK"
+
+    monkeypatch.setattr(convo.llm, "generate", fake_generate)
+    return seen
+
+
+def test_orchestrate_carries_journal_in_the_per_call_prompt(monkeypatch):
+    seen = _capture_llm(monkeypatch)
+    convo.orchestrate(_ctx(), "beat", _AIR, journal="JRNL-MARKER\n\n")
+    assert "JRNL-MARKER" in seen["system"]
+    assert "JRNL-MARKER" not in seen["cached"]  # never in the cached core
+
+
+def test_showrunner_carries_the_pair_line_in_the_per_call_prompt(monkeypatch):
+    seen = _capture_llm(monkeypatch)
+    convo.showrunner(_ctx(), _AIR, pair_block="PAIR-MARKER\n\n")
+    assert "PAIR-MARKER" in seen["system"]
+    assert "PAIR-MARKER" not in seen["cached"]  # the cache lever holds
+
+
+def test_empty_journal_leaves_the_prompts_byte_identical(monkeypatch):
+    # Off/empty/DB-failure all yield "" — and "" must reproduce the pre-D13
+    # prompts byte-for-byte through both injection points.
+    seen = _capture_llm(monkeypatch)
+    convo.orchestrate(_ctx(), "beat", _AIR, journal="")
+    without = seen["system"]
+    convo.orchestrate(_ctx(), "beat", _AIR)
+    assert seen["system"] == without
+
+    convo.showrunner(_ctx(), _AIR, pair_block="")
+    without = seen["system"]
+    convo.showrunner(_ctx(), _AIR)
+    assert seen["system"] == without

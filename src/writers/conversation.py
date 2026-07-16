@@ -48,6 +48,7 @@ from ..world.context import AssembledContext
 from ..world.framing import ShowFrame
 from ..world.store import CastMember
 from . import guest as guest_mod
+from . import journal as journal_mod
 from . import memory as memory_mod
 from .guest import Guest
 
@@ -185,6 +186,7 @@ def showrunner(
     *,
     frame: ShowFrame | None = None,
     recent_block: str = "",
+    pair_block: str = "",
     flow: ShowFlow | None = None,
 ) -> str:
     """Pick tonight's beat: ONE event/angle for the two DJs, framed for the hour.
@@ -205,6 +207,12 @@ def showrunner(
     picking a fresh one; when the thread is spent / the pacing budget is up it
     transitions deliberately to a new subject; `None` (direct paths) always picks
     fresh.
+
+    `pair_block` (D13.2) is the hosts' RELATIONSHIP line — what these two last
+    talked about on air (`journal.pair_section`), so a beat can build on the
+    shared past. Deliberately NOT the full journal (the orchestrator gets that):
+    the beat-picker needs the relationship, not the biography. Per-call system
+    (the cache holds); "" keeps the pre-D13 pick.
     """
     names = _names(ctx)
     frame = frame or _frame_for(ctx, now)
@@ -219,6 +227,7 @@ def showrunner(
         f"On air right now: {situation}.\n\n"
         f"What's true right now:\n{ctx.dynamic or '(nothing notable)'}\n\n"
         f"{thread_block}"
+        f"{pair_block}"
         f"{freshness_section}"
         f"{task_block}"
     )
@@ -393,6 +402,7 @@ def orchestrate(
     recent_openings: str = "",
     guest: Guest | None = None,
     memory: str = "",
+    journal: str = "",
     flow: ShowFlow | None = None,
 ) -> str:
     """Write the two-DJ exchange in one call; return speaker-labelled dialogue.
@@ -421,6 +431,12 @@ def orchestrate(
     (`writers/memory.py`) — each host's lived history from the story log, joined
     to their card. Small + variable, so it rides HERE in the per-call system (the
     cache lever holds); "" keeps the memory-less shape.
+
+    `journal` (D13.2) is the pre-rendered "what you've said on air before" block
+    (`writers/journal.py`) — each host's OWN past statements (opinions, details,
+    running bits) plus the per-pair line, from the D13.1 capture. The D9.4
+    sibling: same per-call placement, same "" degrade. Distinct jobs — `memory`
+    is the world they lived through; `journal` is what THEY said about it.
 
     `flow` (D12.1/D12.2) is the slot's show position + talk thread. It makes the
     spoken settlement-time check POSITIONAL — dropped on cold `continue`/`close`
@@ -461,6 +477,9 @@ def orchestrate(
     #   * D9 (DJ memory): each host's history from the event log, joined to their card.
     #     [BUILT — D9.4: the `memory` block below, rendered by writers/memory.py.]
     #   * D10 (figures/quotes): an attributable quote a host can reference.
+    #   * D13 (self/interpersonal memory): what the hosts THEMSELVES said on past
+    #     shows, beside the D9.4 world memory. [BUILT — D13.2: the `journal` block
+    #     below, rendered by writers/journal.py.]
     freshness_section = f"{recent_openings}\n\n" if recent_openings else ""
     pickup = _pickup_section(flow)
     transition = _transition_section(flow)
@@ -491,6 +510,7 @@ def orchestrate(
         f"{freshness_section}"
         f"What's true right now:\n{ctx.dynamic or '(nothing notable)'}\n\n"
         f"{memory}"
+        f"{journal}"
         f"{guest_section}"
         f"{dispatch_section}"
         "Write a REAL conversation — two people who've shared this booth for years "
@@ -891,7 +911,21 @@ def compose_segment(
     # "" degrades to the memory-less room. The same block goes to the
     # orchestrator AND the continuity editor (misremembering flags).
     memory = memory_mod.memory_section(ctx.speakers, now)
-    beat = showrunner(ctx, now, frame=frame, recent_block=recent_topics, flow=flow)
+    # D13.2 — the showrunner gets ONLY the pair line (the relationship, not the
+    # full journal); the beat-picker steers WITH the shared past, never re-picks it.
+    pair_block = journal_mod.pair_section(ctx.speakers, now)
+    beat = showrunner(
+        ctx,
+        now,
+        frame=frame,
+        recent_block=recent_topics,
+        pair_block=pair_block,
+        flow=flow,
+    )
+    # D13.2 — the hosts' own on-air history (the D9.4 sibling), keyed to the beat
+    # so semantic recall can surface the relevant past statements; "" degrades to
+    # the pre-D13 room.
+    journal = journal_mod.journal_section(ctx.speakers, now, topic=beat)
 
     attempts = settings.convo_continuity_max_attempts
     revision_note: str | None = (
@@ -909,6 +943,7 @@ def compose_segment(
             recent_openings=recent_openings,
             guest=seg_guest,
             memory=memory,
+            journal=journal,
             flow=flow,
         ).strip()
 
@@ -993,6 +1028,7 @@ def compose_segment(
                     else None
                 ),
                 "memory_used": bool(memory),
+                "journal_used": bool(journal),
                 # D12.0/D12.2 — the slot's show position (open/continue/close) and
                 # whether it CONTINUED the prior thread, recorded for visibility/tests;
                 # None on the standalone path.
