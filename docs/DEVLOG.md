@@ -38,6 +38,45 @@ A typical *build* session will be short, e.g.:
 
 ---
 
+## 2026-07-16 — Phase D — D13 built: the hosts remember themselves (journal capture → recall → self-consistency gate)
+**Focus:** the whole D13 sub-pack (D13.0–D13.4) — the self/interpersonal memory the 2026-07-13
+persona audit named as the biggest remaining gap between "distinct voices" and "people who live at
+this station." **461 tests green; the 24h acceptance gate passes all seven properties (472 journal
+entries accrued across 10 hosts in the sim).**
+**Decisions:**
+- **The card is the bible; the journal is state** — enforced in three places: the extractor drops
+  card-contradicting candidates, the recall block never touches the cached core, and the editor
+  prompt states card > journal > draft outright. Canonising a journaled detail stays a human edit.
+- **Capture is post-gate, best-effort, aired-only** — one `haiku` call at the `top_up` chokepoint
+  (beside D5.1/D12.0); direct CLI paths never journal; a failed extraction costs nothing but a
+  log line (proven live, accidentally, against an empty credit balance).
+- **Recall = the D9.4 sibling** — per-host persona-weighted pick + a per-pair line; the showrunner
+  gets ONLY the relationship line. Semantic blend rides the one polymorphic `embeddings` table
+  (`journal` corpus, entity_id = row id, pruned with the row) with a similarity floor — top-k
+  membership alone is a no-op boost on a small corpus (found live, fixed with `_SEMANTIC_MIN_SCORE`).
+- **Self-contradiction = a continuity error** — no new gate; the same block goes to the editor.
+  Verified live: a draft reversing a journaled stance flags (sonnet → opus confirm), a consistent
+  one passes.
+**Changed:** `world/store.py` (host_journal + CRUD + prune-with-vectors + journal_counts),
+`writers/journal.py` (new: capture + recall), `writers/conversation.py` (showrunner pair line,
+orchestrate journal block, editor check), `scheduler.py` (capture call), `config.py`
+(`convo_journal_*`), `console.py` (HOST JOURNAL panel), `acceptance.py` (7th `journal_memory`
+property), `journal_demo.py` + `make journal-demo`, tests (test_journal.py, +compose/flow/console
+stubs), ADMIN_MANUAL/README/OVERVIEW (§2a row + tracker ✅)/freshness.py division-of-labour note.
+**Why:** the writers' room asserted "two people who've shared this booth for years" on card + world
+alone — the shared history was never evidenced. Now it accrues from what actually airs, recalls
+sparingly (a callback, never a re-run — the D5 boundary is stated in the block), and is enforced,
+which is exactly what makes emergent self-canon safe instead of random.
+**📣 Postable:** the `make journal-demo` transcript — day 1: Sera teases Kael that he's never flown
+the inner lanes at race speed, "extensively, in my imagination"; day 2, unprompted: "I've never run
+the Long-Haul tier, *we've established this extensively*." The hosts now have a shared past that
+actually happened on air.
+**Next:** the C5–C9 server track (the station is code-complete through D13); after the C9 soak,
+re-tune the extraction prompt against a week of real output.
+Commit: (this session)  ·  Clips: (none)
+
+---
+
 ## 2026-07-14 — Audit — Music catalogue audit: the old system enters canon, tracks realigned (95 tracks, 246 facts)
 **Focus:** audited `config/tracks.yaml` (95 tracks) against the canon and against how the code
 actually consumes each field (selector: mood/era/tags; writer: blurb/album/year). **All 95 tracks

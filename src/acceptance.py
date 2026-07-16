@@ -3,7 +3,7 @@
 Beyond each pack's unit tests, Phase D must pass ONE end-to-end run that proves the
 whole pipeline holds together *over time* — the dress rehearsal before the C9 live
 7-day soak. This module drives the real spine — **world tick → news → freshness →
-grid → music/commercials** — across an accelerated 24–48h window and asserts the six
+grid → music/commercials** — across an accelerated 24–48h window and asserts the seven
 integration properties that only an end-to-end run catches:
 
   1. **No dead gaps** — the schedule is continuous audio; the never-dead fallback never
@@ -18,6 +18,9 @@ integration properties that only an end-to-end run catches:
      runaway regeneration / call storms).
   6. **Schedule output is sane** — every slot has a measured duration, air order is
      monotonic, and the disclosure ident lands on its configured cadence.
+  7. **The hosts remember themselves** — aired talk accrues `host_journal` rows
+     (D13.1 capture at the chokepoint) and the recall block genuinely reaches both
+     the writers' room prompt and the continuity editor (D13.2/D13.3).
 
 **How it stays cheap + repeatable.** The one thing we do NOT exercise is the *writing
 quality* (that's the product, judged by ear) or the *voice* (Kokoro/ElevenLabs). So the
@@ -133,7 +136,7 @@ class PropertyResult:
 
 @dataclass
 class AcceptanceReport:
-    """The whole run: the six verdicts + the telemetry they were judged on."""
+    """The whole run: the seven verdicts + the telemetry they were judged on."""
 
     window_hours: float
     results: list[PropertyResult] = field(default_factory=list)
@@ -177,6 +180,10 @@ class _MockGen:
         self.by_kind: dict[str, int] = {}
         self._cast = list(cast_names)
         self._n = 0  # monotonic variation seed
+        # D13 — did the journal recall block genuinely reach each side of the gate?
+        # (The block's steer wording is the marker; asserted by the 7th property.)
+        self.saw_journal_in_room = False
+        self.saw_journal_at_editor = False
 
     def _tick_kind(self, kind: str) -> None:
         self.by_kind[kind] = self.by_kind.get(kind, 0) + 1
@@ -206,7 +213,38 @@ class _MockGen:
         # 1. Gates (safety + every continuity editor) → clear it.
         if "continuity editor" in s or "draft to review" in p:
             self._tick_kind("gate")
+            if "on-air history" in s:  # the D13.3 journal block reached the editor
+                self.saw_journal_at_editor = True
             return "OK"
+
+        # 1b. D13.1 — the journal archivist: return a small valid capture attributed
+        # to the roster ids the prompt itself names, varied by the counter, so the
+        # journal accrues (and recalls) across the window like the real thing.
+        if "station archivist" in s:
+            self._tick_kind("journal_extract")
+            ids = re.findall(r'"([a-z0-9_-]+)" \(', system or "")
+            if not ids:
+                return "[]"
+            captured = [
+                {
+                    "host": ids[0],
+                    "kind": "opinion",
+                    "text": f"holds that the hour turns on mark {self._n}",
+                    "other_host": None,
+                    "tags": ["sim"],
+                }
+            ]
+            if len(ids) > 1:
+                captured.append(
+                    {
+                        "host": ids[1],
+                        "kind": "exchange",
+                        "text": f"traded a running line about mark {self._n}",
+                        "other_host": ids[0],
+                        "tags": ["sim"],
+                    }
+                )
+            return json.dumps(captured)
 
         # 2. World tick: advance beat (JSON object), else propose (JSON array).
         if "next beat as a json object" in p:
@@ -219,6 +257,8 @@ class _MockGen:
         # 3. Talk: the writers'-room exchange → labelled turns with rostered names.
         if "write the exchange" in p or ("writers' room" in s and "spoken" in s):
             self._tick_kind("talk_script")
+            if "on-air history" in s:  # the D13.2 journal block reached the room
+                self.saw_journal_in_room = True
             return self._dialogue(ctx)
         if "pick" in p and "beat" in p:  # the showrunner's one-beat pick (free text)
             self._tick_kind("showrunner")
@@ -438,6 +478,7 @@ def _sim_environment(
         "DELETE FROM figures",
         "DELETE FROM news_coverage",
         "DELETE FROM airplay_history",
+        "DELETE FROM host_journal",
         f"DELETE FROM events WHERE source = '{store.EVENT_SOURCE_TICK}'",
         "DELETE FROM stories",
         "DELETE FROM state WHERE key IN ('world_tick_count', 'world_tick_last_at')",
@@ -506,7 +547,7 @@ def run_acceptance(
     start: datetime | None = None,
     dump_path: str | None = None,
 ) -> AcceptanceReport:
-    """Run the accelerated window end-to-end and return the six-property report.
+    """Run the accelerated window end-to-end and return the seven-property report.
 
     Imports the scheduler lazily so patching the provider seams is already in force
     before any generation runs. Accumulates every placed slot across the window (past
@@ -576,6 +617,7 @@ def run_acceptance(
         _check_stories_evolve(final_world, advanced_total, end),
         _check_cost_bounded(telemetry),
         _check_schedule_sane(timeline),
+        _check_journal_memory(timeline, final_world, gen),
     ]
     log.info("acceptance_done", ok=report.ok, **telemetry)
     return report
@@ -593,11 +635,13 @@ def _snapshot_world(now: datetime) -> dict:
         stories = store.active_stories(c)
         beats = {s.id: store.story_beats(c, s.id) for s in stories}
         airplay = store.recent_airplay(c, now, within=timedelta(days=3))
+        journal = store.journal_counts(c)  # D13: per-host accrual for the 7th property
     total_beats = sum(len(b) for b in beats.values())
     log.info(
         "acceptance_world_snapshot",
         active_stories=len(stories),
         total_beats=total_beats,
+        journal_rows=sum(journal.values()),
     )
     return {
         "stories": stories,
@@ -605,10 +649,11 @@ def _snapshot_world(now: datetime) -> dict:
         "openings": [
             (r.format, r.opening, r.topic) for r in airplay if r.opening or r.topic
         ],
+        "journal": journal,
     }
 
 
-# --- The six property checks (pure — unit-testable in isolation) -----------
+# --- The seven property checks (pure — unit-testable in isolation) -----------
 def _check_no_dead_gaps(
     timeline: list[dict], start: datetime, end: datetime
 ) -> PropertyResult:
@@ -768,6 +813,54 @@ def _check_cost_bounded(telemetry: dict) -> PropertyResult:
         "cost_bounded",
         True,
         f"{per:.1f} LLM calls per content slot ({calls}/{content}), within envelope",
+    )
+
+
+def _check_journal_memory(
+    timeline: list[dict], final_world: dict, gen: _MockGen
+) -> PropertyResult:
+    """The hosts remember themselves (D13): capture accrues, recall reaches the gate.
+
+    Three sub-assertions in one property: aired talk left `host_journal` rows behind
+    (the D13.1 chokepoint capture ran), the recall block reached the writers'-room
+    prompt (D13.2), and the SAME block reached the continuity editor (D13.3 — the
+    self-consistency gate is armed). Inconclusive-but-passing when the window held
+    no talk (nothing to journal) or the journal is disabled.
+    """
+    if not settings.convo_journal_enabled:
+        return PropertyResult(
+            "journal_memory", True, "convo_journal_enabled=False (skipped)"
+        )
+    talk = sum(1 for e in timeline if e.get("format") == "talk")
+    if talk == 0:
+        return PropertyResult(
+            "journal_memory", True, "no talk slots in window (inconclusive)"
+        )
+    per_host: dict = final_world.get("journal", {})
+    rows = sum(per_host.values())
+    if rows == 0:
+        return PropertyResult(
+            "journal_memory",
+            False,
+            f"{talk} talk slot(s) aired but no journal rows accrued (capture dead?)",
+        )
+    if not gen.saw_journal_in_room:
+        return PropertyResult(
+            "journal_memory",
+            False,
+            f"{rows} rows accrued but the recall block never reached the room",
+        )
+    if not gen.saw_journal_at_editor:
+        return PropertyResult(
+            "journal_memory",
+            False,
+            f"{rows} rows accrued but the block never reached the continuity editor",
+        )
+    return PropertyResult(
+        "journal_memory",
+        True,
+        f"{rows} entries across {len(per_host)} host(s) from {talk} talk slot(s); "
+        "recall reached the room AND the editor",
     )
 
 

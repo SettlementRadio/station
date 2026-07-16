@@ -661,6 +661,27 @@ def test_journal_pair_line_and_joke_qualifier(monkeypatch):
     assert "Wren teased Vell about voting twice" in block  # attributed by name
 
 
+def test_pair_line_skips_the_name_when_the_text_already_leads_with_one(monkeypatch):
+    # The demo bug: an exchange written subject-first ("Wren jokes that Vell …")
+    # used to render "Vell Wren jokes that Vell …" — the attribution doubled up.
+    _stub_reads(
+        monkeypatch,
+        {},
+        pairs=[
+            _jentry(
+                "vell",
+                "Wren jokes that Vell never finished the letter",
+                eid=3,
+                kind=store.JOURNAL_KIND_EXCHANGE,
+                other_host="wren",
+            )
+        ],
+    )
+    block = journal_mod.pair_section([VELL, WREN], _AIR)
+    assert "Wren jokes that Vell never finished the letter" in block
+    assert "Vell Wren jokes" not in block  # no doubled attribution
+
+
 def test_journal_section_degrades_to_empty(monkeypatch):
     monkeypatch.setattr(journal_mod.settings, "convo_journal_enabled", False)
     assert journal_mod.journal_section([VELL], _AIR) == ""

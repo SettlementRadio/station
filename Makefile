@@ -40,7 +40,7 @@ LIQ_LOG    := $(RUN_DIR)/liquidsoap.log
 PLAYER_URL := http://127.0.0.1:8000/
 STREAM_URL := http://127.0.0.1:8000/settlement.mp3
 
-.PHONY: help generate serve air play play-convo stop status console now-playing seed seed-canon reset-world seed-tracks seed-sponsors demo context costprobe costprobe-ab conversation format buffer schedule ident prune fallback health world-tick news-demo figures-demo freshness-demo continuity-demo programming-demo commercials-demo acceptance
+.PHONY: help generate serve air play play-convo stop status console now-playing seed seed-canon reset-world seed-tracks seed-sponsors demo context costprobe costprobe-ab conversation format buffer schedule ident prune fallback health world-tick news-demo figures-demo freshness-demo continuity-demo journal-demo programming-demo commercials-demo acceptance
 
 # B5 format default: `make format` builds a talk segment; override with FMT=news
 # or FMT=music. Pass a TOPIC=... to steer canon retrieval.
@@ -83,6 +83,7 @@ help:
 	@echo "  make figures-demo show the world's people speak — attributed quotes (D10)"
 	@echo "  make freshness-demo show anti-repetition keep talk openings/beats varied (D5)"
 	@echo "  make continuity-demo show consecutive talk slots play as ONE flowing show (D12)"
+	@echo "  make journal-demo  air → journal → recall → callback: the hosts remember themselves (D13)"
 	@echo "  make programming-demo show the weekly grid: programs/hosts by daypart (D6; token-free)"
 	@echo "  make commercials-demo hear a fresh spot + see the sparse break + a Powered-by read (D8)"
 	@echo "  make acceptance run the integrated 24-48h acceptance simulation — the Phase-D gate (D11.3)"
@@ -168,6 +169,10 @@ freshness-demo:
 continuity-demo:
 	@echo "==> Talk-continuity demo (D12)…"
 	$(PY) -m src.continuity_demo
+
+journal-demo:
+	@echo "==> Self-memory demo (D13)…"
+	$(PY) -m src.journal_demo
 
 # B2 proof: render the Lumen Festival at two `now` values and show the relative
 # phrase flip ("in five days" -> "yesterday"). Needs `make seed` first.

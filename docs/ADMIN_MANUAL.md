@@ -461,11 +461,37 @@ voice wins); no figures = a one-off invited persona. Hosts always open and close
 (60 — the look-back). A host prefers stories whose tags overlap their card tags; the
 continuity editor sees the same block, so misremembering re-rolls the draft.
 
+### Self & interpersonal memory — the journal (D13)  → Phase E panel
+The hosts' durable record of what THEY said on air (opinions, personal details, running bits,
+host-to-host exchanges): captured post-air by one `haiku` call per scheduled talk segment,
+recalled into future segments, and enforced by the continuity editor (a host reversing a
+journaled stance re-rolls the draft). **The card always wins** — the journal never overrides
+`docs/canon/90-cast.md`; to canonise a journaled detail, edit the card by hand.
+
+- **Dials (`.env`):** `CONVO_JOURNAL_ENABLED` (true — `false` is the clean pre-D13 rollback:
+  no capture, no recall, no editor check), `CONVO_JOURNAL_TIER` (haiku),
+  `CONVO_JOURNAL_MAX_ENTRIES_PER_SEGMENT` (4 — capture bound),
+  `CONVO_JOURNAL_MAX_DETAILS_PER_HOST` (12 — the bounded-biography cap; oldest details drop),
+  `CONVO_JOURNAL_PER_HOST` (3) / `CONVO_JOURNAL_WINDOW_DAYS` (30) / `CONVO_JOURNAL_TOP_K`
+  (8 — recall bounds; top_k=0 turns off the semantic blend).
+- **See it (cheap, cleans up after itself):** `make journal-demo` — two talk slots "air" and
+  are journaled, then a day later the hosts write WITH the journal; read day 2 for the callback.
+- **Inspect:** `make console` (the HOST JOURNAL panel: entries per host), or read-only SQL:
+  `psql "$DATABASE_URL" -c "SELECT host_id, kind, text, air_time FROM host_journal ORDER BY
+  air_time DESC LIMIT 20"`.
+- **Prune one bad entry:** `psql "$DATABASE_URL" -c "DELETE FROM host_journal WHERE id = <id>"`
+  then clear its vector: `DELETE FROM embeddings WHERE corpus='journal' AND entity_id='<id>'`.
+  (The per-host detail cap prunes automatically; this is for a wrong/unwanted memory.)
+- **Lifecycle:** runtime accrual — survives `seed-canon`, cleared by `reset-world`, backed up
+  with the world DB (§2a). Only AIRED segments journal; `make conversation`/`make format`
+  never do.
+
 ### Verify
 ```bash
 pytest -q tests/test_tts_emotion.py tests/test_lexicon.py tests/test_voices.py \
-          tests/test_guest.py tests/test_memory.py
+          tests/test_guest.py tests/test_memory.py tests/test_journal.py
 .venv/bin/python -m src.formats talk   # a talk segment; logs show emotion/memory/guest per slot
+make journal-demo                      # the D13 loop end-to-end on paper (air → recall → callback)
 ```
 
 ---
@@ -477,8 +503,9 @@ pytest -q tests/test_tts_emotion.py tests/test_lexicon.py tests/test_voices.py \
 make console            # or: python -m src.console
 ```
 Panels: **on air / next** (program · format · hosts · duration), **buffer** runway (the health
-calc), **last run** heartbeat, the **story log** (active stories + newest beats), and a **cost**
-rollup (omitted until the jobs persist one). Reads existing state, mutates nothing; degrades
+calc), **last run** heartbeat, the **story log** (active stories + newest beats), the **host
+journal** (D13 — entries accrued per host), and a **cost** rollup (omitted until the jobs
+persist one). Reads existing state, mutates nothing; degrades
 gracefully if the DB is down. **Operator-only, never internet-exposed.** Distinct from
 `make status`, which shows the playout processes + mount. Panel sizes:
 `PROGRAMMING_CONSOLE_UPCOMING` / `CONSOLE_STORY_LIMIT` / `CONSOLE_BEATS_PER_STORY`.

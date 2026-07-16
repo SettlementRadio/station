@@ -22,6 +22,16 @@ suppresses the opening-fingerprint steer on a cold `continue` slot (which has no
 "opening"). New-thread openings + transitions still get the full freshness steer, so a
 fresh thread never starts like a recent one. (See writers/conversation.py, D12.3.)
 
+D13 division of labour (the hosts' self/interpersonal journal): the full memory map is
+now five entries, each with ONE job — D4 coverage = the news desk's INTENDED story
+recurrence; D5 airplay (this module) = broad output anti-repetition, what NOT to
+re-say; D9.4 DJ memory = a host remembering the WORLD's stories; D12 hand-off = the
+live thread across adjacent segments of one show; D13 journal
+(writers/journal.py) = the durable positive memory of what the hosts THEMSELVES
+said — opinions, details, bits, pair history. D13 recall never fights D5: its block
+tells the room a remembered topic is a CALLBACK, not a licence to re-run it, so D5
+keeps vetoing wording/topic loops while D13 supplies the shared past.
+
 Feature extraction is deliberately CHEAP — string heuristics over what the producers
 already put on the `Segment` (`meta["beat"]`, `meta["stories"]`, the script), never an
 extra LLM call (per CLAUDE.md routing, reach for `haiku` only if heuristics prove

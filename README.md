@@ -63,7 +63,9 @@ cuts in on the hour and hands back.
 - **See it, token-free** — `make programming-demo` prints the weekly daypart map, the clock walking across
   a program boundary (pinned news landing on the hour), run-lengths, and the console + feed;
   `make continuity-demo` prints a show's consecutive talk scripts back-to-back so the single-show flow
-  is visible (a few Claude calls, no TTS).
+  is visible (a few Claude calls, no TTS); `make journal-demo` runs the D13 self-memory loop on paper —
+  two slots air and are journaled, and the next day's script calls the journal back (cleans up after
+  itself).
 - **Operator console** (private, read-only) — `make console` shows on-air/next, buffer runway, the
   last-run heartbeat, and the world story log. Never internet-exposed.
 - **Public now-playing feed** — `make now-playing` writes `segments/nowplaying.json` (refreshed on every
@@ -225,6 +227,20 @@ same block is shown to the continuity editor, so a host misremembering a logged 
 and re-rolled like any continuity error. Distinct from the news desk's coverage memory (D4) and
 the anti-repetition freshness memory (D5) — this is in-character recall.
 `CONVO_MEMORY_ENABLED=false` switches it off.
+
+**Self & interpersonal memory — the journal (D13).** The hosts also remember *themselves and each
+other*: after a scheduled talk segment airs, one cheap `haiku` extraction distills it into durable
+`host_journal` rows — opinions voiced, personal details revealed, jokes with callback potential,
+and what two hosts last talked about. Future segments get a "what you've said on air before" block
+(per host, persona-weighted, semantically recalled against the slot's beat via the `journal`
+embeddings corpus) plus a per-pair relationship line for the showrunner — so a host can say "as I
+said the other night…" and be *right*. The continuity editor sees the same block, making a host who
+reverses a journaled stance a flagged continuity error — which is what makes emergent self-canon
+safe: a detail a host invents about themselves becomes something they stay true to. **The
+hand-authored cast card always wins over the journal.** Capture is post-gate and best-effort (a
+segment never fails because of its journal); personal details are capped per host
+(`CONVO_JOURNAL_MAX_DETAILS_PER_HOST`); only aired segments journal. See the loop on paper with
+`make journal-demo`. `CONVO_JOURNAL_ENABLED=false` is the clean rollback.
 
 **4. World-state database (Postgres).** From Phase B the world (canon, cast, events) lives in a
 local PostgreSQL database, seeded from the **canon bible**. Install and start it with Homebrew, then

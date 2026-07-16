@@ -221,7 +221,7 @@ def test_schedule_sane_fails_on_zero_duration():
 
 # --- end-to-end (DB-gated) --------------------------------------------------
 def test_run_acceptance_end_to_end():
-    """A short isolated run on the real spine — all six properties must pass.
+    """A short isolated run on the real spine — all seven properties must pass.
 
     Skips cleanly without Postgres/pgvector; otherwise it seeds nothing of its own and
     rolls the whole world back (isolated), so it never touches the operator's DB.
@@ -240,4 +240,4 @@ def test_run_acceptance_end_to_end():
     assert report.telemetry["content_slots"] > 0
     failures = [f"{r.name}: {r.detail}" for r in report.results if not r.ok]
     assert report.ok, "acceptance properties failed:\n" + "\n".join(failures)
-    assert len(report.results) == 6
+    assert len(report.results) == 7

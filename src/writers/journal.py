@@ -388,10 +388,19 @@ def _pair_lines(
         if not shared:
             continue
         e = shared[0]
-        who = names.get(e.host_id, e.host_id)
+        # Attribute by name — unless the extractor already wrote the sentence
+        # with a host's name as its subject ("Sera jokes that Kael …"), where a
+        # prepended name would double up ("Kael Sera jokes …").
+        first_word = e.text.split()[0].rstrip(",.:;") if e.text.split() else ""
+        pair_names = {a.name.lower(), b.name.lower()}
+        who = (
+            ""
+            if first_word.lower() in pair_names
+            else names.get(e.host_id, e.host_id) + " "
+        )
         lines.append(
             f"- Last time {a.name} and {b.name} shared a segment "
-            f"({_phrase_for(e, now)}): {who} {e.text}"
+            f"({_phrase_for(e, now)}): {who}{e.text}"
         )
     return lines
 
