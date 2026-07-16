@@ -741,6 +741,18 @@ def test_showrunner_carries_the_pair_line_in_the_per_call_prompt(monkeypatch):
     assert "PAIR-MARKER" not in seen["cached"]  # the cache lever holds
 
 
+def test_continuity_editor_sees_the_journal_and_the_precedence(monkeypatch):
+    # D13.3 — the self-consistency gate: the editor's prompt carries the journal
+    # block, names a self-contradiction an ISSUE, and states the card-wins
+    # ordering (card > journal > draft). Never in the cached core.
+    seen = _capture_llm(monkeypatch)
+    convo.continuity_check("Vell: hi.", _ctx(), journal="JRNL-MARKER")
+    assert "JRNL-MARKER" in seen["system"]
+    assert "JRNL-MARKER" not in seen["cached"]
+    assert "contradicting a stance" in seen["system"]  # self-contradiction = ISSUE
+    assert "card always wins" in seen["system"]  # the precedence, stated outright
+
+
 def test_empty_journal_leaves_the_prompts_byte_identical(monkeypatch):
     # Off/empty/DB-failure all yield "" — and "" must reproduce the pre-D13
     # prompts byte-for-byte through both injection points.
@@ -754,3 +766,8 @@ def test_empty_journal_leaves_the_prompts_byte_identical(monkeypatch):
     without = seen["system"]
     convo.showrunner(_ctx(), _AIR)
     assert seen["system"] == without
+
+    convo.continuity_check("Vell: hi.", _ctx(), journal="")
+    without = seen["system"]
+    convo.continuity_check("Vell: hi.", _ctx())
+    assert seen["system"] == without  # the editor too (D13.3)

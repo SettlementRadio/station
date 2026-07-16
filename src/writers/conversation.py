@@ -633,7 +633,7 @@ def _guest_section(guest: Guest | None) -> str:
 
 
 def continuity_check(
-    script: str, ctx: AssembledContext, *, memory: str = ""
+    script: str, ctx: AssembledContext, *, memory: str = "", journal: str = ""
 ) -> ContinuityResult:
     """Check the draft against canon; escalate to opus only if sonnet flags trouble.
 
@@ -644,28 +644,51 @@ def continuity_check(
     `memory` (D9.4) is the same lived-history block the orchestrator saw — shown
     to the editor so a host MISREMEMBERING a logged story (wrong outcome, wrong
     framing of a resolved arc) flags like any continuity error.
+
+    `journal` (D13.3) is the same "what you've said on air before" block the
+    orchestrator saw — shown to the editor so a host CONTRADICTING their own
+    journaled stance/detail/bit flags too. This is the self-consistency gate that
+    makes emergent self-canon durable AND safe: a detail a host invents about
+    themselves becomes something they must stay true to, not random noise. The
+    card-wins ordering is stated in the prompt (the hand-authored card beats the
+    journal beats the draft). No new gate machinery — a flag takes the standard
+    C0 path (regenerate with the note → evergreen).
     """
     tier = settings.convo_continuity_tier
-    note = _run_continuity(script, ctx, tier, memory)
+    note = _run_continuity(script, ctx, tier, memory, journal)
     ok = _is_ok(note)
     if not ok:
         # The first pass smells a problem — spend a more careful model to confirm.
         log.warning("convo_continuity_flagged", tier=tier, note=note[:300])
         tier = settings.convo_continuity_escalation_tier
-        note = _run_continuity(script, ctx, tier, memory)
+        note = _run_continuity(script, ctx, tier, memory, journal)
         ok = _is_ok(note)
     log.info("convo_continuity_done", tier=tier, ok=ok)
     return ContinuityResult(ok=ok, tier=tier, note=note)
 
 
 def _run_continuity(
-    script: str, ctx: AssembledContext, tier: str, memory: str = ""
+    script: str, ctx: AssembledContext, tier: str, memory: str = "", journal: str = ""
 ) -> str:
     """One continuity pass at `tier`; returns the editor's note ('OK' / 'ISSUES…')."""
     memory_block = (
         "The hosts' remembered history from the station log — the draft must not "
         f"contradict or misdate any of it:\n{memory}\n"
         if memory
+        else ""
+    )
+    # D13.3 — the self-consistency check, mirroring the D9.4 misremembering block
+    # above: same block the orchestrator saw, one added instruction. The precedence
+    # is stated outright: card > journal > draft — a journal line that itself
+    # conflicts with a card is capture noise, never grounds to flag the draft.
+    journal_block = (
+        "The hosts' own journaled on-air history — what they have SAID on past "
+        "shows. A host contradicting a stance, personal detail, or running bit "
+        "recorded here is an ISSUE (self-consistency). Precedence: the character "
+        "card always wins — over this journal AND the draft — so if a journal "
+        "line conflicts with a card, trust the card and do not flag the draft "
+        f"for following it:\n{journal}\n"
+        if journal
         else ""
     )
     system = (
@@ -680,6 +703,7 @@ def _run_continuity(
         "single word OK if it is consistent and in character, otherwise 'ISSUES:' "
         "followed by a terse list. Do not rewrite the draft.\n\n"
         f"{memory_block}"
+        f"{journal_block}"
     )
     note = llm.generate(
         f"Draft to check:\n\n{script}",
@@ -980,7 +1004,10 @@ def compose_segment(
             log.warning("convo_guest_bracket_flag", seg_id=seg_id, attempt=attempt)
             continue
 
-        continuity = continuity_check(script, ctx, memory=memory)
+        # D9.4 + D13.3 — the editor sees the SAME memory and journal blocks the
+        # orchestrator saw: misremembering the world OR contradicting one's own
+        # journaled past both flag, through the one existing gate.
+        continuity = continuity_check(script, ctx, memory=memory, journal=journal)
         if not continuity.ok:
             last_reason = f"continuity: {continuity.note}"
             revision_note = continuity.note  # feed the editor's note into the rewrite

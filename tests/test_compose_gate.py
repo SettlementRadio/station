@@ -72,6 +72,37 @@ def test_clean_draft_passes_both_gates(monkeypatch):
     assert seg.audio_path == "/x/talk-1.mp3"
 
 
+def test_journal_reaches_orchestrator_and_editor_alike(monkeypatch):
+    # D13.3 — the ONE journal block goes to both sides of the gate: the room that
+    # writes with it and the editor that enforces it. Same-block is the contract
+    # (an editor checking against a different journal than the writer saw would
+    # flag phantom contradictions).
+    _patch_common(monkeypatch)
+    monkeypatch.setattr(
+        convo.journal_mod,
+        "journal_section",
+        lambda speakers, now, topic=None: "JRNL-BLOCK\n\n",
+    )
+    seen: dict = {}
+
+    def _orchestrate(ctx, beat, now, *, journal="", **kwargs):
+        seen["orchestrate"] = journal
+        return SCRIPT
+
+    def _continuity(script, ctx, *, memory="", journal=""):
+        seen["editor"] = journal
+        return ContinuityResult(True, "sonnet", "OK")
+
+    monkeypatch.setattr(convo, "orchestrate", _orchestrate)
+    monkeypatch.setattr(convo, "safety_check", lambda text: _ok_safety())
+    monkeypatch.setattr(convo, "continuity_check", _continuity)
+
+    seg = convo.compose_segment(_ctx(), NOW, seg_id="talk-jrnl")
+    assert seen["orchestrate"] == "JRNL-BLOCK\n\n"
+    assert seen["editor"] == "JRNL-BLOCK\n\n"  # the SAME block, both places
+    assert seg.meta["journal_used"] is True
+
+
 def test_continuity_flag_regenerates_with_note_then_falls_back(monkeypatch):
     _patch_common(monkeypatch)
     monkeypatch.setattr(convo, "safety_check", lambda text: _ok_safety())
