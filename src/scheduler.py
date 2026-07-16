@@ -93,6 +93,7 @@ from .production.placement import (
 from .segment import Segment
 from .world import programming, store
 from .world.programming import Program
+from .writers.journal import capture_segment as capture_journal
 
 log = get_logger(__name__)
 
@@ -794,6 +795,11 @@ def top_up(now: datetime | None = None) -> list[dict]:
         # each need wiring. Best-effort + filters static idents/evergreen internally;
         # the memory persists past the C2.5 disk GC (the point — freshness.py).
         record_airplay_features(seg)
+        # D13.1 — the hosts' journal: one cheap post-render extraction distills what
+        # the hosts said about THEMSELVES (opinions/details/jokes/exchanges) into
+        # durable memory. Best-effort + filters non-talk/evergreen internally; only
+        # AIRED segments become memory (the direct CLI paths never reach here).
+        capture_journal(seg)
         entry = _entry(seg)
         duration = _duration_of(entry)
         upcoming.append(entry)

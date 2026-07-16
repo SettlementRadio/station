@@ -164,6 +164,7 @@ def test_world_and_story_panels_render_from_the_store(monkeypatch, tmp_path):
     monkeypatch.setattr(store, "get_state", lambda conn, key: state_kv.get(key))
     monkeypatch.setattr(store, "active_stories", lambda conn, limit=None: [story])
     monkeypatch.setattr(store, "story_beats", lambda conn, sid: [beat])
+    monkeypatch.setattr(store, "journal_counts", lambda conn: {"vell": 2, "wren": 1})
 
     @contextlib.contextmanager
     def _fake_conn():
@@ -175,4 +176,5 @@ def test_world_and_story_panels_render_from_the_store(monkeypatch, tmp_path):
     assert "ticks run: 12" in report and "active stories: 1" in report
     assert "The Relay Goes Dark" in report and "[developing]" in report
     assert "Contact lost at dusk" in report  # the newest beat
+    assert "vell: 2" in report and "wren: 1" in report  # the D13.1 journal line
     assert "no usage rollup recorded yet" in report  # cost omitted gracefully

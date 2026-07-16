@@ -446,6 +446,15 @@ JOURNAL_KINDS = (
     JOURNAL_KIND_EXCHANGE,
 )
 
+# The journal's corpus on the polymorphic `embeddings` table (D13.1: entries are
+# embedded best-effort for D13.2 semantic recall; `entity_id` is the journal row id).
+JOURNAL_CORPUS = "journal"
+# The journal embeddings' provenance (`embeddings.source`): captured from AIR — not
+# `seed`/`bible` (so a canon refresh, which drops only the folder-sourced embeddings,
+# leaves them standing) and not `tick` (honesty: the tick didn't write them). Cleared
+# wholesale by `reset-world` like all embeddings.
+JOURNAL_SOURCE_AIR = "air"
+
 
 @dataclass(frozen=True)
 class JournalEntry:
@@ -1989,12 +1998,15 @@ def _journal_from_row(row: tuple) -> JournalEntry:
 
 def insert_journal_entries(
     conn: psycopg.Connection, entries: Iterable[JournalEntry]
-) -> int:
-    """Insert journal entries (a segment's post-air capture, D13.1); return the count.
+) -> list[int]:
+    """Insert journal entries (a segment's post-air capture, D13.1); return their ids.
 
     Validates every `kind` against `JOURNAL_KINDS` before writing anything, so a
-    capture bug fails loudly rather than accreting junk memory. `id` is DB-assigned
-    (ignored on insert). Append-only — the journal is history, never edited in place.
+    capture bug fails loudly rather than accreting junk memory. Returns the
+    DB-assigned row ids in input order — the capture step embeds each entry into the
+    `JOURNAL_CORPUS` keyed by this id, so a pruned row's embedding can be dropped
+    with it. Per-row RETURNING (a segment yields a handful of entries, never a
+    batch). Append-only — the journal is history, never edited in place.
     """
     rows = list(entries)
     bad = [(e.host_id, e.kind) for e in rows if e.kind not in JOURNAL_KINDS]
@@ -2002,10 +2014,12 @@ def insert_journal_entries(
         raise ValueError(
             f"insert_journal_entries: unknown kind(s) {bad}; expected {JOURNAL_KINDS}"
         )
-    conn.cursor().executemany(
-        "INSERT INTO host_journal (host_id, other_host, kind, text, segment_id, "
-        "air_time, in_world_time, tags) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)",
-        [
+    ids: list[int] = []
+    for e in rows:
+        row = conn.execute(
+            "INSERT INTO host_journal (host_id, other_host, kind, text, segment_id, "
+            "air_time, in_world_time, tags) VALUES (%s, %s, %s, %s, %s, %s, %s, %s) "
+            "RETURNING id",
             (
                 e.host_id,
                 e.other_host,
@@ -2015,12 +2029,11 @@ def insert_journal_entries(
                 e.air_time,
                 e.in_world_time,
                 e.tags,
-            )
-            for e in rows
-        ],
-    )
-    log.info("db_insert_journal", count=len(rows))
-    return len(rows)
+            ),
+        ).fetchone()
+        ids.append(row[0])
+    log.info("db_insert_journal", count=len(ids))
+    return ids
 
 
 def journal_for_host(
@@ -2096,20 +2109,41 @@ def prune_journal(
     don't accrete unbounded life-facts that crowd the card. Oldest-first drop —
     reference-weighted retention can layer on once recall usage is tracked; for now
     the newest N stand. Callable for any kind; `detail` is the one the cap targets.
+
+    A pruned row's `JOURNAL_CORPUS` embedding goes with it (app-level cleanup — no
+    FK spans corpora, per the D2 soft-reference rule), so a dropped memory can't
+    keep resurfacing through semantic recall.
     """
     if kind not in JOURNAL_KINDS:
         raise ValueError(
             f"prune_journal: unknown kind {kind!r}; expected {JOURNAL_KINDS}"
         )
-    cur = conn.execute(
-        "DELETE FROM host_journal WHERE id IN ("
-        "SELECT id FROM host_journal WHERE host_id = %s AND kind = %s "
-        "ORDER BY air_time DESC, id DESC OFFSET %s)",
-        (host_id, kind, keep),
+    dropped = [
+        row[0]
+        for row in conn.execute(
+            "DELETE FROM host_journal WHERE id IN ("
+            "SELECT id FROM host_journal WHERE host_id = %s AND kind = %s "
+            "ORDER BY air_time DESC, id DESC OFFSET %s) RETURNING id",
+            (host_id, kind, keep),
+        ).fetchall()
+    ]
+    if dropped:
+        conn.execute(
+            "DELETE FROM embeddings WHERE corpus = %s AND entity_id = ANY(%s)",
+            (JOURNAL_CORPUS, [str(i) for i in dropped]),
+        )
+    log.info(
+        "db_prune_journal", host_id=host_id, kind=kind, keep=keep, removed=len(dropped)
     )
-    n = cur.rowcount
-    log.info("db_prune_journal", host_id=host_id, kind=kind, keep=keep, removed=n)
-    return n
+    return len(dropped)
+
+
+def journal_counts(conn: psycopg.Connection) -> dict[str, int]:
+    """Journal entries per host (hosts with rows only) — console/operator visibility."""
+    rows = conn.execute(
+        "SELECT host_id, count(*) FROM host_journal GROUP BY host_id ORDER BY host_id"
+    ).fetchall()
+    return dict(rows)
 
 
 def get_state(conn: psycopg.Connection, key: str) -> str | None:

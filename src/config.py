@@ -249,6 +249,30 @@ class Settings(BaseSettings):
     # Phase E (needs reliable next-slot look-ahead), per the D12.4 scope gate.
     convo_flow_signon: bool = True
 
+    # --- DJ self/interpersonal memory (D13) -------------------------------------
+    # The hosts' on-air journal: after a scheduled talk segment renders, ONE cheap
+    # extraction distills the DURABLE things the hosts said about THEMSELVES —
+    # opinions voiced, personal details revealed, jokes with callback potential,
+    # host-to-host exchanges — into `host_journal` rows (src/writers/journal.py),
+    # recalled into future segments (D13.2) and shown to the continuity editor
+    # (D13.3). Distinct from its neighbours: D4 is the news desk's story
+    # recurrence, D5 output anti-repetition, D9.4 the hosts remembering the WORLD;
+    # D13 is what the hosts said/did on air — self and interpersonal. The card
+    # always wins over the journal. `convo_journal_enabled=False` is the clean
+    # rollback to the pre-D13 room (no capture, no recall).
+    convo_journal_enabled: bool = True
+    # Capture is post-gate, best-effort, high-volume/low-stakes → the cheap tier
+    # (CLAUDE.md model routing), never the writing brain.
+    convo_journal_tier: str = "haiku"
+    convo_journal_max_tokens: int = 600  # a few one-sentence JSON entries — small
+    # Capture bound: at most this many journal entries per aired talk segment
+    # (most segments should yield 0–2; the extractor is told fewer is better).
+    convo_journal_max_entries_per_segment: int = 4
+    # The bounded-biography cap: at most this many `detail` (personal-fact) rows
+    # per host; on overflow the oldest drop (prune runs at capture). Keeps hosts
+    # from accreting unbounded life-facts that crowd the hand-authored card.
+    convo_journal_max_details_per_host: int = 12
+
     # --- Content-safety gate (C0: real automated check on every draft) ---------
     # CLAUDE.md "Content safety": before any public broadcast, generated text must
     # pass a safety gate. The gate is a fast keyword pre-filter + a cheap LLM pass

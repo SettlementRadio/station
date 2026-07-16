@@ -168,6 +168,15 @@ def story_log_lines(conn, now: datetime) -> list[str]:
     return lines
 
 
+def journal_lines(conn) -> list[str]:
+    """The hosts' journal at a glance (D13.1): entries accrued per host."""
+    per_host = store.journal_counts(conn)
+    if not per_host:
+        return ["  (no journal entries yet — talk segments accrue them as they air)"]
+    parts = "  ·  ".join(f"{host}: {n}" for host, n in per_host.items())
+    return [f"  {parts}"]
+
+
 def cost_lines(conn) -> list[str]:
     """Cost rollup (OVERVIEW §2) — omitted gracefully until the jobs persist one."""
     rollup = store.get_state(conn, "usage_rollup")
@@ -209,6 +218,7 @@ def render(now: datetime | None = None) -> str:
         with store.connect() as conn:
             out += world_lines(conn, now)
             out += ["", "── STORY LOG ──", *story_log_lines(conn, now)]
+            out += ["", "── HOST JOURNAL ──", *journal_lines(conn)]
             out += ["", "── COST ──", *cost_lines(conn)]
     except Exception as exc:  # noqa: BLE001 — the console must never crash on a read
         out += [f"  (world/story log unavailable: {exc})"]
