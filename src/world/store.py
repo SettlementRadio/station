@@ -432,6 +432,61 @@ class Sponsor:
     tags: list[str] = field(default_factory=list)
 
 
+# The `host_journal.kind` vocabulary (D13.0): the four durable things a host leaves
+# behind after a talk segment airs. Enforced at insert (`insert_journal_entries`
+# raises on an unknown kind) so a capture bug fails loudly, not as silent junk rows.
+JOURNAL_KIND_OPINION = "opinion"  # a stance the host voiced on air
+JOURNAL_KIND_DETAIL = "detail"  # a personal fact revealed on air (bounded per host)
+JOURNAL_KIND_JOKE = "joke"  # a joke/running-gag with callback potential
+JOURNAL_KIND_EXCHANGE = "exchange"  # the gist of a notable host-to-host exchange
+JOURNAL_KINDS = (
+    JOURNAL_KIND_OPINION,
+    JOURNAL_KIND_DETAIL,
+    JOURNAL_KIND_JOKE,
+    JOURNAL_KIND_EXCHANGE,
+)
+
+
+@dataclass(frozen=True)
+class JournalEntry:
+    """One durable on-air self/interpersonal memory (a `host_journal` row, D13.0).
+
+    What a host said or did ON AIR that should stay true of them: an opinion they
+    voiced, a personal detail they revealed, a joke with callback potential, or the
+    gist of an exchange with a colleague (`other_host` set — interpersonal memory,
+    "what you two last talked about"). `text` is ONE compact sentence — distilled
+    recall, never a transcript. Captured post-air (D13.1), recalled into future
+    segments (D13.2), and shown to the continuity editor (D13.3) so a host
+    contradicting their own journaled past flags like any continuity error.
+
+    THE CARD IS THE BIBLE; THE JOURNAL IS STATE (the D13 load-bearing rule): the
+    hand-authored card (`docs/canon/90-cast.md`) always WINS on conflict — an entry
+    contradicting a card is a capture bug to drop, never a canon change, and the
+    journal never edits or auto-appends to a card.
+
+    `host_id`/`other_host` are plain text, NOT FKs to `"cast"` — deliberately, like
+    the other accrual tables: the journal must survive a cast reseed (`seed-canon`
+    truncates `"cast"`). `air_time` is the segment's REAL broadcast air time (the
+    D5 timeline — recall windows anchor on real air order, same rationale as
+    `AirplayRecord.aired_at`); `in_world_time` is the optional in-world face where
+    useful. Runtime accrual (§2a): survives `seed-canon`, cleared only by the
+    destructive `reset-world`, backed up with the world DB (the hosts' lived
+    history is irreplaceable, like tick state).
+
+    `id` is the DB-assigned row id (read-only; ignored on insert).
+    """
+
+    host_id: str
+    kind: str
+    text: str
+    segment_id: str
+    air_time: datetime
+    other_host: str | None = None
+    in_world_time: datetime | None = None
+    tags: list[str] = field(default_factory=list)
+    id: int | None = None
+
+
 @dataclass(frozen=True)
 class EmbeddingRow:
     """One row to write into the polymorphic `embeddings` table (D2).
@@ -571,6 +626,29 @@ CREATE TABLE IF NOT EXISTS quotes (
     source            text NOT NULL DEFAULT 'tick'
 );
 
+-- The hosts' self/interpersonal memory (D13.0): one row per durable thing a host
+-- said/revealed on air — an opinion, a personal detail, a joke with callback
+-- potential, or the gist of a host-to-host exchange (`other_host` set). Captured
+-- post-air (D13.1), recalled into future segments (D13.2), shown to the continuity
+-- editor (D13.3). `host_id`/`other_host` are plain text, NO FK to `"cast"` — the
+-- journal must survive a cast reseed, like the other accrual tables. `air_time` is
+-- the segment's REAL broadcast air time (the D5 timeline); `in_world_time` the
+-- optional in-world face. THE CARD WINS: the journal never overrides the
+-- hand-authored cast card — a contradicting entry is a capture bug, not canon.
+-- Runtime accrual (§2a): survives `seed-canon`, cleared only by `reset-world`
+-- (it is in `_WORLD_TABLES`), backed up with the world DB.
+CREATE TABLE IF NOT EXISTS host_journal (
+    id            bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    host_id       text NOT NULL,
+    other_host    text,
+    kind          text NOT NULL,
+    text          text NOT NULL,
+    segment_id    text NOT NULL,
+    air_time      timestamp NOT NULL,
+    in_world_time timestamp,
+    tags          text[] NOT NULL DEFAULT '{}'
+);
+
 CREATE TABLE IF NOT EXISTS state (
     key   text PRIMARY KEY,
     value text NOT NULL
@@ -595,6 +673,11 @@ CREATE INDEX IF NOT EXISTS quotes_story_idx     ON quotes (story_id);
 CREATE INDEX IF NOT EXISTS quotes_figure_idx    ON quotes (figure_id);
 CREATE INDEX IF NOT EXISTS quotes_datetime_idx  ON quotes (in_world_datetime);
 CREATE INDEX IF NOT EXISTS quotes_source_idx    ON quotes (source);
+-- D13.0: the journal reads pull per-host (and per-pair) newest-first by real air
+-- time; the plain air_time index serves cross-host sweeps (prune, console).
+CREATE INDEX IF NOT EXISTS host_journal_host_air_idx
+    ON host_journal (host_id, air_time DESC);
+CREATE INDEX IF NOT EXISTS host_journal_air_idx ON host_journal (air_time DESC);
 """
 
 # Additive, idempotent migrations applied on every `init_schema`, AFTER the schema
@@ -626,10 +709,11 @@ ALTER TABLE "cast" ADD COLUMN IF NOT EXISTS based text NOT NULL DEFAULT 'station
 # The world tables, in a stable order for a single TRUNCATE that reproduces the world
 # cleanly on a full reset. The FKs criss-cross (events→stories; news_coverage→both;
 # quotes→stories/events/figures), but all truncate in one statement so each
-# referenced table goes with its referrers. `news_coverage` (D4.0) and `airplay_history`
-# (D5.0) are runtime accrual, not source-of-truth world state, but BOTH are cleared on
-# the destructive `reset-world` (§2a) and counted — so they live here. (They are NOT in
-# the `scope="canon"` refresh, so a bible edit leaves them standing — §2a: "survives".)
+# referenced table goes with its referrers. `news_coverage` (D4.0), `airplay_history`
+# (D5.0) and `host_journal` (D13.0) are runtime accrual, not source-of-truth world
+# state, but ALL are cleared on the destructive `reset-world` (§2a) and counted — so
+# they live here. (They are NOT in the `scope="canon"` refresh, so a bible edit
+# leaves them standing — §2a: "survives".)
 # `embeddings` is handled separately (it is DERIVED, regenerable — see below).
 # `tracks` (D7.0) is deliberately ABSENT: it is curated config/catalog (§2a), owned
 # by `make seed-tracks`, and survives even the destructive full wipe.
@@ -642,6 +726,7 @@ _WORLD_TABLES = (
     "quotes",
     "news_coverage",
     "airplay_history",
+    "host_journal",
     "state",
 )
 
@@ -1878,6 +1963,153 @@ def recent_by_format(
         params = (fmt, now - within, limit)
     rows = conn.execute(sql, params).fetchall()
     return [_airplay_from_row(r) for r in rows]
+
+
+# --- Host journal (D13.0: the hosts' self/interpersonal memory) --------------
+
+_JOURNAL_COLUMNS = (
+    "id, host_id, other_host, kind, text, segment_id, air_time, in_world_time, tags"
+)
+
+
+def _journal_from_row(row: tuple) -> JournalEntry:
+    """Build a `JournalEntry` from a row selected with `_JOURNAL_COLUMNS`."""
+    return JournalEntry(
+        id=row[0],
+        host_id=row[1],
+        other_host=row[2],
+        kind=row[3],
+        text=row[4],
+        segment_id=row[5],
+        air_time=row[6],
+        in_world_time=row[7],
+        tags=list(row[8]),
+    )
+
+
+def insert_journal_entries(
+    conn: psycopg.Connection, entries: Iterable[JournalEntry]
+) -> int:
+    """Insert journal entries (a segment's post-air capture, D13.1); return the count.
+
+    Validates every `kind` against `JOURNAL_KINDS` before writing anything, so a
+    capture bug fails loudly rather than accreting junk memory. `id` is DB-assigned
+    (ignored on insert). Append-only — the journal is history, never edited in place.
+    """
+    rows = list(entries)
+    bad = [(e.host_id, e.kind) for e in rows if e.kind not in JOURNAL_KINDS]
+    if bad:
+        raise ValueError(
+            f"insert_journal_entries: unknown kind(s) {bad}; expected {JOURNAL_KINDS}"
+        )
+    conn.cursor().executemany(
+        "INSERT INTO host_journal (host_id, other_host, kind, text, segment_id, "
+        "air_time, in_world_time, tags) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)",
+        [
+            (
+                e.host_id,
+                e.other_host,
+                e.kind,
+                e.text,
+                e.segment_id,
+                e.air_time,
+                e.in_world_time,
+                e.tags,
+            )
+            for e in rows
+        ],
+    )
+    log.info("db_insert_journal", count=len(rows))
+    return len(rows)
+
+
+def journal_for_host(
+    conn: psycopg.Connection,
+    host_id: str,
+    now: datetime,
+    *,
+    within: timedelta,
+    limit: int | None = None,
+) -> list[JournalEntry]:
+    """One host's journal entries within `within` of broadcast `now`, newest first.
+
+    The recency-bounded read behind the D13.2 recall block ("what you've said
+    before"). `now` is real broadcast time (the slot's `air_time`), the same
+    timeline `air_time` is stored on; like `recent_airplay` the window has NO upper
+    bound, because the buffer places segments (and captures their journal) AHEAD of
+    `now` — a memory from an already-rendered future segment is still the host's
+    history. Degrades to an empty list on a cold start — callers must handle that.
+    """
+    sql = (
+        f"SELECT {_JOURNAL_COLUMNS} FROM host_journal "
+        "WHERE host_id = %s AND air_time >= %s ORDER BY air_time DESC, id DESC"
+    )
+    params: tuple = (host_id, now - within)
+    if limit is not None:
+        sql += " LIMIT %s"
+        params = (host_id, now - within, limit)
+    rows = conn.execute(sql, params).fetchall()
+    return [_journal_from_row(r) for r in rows]
+
+
+def journal_for_pair(
+    conn: psycopg.Connection,
+    host_a: str,
+    host_b: str,
+    now: datetime,
+    *,
+    within: timedelta,
+    limit: int | None = None,
+) -> list[JournalEntry]:
+    """Interpersonal entries between two hosts, newest first — SYMMETRIC (D13.0).
+
+    "What did these two last talk about?" — the per-pair line the D13.2 recall block
+    and the showrunner read. Matches entries in EITHER direction (A about B, B about
+    A), so the pair's shared history is one read regardless of who the extractor
+    attributed each entry to. Same window semantics as `journal_for_host`.
+    """
+    sql = (
+        f"SELECT {_JOURNAL_COLUMNS} FROM host_journal "
+        "WHERE air_time >= %s AND ((host_id = %s AND other_host = %s) "
+        "OR (host_id = %s AND other_host = %s)) "
+        "ORDER BY air_time DESC, id DESC"
+    )
+    params: tuple = (now - within, host_a, host_b, host_b, host_a)
+    if limit is not None:
+        sql += " LIMIT %s"
+        params = (now - within, host_a, host_b, host_b, host_a, limit)
+    rows = conn.execute(sql, params).fetchall()
+    return [_journal_from_row(r) for r in rows]
+
+
+def prune_journal(
+    conn: psycopg.Connection,
+    host_id: str,
+    *,
+    kind: str = JOURNAL_KIND_DETAIL,
+    keep: int,
+) -> int:
+    """Keep a host's `keep` newest entries of one `kind`; drop the rest. Return count.
+
+    The bounded-biography sweep (D13): personal details are capped per host
+    (`convo_journal_max_details_per_host` — the caller passes the dial) so hosts
+    don't accrete unbounded life-facts that crowd the card. Oldest-first drop —
+    reference-weighted retention can layer on once recall usage is tracked; for now
+    the newest N stand. Callable for any kind; `detail` is the one the cap targets.
+    """
+    if kind not in JOURNAL_KINDS:
+        raise ValueError(
+            f"prune_journal: unknown kind {kind!r}; expected {JOURNAL_KINDS}"
+        )
+    cur = conn.execute(
+        "DELETE FROM host_journal WHERE id IN ("
+        "SELECT id FROM host_journal WHERE host_id = %s AND kind = %s "
+        "ORDER BY air_time DESC, id DESC OFFSET %s)",
+        (host_id, kind, keep),
+    )
+    n = cur.rowcount
+    log.info("db_prune_journal", host_id=host_id, kind=kind, keep=keep, removed=n)
+    return n
 
 
 def get_state(conn: psycopg.Connection, key: str) -> str | None:

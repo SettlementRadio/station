@@ -110,6 +110,7 @@ recoverable from git/manifests or is regenerable.)
 | `embeddings` (polymorphic, D2) | derived | re-embedded at seed | re-embedded (affected rows) | survives | cleared + re-embedded | no (regenerable) |
 | `news_coverage` (D4) | runtime | (accrues) | survives | survives | **cleared** | optional |
 | `airplay_history` (D5) | runtime (bounded) | (accrues) | survives | survives | **cleared** | no |
+| `host_journal` (D13) | runtime (details bounded) | (accrues post-air) | survives | survives | **cleared** | **YES — with the world DB** (the hosts' lived history) |
 | `programs`/grid (D6) | YAML manifest | `seed-grid` | survives | re-seeded | **survives** (config, not world) | git (YAML) |
 | `tracks` (D7) | music-lore manifest | `seed-tracks` | survives | survives | **survives** (catalog, not world) | git (manifest) + `assets/` backup |
 | `sponsors` (D8) | human-entered | `seed-sponsors`/console | survives | survives | **survives** (config, not world) | **YES — hand-entered** |
