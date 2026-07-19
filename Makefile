@@ -335,8 +335,9 @@ programming-demo:
 
 # D11.3: the integrated acceptance simulation — the Phase-D gate before the C9 soak.
 # Drives the real spine (world tick -> news -> freshness -> grid -> music/commercials)
-# across an accelerated 24-48h window and asserts five integration properties (no dead
-# gaps, no repetition loops, stories evolve, cost bounded, schedule sane). The two
+# across an accelerated 24-48h window and asserts eight integration properties (no dead
+# gaps, no repetition loops, talk flow, stories evolve, cost bounded, schedule sane,
+# journal memory, plain register). The two
 # provider seams (llm + tts) are MOCKED, so it makes NO live Anthropic/TTS calls and
 # costs nothing; it needs a reachable Postgres and runs its whole world in one
 # rolled-back txn (never touches your world/schedule). Exits non-zero on any failure.

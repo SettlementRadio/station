@@ -8,7 +8,7 @@ Two layers, matching how the harness is trusted:
   backwards schedule). A gate that can't fail is worthless, so the failing cases are the
   point.
 * the **end-to-end run** is exercised on a small isolated window against a live Postgres
-  (skipped cleanly without one): all five properties must pass on the real spine driven
+  (skipped cleanly without one): all eight properties must pass on the real spine driven
   through the mocked provider seams. This is the same `run_acceptance` the `make`
   target/C9 gate calls, just short.
 """
@@ -220,8 +220,63 @@ def test_schedule_sane_fails_on_zero_duration():
 
 
 # --- end-to-end (DB-gated) --------------------------------------------------
+# --- plain_register (R1.4) --------------------------------------------------
+def _register_gen(prompts=1, scripts=None):
+    """A gen stub carrying only the fields `_check_plain_register` reads."""
+    from types import SimpleNamespace
+
+    return SimpleNamespace(
+        register_daytime_prompts=prompts, daytime_talk_scripts=scripts or []
+    )
+
+
+def _talk_on(program, n=3):
+    """`n` talk slots stamped with a program id (energy read from the real grid)."""
+    entries = _contiguous(n, fmt="talk")
+    for e in entries:
+        e["program"] = program
+    return entries
+
+
+def test_plain_register_passes_on_clean_daytime_talk():
+    timeline = _talk_on("the_exchange")  # steady in the shipped grid
+    scripts = ["Vell: It's fine, don't worry — the price didn't move."] * 3
+    r = acc._check_plain_register(timeline, _register_gen(3, scripts))
+    assert r.ok
+
+
+def test_plain_register_inconclusive_without_daytime_talk():
+    timeline = _talk_on("long_night")  # calm — the night is exempt
+    r = acc._check_plain_register(timeline, _register_gen(0, []))
+    assert r.ok
+    assert "inconclusive" in r.detail
+
+
+def test_plain_register_fails_when_ban_never_reached_room():
+    timeline = _talk_on("the_exchange")
+    r = acc._check_plain_register(timeline, _register_gen(0, []))
+    assert not r.ok
+    assert "never reached" in r.detail
+
+
+def test_plain_register_fails_on_banned_phrase():
+    timeline = _talk_on("the_exchange")
+    bad = f"Vell: It's {acc.BANNED_ABSTRACTIONS[0]} again, isn't it."
+    r = acc._check_plain_register(timeline, _register_gen(1, [bad]))
+    assert not r.ok
+    assert "banned abstraction" in r.detail
+
+
+def test_plain_register_fails_below_contraction_floor():
+    timeline = _talk_on("the_exchange")
+    stiff = ["Vell: The council convened. The matter was resolved."] * 3
+    r = acc._check_plain_register(timeline, _register_gen(3, stiff))
+    assert not r.ok
+    assert "contraction floor" in r.detail
+
+
 def test_run_acceptance_end_to_end():
-    """A short isolated run on the real spine — all seven properties must pass.
+    """A short isolated run on the real spine — all eight properties must pass.
 
     Skips cleanly without Postgres/pgvector; otherwise it seeds nothing of its own and
     rolls the whole world back (isolated), so it never touches the operator's DB.
@@ -240,4 +295,4 @@ def test_run_acceptance_end_to_end():
     assert report.telemetry["content_slots"] > 0
     failures = [f"{r.name}: {r.detail}" for r in report.results if not r.ok]
     assert report.ok, "acceptance properties failed:\n" + "\n".join(failures)
-    assert len(report.results) == 7
+    assert len(report.results) == 8

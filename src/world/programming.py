@@ -308,6 +308,16 @@ def reload() -> None:
     _cache["grid"] = None
 
 
+def all_programs() -> dict[str, Program]:
+    """Every program the grid defines, by id (benched ones included).
+
+    R1.4: lets consumers (the `plain_register` acceptance property; later the R7
+    public feeds / E1.2 editor) look up a program's fields — e.g. its `energy` —
+    by the id a schedule slot carries, without re-parsing the YAML.
+    """
+    return dict(_load_grid().programs)
+
+
 # --- Slot matching + the public lookup --------------------------------------
 
 
@@ -458,4 +468,11 @@ def next_format(
     return name, state
 
 
-__all__ = ["ClockStep", "Program", "next_format", "program_for", "reload"]
+__all__ = [
+    "ClockStep",
+    "Program",
+    "all_programs",
+    "next_format",
+    "program_for",
+    "reload",
+]

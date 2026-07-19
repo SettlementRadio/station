@@ -160,6 +160,32 @@ above all — modern-AI anxiety (§2). Wonder is found in small things as much a
 
 ---
 
+## 5a. HOW THE STATION TALKS (R1 — the register rule)
+
+The themes above are the world's **content**, not its **speaking voice**. Early on, the lyricism in
+this brief leaked into the canon prose and from there into every broadcast — every show, at every
+hour, talked like "the light between worlds." The correction, load-bearing since Phase R:
+
+- **Plain speech is the default.** On air, people talk like people at work: contractions, short
+  declaratives, opinions, mild complaints, jokes. The listener *lives* in this world — nobody
+  explains their own world to them, and nobody elegises it at them over breakfast. Interest comes
+  from **concrete stakes** — prices, disputes, matches, verdicts, arrivals, weather, someone's bad
+  day — not from meditation.
+- **Lyricism is the night's dialect, not the station's.** The late shows (Nightfall through First
+  Light — the `calm`-energy programs) keep the warm, wondering register; that is *their* sound, and
+  it lands precisely because the daytime doesn't use it.
+- **The news desk is formal** — composed, precise reportage; no poetry, no chat. (A third register,
+  distinct from both.)
+
+**For canon authors:** write cornerstone *prose* rich and evocative as ever — but write **canon
+facts, cast sample lines, and anything that steers generation directly** in the register the air
+should carry: concrete, everyday, specific. When you write a card's sample lines, you are writing
+the show. (Enforced downstream: the writers' room bans the house-poetry abstractions on daytime
+shows — `BANNED_ABSTRACTIONS` in `src/writers/conversation.py` — and the `plain_register`
+acceptance property guards it; see `docs/PHASE_R_TASKS.md` R1.)
+
+---
+
 ## 6. How to turn a strain into canon (worked examples)
 
 The move is always the same: **keep the feeling, invent the specifics.**

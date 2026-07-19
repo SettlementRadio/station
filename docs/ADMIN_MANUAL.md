@@ -274,6 +274,12 @@ programs:
     clock: [talk, talk, news@:00, talk, music]   # sequence + run-lengths + pinned slots
     break_every: 5                   # ad-break cadence (see Commercials; absent/0 = no breaks)
     guest_chance: 0.8                # 0..1 — how often this talk show runs a guest/played record
+    energy: steady                   # R1: delivery pace — calm | steady | bright (calm = the night's
+                                     # lyric register; steady/bright = the plain daytime register)
+    brief: >-                        # R1: the editorial identity — 2-4 sentences, concrete stakes,
+      The arts as event: an opening, a premiere, a feud between schools.   # an explicit "never" line;
+      Never hushed-gallery reverence.                                      # reaches the writers' room
+                                                                           # as the ON THIS SHOW block
 grid:
   daily:                             # daily | weekdays | weekends | mon-fri | sat | mon,wed
     "07:00-20:00": the_gallery       # weekday range -> HH:MM-HH:MM (may wrap midnight) -> program id
@@ -285,6 +291,10 @@ keys (`talk`/`news`/`music`). Marker tokens in a clock (`sting`/`bed`/`ident`) a
 skipped by the scheduler — actual sting/bed/ident placement is dial-driven (see *Music & culture*).
 **Music is short by design** — the catalogue is ~2.5h total, so keep music to short features (a
 30-min top-5, a weekend hour), never multi-hour blocks that would just repeat.
+**Briefs are the editorial steering wheel (R1):** every non-default program should carry `brief` +
+`energy` — they reach the showrunner/orchestrator as the "ON THIS SHOW" block, scope the beat pick,
+and set the register (daytime plain, night lyric). Edits go live on the next top-up like any grid
+edit; the `plain_register` property in `make acceptance` guards the daytime register.
 
 ### See it (token-free)
 ```bash

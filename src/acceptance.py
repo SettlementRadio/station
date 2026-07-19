@@ -3,7 +3,7 @@
 Beyond each pack's unit tests, Phase D must pass ONE end-to-end run that proves the
 whole pipeline holds together *over time* — the dress rehearsal before the C9 live
 7-day soak. This module drives the real spine — **world tick → news → freshness →
-grid → music/commercials** — across an accelerated 24–48h window and asserts the seven
+grid → music/commercials** — across an accelerated 24–48h window and asserts the eight
 integration properties that only an end-to-end run catches:
 
   1. **No dead gaps** — the schedule is continuous audio; the never-dead fallback never
@@ -21,6 +21,9 @@ integration properties that only an end-to-end run catches:
   7. **The hosts remember themselves** — aired talk accrues `host_journal` rows
      (D13.1 capture at the chokepoint) and the recall block genuinely reaches both
      the writers' room prompt and the continuity editor (D13.2/D13.3).
+  8. **Plain register by day** — the R1.2 daytime register ban genuinely reaches the
+     writers' room on daytime (steady/bright) shows, and daytime talk scripts carry
+     no banned house-poetry abstraction and meet a crude contraction floor (R1.4).
 
 **How it stays cheap + repeatable.** The one thing we do NOT exercise is the *writing
 quality* (that's the product, judged by ear) or the *voice* (Kokoro/ElevenLabs). So the
@@ -58,7 +61,8 @@ from .logging_setup import get_logger
 from .production import mix as mix_mod
 from .providers import embeddings, llm
 from .providers import tts as tts_mod
-from .world import events, store, world_tick
+from .world import events, programming, store, world_tick
+from .writers.conversation import BANNED_ABSTRACTIONS
 
 log = get_logger(__name__)
 
@@ -68,6 +72,13 @@ MIN_OPENING_DISTINCTNESS = 0.5  # unique / total openings per stream, minimum
 MAX_CONSECUTIVE_REPEAT = 2  # a value may not appear >2 in a row (a loop)
 MAX_LLM_CALLS_PER_CONTENT = 12  # gate retries are bounded; above this = a call storm
 MIN_TRACK_BREADTH = 0.15  # distinct tracks / music slots floor (catalogue must rotate)
+# R1.4 — daytime talk must average at least this many contractions per script (a
+# crude plainness floor; live text clears it by an order of magnitude).
+PLAIN_REGISTER_CONTRACTION_FLOOR = 1.0
+_CONTRACTION_RE = re.compile(r"\b\w+['’](s|t|re|ve|ll|d|m)\b", re.IGNORECASE)
+# The R1.2 prompt markers the mock keys daytime/calm talk calls off (lowercase).
+_REGISTER_BAN_MARKER = "banned here: the house-poetry register"
+_DAYTIME_ENERGIES = frozenset({"steady", "bright"})
 _CONTENT_FORMATS = frozenset({"talk", "news", "music", "commercial", "promo"})
 # Spoken-wording streams whose OPENINGS must stay fresh (music is track-driven, judged
 # by the song/artist checks instead).
@@ -184,6 +195,11 @@ class _MockGen:
         # (The block's steer wording is the marker; asserted by the 7th property.)
         self.saw_journal_in_room = False
         self.saw_journal_at_editor = False
+        # R1.4 — the plain-register plumbing: how many talk-script calls carried
+        # the R1.2 daytime ban, and the scripts those calls aired (checked for
+        # banned phrases + the contraction floor by the 8th property).
+        self.register_daytime_prompts = 0
+        self.daytime_talk_scripts: list[str] = []
 
     def _tick_kind(self, kind: str) -> None:
         self.by_kind[kind] = self.by_kind.get(kind, 0) + 1
@@ -259,7 +275,11 @@ class _MockGen:
             self._tick_kind("talk_script")
             if "on-air history" in s:  # the D13.2 journal block reached the room
                 self.saw_journal_in_room = True
-            return self._dialogue(ctx)
+            script = self._dialogue(ctx)
+            if _REGISTER_BAN_MARKER in s:  # the R1.2 daytime ban reached the room
+                self.register_daytime_prompts += 1
+                self.daytime_talk_scripts.append(script)
+            return script
         if "pick" in p and "beat" in p:  # the showrunner's one-beat pick (free text)
             self._tick_kind("showrunner")
             return (
@@ -547,7 +567,7 @@ def run_acceptance(
     start: datetime | None = None,
     dump_path: str | None = None,
 ) -> AcceptanceReport:
-    """Run the accelerated window end-to-end and return the seven-property report.
+    """Run the accelerated window end-to-end and return the eight-property report.
 
     Imports the scheduler lazily so patching the provider seams is already in force
     before any generation runs. Accumulates every placed slot across the window (past
@@ -618,6 +638,7 @@ def run_acceptance(
         _check_cost_bounded(telemetry),
         _check_schedule_sane(timeline),
         _check_journal_memory(timeline, final_world, gen),
+        _check_plain_register(timeline, gen),
     ]
     log.info("acceptance_done", ok=report.ok, **telemetry)
     return report
@@ -653,7 +674,7 @@ def _snapshot_world(now: datetime) -> dict:
     }
 
 
-# --- The seven property checks (pure — unit-testable in isolation) -----------
+# --- The eight property checks (pure — unit-testable in isolation) -----------
 def _check_no_dead_gaps(
     timeline: list[dict], start: datetime, end: datetime
 ) -> PropertyResult:
@@ -861,6 +882,66 @@ def _check_journal_memory(
         True,
         f"{rows} entries across {len(per_host)} host(s) from {talk} talk slot(s); "
         "recall reached the room AND the editor",
+    )
+
+
+def _check_plain_register(timeline: list[dict], gen: _MockGen) -> PropertyResult:
+    """Daytime talk stays plain (R1.4): the ban reaches the room; scripts stay clean.
+
+    Three sub-assertions in one property: (a) when the window aired talk on a
+    daytime program (grid `energy` steady/bright), the R1.2 register-ban block
+    genuinely reached the writers'-room prompt — deleting `_register_directive`
+    or breaking the R1.0 program threading fails this; (b) no daytime talk script
+    contains a `BANNED_ABSTRACTIONS` phrase; (c) daytime scripts average at least
+    `PLAIN_REGISTER_CONTRACTION_FLOOR` contractions — crude, but a regression to
+    written-not-spoken prose trips it. Inconclusive-but-passing when the window
+    held no daytime talk.
+    """
+    energies = {pid: p.energy for pid, p in programming.all_programs().items()}
+    daytime_talk = sum(
+        1
+        for e in timeline
+        if e.get("format") == "talk"
+        and energies.get(str(e.get("program"))) in _DAYTIME_ENERGIES
+    )
+    if daytime_talk == 0:
+        return PropertyResult(
+            "plain_register", True, "no daytime talk slots in window (inconclusive)"
+        )
+    problems: list[str] = []
+    if gen.register_daytime_prompts == 0:
+        problems.append(
+            f"{daytime_talk} daytime talk slot(s) aired but the register ban never "
+            "reached the writers' room (R1.2 directive missing?)"
+        )
+    hits = sorted(
+        {
+            phrase
+            for script in gen.daytime_talk_scripts
+            for phrase in BANNED_ABSTRACTIONS
+            if phrase in script.lower()
+        }
+    )
+    if hits:
+        problems.append(f"banned abstraction(s) in daytime talk: {hits}")
+    per_script = 0.0
+    if gen.daytime_talk_scripts:
+        per_script = sum(
+            len(_CONTRACTION_RE.findall(s)) for s in gen.daytime_talk_scripts
+        ) / len(gen.daytime_talk_scripts)
+        if per_script < PLAIN_REGISTER_CONTRACTION_FLOOR:
+            problems.append(
+                f"contraction floor missed: {per_script:.1f}/script "
+                f"(< {PLAIN_REGISTER_CONTRACTION_FLOOR})"
+            )
+    if problems:
+        return PropertyResult("plain_register", False, "; ".join(problems))
+    return PropertyResult(
+        "plain_register",
+        True,
+        f"{daytime_talk} daytime talk slot(s): ban in "
+        f"{gen.register_daytime_prompts} room prompt(s), scripts clean, "
+        f"{per_script:.1f} contractions/script",
     )
 
 

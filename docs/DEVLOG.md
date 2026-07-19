@@ -38,6 +38,36 @@ A typical *build* session will be short, e.g.:
 
 ---
 
+## 2026-07-19 — Phase R — R1.4: the SPIRIT register note + the 8th acceptance property — R1 COMPLETE ✅
+**Focus:** the last R1 task — guard the register fix and stop the bible re-teaching the poetry.
+**Decisions:**
+- **SPIRIT.md §5a "HOW THE STATION TALKS"** — plain speech is the default; lyricism is the night's
+  dialect; the news desk is a third, formal register. Key finding: SPIRIT.md is an authoring brief
+  the seeder deliberately SKIPS (non-numeric name), so the section steers future canon *writing*
+  (facts, sample lines — "when you write a card's sample lines, you are writing the show"), not the
+  prompt path; no re-seed needed.
+- **The `plain_register` acceptance property (8th)** rides the mocked sim the journal_memory way:
+  `_MockGen` records how many talk-room prompts carried the R1.2 ban marker and captures those
+  scripts; the evaluator asserts (a) the ban reached the room whenever daytime (steady/bright) talk
+  aired — deleting `_register_directive` or breaking the R1.0 threading fails it; (b) no
+  `BANNED_ABSTRACTIONS` phrase in a daytime script; (c) a crude contraction floor
+  (`PLAIN_REGISTER_CONTRACTION_FLOOR = 1.0/script`). The banned list is IMPORTED from
+  `writers/conversation.py` — one vocabulary, two enforcement points, as planned in R1.2.
+- New public `programming.all_programs()` (the property's energy lookup; R7 feeds/E1.2 will reuse).
+**Changed:** `docs/canon/SPIRIT.md`, `src/acceptance.py` (mock telemetry + evaluator + docstrings),
+`src/world/programming.py`, `Makefile` (stale "five properties" comment), `tests/test_acceptance.py`
+(5 evaluator tests + end-to-end now expects 8), `docs/ADMIN_MANUAL.md` (grid section: `brief`/
+`energy` in the shape + a "briefs are the editorial steering wheel" note, panel-tagged), tracker
+row R1 → ✅.
+**Verified:** 483 tests green, ruff clean; `make acceptance` — ALL 8 PROPERTIES PASS, with
+plain_register conclusive: 141 daytime talk slots, ban in exactly 141 room prompts, scripts clean,
+7.8 contractions/script.
+**📣 Postable:** the R1 arc is a great before/after story — "we found the professors' root cause:
+the shows didn't know what show they were on."
+**Next:** R2.0 — design GRID_V2 (the 24-hour grid rebuild, paper task, operator sign-off) — or the
+C5–C9 server track; operator's call.
+Commit: (pending)  ·  Clips: —
+
 ## 2026-07-19 — Phase R — R1.3: the cast-card pass — the cards stop steering to the academy
 **Focus:** one editing pass over `docs/canon/90-cast.md` (sample lines steer generations hardest);
 re-seeded with `make seed-canon`.
