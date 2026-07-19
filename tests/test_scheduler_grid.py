@@ -223,3 +223,114 @@ def test_schedule_entries_carry_the_program_for_the_console_feed(monkeypatch, tm
     assert upcoming
     assert all(e["program"] == "test_show" for e in upcoming)
     assert all(e["program_name"] == "Test Show" for e in upcoming)
+
+
+# --- R2.2: sub-hour programs — pins fire, item length rides the flow ---------
+
+# A GRID_V2-shaped afternoon: 30-minute programs, one sitting on the hour with a
+# news@:00 pin, the next starting at half past with no pin at all.
+_GRID_SUBHOUR = """
+programs:
+  filler:
+    name: "Filler"
+    hosts: [wren, vell]
+    framing: solo
+    clock: [talk]
+  half_desk:
+    name: "Half Desk"
+    hosts: [wren, vell]
+    framing: solo
+    clock: [news@:00, talk]
+  half_late:
+    name: "Half Late"
+    hosts: [wren, vell]
+    framing: solo
+    clock: [talk, talk]
+    talk_length_sec: 240
+  default:
+    name: "Settlement Radio"
+    hosts: [vell, wren]
+    framing: legacy
+    rotation: [talk]
+grid:
+  daily:
+    "00:00-13:00": filler
+    "13:00-13:30": half_desk
+    "13:30-14:00": half_late
+    "14:00-24:00": filler
+"""
+
+
+def _recording_flow_generator(tmp_path, *, duration=120.0):
+    """A stand-in generator that also records the slot's ShowFlow (R2.2)."""
+    calls: list[dict] = []
+
+    def _gen(name, now_iso, *, topic=None, speakers=None, flow=None):
+        calls.append({"format": name, "air_time": now_iso, "flow": flow})
+        path = tmp_path / f"{name}-{len(calls):03d}.mp3"
+        path.write_bytes(b"\x00")
+        return Segment(
+            id=f"{name}-{len(calls):03d}",
+            format=name,
+            length_target_sec=150,
+            air_time=now_iso,
+            audio_path=str(path),
+            actual_duration_sec=duration,
+        )
+
+    return calls, _gen
+
+
+def test_pin_fires_inside_a_thirty_minute_program(monkeypatch, tmp_path):
+    """A program whose whole life is 30 minutes still hits its news@:00 pin —
+    and a half-past program with no pin airs no bulletin (the R2.2 regression)."""
+    calls, gen = _recording_flow_generator(tmp_path)
+    # 12:50 + 1h depth walks straight through both half-hour shows.
+    _wire_grid(
+        monkeypatch, tmp_path, grid_text=_GRID_SUBHOUR, depth_hours=1.0, generator=gen
+    )
+
+    scheduler.top_up(now=_mon(12, 50))
+
+    news = [c for c in calls if c["format"] == "news"]
+    assert news, "the 30-minute show's news@:00 never fired"
+    aired = datetime.fromisoformat(news[0]["air_time"])
+    assert (aired.hour, aired.minute >= 0) == (13, True) and aired.minute < 15, (
+        f"pin landed at {aired:%H:%M}, not at the top of the 30-min show"
+    )
+    # Exactly one bulletin in the window: the half-past show carries no pin.
+    in_half_late = [
+        c
+        for c in news
+        if datetime.fromisoformat(c["air_time"]).minute >= 30
+        and datetime.fromisoformat(c["air_time"]).hour == 13
+    ]
+    assert not in_half_late, "a pinless half-past program aired a bulletin"
+    assert len(news) == 1
+
+
+def test_program_talk_length_rides_the_flow(monkeypatch, tmp_path):
+    """A grid `talk_length_sec` reaches the talk builder via ShowFlow (R2.2)."""
+    calls, gen = _recording_flow_generator(tmp_path)
+    _wire_grid(
+        monkeypatch, tmp_path, grid_text=_GRID_SUBHOUR, depth_hours=0.3, generator=gen
+    )
+
+    scheduler.top_up(now=_mon(13, 35))  # inside half_late (talk_length_sec: 240)
+
+    talk = [c for c in calls if c["format"] == "talk" and c["flow"] is not None]
+    assert talk, "no talk slots with flow were generated"
+    first = talk[0]
+    aired = datetime.fromisoformat(first["air_time"])
+    assert (aired.hour, aired.minute) >= (13, 35)
+    assert first["flow"].talk_length_sec == 240
+    # A program that sets no talk_length_sec threads None (the global default).
+    filler_talk = [
+        c
+        for c in calls
+        if c["format"] == "talk"
+        and c["flow"] is not None
+        and datetime.fromisoformat(c["air_time"]).hour >= 14
+    ]
+    if filler_talk:
+        assert filler_talk[0]["flow"].talk_length_sec is None

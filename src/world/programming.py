@@ -123,6 +123,12 @@ class Program:
     brief: str = ""
     # R1.0: the delivery-pace hint — one of `calm | steady | bright`; "" = no hint.
     energy: str = ""
+    # R2.2: this show's talk-item length target in seconds — a flagship runs fast
+    # ~3-5-min items while a 30-min specialist runs ~6-8-min ones (the GRID_V2
+    # flagship-clock model). Rides ShowFlow into the talk builder, which scales the
+    # conversation word budget proportionally. 0 (key absent) = the global
+    # `segment_default_length_target_sec` — length stays a parameter (Seam #2).
+    talk_length_sec: int = 0
 
 
 @dataclass(frozen=True)
@@ -198,6 +204,15 @@ def _parse_program(pid: str, data: dict) -> Program:
     if energy and energy not in _ENERGIES:
         log.warning("programming_bad_energy", program=pid, value=data.get("energy"))
         energy = ""
+    try:
+        talk_length_sec = max(int(data.get("talk_length_sec") or 0), 0)
+    except (TypeError, ValueError):
+        log.warning(
+            "programming_bad_talk_length",
+            program=pid,
+            value=data.get("talk_length_sec"),
+        )
+        talk_length_sec = 0
     return Program(
         id=pid,
         name=name,
@@ -210,6 +225,7 @@ def _parse_program(pid: str, data: dict) -> Program:
         guest_chance=guest_chance,
         brief=brief,
         energy=energy,
+        talk_length_sec=talk_length_sec,
     )
 
 

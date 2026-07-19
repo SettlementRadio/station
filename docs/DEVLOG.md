@@ -38,6 +38,39 @@ A typical *build* session will be short, e.g.:
 
 ---
 
+## 2026-07-19 — Phase R — R2.2: the GRID_V2 week is live — grid.yaml rewritten + `talk_length_sec` ✅
+**Focus:** implement the signed-off GRID_V2 design: the real speech-station week, on air.
+**Decisions:**
+- **`grid.yaml` rewritten to GRID_V2**: two fast flagships (`[news@:00, talk, talk, news@:30,
+  talk, talk]`, 240s items; Evening Currents → Kael+Joss per sign-off), ~16 short daytime fixtures
+  at the same time daily (incl. 15-min Conditions/Ledger ×2 and The Serial 20:00–20:15), five
+  rotating vertical windows + the 15:30 weekly belt (Bridge/Deep Listening/Gathering back OFF the
+  bench), the 8 new programs with their GRID_V2 briefs, night otherwise untouched. 34 programs,
+  ~23 distinct/day.
+- **`talk_length_sec` (Seam #2)**: new optional Program field → rides `ShowFlow` (the D12.4
+  pattern beside `program_name`/`guest_chance`) → `talk` builder passes it to `compose_segment` →
+  `orchestrate` scales the `convo_words_low/high` budget proportionally via `_word_budget()`
+  (None/default = byte-identical pre-R2.2 prompts). The scheduler's `close` look-ahead horizon
+  also honours it, so short-item shows estimate their last slot correctly.
+- Pins need no code change for sub-hour shows — the crossing rides the global air-cursor
+  timeline — but the pack's regression tests now PROVE it: a 30-min :00-sitting program fires
+  `news@:00` exactly once; a :30-start program airs no bulletin.
+**Verified:** ruff green; **490 tests** (7 new: talk_length parse/validation, shipped-grid Monday
+map at 15-min granularity + window rotation, whole-week no-gap at quarter-hour sampling, sub-hour
+pin firing, flow-threaded talk_length, word-budget scaling incl. prompt assertion); `make console`
+runs against the new grid; **`make acceptance` (the D11 harness): ALL 8 PROPERTIES PASS** on the
+new week — 448 contiguous slots/24h, no dead gaps, one open per show across 65 multi-talk runs,
+4.9 LLM calls/content slot, 123 daytime talk slots register-clean.
+**Changed:** `docs/programming/grid.yaml`, `src/world/programming.py`, `src/flow.py`,
+`src/scheduler.py`, `src/formats/talk.py`, `src/writers/conversation.py`,
+`tests/{test_programming,test_scheduler_grid,test_conversation}.py`, this DEVLOG.
+**Why:** the audit's topic 1 — the day must SOUND programmed; short fixtures + fast flagship
+clocks are the structural fix, and item length had to become a per-program parameter to make a
+2-hour flagship and a 15-min desk share one code path.
+**Next:** R2.3 — pace + interstitials at the new density (boundary themes, sweepers,
+one-breath opens for 30-min shows); then R2.4 docs + tracker flip.
+Commit: (this session)  ·  Clips: —
+
 ## 2026-07-19 — Phase R — R2.1: canon + domain support for the new verticals ✅
 **Focus:** give The Ward and The Fit world to draw on, and make the tick generate stories there.
 **Decisions:**

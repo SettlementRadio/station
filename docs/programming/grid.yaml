@@ -1,32 +1,32 @@
-# grid.yaml — Settlement Radio weekly programming grid (Phase D / D6 · D12.4 retune)
+# grid.yaml — Settlement Radio weekly programming grid (GRID_V2 · R2.2)
 #
 # The human-edited source of truth for WHICH SHOW AIRS WHEN. Edit this file and the
 # next scheduler top-up airs it — the grid is read LIVE (an mtime-cached loader in
-# src/world/programming.py; no seed step). See README.md for the model + clock grammar.
+# src/world/programming.py; no seed step). See README.md for the model + clock grammar,
+# and docs/programming/GRID_V2.md for the SIGNED-OFF design this file implements
+# (operator, 2026-07-19) — the rationale, the tiling proof, and the rota live there.
 #
 # In-world wall clock == real wall clock (the world clock shifts the YEAR only), so
-# slots are plain weekday + HH:MM-HH:MM ranges. The grid must tile the week with no
-# gaps; the reserved `default` program backstops any hole so the scheduler never stalls.
+# slots are plain weekday + HH:MM-HH:MM ranges (15-minute granularity is legal). The
+# grid must tile the week with no gaps; the reserved `default` program backstops any
+# hole so the scheduler never stalls.
 #
 # ─────────────────────────────────────────────────────────────────────────────
-# THE STATION (docs/canon/SPIRIT.md, 00-station.md) — a TALK-FIRST station across
-# the dark between scattered worlds, ~600 years ahead: mature wonder, connection
-# across distance, deep time, the human heart in a vast setting. It runs like a real
-# speech-led station — MANY short, themed strands, each a believable VERTICAL of this
-# world, grounded in the canon domains:
-#
-#   Politics & governance (30-polities) · Conflict & the frontier (45-conflict) ·
-#   Law & crime (40-law) · Economy & trade (35-economy) · Science & the relay
-#   (75/78) · Travel & the peoples (05/20) · Culture, story & the arts (65/70) ·
-#   History & deep time (10) · Sport (Kael's circuit) · the cosmos (80) · faith (60).
-#
-# The day keeps a stable NEWS rhythm (breakfast & drive flagships, a midday desk,
-# bulletins on the hour) around a ROTATING SPECIALIST: two 2-hour slots a day
-# (10:00–12:00 and 14:00–16:00) cycle through the week, so the listener hears every
-# vertical — the way a real station runs a Tuesday economy hour, a Wednesday history
-# hour, a Sunday politics hour. The SAME live day runs ALL SEVEN DAYS: Settlement
-# Radio does not relax at the weekend — the settlements don't pause, so the station
-# stays on top of things; Sat/Sun run weekend EDITIONS of the strongest verticals.
+# THE GRID_V2 SHAPE (the real-radio speech-station day):
+#   • TWO 2-HOUR FLAGSHIPS — breakfast (07-09) and drive (18-20) — restructured
+#     inside into fast 3-5-minute items around news@:00/news@:30 pins
+#     (talk_length_sec: 240).
+#   • EVERYTHING ELSE DAYTIME IS ≤30 MINUTES, at the same time every day (the
+#     fixture rule): magazines, twice-daily Conditions+Ledger updates, sport, the
+#     chart, dispatches, letters. 30-min specialists run ~6-8-min items
+#     (talk_length_sec: 420); the 15-min desks run short reads (180).
+#   • FIVE ROTATING VERTICAL WINDOWS (09:30 / 10:00 / 13:30 / 14:00 / 14:30) — each
+#     vertical owns ONE canonical time; the weekday pattern picks its days — plus
+#     the 15:30 WEEKLY BELT (Fit / Bridge / Relay Round / Deep Listening /
+#     Gathering).
+#   • THE NIGHT IS UNCHANGED (the one edit: The Serial takes 20:00-20:15 and
+#     Nightfall starts 20:15). No 20:00 bulletin by design (drive was wall-to-wall
+#     news; next bulletin 21:00) — signed off, GRID_V2 §10.
 #
 # ─────────────────────────────────────────────────────────────────────────────
 # FORMAT & VOICES — read the `hosts` + the `[fmt]` tag on each show:
@@ -47,35 +47,37 @@
 #   • [music]     a single DJ (intro → a real track → back-announce).
 #
 # `guest_chance` (0..1, D12.4) sets how often a talk show runs that guest/record —
-# interview/dispatch shows run it often, a solo-reflective show runs none. It
-# overrides the global convo_guest_chance. The guest KIND is automatic: a played
+# it overrides the global convo_guest_chance. The guest KIND is automatic: a played
 # soundbite when the hour's stories carry an attributable quote, else an invited
 # persona. (Guests only ever join `talk` segments; music/news ignore it.)
 #
-# `break_every: N` (D8.1) — sparse ad-break cadence; the handovers, short features,
-# deep night and music stay break-free. MUSIC is deliberately short: the catalogue is
-# ~57 tracks / ~2.5h total (config/tracks.yaml), so a long block would just repeat.
+# `break_every: N` (D8.1) — sparse ad-break cadence; 30-min shows take at most one
+# (break_every: 4); the 15-min desks, handovers and deep night stay break-free.
 #
 # `brief` + `energy` (R1.0/R1.1) — the show's EDITORIAL IDENTITY, threaded into the
 # writers' room as the per-call "ON THIS SHOW" block. A brief is 2–4 sentences written
-# for INTEREST, not theme: concrete stakes (prices, disputes, matches, verdicts,
-# arrivals, weather, someone's bad day) plus an explicit "never" line. `energy` is the
-# delivery-pace hint: calm | steady | bright. The daytime "never" lines ban the house
-# poetry; the night shows' briefs deliberately ALLOW it — lyricism is the night's
-# dialect, not the station's. `default` carries no brief (the pre-R1 behaviour).
+# for INTEREST, not theme: concrete stakes plus an explicit "never" line. `energy` is
+# the delivery-pace hint: calm | steady | bright (it also drives the R1.2 register
+# rules — daytime steady/bright bans the house poetry; calm licenses it).
+#
+# `talk_length_sec` (R2.2) — this show's talk-ITEM length target: flagships 240
+# (fast items), 30-min specialists 420, the 15-min desks 180. Absent = the global
+# `segment_default_length_target_sec`. The word budget scales with it — length is a
+# parameter, never a constant (Seam #2).
 # ─────────────────────────────────────────────────────────────────────────────
 
 programs:
   # ══ NEWS & CURRENT AFFAIRS — the day's spine ═════════════════════════════════
   morning_currents:
-    name: "Morning Currents"     # [interview] breakfast news & current affairs; an analyst joins
+    name: "Morning Currents"     # [interview] breakfast FLAGSHIP; fast items; an analyst pressed for specifics
     hosts: [thorn, wren]
     framing: ensemble
     daypart: morning
-    clock: [talk, talk, news@:00, talk, news@:30]
+    clock: [news@:00, talk, talk, news@:30, talk, talk]
     break_every: 6
     guest_chance: 0.3
     energy: bright
+    talk_length_sec: 240
     brief: >-
       The breakfast desk: what changed overnight and what it costs today — a price
       moved, a convoy due, a vote still crossing the relays, weather over the lanes.
@@ -85,14 +87,15 @@ programs:
       muse about the light or the distance.
 
   settlement_desk:
-    name: "The Settlement Desk"   # [dispatch] midday news + a field record from Sera on the road
+    name: "The Settlement Desk"   # [dispatch] the LONG midday bulletin + a field record from Sera
     hosts: [thorn, sera]
     framing: ensemble
     daypart: midday
-    clock: [news@:00, talk, talk, news@:30]
+    clock: [news@:00, talk, talk]
     break_every: 6
     guest_chance: 0.5
     energy: steady
+    talk_length_sec: 240
     brief: >-
       The midday desk: the day's stories at the halfway mark — what moved since
       breakfast, what the afternoon will decide — plus a field record from one real
@@ -101,29 +104,62 @@ programs:
       world to the people living in it.
 
   evening_currents:
-    name: "Evening Currents"      # [interview] the drive-time round-up of the settlement currents
-    hosts: [thorn, wren]
+    name: "Evening Currents"      # [interview] drive FLAGSHIP — Kael + Joss (R2.2 rota fix); Thorn keeps every bulletin
+    hosts: [kael, joss]
     framing: ensemble
     daypart: evening
-    clock: [talk, talk, news@:00, talk, news@:30]
+    clock: [news@:00, talk, talk, news@:30, talk, talk]
     break_every: 6
     guest_chance: 0.3
     energy: bright
+    talk_length_sec: 240
     brief: >-
       Drive time: the day closed out — who won, who lost, what it cost, what
       tomorrow inherits. Move every few minutes, mix verdicts with quick reactions,
       and let the hosts call it as they see it. Never drift into evening reverie —
       that is the night's job; this desk ends the working day awake.
 
+  conditions:
+    name: "Conditions"            # [desk] the between-worlds weather report — Zhe from the far edge; 2x daily
+    hosts: [zhe]
+    framing: solo
+    daypart: update
+    clock: [news@:00, talk]
+    energy: calm
+    talk_length_sec: 180
+    brief: >-
+      Relay strength, particle weather over the lanes, crossing windows opening and
+      closing, the queue at the transfer points — the between-worlds weather report,
+      from the far-edge watch. Someone is planning a crossing on this: give the
+      numbers, the windows, the delays, plainly. A little vastness is allowed — it
+      IS vast out there. Never bury the practical in the poetry; the window times
+      come first.
+
+  the_ledger:
+    name: "The Ledger"            # [desk] the markets brief — Joss, dry and exact; 2x daily (AM + the close)
+    hosts: [joss]
+    framing: solo
+    daypart: update
+    clock: [talk]
+    energy: steady
+    talk_length_sec: 180
+    brief: >-
+      The markets in ten minutes: today's prices, freight rates, a contract signed
+      or defaulted, what the Exchange Houses are quoting on the morning relays. Name
+      the cargo, the port, the number, the direction it moved — and who that
+      squeezes. Never explain what a market is, and never pad: say the numbers and
+      get out.
+
   common_ground:
     name: "Common Ground"         # [interview] daily life across the worlds; an ordinary resident on air
     hosts: [wren, mira]
     framing: ensemble
     daypart: morning
-    clock: [talk, talk, news@:00, talk]
+    clock: [news@:00, talk, talk, talk]
     break_every: 5
     guest_chance: 0.6
     energy: bright
+    talk_length_sec: 420
     brief: >-
       Ordinary life, taken seriously: a broken air filter, a rec-hall wedding, a
       shift dispute, the food queue, someone's terrible week — often with the
@@ -131,16 +167,17 @@ programs:
       news. Never turn a person's day into a metaphor, and never explain their own
       world to them.
 
-  # ══ THE VERTICALS — the rotating specialist strands (one theme a day) ════════
+  # ══ THE VERTICALS — five rotating windows, one canonical time each ═══════════
   the_assembly:
-    name: "The Assembly"          # [interview] POLITICS & governance: the slow councils, the delegations, core vs frontier
+    name: "The Assembly"          # [interview] POLITICS & governance — W1 09:30 (Mon/Wed/Fri/Sun)
     hosts: [thorn, joss]
     framing: ensemble
     daypart: late morning
-    clock: [talk, talk, news@:00, talk]
-    break_every: 5
+    clock: [talk, talk, talk]
+    break_every: 4
     guest_chance: 0.7
     energy: steady
+    talk_length_sec: 420
     brief: >-
       Politics where it lands: a council vote still crossing the relays, a compact
       under strain, a delegate promising what a settlement has stopped waiting for.
@@ -148,46 +185,16 @@ programs:
       specifics. Never do a civics lecture; start from the decision, not the
       institution.
 
-  the_exchange:
-    name: "The Exchange"          # [interview] ECONOMY & trade: the physics of scarcity, the long haul, the markets
-    hosts: [wren, joss]
-    framing: ensemble
-    daypart: late morning
-    clock: [talk, talk, news@:00, talk]
-    break_every: 5
-    guest_chance: 0.7
-    energy: steady
-    brief: >-
-      Money and cargo: this week's prices, a convoy running late, a debt
-      restructured, an Exchange House ruling, a Freehold workshop landing a core
-      contract. Every item ends at somebody's margin — who's squeezed, who's
-      suddenly rich, who welched. Never discuss "the economy" in the abstract:
-      name the cargo, the port, and the price.
-
-  the_standing_watch:
-    name: "The Standing Watch"    # [dispatch] CONFLICT & the frontier: the arithmetic of distant war, tensions on the lanes
-    hosts: [thorn, zhe]
-    framing: ensemble
-    daypart: late morning
-    clock: [talk, talk, news@:00, talk]
-    guest_chance: 0.6
-    energy: steady
-    brief: >-
-      The long peace, watched closely: a raider sighting on the lanes, a blockade's
-      patient arithmetic, an escort rota, a mediation inching forward — with Zhe's
-      dispatches from the far edge. Count costs and name positions; sober, not grim.
-      Never glorify a fight, and never philosophise about war — the numbers are
-      grim enough on their own.
-
   the_compact:
-    name: "The Compact"           # [interview] LAW & crime: the local nature of distant justice, the compacts, a case
+    name: "The Compact"           # [interview] LAW & crime — W1 09:30 (Tue/Thu/Sat)
     hosts: [joss, sera]
     framing: ensemble
     daypart: late morning
-    clock: [talk, talk, news@:00, talk]
-    break_every: 5
+    clock: [talk, talk, talk]
+    break_every: 4
     guest_chance: 0.7
     energy: steady
+    talk_length_sec: 420
     brief: >-
       One case at a time: a verdict, a restitution argued, a salvage claim
       contested, an exile pleaded down to labour. Start from the person in trouble,
@@ -195,15 +202,49 @@ programs:
       often harsher. Never do abstract jurisprudence; if there's no name in the
       story, it isn't a story.
 
+  the_exchange:
+    name: "The Exchange"          # [interview] ECONOMY & trade — W2 10:00 (Mon/Tue/Thu/Fri)
+    hosts: [wren, joss]
+    framing: ensemble
+    daypart: late morning
+    clock: [news@:00, talk, talk, talk]
+    break_every: 4
+    guest_chance: 0.7
+    energy: steady
+    talk_length_sec: 420
+    brief: >-
+      Money and cargo: this week's prices, a convoy running late, a debt
+      restructured, an Exchange House ruling, a Freehold workshop landing a core
+      contract. Every item ends at somebody's margin — who's squeezed, who's
+      suddenly rich, who welched. Never discuss "the economy" in the abstract:
+      name the cargo, the port, and the price.
+
+  the_far_towns:
+    name: "The Far Towns"         # [dispatch] TRAVEL & the peoples — W2 10:00 (Wed/Sat/Sun)
+    hosts: [sera, mira]
+    framing: ensemble
+    daypart: late morning
+    clock: [news@:00, talk, talk, talk]
+    break_every: 4
+    guest_chance: 0.7
+    energy: steady
+    talk_length_sec: 420
+    brief: >-
+      One place at a time: a world, a moon, a ten-family outpost — how you'd get
+      there, what they eat, what they're arguing about, what work needs hands,
+      carried on Sera's field records. A place is its people and their problems.
+      Never do postcard wonder; if the item would fit a travel brochure, cut it.
+
   the_workshop:
-    name: "The Workshop"          # [interview] SCIENCE & the relay: ships, terraforming, machine-minds-as-tools
+    name: "The Workshop"          # [interview] SCIENCE & the relay — W3 13:30 (Mon/Wed/Fri/Sat)
     hosts: [wren, joss]
     framing: ensemble
     daypart: afternoon
-    clock: [talk, talk, news@:00, talk]
-    break_every: 5
+    clock: [talk, talk, talk]
+    break_every: 4
     guest_chance: 0.7
     energy: steady
+    talk_length_sec: 420
     brief: >-
       How things work and why they broke: a drive refit gone over budget, a
       terraforming milestone, a relay repair racing the alignment, a machine-mind
@@ -211,29 +252,34 @@ programs:
       a living; give them the failure mode and the fix. Never mystify the
       technology, and never marvel at what the audience maintains.
 
-  the_far_towns:
-    name: "The Far Towns"         # [dispatch] TRAVEL & the peoples: a world a week, sites, difference; Sera's field records
-    hosts: [sera, mira]
+  the_ward:
+    name: "The Ward"              # [interview] HEALTH & medicine — W3 13:30 (Tue/Thu/Sun); NEW (R2.1 canon: 54-health)
+    hosts: [wren, mira]
     framing: ensemble
     daypart: afternoon
-    clock: [talk, talk, news@:00, talk]
+    clock: [talk, talk, talk]
+    break_every: 4
     guest_chance: 0.7
     energy: steady
+    talk_length_sec: 420
     brief: >-
-      One place at a time: a world, a moon, a ten-family outpost — how you'd get
-      there, what they eat, what they're arguing about, what work needs hands,
-      carried on Sera's field records. A place is its people and their problems.
-      Never do postcard wonder; if the item would fit a travel brochure, cut it.
+      Medicine at relay distance: a clinic short of a drug that is three crossings
+      away, the physician-correspondence network arguing a diagnosis across the lag,
+      an outbreak scare walked back, a treatment that works and what it costs. Start
+      from the patient or the medic, and get the practical answer on air — with a
+      physician guest pressed for specifics. Never speculate a diagnosis on air,
+      never mystify medicine, and never turn someone's illness into a metaphor.
 
   the_long_view:
-    name: "The Long View"         # [duo] HISTORY & deep time: the ages of the worlds, the fossil-word "settlement"
+    name: "The Long View"         # [duo] HISTORY & deep time — W4 14:00 (Mon/Wed/Fri)
     hosts: [joss, the-archivist]
     framing: ensemble
     daypart: afternoon
-    clock: [talk, talk, news@:00, talk]
+    clock: [news@:00, talk, talk, talk]
     break_every: 4
     guest_chance: 0.4
     energy: steady
+    talk_length_sec: 420
     brief: >-
       History with today's date on it: an anniversary, a Clearing Day remembered,
       how the Embargo of the Freeholds echoes in this week's prices. Start from
@@ -241,27 +287,48 @@ programs:
       person in the archive, and let the Archivist's dust do the atmosphere.
 
   the_reading_room:
-    name: "The Reading Room"      # [interview] STORY & the literary arts: "the supremacy of story", an author on air
+    name: "The Reading Room"      # [interview] STORY & the literary arts — W4 14:00 (Tue/Thu/Sat/Sun)
     hosts: [mira, the-archivist]
     framing: ensemble
     daypart: afternoon
-    clock: [talk, talk, news@:00, talk]
+    clock: [news@:00, talk, talk, talk]
+    break_every: 4
     guest_chance: 0.6
     energy: steady
+    talk_length_sec: 420
     brief: >-
       What the worlds are actually reading: a new serial, a Station Canon argument,
       an author defending a choice, the season's controversy. React like readers —
       love it, quit it halfway, say so and say why. Never do a plot summary where
       an opinion should be, and never treat story as improving medicine.
 
-  the_thread:
-    name: "The Thread"            # [dispatch] COMMUNICATION & the relay: the network that binds; voices from far worlds
-    hosts: [sera, joss]
+  the_standing_watch:
+    name: "The Standing Watch"    # [dispatch] CONFLICT & the frontier — W5 14:30 (Mon/Wed/Fri/Sun)
+    hosts: [thorn, zhe]
     framing: ensemble
-    daypart: late morning
-    clock: [talk, talk, news@:00, talk]
+    daypart: afternoon
+    clock: [talk, talk, talk]
+    break_every: 4
     guest_chance: 0.6
     energy: steady
+    talk_length_sec: 420
+    brief: >-
+      The long peace, watched closely: a raider sighting on the lanes, a blockade's
+      patient arithmetic, an escort rota, a mediation inching forward — with Zhe's
+      dispatches from the far edge. Count costs and name positions; sober, not grim.
+      Never glorify a fight, and never philosophise about war — the numbers are
+      grim enough on their own.
+
+  the_thread:
+    name: "The Thread"            # [dispatch] COMMUNICATION & the relay — W5 14:30 (Tue/Thu/Sat)
+    hosts: [sera, joss]
+    framing: ensemble
+    daypart: afternoon
+    clock: [talk, talk, talk]
+    break_every: 4
+    guest_chance: 0.6
+    energy: steady
+    talk_length_sec: 420
     brief: >-
       The network as news: a dead node, a repair crew racing the alignment, mail
       queues backed up for weeks, a dark zone shrinking by one relay. Every story
@@ -269,32 +336,52 @@ programs:
       connection — the relay is infrastructure, with a maintenance schedule and
       a bill.
 
+  # ══ DAILY CULTURE, FOOD, SPORT, MUSIC & LETTERS ══════════════════════════════
+  the_table:
+    name: "The Table"             # [dispatch] FOOD, daily — Sera records from the kitchens; NEW
+    hosts: [mira, sera]
+    framing: ensemble
+    daypart: late morning
+    clock: [talk, talk, talk]
+    break_every: 4
+    guest_chance: 0.6
+    energy: steady
+    talk_length_sec: 420
+    brief: >-
+      What's actually for dinner across the worlds: a harvest in or short, a galley
+      trick that survives ration week, what a market stall is charging for real
+      eggs, a festival dish and the argument over whose recipe is right — with Sera
+      recording from the kitchens and stalls. Food is budget, homesickness and
+      pride before it is culture. Never rhapsodise about cuisine — it's dinner, and
+      somebody had to queue for it.
+
   the_commons:
-    name: "The Commons"           # [duo] DEBATE & ideas: the week in the currents, the big questions reasoned through
+    name: "The Commons"           # [duo] DEBATE, daily — the midday argument, from the DAY's stories
     hosts: [joss, mira]
     framing: ensemble
-    daypart: afternoon
-    clock: [talk, talk, news@:00, talk]
+    daypart: midday
+    clock: [talk, talk]
     break_every: 5
     guest_chance: 0.5
     energy: steady
+    talk_length_sec: 420
     brief: >-
-      One live question, argued properly — pulled from the week's stories: who owes
-      the frontier? should the record stand? was the council right to wait? The
-      hosts take real positions, disagree in plain words, and concede points when
-      beaten. Never both-sides mush, and never seminar-speak — keep score like it
-      matters.
+      One live question, argued properly — pulled from the day's stories, this
+      morning's bulletins: who owes the frontier? should the record stand? was the
+      council right to wait? The hosts take real positions, disagree in plain
+      words, and concede points when beaten. Never both-sides mush, and never
+      seminar-speak — keep score like it matters.
 
-  # ══ DAILY CULTURE, SPORT, MUSIC & LETTERS ════════════════════════════════════
   the_gallery:
-    name: "The Gallery"           # [interview] the arts in depth: performance, new works, the celebrated figures
+    name: "The Gallery"           # [interview] the arts, daily
     hosts: [mira, orin]
     framing: ensemble
     daypart: afternoon
-    clock: [talk, talk, news@:00, music, talk]
+    clock: [news@:00, talk, music, talk]
     break_every: 5
     guest_chance: 0.8
     energy: steady
+    talk_length_sec: 420
     brief: >-
       The arts as event: an opening, a premiere, a touring company stranded in
       transit, a feud between the Synthesis School and the Material Tradition, what
@@ -302,14 +389,15 @@ programs:
       hushed-gallery reverence — enthusiasm and disagreement, not curation.
 
   the_circuit:
-    name: "The Circuit"           # [interview] SPORT: the Inter-Settlement Games, the racing lanes, live (with the lag)
+    name: "The Circuit"           # [interview] SPORT, daily, late afternoon
     hosts: [kael, sera]
     framing: ensemble
-    daypart: afternoon
-    clock: [talk, talk, news@:00, talk]
+    daypart: late afternoon
+    clock: [news@:00, talk, talk, talk]
     break_every: 5
     guest_chance: 0.6
     energy: bright
+    talk_length_sec: 420
     brief: >-
       The season, stitched: hollowball standings, Meridian's racing league, an ice
       race off Cold Harbor, a record stuck at the ratification committee, the
@@ -317,12 +405,27 @@ programs:
       lag with pride. Never apologise for the delay, and never philosophise about
       what sport means — call the match.
 
-  the_new_signal:
-    name: "The New Signal"        # [music] a SHORT daily feature — the day's arrivals / a top-of-the-dial run
+  the_count:
+    name: "The Count"             # [music] the daily CHART show — R6 wires the moving chart; NEW
     hosts: [orin]
     framing: solo
-    daypart: afternoon
+    daypart: late afternoon
     clock: [music, music, music]
+    break_every: 4
+    energy: bright
+    brief: >-
+      The day's chart, counted down and taken personally: who climbed, who fell,
+      the new entry in off the relays, the holdout that will not leave the top
+      five. Chart movement is sport — call it like sport, with the countdown stings
+      and the day's chart story. Never play it cool: if a track jumped six places,
+      that is drama, treat it as drama.
+
+  the_new_signal:
+    name: "The New Signal"        # [music] the day's arrivals — the mid-morning music spike
+    hosts: [orin]
+    framing: solo
+    daypart: late morning
+    clock: [news@:00, music, music, music]
     energy: bright
     brief: >-
       The day's arrivals: new tracks in off the relays, back-announced with where
@@ -330,23 +433,133 @@ programs:
       enthusiasm, on to the next one. Never talk longer than the song deserves —
       play it.
 
+  the_far_signal:
+    name: "The Far Signal"        # [dispatch] today's post from the worlds, daily pre-drive
+    hosts: [sera, zhe]
+    framing: ensemble
+    daypart: late afternoon
+    clock: [news@:00, talk, talk]
+    guest_chance: 0.7
+    energy: steady
+    talk_length_sec: 420
+    brief: >-
+      Dispatches played and answered: Sera among the far towns, Zhe at the edge —
+      recordings that crossed weeks to get here, stitched into one exchange.
+      Concrete places, real voices, the lag worn openly. Never smooth out the
+      seams; the distance a dispatch crossed is part of the story.
+
   the_mailbag:
-    name: "The Mailbag"           # [dispatch] listener letters carried on the relay — recorded messages from the worlds
+    name: "The Mailbag"           # [dispatch] listener letters carried on the relay
     hosts: [vell, wren]
     framing: ensemble
-    daypart: afternoon
+    daypart: late afternoon
     clock: [talk, talk]
     guest_chance: 0.4
     energy: steady
+    talk_length_sec: 420
     brief: >-
       Letters weeks in transit, answered live: a question, a grievance, a birth
       announced, advice wanted about a stubborn neighbour. Read them plainly,
       answer honestly, let the letter set the tone — funny, sad, or both. Never
       condescend to a writer, and never turn their news into a sermon.
 
-  # ══ THE NIGHT — warmth, letters, archives, the cosmos ════════════════════════
+  the_serial:
+    name: "The Serial"            # [duo→solo] the nightly 15-min episode — the Archivist opens the book; NEW
+    hosts: [the-archivist]
+    framing: solo
+    daypart: evening
+    clock: [talk]
+    energy: calm
+    talk_length_sec: 420
+    brief: >-
+      Fifteen minutes of the continuing story: one episode a night, one thread of
+      the worlds' long arcs, told by the Archivist before the night begins — a real
+      serial, with a cliff at the end and yesterday honoured at the start. One
+      breath of recap, no more; trust the listener to have been here. Never wrap
+      the story up neatly — the point of a serial is that tomorrow exists.
+
+  # ══ THE 15:30 WEEKLY BELT ════════════════════════════════════════════════════
+  the_fit:
+    name: "The Fit"               # [dispatch] STYLE & dress — Mon + Thu; NEW (R2.1 canon: 56-style)
+    hosts: [mira, orin]
+    framing: ensemble
+    daypart: afternoon
+    clock: [talk, talk, talk]
+    break_every: 4
+    guest_chance: 0.6
+    energy: bright
+    talk_length_sec: 420
+    brief: >-
+      What people actually wear and make across the worlds: dock-crew workwear that
+      became a fashion, festival dress and who gets to wear it, a fabric shortage
+      rippling down the lanes, a tailor's feud, what the well-dressed of Meridian
+      are being laughed at for this season — with Orin's field notes from the
+      concourses. Clothes are how people manage weather, work and pride. Never
+      sneer at anyone's clothes, and never do trend-speak — name the garment, the
+      maker, the price.
+
+  the_relay_round:
+    name: "The Relay Round"       # [duo] the QUIZ — Wed + Fri; Kael v Wren, score kept out loud; NEW
+    hosts: [kael, wren]
+    framing: ensemble
+    daypart: afternoon
+    clock: [talk, talk]
+    guest_chance: 0.0
+    energy: bright
+    talk_length_sec: 420
+    brief: >-
+      The station's game: rounds of questions sent in by listener settlements —
+      their history, their lanes, their scores, their kitchens — with the hosts
+      competing and the score kept out loud. It is a real contest: gloat, groan,
+      dispute a ruling, honour the settlement that stumped everyone. Never let a
+      question become a discussion — answer, score, next; the game has pace or it
+      has nothing.
+
+  the_bridge:
+    name: "The Bridge"            # [interview] culture & history magazine — Tue (back off the bench)
+    hosts: [joss, mira]
+    framing: ensemble
+    daypart: afternoon
+    clock: [talk, music, talk]
+    break_every: 4
+    guest_chance: 0.6
+    energy: steady
+    talk_length_sec: 420
+    brief: >-
+      A slower morning of culture and history: one exhibit, one anniversary, one
+      argument worth having over a second cup. Unhurried but never aimless — each
+      item earns its place. Never let slow become sleepy, and never lecture.
+
+  deep_listening:
+    name: "Deep Listening"        # [music] the curated half-hour — Sat (back off the bench)
+    hosts: [mira]
+    framing: solo
+    daypart: afternoon
+    clock: [music, music, music]
+    energy: calm
+    brief: >-
+      A curated hour: tracks with their stories, sequenced with intent, the talk
+      kept to a minimum between them. The music is the argument. Never talk over
+      a track, and never play filler.
+
+  the_gathering:
+    name: "The Gathering"         # [duo] faith, custom & the open questions — Sun (back off the bench)
+    hosts: [the-archivist, vell]
+    framing: solo
+    daypart: afternoon
+    clock: [talk, talk]
+    guest_chance: 0.2
+    energy: calm
+    talk_length_sec: 420
+    brief: >-
+      The week's edge: faith, doubt, custom, and the things people hold onto
+      between the worlds — talked through, not preached. Personal, specific,
+      unhurried. Never sermonise, and never resolve what should stay an open
+      question.
+
+  # ══ THE NIGHT — unchanged (the night is already good) ════════════════════════
   nightfall:
-    name: "Nightfall"             # [duo] the dusk handover: the day winds down into the night
+    name: "Nightfall"             # [duo] the dusk handover — now starts 20:15 (The Serial holds 20:00)
     hosts: [vell, wren]           # hosts[0]=incoming lead (vell), hosts[1]=outgoing (wren)
     framing: handover
     daypart: nightfall
@@ -420,64 +633,6 @@ programs:
       morning. Never open at full daytime volume, and never let the night's
       reverie linger past the first bulletin.
 
-  # ══ WEEKEND ══════════════════════════════════════════════════════════════════
-  the_far_signal:
-    name: "The Far Signal"        # [dispatch] dispatches from the field (Sera) and the far edge (Zhe) — records played
-    hosts: [sera, zhe]
-    framing: ensemble
-    daypart: morning               # Saturday 10-12 since the 2026-07-18 retune
-    clock: [talk, talk, news@:00, talk]
-    guest_chance: 0.7
-    energy: steady
-    brief: >-
-      Dispatches played and answered: Sera among the far towns, Zhe at the edge —
-      recordings that crossed weeks to get here, stitched into one exchange.
-      Concrete places, real voices, the lag worn openly. Never smooth out the
-      seams; the distance a dispatch crossed is part of the story.
-
-  # ── BENCHED (2026-07-18 operator call: weekends run LIVE, same as any day —
-  # no relaxed weekend programming). Definitions kept so any can be re-scheduled
-  # by adding it back to a `grid:` slot; nothing below airs today. ─────────────
-  the_bridge:
-    name: "The Bridge"            # [interview] BENCHED — was weekend culture & history
-    hosts: [joss, mira]
-    framing: ensemble
-    daypart: weekend morning
-    clock: [talk, talk, news@:00, music, talk]
-    break_every: 6
-    guest_chance: 0.6
-    energy: steady
-    brief: >-
-      A slower morning of culture and history: one exhibit, one anniversary, one
-      argument worth having over a second cup. Unhurried but never aimless — each
-      item earns its place. Never let slow become sleepy, and never lecture.
-
-  deep_listening:
-    name: "Deep Listening"        # [music] BENCHED — was the curated weekend hour
-    hosts: [mira]                 # (same pool as The New Signal for now — see the music note in the header)
-    framing: solo
-    daypart: weekend
-    clock: [music, music, news@:00]
-    energy: calm
-    brief: >-
-      A curated hour: tracks with their stories, sequenced with intent, the talk
-      kept to a minimum between them. The music is the argument. Never talk over
-      a track, and never play filler.
-
-  the_gathering:
-    name: "The Gathering"         # [duo] BENCHED — was weekend reflection (60/65)
-    hosts: [the-archivist, vell]
-    framing: solo
-    daypart: evening
-    clock: [talk, talk, news@:00, talk]
-    guest_chance: 0.2
-    energy: calm
-    brief: >-
-      The week's edge: faith, doubt, custom, and the things people hold onto
-      between the worlds — talked through, not preached. Personal, specific,
-      unhurried. Never sermonise, and never resolve what should stay an open
-      question.
-
   # Reserved fallback — returned when no slot matches, so the scheduler never stalls.
   default:
     name: "Settlement Radio"
@@ -486,39 +641,88 @@ programs:
     rotation: [talk, talk, news, music]
 
 # ─────────────────────────────────────────────────────────────────────────────
-# THE WEEKLY TILING (no gaps). `daily` = the night spine + handovers, every day.
-# `mon-sun` runs the SAME daytime spine all seven days (operator call, 2026-07-18:
-# weekends are handled like any other day — the station never relaxes) EXCEPT the
-# two specialist windows (10:00-12:00, 14:00-16:00), which each per-day key
-# (mon…sun) sets to a rotating vertical. A narrower weekday set always wins.
+# THE WEEKLY TILING (no gaps; GRID_V2 §2-§4 is the signed-off map). `daily` = the
+# night spine, every day. `mon-sun` = the daytime spine, identical all seven days
+# (the fixture rule: dailies keep the same slot every day). The per-day keys set
+# ONLY the five rotating vertical windows (09:30, 10:00, 13:30, 14:00, 14:30) and
+# the 15:30 weekly belt. A narrower weekday set always wins.
 # ─────────────────────────────────────────────────────────────────────────────
 grid:
-  # The night + edges, identical all week (20:00 → 07:00):
+  # The night + The Serial, identical all week (20:00 → 07:00):
   daily:
-    "20:00-22:00": nightfall       # dusk handover
+    "20:00-20:15": the_serial      # the nightly episode (GRID_V2 Q1/Q6)
+    "20:15-22:00": nightfall       # dusk handover
     "22:00-00:00": long_night      # Vell's warm night
     "00:00-02:00": deep_hours      # the deep archives
     "02:00-05:00": deep_field      # pre-dawn cosmos
     "05:00-07:00": first_light     # dawn handover
 
-  # The daytime spine, EVERY day — the 10-12 & 14-16 windows are per-day (below):
+  # The daytime spine, EVERY day — the windows + belt are per-day (below):
   mon-sun:
-    "07:00-09:00": morning_currents  # breakfast flagship
-    "09:00-10:00": common_ground     # daily-life magazine
-    "12:00-13:00": settlement_desk   # midday news + field
-    "13:00-14:00": the_gallery       # a daily hour of the arts
-    "16:00-17:00": the_circuit       # sport
-    "17:00-17:30": the_new_signal    # SHORT music
+    "07:00-09:00": morning_currents  # breakfast flagship (fast items)
+    "09:00-09:30": common_ground     # daily-life magazine
+    "10:30-11:00": the_table         # food, daily
+    "11:00-11:30": the_new_signal    # the mid-morning music spike
+    "11:30-11:45": conditions        # the lanes & the sky, AM
+    "11:45-12:00": the_ledger        # markets, AM
+    "12:00-12:30": settlement_desk   # the LONG midday bulletin + field
+    "12:30-13:00": the_commons       # the midday argument, daily
+    "13:00-13:30": the_gallery       # the arts, daily
+    "15:00-15:15": conditions        # the afternoon update
+    "15:15-15:30": the_ledger        # the close
+    "16:00-16:30": the_circuit       # sport
+    "16:30-17:00": the_count         # the daily chart (R6)
+    "17:00-17:30": the_far_signal    # today's post from the worlds
     "17:30-18:00": the_mailbag       # listener letters
-    "18:00-20:00": evening_currents  # drive flagship
+    "18:00-20:00": evening_currents  # drive flagship (fast items)
 
-  # The rotating specialist — two verticals a day, cycling across the whole week.
-  # Sat/Sun are weekend EDITIONS: the field dispatches land on Saturday, and Sunday
-  # runs politics + debate — the classic "Sunday show" posture, on top of things.
-  mon: { "10:00-12:00": the_assembly,       "14:00-16:00": the_workshop }     # politics · science
-  tue: { "10:00-12:00": the_exchange,       "14:00-16:00": the_far_towns }    # economy · travel
-  wed: { "10:00-12:00": the_standing_watch, "14:00-16:00": the_long_view }    # conflict · history
-  thu: { "10:00-12:00": the_compact,        "14:00-16:00": the_reading_room } # law/crime · story
-  fri: { "10:00-12:00": the_thread,         "14:00-16:00": the_commons }      # the relay · debate
-  sat: { "10:00-12:00": the_far_signal,     "14:00-16:00": the_workshop }     # field dispatches · science
-  sun: { "10:00-12:00": the_assembly,       "14:00-16:00": the_commons }      # Sunday politics · debate
+  # The five rotating windows (each vertical owns ONE canonical time) + the belt:
+  mon:
+    "09:30-10:00": the_assembly
+    "10:00-10:30": the_exchange
+    "13:30-14:00": the_workshop
+    "14:00-14:30": the_long_view
+    "14:30-15:00": the_standing_watch
+    "15:30-16:00": the_fit
+  tue:
+    "09:30-10:00": the_compact
+    "10:00-10:30": the_exchange
+    "13:30-14:00": the_ward
+    "14:00-14:30": the_reading_room
+    "14:30-15:00": the_thread
+    "15:30-16:00": the_bridge
+  wed:
+    "09:30-10:00": the_assembly
+    "10:00-10:30": the_far_towns
+    "13:30-14:00": the_workshop
+    "14:00-14:30": the_long_view
+    "14:30-15:00": the_standing_watch
+    "15:30-16:00": the_relay_round
+  thu:
+    "09:30-10:00": the_compact
+    "10:00-10:30": the_exchange
+    "13:30-14:00": the_ward
+    "14:00-14:30": the_reading_room
+    "14:30-15:00": the_thread
+    "15:30-16:00": the_fit
+  fri:
+    "09:30-10:00": the_assembly
+    "10:00-10:30": the_exchange
+    "13:30-14:00": the_workshop
+    "14:00-14:30": the_long_view
+    "14:30-15:00": the_standing_watch
+    "15:30-16:00": the_relay_round
+  sat:
+    "09:30-10:00": the_compact
+    "10:00-10:30": the_far_towns
+    "13:30-14:00": the_workshop
+    "14:00-14:30": the_reading_room
+    "14:30-15:00": the_thread
+    "15:30-16:00": deep_listening
+  sun:
+    "09:30-10:00": the_assembly
+    "10:00-10:30": the_far_towns
+    "13:30-14:00": the_ward
+    "14:00-14:30": the_reading_room
+    "14:30-15:00": the_standing_watch
+    "15:30-16:00": the_gathering

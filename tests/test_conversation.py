@@ -308,3 +308,36 @@ def test_continuity_editor_checks_field_presence(monkeypatch):
     seen = _capture_system(monkeypatch)
     convo.continuity_check("Vell: hi.\nSera: hi.", _ctx())
     assert "Based: field" in seen["system"]
+
+
+# --- R2.2: the per-program talk-item length scales the word budget -----------
+
+
+def test_word_budget_scales_with_the_item_length():
+    from src.config import settings
+
+    low, high = settings.convo_words_low, settings.convo_words_high
+    default = settings.segment_default_length_target_sec
+    # None / the default length itself -> the dials untouched (pre-R2.2 parity).
+    assert convo._word_budget(None) == (low, high)
+    assert convo._word_budget(default) == (low, high)
+    # A shorter item scales the budget proportionally (same words-per-second).
+    lo, hi = convo._word_budget(default // 2)
+    assert lo == round(low * (default // 2) / default)
+    assert hi == round(high * (default // 2) / default)
+    assert lo < low and hi < high
+
+
+def test_orchestrate_word_budget_scales_in_the_prompt(monkeypatch):
+    from src.config import settings
+
+    seen = _capture_system(monkeypatch)
+    half = settings.segment_default_length_target_sec // 2
+    lo, hi = convo._word_budget(half)
+    convo.orchestrate(
+        _ctx(), "the beat", datetime(2026, 6, 30, 21, 0), length_target_sec=half
+    )
+    assert f"{lo}-{hi} words" in seen["system"]
+    # The unscaled dial range must be gone from the prompt.
+    full = f"{settings.convo_words_low}-{settings.convo_words_high} words"
+    assert full not in seen["system"]

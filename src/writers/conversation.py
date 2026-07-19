@@ -502,6 +502,23 @@ def _pickup_section(flow: ShowFlow | None) -> str:
     )
 
 
+def _word_budget(length_target_sec: int | None) -> tuple[int, int]:
+    """The exchange's word-count range, scaled to the slot's length target (R2.2).
+
+    The `convo_words_low/high` dials are calibrated to the DEFAULT segment length
+    (`segment_default_length_target_sec`); a program that sets its own item length
+    (grid `talk_length_sec`) gets the same words-per-second, proportionally. None
+    (or the default length itself) returns the dials untouched, so every pre-R2.2
+    path is byte-identical.
+    """
+    low, high = settings.convo_words_low, settings.convo_words_high
+    default = settings.segment_default_length_target_sec
+    if not length_target_sec or length_target_sec == default or default <= 0:
+        return low, high
+    scale = length_target_sec / default
+    return max(1, round(low * scale)), max(1, round(high * scale))
+
+
 def orchestrate(
     ctx: AssembledContext,
     beat: str,
@@ -516,6 +533,7 @@ def orchestrate(
     journal: str = "",
     flow: ShowFlow | None = None,
     program: programming.Program | None = None,
+    length_target_sec: int | None = None,
 ) -> str:
     """Write the two-DJ exchange in one call; return speaker-labelled dialogue.
 
@@ -556,6 +574,11 @@ def orchestrate(
     `continue` slot that is CONTINUING a thread it also opens by picking up the prior
     exchange instead of re-introducing the topic (D12.2). `None` (the direct paths)
     keeps the pre-D12 always-a-time-check-near-open/handover, self-contained shape.
+
+    `length_target_sec` (R2.2) scales the word budget: the `convo_words_low/high`
+    dials are calibrated to the default segment length, so a program-set item length
+    (grid `talk_length_sec` — a flagship's fast 3-5-min items) scales them
+    proportionally. None keeps the dials as-is.
 
     `program` (R1.0) is the active program; its editorial brief + energy ride in
     as the ON THIS SHOW block (per-call system — the bible cache still hits).
@@ -616,6 +639,7 @@ def orchestrate(
             f"It is {frame.part_of_day} (you are mid-show — do NOT state the clock "
             "time or open with it, even if this host usually would).\n"
         )
+    words_low, words_high = _word_budget(length_target_sec)
     system = (
         "You are the writers' room for Settlement Radio, scripting a SPOKEN "
         f"on-air exchange between two hosts — {names}. Write the dialogue ONLY.\n\n"
@@ -657,7 +681,7 @@ def orchestrate(
         "reference. Don't explain or recite canon to each other, and don't narrate "
         f"the setting. {time_check}\n\n"
         "Let it breathe — a natural rhythm matters more than an exact length; aim "
-        f"roughly for {settings.convo_words_low}-{settings.convo_words_high} words "
+        f"roughly for {words_low}-{words_high} words "
         "total across both voices.\n\n"
         f"{revision}"
         f"{backbone}"
@@ -1102,6 +1126,7 @@ def compose_segment(
             journal=journal,
             flow=flow,
             program=program,
+            length_target_sec=length_target_sec,
         ).strip()
 
         safety = safety_check(script)

@@ -328,7 +328,10 @@ def _show_flow(
     restart inside the same daily program never resumes yesterday's conversation.
     """
     is_first = program.id != last_content_program
-    est_end = air_cursor + timedelta(seconds=settings.segment_default_length_target_sec)
+    # R2.2 — the look-ahead horizon honours the program's own item length, so a
+    # short-item flagship or a 15-min fixture estimates its `close` correctly.
+    est_len = program.talk_length_sec or settings.segment_default_length_target_sec
+    est_end = air_cursor + timedelta(seconds=est_len)
     is_last = programming.program_for(est_end).id != program.id
     position = flow_mod.show_position(is_first=is_first, is_last=is_last)
     handoff = flow_mod.live_handoff(
@@ -348,6 +351,7 @@ def _show_flow(
         continue_thread=continue_thread,
         program_name=program.name,  # D12.4 — for the spoken sign-on/sign-off by name
         guest_chance=program.guest_chance,  # D12.4 — this show's interview cadence
+        talk_length_sec=program.talk_length_sec or None,  # R2.2 — item length
     )
 
 

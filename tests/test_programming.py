@@ -44,11 +44,13 @@ programs:
     clock: [talk, news@:00, talk]
     brief: "The day desk: prices, disputes, arrivals. Never a meditation."
     energy: bright
+    talk_length_sec: 240
   archive_hour:
     name: "Archive Hour"
     hosts: [the-archivist]
     framing: solo
     energy: frantic  # not in the R1.0 vocabulary -> dropped to "" with a warning
+    talk_length_sec: fast  # not an int (R2.2) -> dropped to 0 with a warning
   default:
     name: "Settlement Radio"
     hosts: [vell, wren]
@@ -176,42 +178,88 @@ def test_unknown_energy_is_dropped_not_propagated(grid_file):
     assert prog.energy == ""
 
 
+# --- R2.2: the per-program talk-item length ----------------------------------
+
+
+def test_talk_length_parses_from_the_grid(grid_file):
+    assert programming.program_for(_mon(7)).talk_length_sec == 240  # daywatch
+    assert programming.program_for(_mon(2)).talk_length_sec == 0  # absent -> default
+
+
+def test_bad_talk_length_is_dropped_not_propagated(grid_file):
+    prog = programming.program_for(_sat(8))  # archive_hour: "fast"
+    assert prog.talk_length_sec == 0
+
+
 # --- The generalised frame preserves the two-host C1 behaviour EXACTLY ------
 
 
 def test_shipped_grid_tiles_the_weekday_with_expected_programs(real_grid):
-    # The D12.4 talk-first weekday (Monday): a steady night spine + dawn handover,
-    # then a granular working day whose 14:00-16:00 slot is the per-day specialist
-    # (Monday = The Workshop).
+    # The GRID_V2 speech-station Monday (R2.2): two fast flagships, ≤30-min fixtures
+    # at the same time every day, five rotating vertical windows + the 15:30 belt,
+    # twice-daily Conditions/Ledger updates, The Serial at 20:00, the night unchanged.
     expected = {
-        **dict.fromkeys((22, 23), "long_night"),
-        **dict.fromkeys((0, 1), "deep_hours"),
-        **dict.fromkeys((2, 3, 4), "deep_field"),
-        **dict.fromkeys((5, 6), "first_light"),
-        **dict.fromkeys((7, 8), "morning_currents"),
-        9: "common_ground",
-        **dict.fromkeys((10, 11), "the_assembly"),  # Monday AM specialist: politics
-        12: "settlement_desk",
-        13: "the_gallery",
-        **dict.fromkeys((14, 15), "the_workshop"),  # Monday PM specialist: science
-        16: "the_circuit",
-        17: "the_new_signal",
-        **dict.fromkeys((18, 19), "evening_currents"),
-        **dict.fromkeys((20, 21), "nightfall"),
+        "00:00": "deep_hours",
+        "02:00": "deep_field",
+        "05:00": "first_light",
+        "07:00": "morning_currents",
+        "08:30": "morning_currents",
+        "09:00": "common_ground",
+        "09:30": "the_assembly",  # W1 Monday: politics
+        "10:00": "the_exchange",  # W2 Monday: economy
+        "10:30": "the_table",
+        "11:00": "the_new_signal",
+        "11:30": "conditions",
+        "11:45": "the_ledger",
+        "12:00": "settlement_desk",
+        "12:30": "the_commons",
+        "13:00": "the_gallery",
+        "13:30": "the_workshop",  # W3 Monday: science
+        "14:00": "the_long_view",  # W4 Monday: history
+        "14:30": "the_standing_watch",  # W5 Monday: conflict
+        "15:00": "conditions",  # the PM update
+        "15:15": "the_ledger",  # the close
+        "15:30": "the_fit",  # the Monday belt: style
+        "16:00": "the_circuit",
+        "16:30": "the_count",
+        "17:00": "the_far_signal",
+        "17:30": "the_mailbag",
+        "18:00": "evening_currents",
+        "19:30": "evening_currents",
+        "20:00": "the_serial",
+        "20:15": "nightfall",
+        "21:00": "nightfall",
+        "22:00": "long_night",
     }
-    for h in range(24):
-        assert programming.program_for(_mon(h)).id == expected[h], f"hour {h}"
+    for hm, pid in expected.items():
+        h, m = (int(x) for x in hm.split(":"))
+        now = datetime(2026, 6, 22, h, m)  # a Monday
+        assert programming.program_for(now).id == pid, f"at {hm}"
+
+
+def test_shipped_grid_rotates_the_windows_by_weekday(real_grid):
+    """The same canonical window airs a different vertical on a different day."""
+    tue_0930 = datetime(2026, 6, 23, 9, 30)
+    sun_1330 = datetime(2026, 6, 28, 13, 30)
+    sun_1530 = datetime(2026, 6, 28, 15, 30)
+    assert programming.program_for(tue_0930).id == "the_compact"
+    assert programming.program_for(sun_1330).id == "the_ward"
+    assert programming.program_for(sun_1530).id == "the_gathering"
 
 
 def test_shipped_grid_tiles_the_whole_week_with_no_gaps(real_grid):
-    """Every (weekday, hour) resolves to a REAL program — the default fills no hole."""
+    """Every (weekday, quarter-hour) resolves to a REAL program — no default holes.
+
+    R2.2: sampled at 15-minute granularity, since the grid now carries 15-minute
+    slots (Conditions/The Ledger) — hourly sampling would miss a sub-hour gap.
+    """
     default = settings.programming_default_program
     base = datetime(2026, 6, 22)  # a Monday
     for day in range(7):
-        for hour in range(24):
-            now = base + timedelta(days=day, hours=hour)
+        for quarter in range(24 * 4):
+            now = base + timedelta(days=day, minutes=15 * quarter)
             prog = programming.program_for(now)
-            assert prog.id != default, f"gap at weekday {now.weekday()} hour {hour}"
+            assert prog.id != default, f"gap at weekday {now.weekday()} {now:%H:%M}"
 
 
 def test_program_frame_matches_legacy_show_frame_across_the_day():

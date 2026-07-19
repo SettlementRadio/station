@@ -125,6 +125,12 @@ class ShowFlow:
     # interview-forward show (culture, politics) run guests often and a solo-desk
     # show run none, straight from the grid.
     guest_chance: float | None = None
+    # R2.2 — the program's talk-item length target in seconds (grid
+    # `talk_length_sec`): a flagship runs fast ~3-5-min items, a 30-min specialist
+    # ~6-8-min ones. The talk builder passes it to `compose_segment`, which scales
+    # the conversation word budget. None = the global default (Seam #2: length is
+    # a parameter, never a constant).
+    talk_length_sec: int | None = None
 
 
 def show_position(*, is_first: bool, is_last: bool) -> str:

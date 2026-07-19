@@ -124,7 +124,15 @@ def talk(now: datetime, ctx: AssembledContext, flow: ShowFlow | None = None) -> 
         flow_position=flow.position if flow is not None else None,
     )
     seg = conversation.compose_segment(
-        ctx, now, seg_id=seg_id, extra_directive=_backbone_for(flow), flow=flow
+        ctx,
+        now,
+        seg_id=seg_id,
+        # R2.2 — the program's own item length (grid `talk_length_sec`, riding the
+        # flow): a flagship's fast 3-5-min items vs a specialist's 6-8. None keeps
+        # the global default (the direct B4/B5 paths are unchanged).
+        length_target_sec=(flow.talk_length_sec if flow is not None else None),
+        extra_directive=_backbone_for(flow),
+        flow=flow,
     )
     seg.meta["format_template"] = "talk"
     log.info("format_talk_done", seg_id=seg_id, turns=seg.meta.get("turns"))
