@@ -29,6 +29,12 @@ Special occasions ask for special foods. Arrival meals celebrate the coming of a
 
 The morning drink is nearly universal: a hot, caffeinated drink that varies by station but serves the same office. It is the first ritual of the day, the moment consciousness is assumed, when the body is reminded that it lives. The drink is often bitter, an acquired taste that marks the passage from sleep to waking, from private to public, from night to the shared day.
 
+## The table across the worlds
+
+Every settled world keeps one dish it defends. It is usually humble — a way with the grain porridge, a fermented thing the neighbours pretend to find alarming, a festival bread whose true recipe is a matter of civic honour — and a visitor will be fed it within a day of docking, because feeding the arrival the world's dish is how a place introduces itself. Arguing about whose version is correct is a settled sport in its own right, conducted at full volume and total seriousness, and never resolved, because resolution is not the point.
+
+Recipes travel the way everything travels: on the relay, and changed by the crossing. A dish written out on one world is cooked from description on another, substituted ingredient by ingredient into the local larder, and sent onward already transformed — so a recipe returns from its circuit of the worlds wearing different spices and a different texture, and both versions keep the name. Cooks keep correspondence the way physicians do, trading substitutions and arguing methods across the queue, and a station cook's recipe book is half letters. Fresh natural food remains the everyday luxury: real eggs, garden fruit, anything that grew under a sky — priced like fortune, hoarded for occasions, and given, when it is given, as a serious gesture of love. And when a harvest fails or a Grain Ship runs late, the worlds tighten into ration weeks with old practice: thinner porridge, sharper tempers, and the cook's craft — making variety from less — suddenly the most respected skill on the station.
+
 ## Work and the structure of purpose
 
 Most adults on the settled worlds work, and most work is maintenance. The machinery of survival demands constant attention: the life support, the power, the water recycling, the structural integrity of the habitat. A station is a machine for living, and like all machines it needs operators. The work is scheduled in shifts that follow the settlement clock, that keep cover at all hours, that share the burden of the necessary across the population.
@@ -99,3 +105,9 @@ The settled worlds are hard, but they are not only hard. The warmth is in the sm
     - **Tags:** sports, games, competition, gravity, peoples, unity, festival, tradition
 15. **The lag is part of sport: results cross the dark by relay, records are ratified weeks after they are set, and settlements celebrate month-old victories as if they were tonight — the station's sports desk stitches the scattered seasons into one.**
     - **Tags:** sports, lag, relay, distance, celebration, station, broadcast, shared
+16. **Every settled world keeps one humble dish it defends as a matter of civic honour; a visitor is fed it within a day of docking, and arguing whose version is correct is a settled sport, never resolved because resolution is not the point.**
+    - **Tags:** food, daily, identity, hospitality, tradition, humour, community
+17. **Recipes travel the relay and are changed by the crossing — cooked from description into the local larder and sent onward transformed, so a dish returns from its circuit wearing different spices, and both versions keep the name; cooks keep correspondence like physicians.**
+    - **Tags:** food, daily, relay, drift, correspondence, variety, tradition
+18. **Fresh natural food is the everyday luxury — real eggs, garden fruit, anything grown under a sky — priced like fortune, hoarded for occasions, and given as a serious gesture of love; a late Grain Ship means ration weeks and the cook's craft becomes the most respected skill aboard.**
+    - **Tags:** food, daily, scarcity, luxury, gift, love, warmth

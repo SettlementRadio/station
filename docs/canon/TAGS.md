@@ -97,7 +97,8 @@ the shared vocabulary.
 **Daily life & ritual** — `daily`, `food`, `rest`, `sleep`, `morning`, `leisure`, `ritual`,
 `hospitality`, `festival`, `celebration`, `tradition`, `lamps`, `lumen`, `lights`, `annual`,
 `togetherness`, `unity`, `shared`, `midnight`, `newyear`, `survival`, `maintenance`, `repair`,
-`shift`, `competence`, `constraint`, `sensory`, `reunion`, `renewal`, `monthly`, `manual`
+`shift`, `competence`, `constraint`, `sensory`, `reunion`, `renewal`, `monthly`, `manual`,
+`style`, `clothing`
 
 **Games & play** — `sports`, `games`, `play`, `competition`, `drama`, `commentary`, `dance`,
 `hollowball`, `racing`, `circuits`, `season`, `team`, `amateur`, `wager`, `host`
@@ -119,7 +120,8 @@ the shared vocabulary.
 `question`, `depth`
 
 **Technology & cosmos** — `technology`, `travel`, `limits`, `machines`, `automation`, `energy`,
-`medicine`, `reliability`, `ethics`, `science`, `physics`, `fusion`, `cosmos`, `stars`, `sky`,
+`medicine`, `health`, `clinic`, `quarantine`, `reliability`, `ethics`, `science`, `physics`,
+`fusion`, `cosmos`, `stars`, `sky`,
 `mystery`, `sublime`, `discovery`, `rumour`, `reactor`, `generator`, `backup`, `simplicity`,
 `durability`, `complexity`, `engineering`, `skill`, `innovation`, `biology`, `biosphere`,
 `native`, `nature`, `life`, `protection`, `aliens`, `eclipse`, `astronomy`, `observation`,

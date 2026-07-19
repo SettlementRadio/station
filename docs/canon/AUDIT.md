@@ -124,7 +124,9 @@ What to enforce:
 - **Consistency:** cross-read the related cornerstone files and flag contradictions — e.g. a single
   dramatic "Founding/landfall" clashes with `10-history.md`'s "slow tide outward, not one event";
   named clocks/terms must agree across `00-station.md`/`01-time.md`; the no-FTL / weeks-of-distance
-  premise (`75-technology.md`) must hold. Also check the submission isn't internally contradictory
+  premise (`75-technology.md`) must hold. Medical submissions must respect `75-technology.md`'s
+  "Medicine and the body" limits (no miracles — no regeneration, age reversal, or mind-copying) and
+  stay consistent with `54-health.md` (the casebooks/correspondence model) — R2.1. Also check the submission isn't internally contradictory
   (e.g. the same event landing on two differently-named places).
 - **Original always** — the tribute takes the *strain*, never the IP (SPIRIT §0).
 

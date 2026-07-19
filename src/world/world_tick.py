@@ -48,10 +48,12 @@ log = get_logger(__name__)
 # across (history, literature, finance, war, nations, peoples, geography, religion,
 # culture, technology), plus `sports` (D9.4: canon's bounded-leisure games and the
 # live circuit Kael's card covers — added so the sports desk's beat actually happens
-# in the generated world). Intrinsic domain data, not config; D3.3 adds the
-# *weighting* that keeps quiet domains from starving. Used here only to steer the
-# proposal toward variety and to tag each story. These tags are also what a DJ's
-# card tags match for on-air memory affinity (D9.4, writers/memory.py).
+# in the generated world), plus `health` and `style` (R2.1: back the GRID_V2
+# verticals The Ward and The Fit via 54-health.md / 56-style.md — a program without
+# a domain starves, the D9.4 lesson). Intrinsic domain data, not config; D3.3 adds
+# the *weighting* that keeps quiet domains from starving. Used here only to steer
+# the proposal toward variety and to tag each story. These tags are also what a
+# DJ's card tags match for on-air memory affinity (D9.4, writers/memory.py).
 DOMAINS: tuple[str, ...] = (
     "history",
     "literature",
@@ -64,6 +66,8 @@ DOMAINS: tuple[str, ...] = (
     "culture",
     "technology",
     "sports",
+    "health",
+    "style",
 )
 
 # State keys the tick owns (live in the `state` kv table; survive a canon refresh).

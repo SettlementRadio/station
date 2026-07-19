@@ -54,6 +54,8 @@ The folder ships with a full set of cornerstone files, **all authored** (the sca
 | `45-conflict.md` | War & peace across weeks | authored |
 | `50-daily-life.md` | The texture of ordinary life (incl. games & sport) | authored |
 | `52-sports.md` | Games, circuits & the stitched season (backs the sports desk + tick domain) | authored |
+| `54-health.md` | Medicine, clinics & the physician network (backs The Ward + `health` tick domain) | authored |
+| `56-style.md` | Dress, cloth & the look of the worlds (backs The Fit + `style` tick domain) | authored |
 | `55-language.md` | Tongues, drift & fossil-words | authored |
 | `58-knowledge.md` | Learning, research & how knowing travels | authored |
 | `60-faith.md` | The sacred & the search for meaning | authored |

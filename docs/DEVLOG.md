@@ -38,6 +38,37 @@ A typical *build* session will be short, e.g.:
 
 ---
 
+## 2026-07-19 — Phase R — R2.1: canon + domain support for the new verticals ✅
+**Focus:** give The Ward and The Fit world to draw on, and make the tick generate stories there.
+**Decisions:**
+- **`docs/canon/54-health.md`** (10 facts): the two-room clinic + protocol medicine, the
+  physician-correspondence network feeding the relay casebooks ("write for the next case"),
+  circuit physicians riding the Mercy Round (the 15-figures tie), architectural quarantine (the
+  amber lamp), formula-at-broadcast-speed vs drug-at-ship-speed as the core/frontier health gap.
+  Holds to 75-technology's no-miracles limits; AUDIT.md Step 4 now names that consistency check.
+- **`docs/canon/56-style.md`** (8 facts, small file as planned): workwear-first dress, distinction
+  in detail (visible mending, "worn well"), cloth-as-manifest (dye = geology), the asynchronous
+  season (patterns by broadcast, cloth by ship, both versions keep the name), the arrival coat,
+  Lumen light-work.
+- **Food for the daily Table**: extended `50-daily-life.md` — "The table across the worlds" prose
+  + facts 16–18 APPENDED (never mid-list; fact ids stay stable): the defended dish, recipes
+  mutating across the relay, fresh food as the everyday luxury.
+- **`DOMAINS += health, style`** (world_tick.py) + cast affinity tags (wren+health; mira+health,
+  style; orin+style — the D9.4 pattern). TAGS palette: +`health`,`clinic`,`quarantine`,`style`,
+  `clothing`; canon README table +2 rows.
+**Verified:** `make seed-canon` → 267 facts (+21), 267 embeddings, tick state untouched; ruff +
+483 tests green; `_quiet_domains` surfaces `['health','style',…]`; two live dev ticks (#8 at
+active-cap advanced/resolved 3; #9 proposed with quiet_domains=[health, style, geography,
+culture]) → **both new domains produced stories first try**: "The Breathing Sickness" (health)
+and "The Dust Portraits" (style), plus "The Still Meal" (culture/food) for the Table.
+**Changed:** `docs/canon/{54-health,56-style,50-daily-life,90-cast,README,TAGS,AUDIT}.md`,
+`src/world/world_tick.py`, this DEVLOG.
+**Why:** a program without a domain starves (the D9.4 sports lesson) — the GRID_V2 verticals
+needed their world *before* R2.2 puts them on air.
+**Next:** R2.2 — implement the signed-off grid (`grid.yaml` rewrite, flagship clocks,
+`talk_length_sec`, the sub-hour pin regression test).
+Commit: (this session)  ·  Clips: —
+
 ## 2026-07-19 — Phase R — R2.0: GRID_V2 designed — the 24-hour speech-station week (paper task, awaiting sign-off)
 **Focus:** the R2 keystone — design the whole new week on paper before any YAML moves.
 **Decisions (proposed — the doc is a DRAFT until the operator signs off §10):**

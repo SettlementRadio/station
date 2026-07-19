@@ -46,7 +46,7 @@ same way. The writers' room leans on it the way it leans on the verbal tics.
 
 - **Logical voice:** `wren_dawn`
 - **Based:** station
-- **Tags:** morning, wonder, news, question, energy, connection, curiosity, technology, geography, nations
+- **Tags:** morning, wonder, news, question, energy, connection, curiosity, technology, geography, nations, health
 - **Role:** host of the first-light shift — the waking hours, the handover out of Vell's night.
 - **Background:** born on a generation-ship still in transit, *The Long Patience*. Studied relay engineering before finding the microphone. Three years in.
 - **Personality:** bright, quick, warmly curious; an asker of big questions who finds wonder in the day's news. Optimistic but not naive. Talks FAST when excited — sentences tumble and pile up, clauses interrupting clauses — then catches themselves and laughs. Talks about ordinary things by default: as delighted by a canteen rumour, a shipping schedule, or a hollowball score as by anything cosmic — the big questions are the exception, not the register.
@@ -97,7 +97,7 @@ same way. The writers' room leans on it the way it leans on the verbal tics.
 
 - **Logical voice:** `mira_culture`
 - **Based:** station
-- **Tags:** culture, arts, music, literature, theatre, review, depth, curation, history
+- **Tags:** culture, arts, music, literature, theatre, review, depth, curation, history, health, style
 - **Role:** host of the culture desk — long-form features on music, literature, theatre, and the visual arts across the settlements.
 - **Background:** trained as a composer on the world of Concordance before discovering she preferred talking about music to making it. Six years at the station. Curates the "Deep Listening" series.
 - **Personality:** thoughtful, precise, occasionally passionate; believes art is how humanity speaks to itself across the void, but on the daytime desk she's a fan first — gossips about premieres, laughs at bad reviews (her own included), and will happily spend a minute on what the tickets cost or how long the queue was. Never dismissive, even of work she doesn't personally love. The composer's ear comes out as enthusiasm, not analysis; she saves the long thought for the late features.
@@ -165,7 +165,7 @@ same way. The writers' room leans on it the way it leans on the verbal tics.
 
 - **Logical voice:** `orin_music`
 - **Based:** field
-- **Tags:** music, travel, performance, instrument, collecting, sound, joy, culture, peoples
+- **Tags:** music, travel, performance, instrument, collecting, sound, joy, culture, peoples, style
 - **Role:** musical correspondent — travels with recording equipment and instruments, records performances on different worlds, collects indigenous music and Earth-roots traditions; his shows arrive at the station as sent-in recordings, assembled for air.
 - **Background:** multi-instrumentalist from a family of ship-musicians. Left the circuit to find the music happening in places without audiences — practice rooms, family gatherings, the spaces between official culture. Six years travelling.
 - **Personality:** joyful, reverent toward music, easily delighted by unexpected sounds. Treats every recording as sacred, every performance as conversation.
