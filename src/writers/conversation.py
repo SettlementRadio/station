@@ -93,6 +93,21 @@ class ContinuityResult:
     note: str  # the editor's note ("OK" or "ISSUES: …")
 
 
+# R1.2 — the house-poetry register the DAYTIME shows must not fall back into.
+# Exemplars, not an exhaustive list: the prompt bans "anything in that key", and
+# the R1.4 `plain_register` acceptance property uses these exact phrases as its
+# regression tripwire on generated daytime talk. The night shows (energy `calm`)
+# are exempt — lyricism is the night's dialect, not the station's.
+BANNED_ABSTRACTIONS: tuple[str, ...] = (
+    "the light between worlds",
+    "what the dark says back",
+    "the distance itself",
+    "the silence between the stars",
+    "the weight of the dark",
+    "the vastness of the void",
+)
+
+
 # --- The show frame (C1): who's on air this hour, framed from the clock -------
 
 
@@ -142,6 +157,36 @@ def _show_section(program: programming.Program | None) -> str:
     return f"ON THIS SHOW — {program.name}:\n{program.brief}{energy}\n\n"
 
 
+def _register_directive(program: programming.Program | None) -> str:
+    """The R1.2 energy-driven register block ('' when the program has no energy).
+
+    The fix for "academic professors discussing the light and the distance", at
+    the delivery layer: daytime shows (`steady`/`bright`) get plain speech
+    enforced and the house-poetry register banned outright; `calm` shows keep
+    the night's lyric dialect (their soul) over a plainness floor. No energy
+    (the default program, the direct paths) adds nothing — the base delivery
+    block stands alone, as before R1.2.
+    """
+    if program is None or not program.energy:
+        return ""
+    if program.energy == "calm":
+        return (
+            "This is a calm/night show — the station's lyric register is at home "
+            "here: warmth, wonder, and the long thought are allowed. But even at "
+            "night, people talk like people: plain words first, poetry only where "
+            "it earns its place.\n\n"
+        )
+    examples = ", ".join(f"'{p}'" for p in BANNED_ABSTRACTIONS[:3])
+    return (
+        "This is a DAYTIME show — keep the register everyday. Plain vocabulary; "
+        "mostly short, declarative sentences (the odd long one for a story, not "
+        "for atmosphere). BANNED here: the house-poetry register — abstractions "
+        f"like {examples}, and anything in that key. The listener LIVES in this "
+        "world; don't elegise it or explain it to them. Wonder is the night "
+        "shows' dialect, not this hour's.\n\n"
+    )
+
+
 def _situation(frame: ShowFrame, ctx: AssembledContext) -> str:
     """Resolve the frame's prose situation with the hosts' display names."""
     return framing.resolve_situation(frame, {c.id: c.name for c in ctx.speakers})
@@ -151,7 +196,7 @@ def _situation(frame: ShowFrame, ctx: AssembledContext) -> str:
 
 
 def _showrunner_thread(
-    flow: ShowFlow | None, *, on_brief: bool = False
+    flow: ShowFlow | None, *, on_brief: bool = False, energy: str = ""
 ) -> tuple[str, str]:
     """The showrunner's D12.2 thread context + task, for `(thread_block, task_block)`.
 
@@ -163,6 +208,11 @@ def _showrunner_thread(
     `on_brief` (R1.0) — True when the active program carries an editorial brief:
     the fresh pick is then scoped to THIS show (the ON THIS SHOW block above it in
     the prompt), not the whole world. False keeps the pre-R1 task exactly.
+
+    `energy` (R1.2) — the program's delivery hint. On a daytime show
+    (`steady`/`bright`) the fresh pick's angle becomes a CONCRETE everyday stake,
+    not a meditation — the beat-level half of the register fix. `calm` and ""
+    keep the original human-angle wording (the night's soul; the direct paths).
     """
     show_scope = (
         "Pick a beat that belongs on THIS show — the ON THIS SHOW brief above "
@@ -170,11 +220,21 @@ def _showrunner_thread(
         if on_brief
         else ""
     )
+    if energy in ("steady", "bright"):
+        angle = (
+            "a CONCRETE, everyday stake — money, time, weather, a queue, a "
+            "rivalry, a plan gone wrong — not a meditation"
+        )
+    else:
+        angle = (
+            "a HUMAN angle — a feeling, a small concrete detail, a gentle "
+            "disagreement, something one of them can't stop thinking about — not "
+            "just a fact to report"
+        )
     fresh_task = (
         f"{show_scope}"
-        "Pick exactly ONE current event or world fact for them to glance off, and a "
-        "HUMAN angle — a feeling, a small concrete detail, a gentle disagreement, "
-        "something one of them can't stop thinking about — not just a fact to report. "
+        f"Pick exactly ONE current event or world fact for them to glance off, and "
+        f"{angle}. "
         "The angle should suit both hosts AND the time of day above; do not assume "
         "night, morning, or a handover unless the time and the on-air note say so. "
         "Reply with a SHORT brief (2-4 sentences): the topic, the human angle, and "
@@ -266,7 +326,9 @@ def showrunner(
     situation = _situation(frame, ctx)
     show_section = _show_section(program)
     freshness_section = f"{recent_block}\n\n" if recent_block else ""
-    thread_block, task_block = _showrunner_thread(flow, on_brief=bool(show_section))
+    thread_block, task_block = _showrunner_thread(
+        flow, on_brief=bool(show_section), energy=program.energy
+    )
     system = (
         "You are the showrunner for Settlement Radio, a tribute sci-fi radio "
         f"station. Choose the beat for a short on-air exchange between {names}.\n\n"
@@ -511,6 +573,7 @@ def orchestrate(
     frame = frame or _frame_for(ctx, now, program=program)
     situation = _situation(frame, ctx)
     show_section = _show_section(program)
+    register = _register_directive(program)
     backbone = (
         f"Follow this shape for the exchange:\n{extra_directive}\n\n"
         if extra_directive
@@ -580,9 +643,15 @@ def orchestrate(
         "implied.\n"
         "- They genuinely react to and build on what the other JUST said — pick up a "
         "word, push back gently, finish each other's thought.\n"
+        "- Let them have OPINIONS: verdicts, preferences, mild complaints — a real "
+        "person thinks the price is too high, the ruling took too long, the galley "
+        "kettle is broken again.\n"
+        "- When a line is funny, it is funny the way that host's card's `Humour:` "
+        "line says — each host's own kind of joke, never generic banter.\n"
         "- Each sounds unmistakably like THEMSELVES: lean on the verbal tics, habits, "
         "and cadence in their character card (cached above), matching the feel of "
         "that card's sample lines. They are NOT interchangeable.\n\n"
+        f"{register}"
         "The world facts and the event are their SHARED knowledge — reference them "
         "the way colleagues do: a glance, an in-joke, an assumption, a half-finished "
         "reference. Don't explain or recite canon to each other, and don't narrate "

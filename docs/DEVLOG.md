@@ -38,6 +38,36 @@ A typical *build* session will be short, e.g.:
 
 ---
 
+## 2026-07-19 — Phase R — R1.2: the register pass — normal people, not a lecture
+**Focus:** the delivery-layer half of the register fix in `src/writers/conversation.py`, driven by
+the R1.0 `energy` field so the night keeps its soul.
+**Decisions:**
+- **`BANNED_ABSTRACTIONS`** is a module constant (exemplars: "the light between worlds", "what the
+  dark says back", …) shared between the prompt line and the future R1.4 `plain_register`
+  acceptance property — one vocabulary, two enforcement points.
+- **`_register_directive(program)`** — energy-driven: `steady`/`bright` shows get "keep the
+  register everyday… BANNED here: the house-poetry register"; `calm` shows get "the lyric register
+  is at home here… but people still talk like people"; no energy (the default program, direct
+  paths) adds nothing — the base block stands alone, pre-R1.2 shape.
+- **The showrunner's human-angle is energy-driven too:** daytime fresh picks ask for "a CONCRETE,
+  everyday stake — money, time, weather, a queue, a rivalry, a plan gone wrong — not a meditation";
+  calm/"" keep the original wording (a deliberate softening of the pack's flat instruction, per the
+  R1 "night keeps its soul" principle — noted as a choice).
+- **Base delivery block strengthened for ALL talk:** two new bullets — real OPINIONS (verdicts,
+  mild complaints) and humour drawn from each card's `Humour:` line, never generic banter.
+- **News desk verified, untouched:** `formats/news.py` already pins "formal broadcast news… AVOID
+  metaphor and simile, lyrical or poetic phrasing" — no drift.
+**Changed:** `src/writers/conversation.py`, `tests/test_conversation.py` (+5 tests). 478 tests
+green, ruff clean; `make acceptance` — all 7 properties pass.
+**Verified:** 5-segment daytime sample (Morning Currents, The Exchange, Settlement Desk, The
+Gallery, The Circuit; ~10 sonnet calls, script-only) against the checklist — contractions 29–49
+per script, average sentence length 9.2–13.1 words, ZERO banned abstractions on all five; the
+card humour lands recognisably (Mira's weighed-understatement review, Kael's honour-ledger gag,
+Joss's dry "I'm going to observe. There's a difference.").
+**Next:** R1.3 — the cast-card pass (`docs/canon/90-cast.md` sample lines grounded in everyday
+speech; re-seed).
+Commit: (pending)  ·  Clips: —
+
 ## 2026-07-19 — Phase R — R1.1: the briefs written — every program has an editorial identity
 **Focus:** all 27 non-default programs in `grid.yaml` (benched ones included) got their `brief` +
 `energy`, written per the R1.1 rules: concrete stakes (prices, disputes, matches, verdicts,

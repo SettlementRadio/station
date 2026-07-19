@@ -231,6 +231,59 @@ def test_no_brief_keeps_the_pre_r1_prompts_exactly(monkeypatch, tmp_path):
     assert "ON THIS SHOW" not in seen["system"]
 
 
+# --- R1.2: the register pass — plain by day, lyric by night ------------------
+
+
+def test_daytime_energy_bans_the_house_poetry(monkeypatch):
+    seen = _capture_system(monkeypatch)
+    convo.orchestrate(
+        _ctx(), "the beat", datetime(2026, 6, 30, 14, 0), program=EXCHANGE
+    )
+    assert "BANNED here: the house-poetry register" in seen["system"]
+    # The exemplar phrases from the shared vocabulary reach the prompt.
+    assert convo.BANNED_ABSTRACTIONS[0] in seen["system"]
+
+
+def test_calm_energy_keeps_the_night_register(monkeypatch):
+    seen = _capture_system(monkeypatch)
+    night = _program(
+        "long_night", "The Long Night", brief="Warm night talk.", energy="calm"
+    )
+    convo.orchestrate(_ctx(), "the beat", datetime(2026, 6, 30, 23, 0), program=night)
+    assert "lyric register is at home" in seen["system"]
+    assert "BANNED here" not in seen["system"]
+
+
+def test_no_energy_adds_no_register_block(monkeypatch):
+    seen = _capture_system(monkeypatch)
+    briefless = _program("default", "Settlement Radio")
+    convo.orchestrate(
+        _ctx(), "the beat", datetime(2026, 6, 30, 21, 0), program=briefless
+    )
+    assert "BANNED here" not in seen["system"]
+    assert "lyric register is at home" not in seen["system"]
+
+
+def test_orchestrate_invites_opinions_and_card_humour(monkeypatch):
+    # The strengthened base delivery block applies to ALL talk, register aside.
+    seen = _capture_system(monkeypatch)
+    convo.orchestrate(_ctx(), "the beat", datetime(2026, 6, 30, 21, 0))
+    assert "OPINIONS" in seen["system"]
+    assert "`Humour:`" in seen["system"]
+
+
+def test_showrunner_daytime_angle_is_a_concrete_stake(monkeypatch):
+    seen = _capture_system(monkeypatch)
+    now = datetime(2026, 6, 30, 14, 0)
+    convo.showrunner(_ctx(), now, program=EXCHANGE)  # steady -> the concrete stake
+    assert "not a meditation" in seen["system"]
+    assert "can't stop thinking about" not in seen["system"]
+    night = _program("long_night", "The Long Night", brief="Warm.", energy="calm")
+    convo.showrunner(_ctx(), now, program=night)  # calm -> the original angle
+    assert "can't stop thinking about" in seen["system"]
+    assert "not a meditation" not in seen["system"]
+
+
 # --- Field hosts (the audit fix): the dispatch directive ---------------------
 
 SERA = CastMember("sera", "Sera", "card text", "sera_field", [], based="field")
