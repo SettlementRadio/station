@@ -38,6 +38,33 @@ A typical *build* session will be short, e.g.:
 
 ---
 
+## 2026-07-19 — Phase R — R2.0: GRID_V2 designed — the 24-hour speech-station week (paper task, awaiting sign-off)
+**Focus:** the R2 keystone — design the whole new week on paper before any YAML moves.
+**Decisions (proposed — the doc is a DRAFT until the operator signs off §10):**
+- **One daily spine, all seven days**: flagships 07–09/18–20 with fast `[news@:00, talk, talk,
+  news@:30, talk, talk]` clocks (3–5-min items), ~16 short daytime fixtures (≤30 min), the night
+  untouched — ~23 named programs/day, the pack's "two flagships + ~20 fixtures" shape.
+- **Five rotating vertical windows** (09:30/10:00/13:30/14:30 + 14:00), each owning one canonical
+  time with a 4+3 weekday pair split — 35 editions/week across 10 verticals — plus a **15:30
+  weekly belt** that brings the_bridge/deep_listening/the_gathering back off the bench.
+- **8 new programs**: The Ward (health), The Fit (style), The Table (food, daily), Conditions
+  (the D14 slot at last — reuses `d14_conditions.mp3`, voiced by Zhe, ×2 daily), The Ledger
+  (markets ×2 daily), The Count (R6 chart), The Serial (nightly 15-min at 20:00, Archivist), The
+  Relay Round (quiz, 2×/wk). Full R1.1-style briefs written for all eight in the doc.
+- **Host rota rebalance**: Evening Currents proposed to Kael+Joss so Thorn drops to ~3.5h/day
+  (keeps every bulletin); worst load Joss ~4.5h — flagged in §10.
+- Pin-coverage table proves hourly `news@:00` everywhere except a deliberate 20:00 gap (the
+  Serial); §9 lists the R2.2 implementation notes (`talk_length_sec`, sub-hour pin test, 15-min
+  slot loader test).
+**Changed:** `docs/programming/GRID_V2.md` (new — the full 168h design: tiling, windows, program
+register, rota, theme/canon gap lists feeding R3.1 + R2.1), this DEVLOG.
+**Why:** the audit's "long slow blocks" problem is structural — real speech radio is a fixed spine
+of short fixtures; designing the whole week on paper first means R2.1/R2.2 build against a
+signed-off target instead of iterating live YAML.
+**Next:** operator review of GRID_V2.md §10 (8 questions) → then R2.1 (54-health.md, style
+section, `DOMAINS += health/style`) and R2.2 (the YAML + clocks).
+Commit: (this session)  ·  Clips: —
+
 ## 2026-07-19 — Phase R — R1.4: the SPIRIT register note + the 8th acceptance property — R1 COMPLETE ✅
 **Focus:** the last R1 task — guard the register fix and stop the bible re-teaching the poetry.
 **Decisions:**
