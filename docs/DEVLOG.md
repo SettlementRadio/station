@@ -38,6 +38,34 @@ A typical *build* session will be short, e.g.:
 
 ---
 
+## 2026-07-19 — Phase R — R1.1: the briefs written — every program has an editorial identity
+**Focus:** all 27 non-default programs in `grid.yaml` (benched ones included) got their `brief` +
+`energy`, written per the R1.1 rules: concrete stakes (prices, disputes, matches, verdicts,
+arrivals, someone's bad day), an explicit "never" line each, flagship briefs stating the item
+cadence ("move every few minutes"), grounded in canon nouns (Exchange Houses, hollowball,
+Meridian's league, Clearing Day, the honour ledgers, dark zones).
+**Decisions:**
+- **Energy map:** bright = breakfast/drive/daily-life/sport/new-signal; steady = the verticals,
+  midday desk, mailbag, dawn; calm = the whole night block (+ benched deep_listening/gathering).
+- **The night keeps its soul:** the daytime "never" lines ban the house poetry ("never muse about
+  the light or the distance"), but nightfall→deep_field briefs explicitly ALLOW the lyric register
+  — lyricism is the night's dialect, not the station's (the R1.2/R1.4 principle, pre-seeded here).
+- `default` stays briefless on purpose — it IS the pre-R1 behaviour (back-compat anchor).
+**Changed:** `docs/programming/grid.yaml` (header note + 27 briefs);
+`tests/test_conversation.py` — the R1.0 back-compat test derived "a briefless program" from the
+shipped grid, which stopped being briefless this session; it now uses a missing grid file (the
+synthesised default). 473 tests green, ruff clean.
+**Verified:** live sample run (showrunner + orchestrator, no TTS/gates, ~6 sonnet calls) for three
+contrasting shows — The Exchange (Tue 10:30) argued an atlas auction in terms of access, bids and
+committee stakes; The Circuit (16:30) called standings, a dismissed technical query and weather
+windows at full volume; The Long Night (23:00) kept the warm night register. Recognisably
+different shows — the R1.1 acceptance.
+**📣 Postable:** before/after of one show's talk once R1.2 lands (the full register pass) — the
+"professors → people" clip writes itself.
+**Next:** R1.2 — the register pass in `conversation.py` (plain speech, banned-abstraction line
+driven by `energy`).
+Commit: (pending)  ·  Clips: —
+
 ## 2026-07-19 — Phase R — R1.0: the `brief` field — programs get an editorial identity
 **Focus:** the R1 foundation seam: `Program` now carries an optional editorial `brief` (2–4
 sentences: what the show covers, what a good item looks like, what it never does) and `energy`

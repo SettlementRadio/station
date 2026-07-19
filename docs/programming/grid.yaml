@@ -55,6 +55,14 @@
 # `break_every: N` (D8.1) — sparse ad-break cadence; the handovers, short features,
 # deep night and music stay break-free. MUSIC is deliberately short: the catalogue is
 # ~57 tracks / ~2.5h total (config/tracks.yaml), so a long block would just repeat.
+#
+# `brief` + `energy` (R1.0/R1.1) — the show's EDITORIAL IDENTITY, threaded into the
+# writers' room as the per-call "ON THIS SHOW" block. A brief is 2–4 sentences written
+# for INTEREST, not theme: concrete stakes (prices, disputes, matches, verdicts,
+# arrivals, weather, someone's bad day) plus an explicit "never" line. `energy` is the
+# delivery-pace hint: calm | steady | bright. The daytime "never" lines ban the house
+# poetry; the night shows' briefs deliberately ALLOW it — lyricism is the night's
+# dialect, not the station's. `default` carries no brief (the pre-R1 behaviour).
 # ─────────────────────────────────────────────────────────────────────────────
 
 programs:
@@ -67,6 +75,14 @@ programs:
     clock: [talk, talk, news@:00, talk, news@:30]
     break_every: 6
     guest_chance: 0.3
+    energy: bright
+    brief: >-
+      The breakfast desk: what changed overnight and what it costs today — a price
+      moved, a convoy due, a vote still crossing the relays, weather over the lanes.
+      Move every few minutes: short items, quick takes, then on; the analyst is there
+      to be pressed for specifics, not to lecture. A listener is starting a shift —
+      tell them what they need before the door. Never open with philosophy; never
+      muse about the light or the distance.
 
   settlement_desk:
     name: "The Settlement Desk"   # [dispatch] midday news + a field record from Sera on the road
@@ -76,6 +92,13 @@ programs:
     clock: [news@:00, talk, talk, news@:30]
     break_every: 6
     guest_chance: 0.5
+    energy: steady
+    brief: >-
+      The midday desk: the day's stories at the halfway mark — what moved since
+      breakfast, what the afternoon will decide — plus a field record from one real
+      place: a dock, a hearing, a market queue. Keep items short and keep them
+      advancing. Never re-read the morning — say what's new since; never explain the
+      world to the people living in it.
 
   evening_currents:
     name: "Evening Currents"      # [interview] the drive-time round-up of the settlement currents
@@ -85,6 +108,12 @@ programs:
     clock: [talk, talk, news@:00, talk, news@:30]
     break_every: 6
     guest_chance: 0.3
+    energy: bright
+    brief: >-
+      Drive time: the day closed out — who won, who lost, what it cost, what
+      tomorrow inherits. Move every few minutes, mix verdicts with quick reactions,
+      and let the hosts call it as they see it. Never drift into evening reverie —
+      that is the night's job; this desk ends the working day awake.
 
   common_ground:
     name: "Common Ground"         # [interview] daily life across the worlds; an ordinary resident on air
@@ -94,6 +123,13 @@ programs:
     clock: [talk, talk, news@:00, talk]
     break_every: 5
     guest_chance: 0.6
+    energy: bright
+    brief: >-
+      Ordinary life, taken seriously: a broken air filter, a rec-hall wedding, a
+      shift dispute, the food queue, someone's terrible week — often with the
+      resident it happened to on air. The stakes are small and real; treat them as
+      news. Never turn a person's day into a metaphor, and never explain their own
+      world to them.
 
   # ══ THE VERTICALS — the rotating specialist strands (one theme a day) ════════
   the_assembly:
@@ -104,6 +140,13 @@ programs:
     clock: [talk, talk, news@:00, talk]
     break_every: 5
     guest_chance: 0.7
+    energy: steady
+    brief: >-
+      Politics where it lands: a council vote still crossing the relays, a compact
+      under strain, a delegate promising what a settlement has stopped waiting for.
+      Ask who decides, who pays, and when — and press the guest, politely, for
+      specifics. Never do a civics lecture; start from the decision, not the
+      institution.
 
   the_exchange:
     name: "The Exchange"          # [interview] ECONOMY & trade: the physics of scarcity, the long haul, the markets
@@ -113,6 +156,13 @@ programs:
     clock: [talk, talk, news@:00, talk]
     break_every: 5
     guest_chance: 0.7
+    energy: steady
+    brief: >-
+      Money and cargo: this week's prices, a convoy running late, a debt
+      restructured, an Exchange House ruling, a Freehold workshop landing a core
+      contract. Every item ends at somebody's margin — who's squeezed, who's
+      suddenly rich, who welched. Never discuss "the economy" in the abstract:
+      name the cargo, the port, and the price.
 
   the_standing_watch:
     name: "The Standing Watch"    # [dispatch] CONFLICT & the frontier: the arithmetic of distant war, tensions on the lanes
@@ -121,6 +171,13 @@ programs:
     daypart: late morning
     clock: [talk, talk, news@:00, talk]
     guest_chance: 0.6
+    energy: steady
+    brief: >-
+      The long peace, watched closely: a raider sighting on the lanes, a blockade's
+      patient arithmetic, an escort rota, a mediation inching forward — with Zhe's
+      dispatches from the far edge. Count costs and name positions; sober, not grim.
+      Never glorify a fight, and never philosophise about war — the numbers are
+      grim enough on their own.
 
   the_compact:
     name: "The Compact"           # [interview] LAW & crime: the local nature of distant justice, the compacts, a case
@@ -130,6 +187,13 @@ programs:
     clock: [talk, talk, news@:00, talk]
     break_every: 5
     guest_chance: 0.7
+    energy: steady
+    brief: >-
+      One case at a time: a verdict, a restitution argued, a salvage claim
+      contested, an exile pleaded down to labour. Start from the person in trouble,
+      then what the compacts actually say — and what the neighbours think, which is
+      often harsher. Never do abstract jurisprudence; if there's no name in the
+      story, it isn't a story.
 
   the_workshop:
     name: "The Workshop"          # [interview] SCIENCE & the relay: ships, terraforming, machine-minds-as-tools
@@ -139,6 +203,13 @@ programs:
     clock: [talk, talk, news@:00, talk]
     break_every: 5
     guest_chance: 0.7
+    energy: steady
+    brief: >-
+      How things work and why they broke: a drive refit gone over budget, a
+      terraforming milestone, a relay repair racing the alignment, a machine-mind
+      doing exactly what it was told — unfortunately. The listeners fix things for
+      a living; give them the failure mode and the fix. Never mystify the
+      technology, and never marvel at what the audience maintains.
 
   the_far_towns:
     name: "The Far Towns"         # [dispatch] TRAVEL & the peoples: a world a week, sites, difference; Sera's field records
@@ -147,6 +218,12 @@ programs:
     daypart: afternoon
     clock: [talk, talk, news@:00, talk]
     guest_chance: 0.7
+    energy: steady
+    brief: >-
+      One place at a time: a world, a moon, a ten-family outpost — how you'd get
+      there, what they eat, what they're arguing about, what work needs hands,
+      carried on Sera's field records. A place is its people and their problems.
+      Never do postcard wonder; if the item would fit a travel brochure, cut it.
 
   the_long_view:
     name: "The Long View"         # [duo] HISTORY & deep time: the ages of the worlds, the fossil-word "settlement"
@@ -156,6 +233,12 @@ programs:
     clock: [talk, talk, news@:00, talk]
     break_every: 4
     guest_chance: 0.4
+    energy: steady
+    brief: >-
+      History with today's date on it: an anniversary, a Clearing Day remembered,
+      how the Embargo of the Freeholds echoes in this week's prices. Start from
+      something current and dig down to the record. Never recite dates — find the
+      person in the archive, and let the Archivist's dust do the atmosphere.
 
   the_reading_room:
     name: "The Reading Room"      # [interview] STORY & the literary arts: "the supremacy of story", an author on air
@@ -164,6 +247,12 @@ programs:
     daypart: afternoon
     clock: [talk, talk, news@:00, talk]
     guest_chance: 0.6
+    energy: steady
+    brief: >-
+      What the worlds are actually reading: a new serial, a Station Canon argument,
+      an author defending a choice, the season's controversy. React like readers —
+      love it, quit it halfway, say so and say why. Never do a plot summary where
+      an opinion should be, and never treat story as improving medicine.
 
   the_thread:
     name: "The Thread"            # [dispatch] COMMUNICATION & the relay: the network that binds; voices from far worlds
@@ -172,6 +261,13 @@ programs:
     daypart: late morning
     clock: [talk, talk, news@:00, talk]
     guest_chance: 0.6
+    energy: steady
+    brief: >-
+      The network as news: a dead node, a repair crew racing the alignment, mail
+      queues backed up for weeks, a dark zone shrinking by one relay. Every story
+      is somebody waiting for an answer. Never get misty about the miracle of
+      connection — the relay is infrastructure, with a maintenance schedule and
+      a bill.
 
   the_commons:
     name: "The Commons"           # [duo] DEBATE & ideas: the week in the currents, the big questions reasoned through
@@ -181,6 +277,13 @@ programs:
     clock: [talk, talk, news@:00, talk]
     break_every: 5
     guest_chance: 0.5
+    energy: steady
+    brief: >-
+      One live question, argued properly — pulled from the week's stories: who owes
+      the frontier? should the record stand? was the council right to wait? The
+      hosts take real positions, disagree in plain words, and concede points when
+      beaten. Never both-sides mush, and never seminar-speak — keep score like it
+      matters.
 
   # ══ DAILY CULTURE, SPORT, MUSIC & LETTERS ════════════════════════════════════
   the_gallery:
@@ -191,6 +294,12 @@ programs:
     clock: [talk, talk, news@:00, music, talk]
     break_every: 5
     guest_chance: 0.8
+    energy: steady
+    brief: >-
+      The arts as event: an opening, a premiere, a touring company stranded in
+      transit, a feud between the Synthesis School and the Material Tradition, what
+      an original just sold for. Art here gets argued about like sport. Never
+      hushed-gallery reverence — enthusiasm and disagreement, not curation.
 
   the_circuit:
     name: "The Circuit"           # [interview] SPORT: the Inter-Settlement Games, the racing lanes, live (with the lag)
@@ -200,6 +309,13 @@ programs:
     clock: [talk, talk, news@:00, talk]
     break_every: 5
     guest_chance: 0.6
+    energy: bright
+    brief: >-
+      The season, stitched: hollowball standings, Meridian's racing league, an ice
+      race off Cold Harbor, a record stuck at the ratification committee, the
+      honour-ledger wagering. Call month-old results at full volume and name the
+      lag with pride. Never apologise for the delay, and never philosophise about
+      what sport means — call the match.
 
   the_new_signal:
     name: "The New Signal"        # [music] a SHORT daily feature — the day's arrivals / a top-of-the-dial run
@@ -207,6 +323,12 @@ programs:
     framing: solo
     daypart: afternoon
     clock: [music, music, music]
+    energy: bright
+    brief: >-
+      The day's arrivals: new tracks in off the relays, back-announced with where
+      each came from and why it's worth your shift-break. Quick intros, real
+      enthusiasm, on to the next one. Never talk longer than the song deserves —
+      play it.
 
   the_mailbag:
     name: "The Mailbag"           # [dispatch] listener letters carried on the relay — recorded messages from the worlds
@@ -215,6 +337,12 @@ programs:
     daypart: afternoon
     clock: [talk, talk]
     guest_chance: 0.4
+    energy: steady
+    brief: >-
+      Letters weeks in transit, answered live: a question, a grievance, a birth
+      announced, advice wanted about a stubborn neighbour. Read them plainly,
+      answer honestly, let the letter set the tone — funny, sad, or both. Never
+      condescend to a writer, and never turn their news into a sermon.
 
   # ══ THE NIGHT — warmth, letters, archives, the cosmos ════════════════════════
   nightfall:
@@ -224,6 +352,13 @@ programs:
     daypart: nightfall
     clock: [talk, news@:00, talk, music, talk]
     guest_chance: 0.1
+    energy: calm
+    brief: >-
+      The day set down gently: what mattered, what can wait until morning, the desk
+      lamps going off one by one as the night takes the chair. Dusk is when the
+      station's softer voice comes back — warmth is allowed, and so is the first
+      touch of the night's lyricism. Never rush the handover, and never reopen the
+      day's fights — the desk is closed.
 
   long_night:
     name: "The Long Night"        # [duo] Vell's warm night — talk, letters, a little music
@@ -233,6 +368,13 @@ programs:
     clock: [talk, music, talk, news@:00, talk]
     break_every: 6
     guest_chance: 0.2
+    energy: calm
+    brief: >-
+      Vell's warm night, for the late shift, the docks, the listeners in the dark
+      zones: quiet talk, a letter, a little music, company. Wonder is welcome after
+      dark — this is where the station is allowed to look up. Never bring daytime
+      pace or a news agenda into this room; the night is for keeping people
+      company.
 
   deep_hours:
     name: "The Deep Hours"        # [duo] the Archivist and the deep archives; the strange late hours
@@ -241,6 +383,12 @@ programs:
     daypart: deep night
     clock: [talk, music, talk, news@:00]
     guest_chance: 0.1
+    energy: calm
+    brief: >-
+      The deep archive, opened: an old recording, a fossil word, a ship's log
+      nobody has played in a century, the strange and the slow. Let the Archivist
+      take their time; late is when the odd things sound right. Never hurry an
+      artefact, and never apologise for the hour — whoever is awake chose to be.
 
   deep_field:
     name: "The Deep Field"        # [duo] pre-dawn: Zhe from the far edge on the cosmos, the dark, the sublime
@@ -249,6 +397,13 @@ programs:
     daypart: deep night
     clock: [talk, music, talk, news@:00]
     guest_chance: 0.0
+    energy: calm
+    brief: >-
+      Pre-dawn with the far edge: Zhe's recordings of the cosmos, the dark between,
+      the sublime — the one show where the big register IS the register. Ground it
+      in a real sky: a storm over the lanes, a comet, the light of an unnamed star.
+      Never pretend the dark is small or safe, and never fill its silences with
+      chatter.
 
   first_light:
     name: "First Light"           # [duo] the dawn handover: the night hands to the day
@@ -257,6 +412,13 @@ programs:
     daypart: first light
     clock: [talk, news@:00, talk, news@:30]
     guest_chance: 0.1
+    energy: steady
+    brief: >-
+      The dawn handover: what came in overnight on the relays, the day's first
+      weather over the lanes, the schedule ahead — the night passes the chair to
+      the day. Start soft and warm up; by the half-hour it should sound like
+      morning. Never open at full daytime volume, and never let the night's
+      reverie linger past the first bulletin.
 
   # ══ WEEKEND ══════════════════════════════════════════════════════════════════
   the_far_signal:
@@ -266,6 +428,12 @@ programs:
     daypart: morning               # Saturday 10-12 since the 2026-07-18 retune
     clock: [talk, talk, news@:00, talk]
     guest_chance: 0.7
+    energy: steady
+    brief: >-
+      Dispatches played and answered: Sera among the far towns, Zhe at the edge —
+      recordings that crossed weeks to get here, stitched into one exchange.
+      Concrete places, real voices, the lag worn openly. Never smooth out the
+      seams; the distance a dispatch crossed is part of the story.
 
   # ── BENCHED (2026-07-18 operator call: weekends run LIVE, same as any day —
   # no relaxed weekend programming). Definitions kept so any can be re-scheduled
@@ -278,6 +446,11 @@ programs:
     clock: [talk, talk, news@:00, music, talk]
     break_every: 6
     guest_chance: 0.6
+    energy: steady
+    brief: >-
+      A slower morning of culture and history: one exhibit, one anniversary, one
+      argument worth having over a second cup. Unhurried but never aimless — each
+      item earns its place. Never let slow become sleepy, and never lecture.
 
   deep_listening:
     name: "Deep Listening"        # [music] BENCHED — was the curated weekend hour
@@ -285,6 +458,11 @@ programs:
     framing: solo
     daypart: weekend
     clock: [music, music, news@:00]
+    energy: calm
+    brief: >-
+      A curated hour: tracks with their stories, sequenced with intent, the talk
+      kept to a minimum between them. The music is the argument. Never talk over
+      a track, and never play filler.
 
   the_gathering:
     name: "The Gathering"         # [duo] BENCHED — was weekend reflection (60/65)
@@ -293,6 +471,12 @@ programs:
     daypart: evening
     clock: [talk, talk, news@:00, talk]
     guest_chance: 0.2
+    energy: calm
+    brief: >-
+      The week's edge: faith, doubt, custom, and the things people hold onto
+      between the worlds — talked through, not preached. Personal, specific,
+      unhurried. Never sermonise, and never resolve what should stay an open
+      question.
 
   # Reserved fallback — returned when no slot matches, so the scheduler never stalls.
   default:

@@ -204,10 +204,15 @@ def test_orchestrate_carries_the_show_block_too(monkeypatch):
     assert "Energy: bright" in seen["system"]
 
 
-def test_no_brief_keeps_the_pre_r1_prompts_exactly(monkeypatch):
+def test_no_brief_keeps_the_pre_r1_prompts_exactly(monkeypatch, tmp_path):
     # Back-compat: a briefless program (the default program, a pre-R1 grid)
     # contributes NO block and leaves the fresh-pick task unscoped — the prompt
-    # keeps its pre-R1 shape, whether the program is passed or derived.
+    # keeps its pre-R1 shape, whether the program is passed or derived. (Since
+    # R1.1 every shipped program HAS a brief, so the derived-path check uses a
+    # missing grid file — the synthesised, briefless default program.)
+    from src.config import settings
+    from src.world import programming
+
     seen = _capture_system(monkeypatch)
     now = datetime(2026, 6, 30, 21, 0)
     briefless = _program("default", "Settlement Radio")
@@ -215,8 +220,13 @@ def test_no_brief_keeps_the_pre_r1_prompts_exactly(monkeypatch):
     assert "ON THIS SHOW" not in seen["system"]
     assert "belongs on THIS show" not in seen["system"]
     assert "Pick exactly ONE current event" in seen["system"]  # the unscoped task
-    convo.showrunner(_ctx(), now)  # derived program (the shipped grid, no briefs yet)
-    assert "ON THIS SHOW" not in seen["system"]
+    monkeypatch.setattr(settings, "programming_grid_path", tmp_path / "nope.yaml")
+    programming.reload()
+    try:
+        convo.showrunner(_ctx(), now)  # derived program: the synthesised default
+        assert "ON THIS SHOW" not in seen["system"]
+    finally:
+        programming.reload()
     convo.orchestrate(_ctx(), "the beat", now, program=briefless)
     assert "ON THIS SHOW" not in seen["system"]
 
