@@ -41,6 +41,7 @@ insufficient — they don't here).
 from __future__ import annotations
 
 import re
+from collections.abc import Iterator
 from datetime import datetime, timedelta
 
 from .config import settings
@@ -320,11 +321,32 @@ def _avoid_block(kind: str, items: list[str]) -> str:
     return f"{head}\n{bullets}"
 
 
+# A CONTINUE slot's recorded handle is its per-thread ANGLE (the D12 continue
+# brief's mandated first line, "Angle: …"), not a topic. Angles flood the recency
+# list — every thread adds one per segment — and crowd real topics out of the
+# small avoid-list, which is how a topic aired twice in an evening slipped back
+# in a third time (the 2026-07-18 Voss-atlas triple). The avoid-list is about
+# TOPICS, so angle rows are dropped at read time; each thread's own opening
+# "topic:"-level row carries the avoid signal for the whole thread.
+_ANGLE_PREFIX = "angle:"
+
+
+def _topic_level(items: object) -> Iterator[str]:
+    """Only the topic-level handles — per-thread `angle:` rows are filtered out."""
+    for it in items:  # type: ignore[attr-defined]
+        if it and not it.strip().lower().startswith(_ANGLE_PREFIX):
+            yield it
+
+
 def recent_topics_block(now: datetime, *, exclude: str | None = None) -> str:
     """Recent topics/beats (all formats) to steer the showrunner off (D5.2).
 
     Returns "" when the memory is empty or freshness is disabled — the showrunner then
     just picks freely (the cold-start path).
+
+    Built from TOPIC-level handles only (see `_topic_level`): a thread's angle rows
+    are deepenings of one already-listed topic, so listing them would burn the
+    bounded avoid-list on one thread and let an hours-old topic re-enter rotation.
 
     `exclude` (D12.3) is the ACTIVE thread's topic to keep OUT of the avoid-list while
     the hosts are continuing it — so anti-repetition targets day-scale looping, not the
@@ -335,7 +357,9 @@ def recent_topics_block(now: datetime, *, exclude: str | None = None) -> str:
     if not settings.freshness_enabled:
         return ""
     records = _read_recent(now)
-    topics = _distinct((r.topic for r in records), settings.freshness_recent_limit)
+    topics = _distinct(
+        _topic_level(r.topic for r in records), settings.freshness_recent_limit
+    )
     excluded = _short_handle(exclude) if exclude else None
     if excluded:
         topics = [t for t in topics if t.strip().lower() != excluded]

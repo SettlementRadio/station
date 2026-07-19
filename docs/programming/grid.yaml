@@ -21,10 +21,12 @@
 #   History & deep time (10) · Sport (Kael's circuit) · the cosmos (80) · faith (60).
 #
 # The day keeps a stable NEWS rhythm (breakfast & drive flagships, a midday desk,
-# bulletins on the hour) around a ROTATING SPECIALIST: two 2-hour slots a weekday
-# (10:00–12:00 and 14:00–16:00) cycle Mon→Fri, so across a week the listener hears
-# every vertical once — the way a real station runs a Tuesday economy hour, a
-# Wednesday history hour, and so on. Nothing repeats the same subject day after day.
+# bulletins on the hour) around a ROTATING SPECIALIST: two 2-hour slots a day
+# (10:00–12:00 and 14:00–16:00) cycle through the week, so the listener hears every
+# vertical — the way a real station runs a Tuesday economy hour, a Wednesday history
+# hour, a Sunday politics hour. The SAME live day runs ALL SEVEN DAYS: Settlement
+# Radio does not relax at the weekend — the settlements don't pause, so the station
+# stays on top of things; Sat/Sun run weekend EDITIONS of the strongest verticals.
 #
 # ─────────────────────────────────────────────────────────────────────────────
 # FORMAT & VOICES — read the `hosts` + the `[fmt]` tag on each show:
@@ -257,8 +259,19 @@ programs:
     guest_chance: 0.1
 
   # ══ WEEKEND ══════════════════════════════════════════════════════════════════
+  the_far_signal:
+    name: "The Far Signal"        # [dispatch] dispatches from the field (Sera) and the far edge (Zhe) — records played
+    hosts: [sera, zhe]
+    framing: ensemble
+    daypart: morning               # Saturday 10-12 since the 2026-07-18 retune
+    clock: [talk, talk, news@:00, talk]
+    guest_chance: 0.7
+
+  # ── BENCHED (2026-07-18 operator call: weekends run LIVE, same as any day —
+  # no relaxed weekend programming). Definitions kept so any can be re-scheduled
+  # by adding it back to a `grid:` slot; nothing below airs today. ─────────────
   the_bridge:
-    name: "The Bridge"            # [interview] weekend mornings: Joss the historian + Mira on the arts
+    name: "The Bridge"            # [interview] BENCHED — was weekend culture & history
     hosts: [joss, mira]
     framing: ensemble
     daypart: weekend morning
@@ -266,23 +279,15 @@ programs:
     break_every: 6
     guest_chance: 0.6
 
-  the_far_signal:
-    name: "The Far Signal"        # [dispatch] dispatches from the field (Sera) and the far edge (Zhe) — records played
-    hosts: [sera, zhe]
-    framing: ensemble
-    daypart: evening
-    clock: [talk, talk, news@:00, talk]
-    guest_chance: 0.7
-
   deep_listening:
-    name: "Deep Listening"        # [music] Mira's curated weekend hour — reflective, close listening
+    name: "Deep Listening"        # [music] BENCHED — was the curated weekend hour
     hosts: [mira]                 # (same pool as The New Signal for now — see the music note in the header)
     framing: solo
     daypart: weekend
     clock: [music, music, news@:00]
 
   the_gathering:
-    name: "The Gathering"         # [duo] weekend reflection — faith, meaning & art as human universals (60/65)
+    name: "The Gathering"         # [duo] BENCHED — was weekend reflection (60/65)
     hosts: [the-archivist, vell]
     framing: solo
     daypart: evening
@@ -298,9 +303,10 @@ programs:
 
 # ─────────────────────────────────────────────────────────────────────────────
 # THE WEEKLY TILING (no gaps). `daily` = the night spine + handovers, every day.
-# `weekdays` fills the working day EXCEPT the two specialist windows (10:00-12:00,
-# 14:00-16:00), which each per-day key (mon…fri) sets to a rotating vertical.
-# `weekends` gives Sat/Sun their own daytime. A narrower weekday set always wins.
+# `mon-sun` runs the SAME daytime spine all seven days (operator call, 2026-07-18:
+# weekends are handled like any other day — the station never relaxes) EXCEPT the
+# two specialist windows (10:00-12:00, 14:00-16:00), which each per-day key
+# (mon…sun) sets to a rotating vertical. A narrower weekday set always wins.
 # ─────────────────────────────────────────────────────────────────────────────
 grid:
   # The night + edges, identical all week (20:00 → 07:00):
@@ -311,8 +317,8 @@ grid:
     "02:00-05:00": deep_field      # pre-dawn cosmos
     "05:00-07:00": first_light     # dawn handover
 
-  # Weekday working day (mon-fri) — the 10-12 & 14-16 windows are per-day (below):
-  weekdays:
+  # The daytime spine, EVERY day — the 10-12 & 14-16 windows are per-day (below):
+  mon-sun:
     "07:00-09:00": morning_currents  # breakfast flagship
     "09:00-10:00": common_ground     # daily-life magazine
     "12:00-13:00": settlement_desk   # midday news + field
@@ -322,20 +328,13 @@ grid:
     "17:30-18:00": the_mailbag       # listener letters
     "18:00-20:00": evening_currents  # drive flagship
 
-  # The rotating specialist — two verticals a day, cycling across the week:
+  # The rotating specialist — two verticals a day, cycling across the whole week.
+  # Sat/Sun are weekend EDITIONS: the field dispatches land on Saturday, and Sunday
+  # runs politics + debate — the classic "Sunday show" posture, on top of things.
   mon: { "10:00-12:00": the_assembly,       "14:00-16:00": the_workshop }     # politics · science
   tue: { "10:00-12:00": the_exchange,       "14:00-16:00": the_far_towns }    # economy · travel
   wed: { "10:00-12:00": the_standing_watch, "14:00-16:00": the_long_view }    # conflict · history
   thu: { "10:00-12:00": the_compact,        "14:00-16:00": the_reading_room } # law/crime · story
   fri: { "10:00-12:00": the_thread,         "14:00-16:00": the_commons }      # the relay · debate
-
-  # Weekend daytime (sat-sun) — features, culture, sport, dispatches:
-  weekends:
-    "07:00-09:00": the_bridge        # weekend culture & history
-    "09:00-11:00": the_far_towns     # the worlds & their peoples (weekend deep-dive)
-    "11:00-12:00": deep_listening    # curated music hour
-    "12:00-13:00": settlement_desk   # weekend midday news
-    "13:00-15:00": the_circuit       # weekend sport: the Games
-    "15:00-16:00": the_new_signal    # SHORT music
-    "16:00-18:00": the_far_signal    # dispatches from the field & the far edge
-    "18:00-20:00": the_gathering     # weekend reflection
+  sat: { "10:00-12:00": the_far_signal,     "14:00-16:00": the_workshop }     # field dispatches · science
+  sun: { "10:00-12:00": the_assembly,       "14:00-16:00": the_commons }      # Sunday politics · debate

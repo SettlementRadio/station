@@ -631,7 +631,9 @@ class Settings(BaseSettings):
     # small canon, and the moving world (D3) is the real source of variety — D5 only
     # keeps the *wording* from looping on top of it.
     freshness_enabled: bool = True
-    freshness_recent_limit: int = 6  # max recent items shown in a prompt block
+    # 10 topic-level items ≈ several hours of distinct subjects now that per-thread
+    # `angle:` rows no longer consume slots (the 2026-07-18 topic-recycling fix).
+    freshness_recent_limit: int = 10  # max recent items shown in a prompt block
     freshness_mode: str = "prefer"  # "prefer" (soft nudge) | "avoid" (hard)
 
     # --- Programming (D6: named programs, dayparts, the weekly grid) ------------
@@ -657,6 +659,10 @@ class Settings(BaseSettings):
     programming_enabled: bool = True
     programming_console_upcoming: int = 8
     console_story_limit: int = 6  # active stories shown in the console's story log
+    # The operator TIMELINE page (src/timeline.py) — the console's web sibling for
+    # watching now/next/grid while testing. Served on LOOPBACK ONLY (the code binds
+    # 127.0.0.1; the hard rule: operator surfaces are never internet-exposed).
+    timeline_port: int = 8010
     console_beats_per_story: int = 1  # newest beats shown per story in that panel
     # D6.4 — the PUBLIC now-playing / program-info feed for the C8 web player
     # (src/nowplaying.py). A small JSON written beside the schedule, refreshed each
@@ -702,16 +708,17 @@ class Settings(BaseSettings):
     # D7.3 — which slots get a bed under the speech. DOUBLY opt-in, and
     # deliberately conservative (over-bedding is worse than none): a slot is
     # bedded only when its PROGRAM is listed AND its FORMAT is listed — so with
-    # the defaults, only the deep-night talk gets the soft B4 night bed; news
-    # stays dry, and the whole day stays dry. WHICH bed comes from the D7.0
-    # mapping (the program's own bed, else the format's); the LEVEL is the D7.1
-    # `production_bed_gain_db` dial. Empty either list to switch bedding off. The
-    # listed night shows all map to the B4 night bed (media.PROGRAM_BEDS).
+    # the defaults, ONLY the deep-night talk (22:00 onward) gets the soft B4
+    # night bed; news stays dry, and the whole day stays dry. (2026-07-18
+    # operator call: the_gathering was dropped from this list along with the
+    # relaxed-weekend grid — the night bed at dusk read as tonally wrong.)
+    # WHICH bed comes from the D7.0 mapping (the program's own bed, else the
+    # format's); the LEVEL is the D7.1 `production_bed_gain_db` dial. Empty
+    # either list to switch bedding off entirely.
     production_bedded_programs: list[str] = [
         "long_night",
         "deep_hours",
         "deep_field",
-        "the_gathering",
     ]
     production_bedded_formats: list[str] = ["talk"]
     # D7.4 — the music selector: "the brain that decides what to play"

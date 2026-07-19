@@ -112,6 +112,83 @@ def test_top_up_fills_to_depth_in_air_order(monkeypatch, tmp_path):
     assert all(line.endswith(".mp3") for line in lines)
 
 
+def test_live_fill_tracks_the_wall_clock_and_persists_incrementally(
+    monkeypatch, tmp_path
+):
+    # The audible loop/jump defect: on a LIVE run (now=None) a long cold fill kept
+    # filtering the playlist against the frozen fill-start time, so every Liquidsoap
+    # watch-reload snapped playback to a long-aired head. The fix: (a) each mid-fill
+    # write filters against the WALL clock, and (b) the state persists at the same
+    # cadence, so an interrupt resumes the show instead of resetting it.
+    _wire(
+        monkeypatch,
+        tmp_path,
+        depth_hours=0.5,  # 1800s of depth, 600s per segment -> 3 segments
+        rotation=["news"],
+        generator=_fake_generator(tmp_path, duration=600.0),
+    )
+    monkeypatch.setattr(scheduler.settings, "schedule_playlist_write_every", 1)
+
+    # Drive the wall-clock seam: every look at the clock advances it 10 minutes —
+    # a fill so slow each segment has fully aired by the time the next one lands.
+    ticks = {"n": -1}
+
+    def fake_wall():
+        ticks["n"] += 1
+        return NOW + timedelta(minutes=10 * ticks["n"])
+
+    monkeypatch.setattr(scheduler, "_wall_clock", fake_wall)
+
+    saves: list[int] = []
+    real_save = scheduler._save_state
+
+    def counting_save(state):
+        saves.append(len(state.get("entries", [])))
+        real_save(state)
+
+    monkeypatch.setattr(scheduler, "_save_state", counting_save)
+
+    upcoming = scheduler.top_up()  # LIVE mode — no `now`
+
+    assert len(upcoming) == 3
+    # (b) incremental persistence: state was saved during the fill (once per
+    # placed segment at write_every=1) plus the final write — never only at the end.
+    assert len(saves) >= 4
+    assert saves[0] == 1  # the first save already carried the first entry
+    # (a) the FINAL playlist head is filtered on the advanced wall clock: by the
+    # end of this crawling fill the early segments have fully aired, so they are
+    # gone from the playlist file (a reload lands on "now")...
+    lines = (tmp_path / "playlist.txt").read_text().splitlines()
+    entry_paths = [e["audio_path"] for e in upcoming]
+    assert entry_paths[0] not in lines  # the stale head is not replayed
+    # ...while the STATE keeps every entry (history/pruning is load-time logic).
+    state = json.loads((tmp_path / "schedule.json").read_text())
+    assert len(state["entries"]) == 3
+
+
+def test_driven_run_stays_on_the_callers_clock(monkeypatch, tmp_path):
+    # Tests/the acceptance sim pass `now=` — the wall-clock seam must NOT leak in
+    # (a synthetic 2026-06-22 fill judged against the real clock would empty the
+    # playlist). Everything stays filtered against the caller's `now`.
+    _wire(
+        monkeypatch,
+        tmp_path,
+        depth_hours=0.1,
+        rotation=["news"],
+        generator=_fake_generator(tmp_path, duration=120.0),
+    )
+
+    def boom():
+        raise AssertionError("wall clock must not be consulted on a driven run")
+
+    monkeypatch.setattr(scheduler, "_wall_clock", boom)
+
+    upcoming = scheduler.top_up(now=NOW)
+    assert len(upcoming) == 3
+    lines = (tmp_path / "playlist.txt").read_text().splitlines()
+    assert len(lines) == 3  # nothing dropped: NOW is the only clock in play
+
+
 def test_top_up_is_idempotent_when_already_at_depth(monkeypatch, tmp_path):
     _wire(
         monkeypatch,

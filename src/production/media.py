@@ -77,7 +77,6 @@ PROGRAM_BEDS: dict[str, str] = {
     "long_night": "themes/b4_night_bed.mp3",
     "deep_hours": "themes/b4_night_bed.mp3",
     "deep_field": "themes/b4_night_bed.mp3",
-    "the_gathering": "themes/b4_night_bed.mp3",
 }
 FORMAT_BEDS: dict[str, str] = {
     "talk": "themes/c9_talk_bed.mp3",

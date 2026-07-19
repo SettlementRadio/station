@@ -194,22 +194,28 @@ def test_journal_for_pair_is_symmetric_and_excludes_non_pair(db):
 
 
 def test_unknown_kind_rejected_loudly(db):
+    # A ghost host id: the dev DB accrues REAL journal rows once the station airs,
+    # so the emptiness assertion must be scoped to a host that cannot exist.
     when = datetime(2026, 7, 16, 20, 0)
     with pytest.raises(ValueError, match="unknown kind"):
-        store.insert_journal_entries(db, [_entry("vell", kind="vibe", when=when)])
+        store.insert_journal_entries(db, [_entry("d130-ghost", kind="vibe", when=when)])
     # Nothing was written (the validation runs before any insert).
-    assert store.journal_for_host(db, "vell", when, within=timedelta(days=1)) == []
+    assert (
+        store.journal_for_host(db, "d130-ghost", when, within=timedelta(days=1)) == []
+    )
     with pytest.raises(ValueError, match="unknown kind"):
         store.prune_journal(db, "vell", kind="vibe", keep=1)
 
 
 def test_prune_journal_keeps_newest_n_of_one_kind_per_host(db):
+    # Unique host ids: real aired rows for the actual cast would join the
+    # per-host prune set and break the exact removed-count assertion.
     now = datetime(2026, 7, 16, 20, 0)
     store.insert_journal_entries(
         db,
         [
             _entry(
-                "vell",
+                "d130-vell",
                 kind=store.JOURNAL_KIND_DETAIL,
                 segment_id=f"d130-det-{i}",
                 when=now - timedelta(days=i),
@@ -219,13 +225,13 @@ def test_prune_journal_keeps_newest_n_of_one_kind_per_host(db):
         + [
             # Another kind and another host — both must be untouched by the sweep.
             _entry(
-                "vell",
+                "d130-vell",
                 kind=store.JOURNAL_KIND_OPINION,
                 segment_id="d130-op",
                 when=now - timedelta(days=10),
             ),
             _entry(
-                "asha",
+                "d130-asha",
                 kind=store.JOURNAL_KIND_DETAIL,
                 segment_id="d130-asha-det",
                 when=now - timedelta(days=10),
@@ -233,15 +239,17 @@ def test_prune_journal_keeps_newest_n_of_one_kind_per_host(db):
         ],
     )
 
-    removed = store.prune_journal(db, "vell", kind=store.JOURNAL_KIND_DETAIL, keep=2)
+    removed = store.prune_journal(
+        db, "d130-vell", kind=store.JOURNAL_KIND_DETAIL, keep=2
+    )
     assert removed == 2  # the two oldest details dropped
 
-    vell = store.journal_for_host(db, "vell", now, within=timedelta(days=30))
+    vell = store.journal_for_host(db, "d130-vell", now, within=timedelta(days=30))
     segs = [e.segment_id for e in vell]
     assert "d130-det-0" in segs and "d130-det-1" in segs  # newest two stand
     assert "d130-det-2" not in segs and "d130-det-3" not in segs
     assert "d130-op" in segs  # other kind untouched
-    asha = store.journal_for_host(db, "asha", now, within=timedelta(days=30))
+    asha = store.journal_for_host(db, "d130-asha", now, within=timedelta(days=30))
     assert any(e.segment_id == "d130-asha-det" for e in asha)  # other host untouched
 
 

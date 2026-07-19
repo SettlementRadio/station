@@ -162,6 +162,31 @@ def test_recent_topics_block_lists_distinct_topics(monkeypatch):
     assert block.count("- ") == 2  # de-duped, None dropped
 
 
+def test_angle_rows_never_crowd_topics_out_of_the_avoid_list(monkeypatch):
+    # The 2026-07-18 Voss-atlas triple: continue slots record their per-thread
+    # "angle: …" handle, and with enough of them in the recency window the actual
+    # TOPIC rows fell off the bounded avoid-list — so a topic aired twice in one
+    # evening was re-picked a third time. Angle rows must not consume list slots.
+    monkeypatch.setattr(freshness.settings, "freshness_recent_limit", 3)
+    monkeypatch.setattr(
+        freshness,
+        "_read_recent",
+        lambda now, fmt=None: [
+            # newest first: a thread's angles pile up on top…
+            _rec(topic="angle: the letter that arrives late"),
+            _rec(topic="Angle: the abstention as a form of speech"),
+            _rec(topic="angle: the question as a form of courage"),
+            _rec(topic="topic: the sable reach convention deadlock"),
+            # …and the topic aired earlier tonight must STILL make the list.
+            _rec(topic="topic: the voss atlas — the reproduction argument"),
+        ],
+    )
+    block = freshness.recent_topics_block(NOW)
+    assert "the voss atlas" in block  # survives despite 3 fresher angle rows
+    assert "the sable reach convention" in block
+    assert "angle:" not in block  # deepenings of a listed topic, never listed
+
+
 def test_recent_topics_block_excludes_the_active_thread(monkeypatch):
     # D12.3 — while continuing a thread, its topic must NOT be in the avoid-list, but
     # the OTHER day-scale topics still are (freshness keeps biting on looping).

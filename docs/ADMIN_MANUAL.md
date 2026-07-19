@@ -501,7 +501,12 @@ make journal-demo                      # the D13 loop end-to-end on paper (air �
 ### The operator console (private; read-only)
 ```bash
 make console            # or: python -m src.console
+make timeline           # its web sibling: http://127.0.0.1:8010/ (loopback ONLY)
 ```
+The **timeline** page auto-refreshes: what's ON AIR (with progress), the generated
+segments queued next, and the grid's intended program blocks for the hours ahead —
+the side-by-side view for listening tests. Read-only; binds 127.0.0.1; never expose.
+`TIMELINE_PORT` moves the port.  → Phase E panel
 Panels: **on air / next** (program · format · hosts · duration), **buffer** runway (the health
 calc), **last run** heartbeat, the **story log** (active stories + newest beats), the **host
 journal** (D13 — entries accrued per host), and a **cost** rollup (omitted until the jobs

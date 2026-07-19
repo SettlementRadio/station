@@ -178,6 +178,18 @@ def _end_of(entry: dict) -> datetime:
     )
 
 
+def _wall_clock() -> datetime:
+    """The real wall clock (a seam so tests can drive it deterministically).
+
+    On a LIVE run the playlist head must track THIS — never the top-up's start
+    time: a cold fill can run for tens of minutes of real time, and Liquidsoap
+    snaps playback to the head of the file on every watch-reload, so a head
+    filtered against the stale fill-start `now` makes each reload replay
+    long-aired segments (the audible loop/mid-track-jump defect).
+    """
+    return datetime.now()
+
+
 def split_schedule(now: datetime, state: dict) -> tuple[dict | None, list[dict]]:
     """Partition the live schedule at `now`: (current on-air entry, upcoming entries).
 
@@ -363,8 +375,21 @@ def top_up(now: datetime | None = None) -> list[dict]:
     Idempotent and safe to run on any cadence: if the buffer is already at depth it
     generates nothing and just rewrites the (pruned) playlist. Returns the upcoming
     schedule entries in air order.
+
+    A LIVE run (no `now` passed — `make schedule`/`make air`) follows the wall
+    clock for the playlist head and the heartbeat as the fill progresses; a DRIVEN
+    run (tests, the acceptance sim) stays entirely on the caller's `now`, so it
+    remains deterministic.
     """
-    now = now or datetime.now()
+    live = now is None
+    now = now or _wall_clock()
+    if live:
+        clock = _wall_clock
+    else:
+
+        def clock() -> datetime:
+            return now
+
     rotation = settings.buffer_rotation
     if not rotation:
         raise ValueError("buffer_rotation is empty — nothing to schedule")
@@ -553,6 +578,40 @@ def top_up(now: datetime | None = None) -> list[dict]:
         sting_out = break_sting_segment("break_out", air_cursor)
         if sting_out is not None:
             _place_clip(sting_out)
+
+    def _persist() -> Path:
+        """Save the schedule state + rewrite the playout playlist, as of `clock()`.
+
+        Called at the mid-fill cadence AND at the end of the run. Persisting
+        incrementally is load-bearing: a Ctrl-C / crash mid-fill loses nothing —
+        the placed entries, program clocks, talk hand-off (D12) and cadence
+        counters are already on disk, so the next run RESUMES the show instead of
+        re-opening it (the audible reset-after-reset defect). The playlist cutoff
+        is `clock()` — the WALL clock on a live run — so every Liquidsoap
+        watch-reload (it snaps to the head of the file) lands on the entry that
+        should be airing at this real moment, and any playback drift self-corrects
+        at the next reload. `last_topup_at` doubles as the health heartbeat;
+        stamping it here keeps a long cold fill reading as "generator live",
+        which it is.
+        """
+        clock_state["_flow"] = {
+            "last_content_program": flow_last_program,
+            "handoff": flow_handoff.to_dict() if flow_handoff is not None else None,
+            "thread_run": flow_thread_run,
+        }
+        state["entries"] = upcoming
+        state["rotation_index"] = rot_i % len(rotation)
+        state["clock_state"] = clock_state
+        state["content_since_ident"] = content_since_ident
+        state["content_since_station_ident"] = content_since_station_ident
+        state["content_since_break"] = content_since_break
+        state["break_spots_total"] = break_spots_total
+        state["breaks_total"] = breaks_total
+        state["sponsor_reads_total"] = sponsor_reads_total
+        state["last_program_id"] = last_program_id
+        state["last_topup_at"] = clock().isoformat()
+        _save_state(state)
+        return _write_playlist(upcoming, clock())
 
     # Consecutive-failure stall threshold: the whole format set failing in a row means
     # the generator is down. Grid mode spans all formats; flat mode is the rotation.
@@ -821,39 +880,22 @@ def top_up(now: datetime | None = None) -> list[dict]:
             continue_thread=slot_flow.continue_thread if slot_flow else None,
             thread_run=flow_thread_run,
         )
-        # Refresh the playout playlist so a first, cold `make schedule` can START
-        # airing on the first ready segment (and survive an interrupt) rather than
-        # wait for the whole multi-hour buffer + the end-of-run write. But do NOT
-        # rewrite on EVERY segment: Liquidsoap watches this file and resets to the top
-        # of the list on each reload, so churning it during a long cold fill pins
-        # playout to the first entry. Write once when audio first lands, then only
-        # every `schedule_playlist_write_every` segments — and drop already-aired
-        # entries (real wall clock) so a reload lands on what's playing now.
+        # Persist state + playlist so (a) a first, cold `make schedule` can START
+        # airing on the first ready segment, (b) an interrupt mid-fill RESUMES the
+        # show instead of resetting it (the state lands with every write), and
+        # (c) each Liquidsoap watch-reload lands on the entry that should be
+        # airing NOW on the wall clock — during a long cold fill the fill-start
+        # `now` goes stale by many minutes, and a stale head made every reload
+        # replay long-aired segments. Not on EVERY segment (each rewrite is a
+        # reload): once when audio first lands, then every
+        # `schedule_playlist_write_every` segments.
         if added == 1 or added % settings.schedule_playlist_write_every == 0:
-            _write_playlist(upcoming, now)
+            _persist()
 
-    # D12.0 — persist the talk-continuity substrate so the next top-up resumes the
-    # thread and the OPEN detection (JSON-serialisable, like `_last_cursor`).
-    clock_state["_flow"] = {
-        "last_content_program": flow_last_program,
-        "handoff": flow_handoff.to_dict() if flow_handoff is not None else None,
-        "thread_run": flow_thread_run,
-    }
-    state["entries"] = upcoming
-    state["rotation_index"] = rot_i % len(rotation)
-    state["clock_state"] = clock_state
-    state["content_since_ident"] = content_since_ident
-    state["content_since_station_ident"] = content_since_station_ident
-    state["content_since_break"] = content_since_break
-    state["break_spots_total"] = break_spots_total
-    state["breaks_total"] = breaks_total
-    state["sponsor_reads_total"] = sponsor_reads_total
-    state["last_program_id"] = last_program_id
-    # C4 — heartbeat: record that a top-up ran to completion. `src/health.py`
-    # check_last_run() reads this to detect a generator that has stopped running.
-    state["last_topup_at"] = now.isoformat()
-    _save_state(state)
-    playlist_path = _write_playlist(upcoming, now)
+    # The completed run's final persist — same write the mid-fill cadence makes
+    # (state incl. the D12 flow substrate + the pruned playlist), now with the
+    # finished buffer. `last_topup_at` is the C4 heartbeat `src/health.py` reads.
+    playlist_path = _persist()
 
     log.info(
         "schedule_topup_done",
