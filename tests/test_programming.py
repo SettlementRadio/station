@@ -42,10 +42,13 @@ programs:
     hosts: [wren, vell]
     framing: solo
     clock: [talk, news@:00, talk]
+    brief: "The day desk: prices, disputes, arrivals. Never a meditation."
+    energy: bright
   archive_hour:
     name: "Archive Hour"
     hosts: [the-archivist]
     framing: solo
+    energy: frantic  # not in the R1.0 vocabulary -> dropped to "" with a warning
   default:
     name: "Settlement Radio"
     hosts: [vell, wren]
@@ -151,6 +154,26 @@ def test_clock_parses_runs_pins_and_markers(grid_file):
         ("sting", 1, None, True),  # a marker: inert until D7
         ("news", 1, 0, False),  # `news@:00` -> pinned to the top of the hour
     ]
+
+
+# --- R1.0: the editorial brief + energy fields ------------------------------
+
+
+def test_brief_and_energy_parse_from_the_grid(grid_file):
+    day = programming.program_for(_mon(7))  # daywatch
+    assert day.brief == "The day desk: prices, disputes, arrivals. Never a meditation."
+    assert day.energy == "bright"
+
+
+def test_brief_and_energy_default_empty_when_absent(grid_file):
+    night = programming.program_for(_mon(2))  # long_night: no brief/energy keys
+    assert night.brief == ""
+    assert night.energy == ""
+
+
+def test_unknown_energy_is_dropped_not_propagated(grid_file):
+    prog = programming.program_for(_sat(8))  # archive_hour: energy "frantic"
+    assert prog.energy == ""
 
 
 # --- The generalised frame preserves the two-host C1 behaviour EXACTLY ------

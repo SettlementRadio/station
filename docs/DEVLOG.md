@@ -38,6 +38,76 @@ A typical *build* session will be short, e.g.:
 
 ---
 
+## 2026-07-19 — Phase R — R1.0: the `brief` field — programs get an editorial identity
+**Focus:** the R1 foundation seam: `Program` now carries an optional editorial `brief` (2–4
+sentences: what the show covers, what a good item looks like, what it never does) and `energy`
+(`calm | steady | bright`), threaded from the grid into the writers' room.
+**Decisions:**
+- The block rides in the **per-call** system section of both prompts as `ON THIS SHOW — <name>:
+  <brief> / Energy: <energy>` — never the cached core, so the bible cache still hits.
+- `compose_segment` resolves the active program ONCE and hands the same object to the showrunner
+  and the orchestrator (and records `program`/`on_brief` in segment meta, so on-brief output is
+  log-assertable — R4.3 will want this).
+- A brief-carrying program also **scopes the showrunner's fresh pick** ("a beat that belongs on
+  THIS show"); a continuing thread keeps deepening its own beat (the scope line applies to the
+  fresh-pick task only).
+- Back-compat is hard: no `brief` (the `default` program, today's whole grid) = the pre-R1
+  prompts exactly; an unknown `energy` value is logged and dropped, never propagated.
+**Changed:** `src/world/programming.py` (fields + parsing), `src/writers/conversation.py`
+(`_show_section`, threading through `_frame_for`/`showrunner`/`orchestrate`/`compose_segment`),
+`docs/programming/README.md` (§2.1 field table), tests (`test_programming.py`,
+`test_conversation.py`, `test_compose_gate.py`). 473 tests green, ruff clean.
+**Why:** the audit's root cause for topics 5+6 — the room never knew which show was on air, so
+The Exchange and The Gallery produced the same generic station talk. This is the seam R1.1's
+briefs (and R2's new programs) plug into.
+**Next:** R1.1 — write the briefs + energy for every non-default program in `grid.yaml`.
+Commit: (pending)  ·  Clips: —
+
+## 2026-07-19 — Phase R — the "Real Radio" refresh planned (docs/PHASE_R_TASKS.md written)
+**Focus:** a planning-only session — the operator's first *listening* audit of the built station
+named seven problems, and this session researched all of them (repo deep-dive + real-radio practice)
+and wrote the full task pack: `docs/PHASE_R_TASKS.md` (packs R1–R7). No implementation yet.
+**Decisions:**
+- **The root cause of "academic professors discussing the light and the distance" is a missing
+  seam, not a bad prompt:** `Program` carries no editorial brief, so the showrunner never knows it's
+  on "The Exchange" vs "The Gallery" — every show averages back to the house-poetry register. R1.0
+  (a `brief` + `energy` field threaded into the prompts) is therefore the foundation task; the
+  register itself is set in three places at once (orchestrator prompt, cast-card sample lines,
+  canon SPIRIT prose) and R1 fixes all three in one coordinated pass. News stays formal by design.
+- **Grid shape — flagships stay long, everything else goes short:** breakfast (07–09) and drive
+  (18–20) remain 2h branded shows restructured into fast 5–15-min items (the real-radio flagship
+  model — BBC's *Today* is 3h but never sits on one item); every other program becomes a ≤30-min
+  fixture, freeing slots for new verticals (health, style, food, markets, chart show, a serialized
+  drama slot). Medicine/style are thin in the canon AND missing from the tick's `DOMAINS`, so R2.1
+  adds both — a program without a domain starves (the D9.4 sports lesson).
+- **News evolves during the day via day-plan + micro-ticks:** the machinery is half-built already
+  (hour-stamped beats; breaking/trailed/ongoing × new/repeat/evolve in `news_select`) — R4 adds
+  same-day multi-beat arcs to the nightly tick (planted beats air only once their hour passes) plus
+  a cheap haiku-tier intra-day micro-tick, with update language ("as we reported this morning…")
+  and multi-day countdowns.
+- **Admin = extend E1, don't fork it:** the operator's new asks land as E1.7–E1.11 (queue/history/
+  retry + start/stop, budgets, post-tick world digest, per-DJ pages) — and the approval question is
+  settled as a **major-events-only gate** (tick marks `major`; those queue for approval before
+  airing; routine stories stay autonomous — the full per-story queue stays deferred).
+- **Music gets a big batch** (MEDIA_LIBRARY v3, ~40–60 tracks, energy-tiered brighter) so real
+  music blocks and a moving daily chart ("The Count") become possible.
+- **The web player becomes a real station front (R7, supersedes the thin C8 player):** grid page,
+  on-air card, up-next, DJ pages — designed FROM the canon: "a lit window seen across the dark"
+  (dark night blue + one warm amber focus, the A2 palette kept), and **DJs rendered as waveform
+  marks, never faces** (canon fact 8: listeners know only their voices). Needs new public feeds
+  (schedule + DJ slices) — the now-playing feed alone can't carry a station site.
+**Changed:** `docs/PHASE_R_TASKS.md` (new — findings, locked decisions, packs R1–R7 with per-task
+done-whens, tracker, build order). Nothing else touched — R2.0 (the GRID_V2 paper design) is the
+first sign-off gate before any YAML or code moves.
+**Why:** the station is *built* (D complete, 461 tests) but the operator's ear says it isn't yet
+*good radio* — long blocks, one register, news that doesn't move within a day. Real-station
+practice (fixture spines, hour clocks, update-not-re-read newsrooms) maps cleanly onto seams that
+already exist, so this is a retune-and-extend phase, not a rebuild — and it must land before the
+C9 soak, because it changes what the soak listens to.
+**Next:** R1.0 — add the `brief`/`energy` fields to `Program` and thread them into the
+showrunner/orchestrator prompts.
+Commit: (this doc session)  ·  Clips: —
+
 ## 2026-07-16 — Phase D — D13 built: the hosts remember themselves (journal capture → recall → self-consistency gate)
 **Focus:** the whole D13 sub-pack (D13.0–D13.4) — the self/interpersonal memory the 2026-07-13
 persona audit named as the biggest remaining gap between "distinct voices" and "people who live at

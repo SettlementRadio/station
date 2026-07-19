@@ -103,6 +103,50 @@ def test_journal_reaches_orchestrator_and_editor_alike(monkeypatch):
     assert seg.meta["journal_used"] is True
 
 
+def test_program_threads_once_through_both_steps(monkeypatch):
+    # R1.0 — compose_segment resolves the active program ONCE and hands the SAME
+    # object to the showrunner and the orchestrator (their ON THIS SHOW block),
+    # and records it on the segment meta.
+    from src.world import programming
+
+    _patch_common(monkeypatch)
+    prog = programming.Program(
+        id="the_exchange",
+        name="The Exchange",
+        hosts=("vell", "wren"),
+        framing="solo",
+        daypart="",
+        clock=(),
+        rotation=(),
+        brief="Trade and the markets: prices, cargoes, a deal gone sour.",
+        energy="steady",
+    )
+    monkeypatch.setattr(convo.programming, "program_for", lambda now: prog)
+    seen: dict = {}
+
+    def _showrunner(ctx, now, *, program=None, **kw):
+        seen["showrunner"] = program
+        return "the beat"
+
+    def _orchestrate(ctx, beat, now, *, program=None, **kw):
+        seen["orchestrate"] = program
+        return SCRIPT
+
+    monkeypatch.setattr(convo, "showrunner", _showrunner)
+    monkeypatch.setattr(convo, "orchestrate", _orchestrate)
+    monkeypatch.setattr(convo, "safety_check", lambda text: _ok_safety())
+    monkeypatch.setattr(
+        convo,
+        "continuity_check",
+        lambda s, c, **k: ContinuityResult(True, "sonnet", "OK"),
+    )
+
+    seg = convo.compose_segment(_ctx(), NOW, seg_id="talk-r1")
+    assert seen["showrunner"] is prog and seen["orchestrate"] is prog
+    assert seg.meta["program"] == "the_exchange"
+    assert seg.meta["on_brief"] is True
+
+
 def test_continuity_flag_regenerates_with_note_then_falls_back(monkeypatch):
     _patch_common(monkeypatch)
     monkeypatch.setattr(convo, "safety_check", lambda text: _ok_safety())

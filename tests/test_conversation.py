@@ -148,6 +148,79 @@ def test_talk_prompts_omit_freshness_when_empty(monkeypatch):
     assert "Recently on air" not in seen["system"]
 
 
+# --- R1.0: the ON THIS SHOW editorial block ----------------------------------
+
+
+def _program(pid: str, name: str, brief: str = "", energy: str = ""):
+    from src.world import programming
+
+    return programming.Program(
+        id=pid,
+        name=name,
+        hosts=("vell", "wren"),
+        framing="solo",
+        daypart="",
+        clock=(),
+        rotation=(),
+        brief=brief,
+        energy=energy,
+    )
+
+
+EXCHANGE = _program(
+    "the_exchange",
+    "The Exchange",
+    brief="Trade and the markets: prices, cargoes, a deal gone sour.",
+    energy="steady",
+)
+GALLERY = _program(
+    "the_gallery",
+    "The Gallery",
+    brief="The arts in depth: a new work, a celebrated figure, an opening.",
+    energy="bright",
+)
+
+
+def test_two_programs_briefs_land_in_their_showrunner_prompts(monkeypatch):
+    # The R1.0 acceptance: different shows reach the beat-picker with DIFFERENT
+    # editorial identities — the missing seam, closed.
+    seen = _capture_system(monkeypatch)
+    now = datetime(2026, 6, 30, 14, 0)
+    convo.showrunner(_ctx(), now, program=EXCHANGE)
+    assert "ON THIS SHOW — The Exchange:" in seen["system"]
+    assert EXCHANGE.brief in seen["system"]
+    assert "Energy: steady" in seen["system"]
+    assert "belongs on THIS show" in seen["system"]  # the scoped fresh pick
+    convo.showrunner(_ctx(), now, program=GALLERY)
+    assert "ON THIS SHOW — The Gallery:" in seen["system"]
+    assert GALLERY.brief in seen["system"]
+    assert EXCHANGE.brief not in seen["system"]
+
+
+def test_orchestrate_carries_the_show_block_too(monkeypatch):
+    seen = _capture_system(monkeypatch)
+    convo.orchestrate(_ctx(), "the beat", datetime(2026, 6, 30, 14, 0), program=GALLERY)
+    assert "ON THIS SHOW — The Gallery:" in seen["system"]
+    assert "Energy: bright" in seen["system"]
+
+
+def test_no_brief_keeps_the_pre_r1_prompts_exactly(monkeypatch):
+    # Back-compat: a briefless program (the default program, a pre-R1 grid)
+    # contributes NO block and leaves the fresh-pick task unscoped — the prompt
+    # keeps its pre-R1 shape, whether the program is passed or derived.
+    seen = _capture_system(monkeypatch)
+    now = datetime(2026, 6, 30, 21, 0)
+    briefless = _program("default", "Settlement Radio")
+    convo.showrunner(_ctx(), now, program=briefless)
+    assert "ON THIS SHOW" not in seen["system"]
+    assert "belongs on THIS show" not in seen["system"]
+    assert "Pick exactly ONE current event" in seen["system"]  # the unscoped task
+    convo.showrunner(_ctx(), now)  # derived program (the shipped grid, no briefs yet)
+    assert "ON THIS SHOW" not in seen["system"]
+    convo.orchestrate(_ctx(), "the beat", now, program=briefless)
+    assert "ON THIS SHOW" not in seen["system"]
+
+
 # --- Field hosts (the audit fix): the dispatch directive ---------------------
 
 SERA = CastMember("sera", "Sera", "card text", "sera_field", [], based="field")

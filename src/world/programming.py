@@ -46,6 +46,10 @@ log = get_logger(__name__)
 # validate/skip at air time (D6.2), so this module needs no `formats` import.
 _MARKERS = frozenset({"sting", "bed", "ident"})
 
+# R1.0 — the allowed `energy` values (the delivery-pace hint). A grid value outside
+# this set is logged and dropped to "" (no hint), never propagated to the prompts.
+_ENERGIES = frozenset({"calm", "steady", "bright"})
+
 _WEEKDAYS = {
     "mon": 0,
     "tue": 1,
@@ -112,6 +116,13 @@ class Program:
     # brings in a non-host voice (a played soundbite/record from a story figure, or
     # an invited interviewee). None (key absent) = the global `convo_guest_chance`.
     guest_chance: float | None = None
+    # R1.0: the editorial brief — 2-4 sentences on what this show covers, what a
+    # good item looks like, and what it never does. Reaches the writers' room as
+    # the per-call "ON THIS SHOW" block (conversation.py); "" (key absent) keeps
+    # the pre-R1 prompts exactly.
+    brief: str = ""
+    # R1.0: the delivery-pace hint — one of `calm | steady | bright`; "" = no hint.
+    energy: str = ""
 
 
 @dataclass(frozen=True)
@@ -182,6 +193,11 @@ def _parse_program(pid: str, data: dict) -> Program:
                 program=pid,
                 value=data.get("guest_chance"),
             )
+    brief = str(data.get("brief") or "").strip()
+    energy = str(data.get("energy") or "").strip().lower()
+    if energy and energy not in _ENERGIES:
+        log.warning("programming_bad_energy", program=pid, value=data.get("energy"))
+        energy = ""
     return Program(
         id=pid,
         name=name,
@@ -192,6 +208,8 @@ def _parse_program(pid: str, data: dict) -> Program:
         rotation=rotation,
         break_every=break_every,
         guest_chance=guest_chance,
+        brief=brief,
+        energy=energy,
     )
 
 

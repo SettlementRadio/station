@@ -96,7 +96,11 @@ class ContinuityResult:
 # --- The show frame (C1): who's on air this hour, framed from the clock -------
 
 
-def _frame_for(ctx: AssembledContext, now: datetime) -> ShowFrame:
+def _frame_for(
+    ctx: AssembledContext,
+    now: datetime,
+    program: programming.Program | None = None,
+) -> ShowFrame:
     """The show frame for `now`, driven by the active program (D6.1).
 
     `programming.program_for(now)` reads the weekly grid and returns the show on air
@@ -106,13 +110,36 @@ def _frame_for(ctx: AssembledContext, now: datetime) -> ShowFrame:
     back through the C1 two-host `show_frame`, so with the initial grid (the two
     hosts) — or no grid at all — the frame is exactly what it was before D6.
 
+    `program` (R1.0) lets `compose_segment` resolve the active program ONCE and
+    share it between the frame and the prompts; None derives it from `now` as before.
+
     Field hosts (the audit fix): any assembled speaker whose card says
     `Based: field` is passed as `remote`, so the frame's situation prose casts
     them as a relay dispatch instead of an in-studio presence.
     """
-    program = programming.program_for(now)
+    program = program or programming.program_for(now)
     remote = tuple(c.id for c in ctx.speakers if c.is_field)
     return framing.program_frame(now, program, remote=remote)
+
+
+def _show_section(program: programming.Program | None) -> str:
+    """The R1.0 "ON THIS SHOW" editorial block ('' when the program has no brief).
+
+    The missing editorial seam: without this, the room never learns WHICH show is
+    on air, so every program produces the same generic station talk. The block is
+    small and per-program, so it rides in the PER-CALL system section — never the
+    cached core — and the bible cache still hits. A program without a `brief` (the
+    `default` program, a pre-R1 grid) contributes nothing: the prompts are exactly
+    the pre-R1 shape.
+    """
+    if program is None or not program.brief:
+        return ""
+    energy = (
+        f"\nEnergy: {program.energy} — pace the exchange to match."
+        if program.energy
+        else ""
+    )
+    return f"ON THIS SHOW — {program.name}:\n{program.brief}{energy}\n\n"
 
 
 def _situation(frame: ShowFrame, ctx: AssembledContext) -> str:
@@ -123,15 +150,28 @@ def _situation(frame: ShowFrame, ctx: AssembledContext) -> str:
 # --- Step 1: showrunner -----------------------------------------------------
 
 
-def _showrunner_thread(flow: ShowFlow | None) -> tuple[str, str]:
+def _showrunner_thread(
+    flow: ShowFlow | None, *, on_brief: bool = False
+) -> tuple[str, str]:
     """The showrunner's D12.2 thread context + task, for `(thread_block, task_block)`.
 
     Three cases: continue the ongoing thread (deepen the SAME beat), transition off a
     thread that has run its course (a deliberate move to a fresh subject), or the
     normal fresh pick (a lone slot, an open, or no active thread). Standalone /
     disabled always takes the fresh pick, so the direct paths are unchanged.
+
+    `on_brief` (R1.0) — True when the active program carries an editorial brief:
+    the fresh pick is then scoped to THIS show (the ON THIS SHOW block above it in
+    the prompt), not the whole world. False keeps the pre-R1 task exactly.
     """
+    show_scope = (
+        "Pick a beat that belongs on THIS show — the ON THIS SHOW brief above "
+        "scopes the topic; the rest of the world can wait for another program. "
+        if on_brief
+        else ""
+    )
     fresh_task = (
+        f"{show_scope}"
         "Pick exactly ONE current event or world fact for them to glance off, and a "
         "HUMAN angle — a feeling, a small concrete detail, a gentle disagreement, "
         "something one of them can't stop thinking about — not just a fact to report. "
@@ -188,6 +228,7 @@ def showrunner(
     recent_block: str = "",
     pair_block: str = "",
     flow: ShowFlow | None = None,
+    program: programming.Program | None = None,
 ) -> str:
     """Pick tonight's beat: ONE event/angle for the two DJs, framed for the hour.
 
@@ -213,18 +254,26 @@ def showrunner(
     shared past. Deliberately NOT the full journal (the orchestrator gets that):
     the beat-picker needs the relationship, not the biography. Per-call system
     (the cache holds); "" keeps the pre-D13 pick.
+
+    `program` (R1.0) is the active program; its editorial brief + energy become
+    the ON THIS SHOW block, and a brief-carrying program scopes the fresh pick to
+    the show. None derives it from `now`; a program with no brief (the default
+    program, a pre-R1 grid) keeps the pre-R1 prompt exactly.
     """
     names = _names(ctx)
-    frame = frame or _frame_for(ctx, now)
+    program = program or programming.program_for(now)
+    frame = frame or _frame_for(ctx, now, program=program)
     situation = _situation(frame, ctx)
+    show_section = _show_section(program)
     freshness_section = f"{recent_block}\n\n" if recent_block else ""
-    thread_block, task_block = _showrunner_thread(flow)
+    thread_block, task_block = _showrunner_thread(flow, on_brief=bool(show_section))
     system = (
         "You are the showrunner for Settlement Radio, a tribute sci-fi radio "
         f"station. Choose the beat for a short on-air exchange between {names}.\n\n"
         f"Settlement time right now: {clock.render_wall_clock(now)} "
         f"({frame.part_of_day}).\n"
         f"On air right now: {situation}.\n\n"
+        f"{show_section}"
         f"What's true right now:\n{ctx.dynamic or '(nothing notable)'}\n\n"
         f"{thread_block}"
         f"{pair_block}"
@@ -404,6 +453,7 @@ def orchestrate(
     memory: str = "",
     journal: str = "",
     flow: ShowFlow | None = None,
+    program: programming.Program | None = None,
 ) -> str:
     """Write the two-DJ exchange in one call; return speaker-labelled dialogue.
 
@@ -444,6 +494,10 @@ def orchestrate(
     `continue` slot that is CONTINUING a thread it also opens by picking up the prior
     exchange instead of re-introducing the topic (D12.2). `None` (the direct paths)
     keeps the pre-D12 always-a-time-check-near-open/handover, self-contained shape.
+
+    `program` (R1.0) is the active program; its editorial brief + energy ride in
+    as the ON THIS SHOW block (per-call system — the bible cache still hits).
+    None derives it from `now`; no brief = the pre-R1 prompt exactly.
     """
     names = _names(ctx)
     labels = [f"{c.name}:" for c in ctx.speakers]
@@ -453,8 +507,10 @@ def orchestrate(
     emotion_help = ", ".join(sorted(tts.EMOTIONS))  # D9.0: the allowed tag set
     guest_section = _guest_section(guest)
     dispatch_section = _dispatch_section(ctx)
-    frame = frame or _frame_for(ctx, now)
+    program = program or programming.program_for(now)
+    frame = frame or _frame_for(ctx, now, program=program)
     situation = _situation(frame, ctx)
+    show_section = _show_section(program)
     backbone = (
         f"Follow this shape for the exchange:\n{extra_directive}\n\n"
         if extra_directive
@@ -504,6 +560,7 @@ def orchestrate(
         f"On air right now: {situation}. Frame the exchange for THIS part of day — "
         "match the on-air note above; do not write a night or dawn-handover scene "
         "unless it says so.\n\n"
+        f"{show_section}"
         f"Tonight's beat (from the showrunner):\n{beat}\n\n"
         f"{pickup}"
         f"{transition}"
@@ -899,11 +956,16 @@ def compose_segment(
 
     # C1: the show frame for this hour drives the room's framing (night solo /
     # dawn handover / day / dusk handover), computed once and shared by both steps.
-    frame = _frame_for(ctx, now)
+    # R1.0: the active PROGRAM is resolved once too, and threaded into both prompt
+    # steps — its editorial brief/energy become their ON THIS SHOW block.
+    program = programming.program_for(now)
+    frame = _frame_for(ctx, now, program=program)
     log.info(
         "convo_compose_start",
         seg_id=seg_id,
         speakers=[c.id for c in ctx.speakers],
+        program=program.id,
+        on_brief=bool(program.brief),
         part_of_day=frame.part_of_day,
         lead=frame.lead,
         handover=frame.is_handover,
@@ -945,6 +1007,7 @@ def compose_segment(
         recent_block=recent_topics,
         pair_block=pair_block,
         flow=flow,
+        program=program,
     )
     # D13.2 — the hosts' own on-air history (the D9.4 sibling), keyed to the beat
     # so semantic recall can surface the relevant past statements; "" degrades to
@@ -969,6 +1032,7 @@ def compose_segment(
             memory=memory,
             journal=journal,
             flow=flow,
+            program=program,
         ).strip()
 
         safety = safety_check(script)
@@ -1056,6 +1120,10 @@ def compose_segment(
                 ),
                 "memory_used": bool(memory),
                 "journal_used": bool(journal),
+                # R1.0 — which program's editorial identity framed this segment
+                # (and whether a brief actually reached the room).
+                "program": program.id,
+                "on_brief": bool(program.brief),
                 # D12.0/D12.2 — the slot's show position (open/continue/close) and
                 # whether it CONTINUED the prior thread, recorded for visibility/tests;
                 # None on the standalone path.
