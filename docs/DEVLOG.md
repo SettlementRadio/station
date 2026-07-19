@@ -61,9 +61,13 @@ register, rota, theme/canon gap lists feeding R3.1 + R2.1), this DEVLOG.
 **Why:** the audit's "long slow blocks" problem is structural — real speech radio is a fixed spine
 of short fixtures; designing the whole week on paper first means R2.1/R2.2 build against a
 signed-off target instead of iterating live YAML.
-**Next:** operator review of GRID_V2.md §10 (8 questions) → then R2.1 (54-health.md, style
-section, `DOMAINS += health/style`) and R2.2 (the YAML + clocks).
-Commit: (this session)  ·  Clips: —
+**Sign-off (same day):** the operator answered all 8 §10 questions with the recommended option —
+Serial at 20:00, EC = Kael+Joss, quiz in at 2×/wk, Table daily, Zhe voices Conditions, Serial
+from day one, no 20:00 bulletin, names final. GRID_V2.md marked SIGNED OFF; it is now the R2.1/
+R2.2 build target. **R2.0 COMPLETE ✅**
+**Next:** R2.1 (54-health.md, the style section, `DOMAINS += health/style`, cast tags, seed +
+embed) → R2.2 (the YAML + clocks).
+Commit: 05206f6 + (sign-off)  ·  Clips: —
 
 ## 2026-07-19 — Phase R — R1.4: the SPIRIT register note + the 8th acceptance property — R1 COMPLETE ✅
 **Focus:** the last R1 task — guard the register fix and stop the bible re-teaching the poetry.

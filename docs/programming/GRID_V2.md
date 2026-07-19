@@ -1,9 +1,9 @@
 # GRID_V2.md — the 24-hour speech-station week (R2.0 design)
 
-> **Status: DRAFT — awaiting operator sign-off.** Nothing in `grid.yaml` moves until this doc is
-> approved (R2.0 "done when"). R2.2 implements exactly what is signed off here; R2.1 builds the
-> canon/domain support listed in §8; R3.1 specs the themes listed in §7. Open questions for the
-> review are collected in §10 — everything else is a concrete proposal.
+> **Status: SIGNED OFF — operator, 2026-07-19.** All eight §10 questions were answered with the
+> recommended option (answers recorded in §10). This doc is now the build target: R2.2
+> implements exactly this design; R2.1 builds the canon/domain support listed in §8; R3.1 specs
+> the themes listed in §7.
 >
 > **What this fixes** (the 2026-07-19 audit, topics 1+6): the current day runs eight 1–2-hour
 > blocks — long, slow, one register at a time. Real speech radio runs a **fixed spine of short
@@ -377,7 +377,14 @@ All other verticals keep their existing cornerstone coverage (strong per the R2 
 
 ---
 
-## 10. Open questions for sign-off (answer these; everything else builds as written)
+## 10. Sign-off questions — ANSWERED (operator, 2026-07-19: all recommendations accepted)
+
+Decisions now locked: **(1)** Serial at 20:00–20:15, Nightfall from 20:15 · **(2)** Evening
+Currents = Kael + Joss · **(3)** The Relay Round stays, 2×/week · **(4)** The Table daily ·
+**(5)** Conditions voiced by Zhe · **(6)** The Serial airs from day one (brief-driven until R4) ·
+**(7)** no 20:00 bulletin · **(8)** all eight new-program names final as written.
+
+The original questions, kept for the record:
 
 1. **The Serial at 20:00–20:15**, trimming Nightfall to 20:15 — the classic evening-drama slot,
    leading beautifully into the night's register. Alternative if the night must stay
