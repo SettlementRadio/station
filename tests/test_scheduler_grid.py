@@ -334,3 +334,20 @@ def test_program_talk_length_rides_the_flow(monkeypatch, tmp_path):
     ]
     if filler_talk:
         assert filler_talk[0]["flow"].talk_length_sec is None
+
+
+def test_short_show_flag_rides_the_flow(monkeypatch, tmp_path):
+    """A ≤45-min fixture flags short_show; a long block does not (R2.3)."""
+    calls, gen = _recording_flow_generator(tmp_path)
+    _wire_grid(
+        monkeypatch, tmp_path, grid_text=_GRID_SUBHOUR, depth_hours=0.6, generator=gen
+    )
+
+    scheduler.top_up(now=_mon(13, 35))  # half_late (30 min), then filler (10h)
+
+    talk = [c for c in calls if c["format"] == "talk" and c["flow"] is not None]
+    assert talk, "no talk slots with flow were generated"
+    assert talk[0]["flow"].short_show is True  # the 30-minute fixture
+    in_filler = [c for c in talk if datetime.fromisoformat(c["air_time"]).hour >= 14]
+    assert in_filler, "the run never reached the long block"
+    assert in_filler[0]["flow"].short_show is False  # the 10-hour block

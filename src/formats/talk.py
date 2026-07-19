@@ -67,24 +67,38 @@ _BACKBONE_CLOSE = (
 )
 
 
-def _signon_backbone(program_name: str | None) -> str:
+# R2.3 — the SHORT-fixture tightening (flow.short_show): at the GRID_V2 density a
+# 30-minute show that spends a minute on hellos has spent 5% of itself. One line
+# each way; the 2h flagships keep the fuller welcome.
+_SIGNON_SHORT = (
+    " Keep the sign-on to ONE short line — name the programme and get straight to "
+    "the item; no ceremony, no table-setting, no run-down of what's coming."
+)
+_SIGNOFF_SHORT = (
+    " Keep the sign-off to ONE short line — name the programme, hand on, done; "
+    "no recap, no long goodbyes."
+)
+
+
+def _signon_backbone(program_name: str | None, *, short: bool = False) -> str:
     """The `open` backbone, with a D12.4 SIGN-ON by name when the program is known."""
     if not program_name:
         return _BACKBONE_OPEN
     return (
         f"{_BACKBONE_OPEN} As you open, SIGN ON the programme by name — welcome the "
         f'listeners to "{program_name}" naturally, in your own words (not a jingle), '
-        "just once."
+        "just once." + (_SIGNON_SHORT if short else "")
     )
 
 
-def _signoff_backbone(program_name: str | None) -> str:
+def _signoff_backbone(program_name: str | None, *, short: bool = False) -> str:
     """The `close` backbone, with a D12.4 SIGN-OFF by name when the program is known."""
     if not program_name:
         return _BACKBONE_CLOSE
     return (
         f"{_BACKBONE_CLOSE} As you close, SIGN OFF the programme by name — a warm "
         f'"that\'s \\"{program_name}\\" for now" beat, just once.'
+        + (_SIGNOFF_SHORT if short else "")
     )
 
 
@@ -95,15 +109,16 @@ def _backbone_for(flow: ShowFlow | None) -> str:
     keeps the self-contained open→close shape; otherwise the positional backbone for
     `flow.position` drives one open at the top, cold middles, and one close. On the
     `open`/`close` slots, D12.4 signs the program ON/OFF by name (when
-    `convo_flow_signon` is on and the program name is known).
+    `convo_flow_signon` is on and the program name is known), tightened to ONE line
+    for a short fixture (R2.3 — `flow.short_show`).
     """
     if flow is None or not settings.convo_continuity_enabled:
         return _BACKBONE_STANDALONE
     name = flow.program_name if settings.convo_flow_signon else None
     if flow.position == OPEN:
-        return _signon_backbone(name)
+        return _signon_backbone(name, short=flow.short_show)
     if flow.position == CLOSE:
-        return _signoff_backbone(name)
+        return _signoff_backbone(name, short=flow.short_show)
     return _BACKBONE_CONTINUE
 
 

@@ -753,3 +753,27 @@ def test_scheduler_stamps_the_program_name_on_the_flow(monkeypatch, tmp_path):
     _wire(monkeypatch, tmp_path, gen, _ONE_PROGRAM)
     scheduler.top_up(now=datetime(2026, 6, 22, 0, 5))
     assert calls[0]["flow"].program_name == "The Long Night"
+
+
+# --- R2.3: the one-breath sign-on/sign-off for short fixtures ----------------
+
+
+def test_short_show_signon_is_one_line():
+    got = talk_fmt._backbone_for(
+        ShowFlow(OPEN, program_name="The Ledger", short_show=True)
+    )
+    assert "SIGN ON" in got and "ONE short line" in got
+
+
+def test_short_show_signoff_is_one_line():
+    got = talk_fmt._backbone_for(
+        ShowFlow(CLOSE, program_name="The Ledger", short_show=True)
+    )
+    assert "SIGN OFF" in got and "ONE short line" in got
+
+
+def test_flagship_keeps_the_full_welcome():
+    got = talk_fmt._backbone_for(
+        ShowFlow(OPEN, program_name="Morning Currents", short_show=False)
+    )
+    assert "SIGN ON" in got and "ONE short line" not in got

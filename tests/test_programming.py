@@ -386,3 +386,28 @@ def test_each_program_keeps_its_own_cursor_across_boundaries():
     n2, sb = programming.next_format(b, _mon(2), sb)  # b: news
     n3, sa = programming.next_format(a, _mon(3), sa)  # a continues: music
     assert (n1, n2, n3) == ("talk", "news", "music")
+
+
+# --- R2.3: program_span — how long is this show? -----------------------------
+
+
+def test_program_span_resolves_the_slot(grid_file):
+    # daywatch tiles Mon 07:00-24:00 -> the span is that whole slot.
+    span = programming.program_span(_mon(10))
+    assert span == (datetime(2026, 6, 22, 7, 0), datetime(2026, 6, 23, 0, 0))
+
+
+def test_program_span_none_on_a_gap(grid_file):
+    assert programming.program_span(_sun(3)) is None  # the untiled fixture hole
+
+
+def test_program_span_handles_wrap_and_short_fixtures(real_grid):
+    # long_night "22:00-00:00" wraps midnight -> ends tomorrow at 00:00.
+    span = programming.program_span(datetime(2026, 6, 22, 23, 0))
+    assert span == (datetime(2026, 6, 22, 22, 0), datetime(2026, 6, 23, 0, 0))
+    # The Serial is a 15-minute fixture -> a 15-minute span.
+    span = programming.program_span(datetime(2026, 6, 22, 20, 5))
+    assert span == (
+        datetime(2026, 6, 22, 20, 0),
+        datetime(2026, 6, 22, 20, 15),
+    )

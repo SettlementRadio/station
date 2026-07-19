@@ -149,6 +149,8 @@ def assets_tree(tmp_path, audio_factory, monkeypatch):
         "stings/b6_handover.mp3",
         "stings/c8_news_sting.mp3",
         "stings/c10_music_bumper.mp3",
+        "stings/a4_sweeper_bright.mp3",  # R2.3 — the flagship item joins
+        "stings/a4_sweeper_mid.mp3",
     ]:
         target = assets / rel
         target.parent.mkdir(parents=True, exist_ok=True)

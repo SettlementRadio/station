@@ -248,6 +248,11 @@ class Settings(BaseSettings):
     # own track); intra-show "coming up…/back to it" sign-posting is deferred to
     # Phase E (needs reliable next-slot look-ahead), per the D12.4 scope gate.
     convo_flow_signon: bool = True
+    # R2.3 — a show whose grid slot runs at most this many minutes signs on/off in
+    # ONE line (a breath, not a ceremony): at the GRID_V2 density a 30-minute
+    # fixture that spends a minute on hellos has spent 5% of itself. The flagships
+    # (2h) keep the fuller welcome. 0 disables the tightening entirely.
+    convo_flow_short_show_max_min: int = 45
 
     # --- DJ self/interpersonal memory (D13) -------------------------------------
     # The hosts' on-air journal: after a scheduled talk segment renders, ONE cheap
@@ -704,6 +709,12 @@ class Settings(BaseSettings):
     # C3 disclosure ident (which keeps airing as-is; these are additive).
     production_theme_at_boundary: bool = True
     production_sting_before_news: bool = True
+    # R2.3 — the shows whose ITEM-TO-ITEM joins get the A4 sweeper (energy-matched
+    # via the program's `energy`): the fast-clock flagships, where a join every few
+    # minutes must sound like motion. Woven between consecutive content items only —
+    # never at a boundary (the theme owns it) or around a break (the D18 pair owns
+    # those). Empty list = no sweepers (the rollback).
+    production_sweeper_programs: list[str] = ["morning_currents", "evening_currents"]
     production_ident_every_n: int = 8
     # D7.3 — which slots get a bed under the speech. DOUBLY opt-in, and
     # deliberately conservative (over-bedding is worse than none): a slot is

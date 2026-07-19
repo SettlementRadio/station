@@ -89,6 +89,7 @@ from .production.placement import (
     break_sting_segment,
     news_sting_segment,
     station_ident_segment,
+    sweeper_segment,
 )
 from .segment import Segment
 from .world import programming, store
@@ -344,6 +345,13 @@ def _show_flow(
         and handoff.open_thread
         and thread_run < settings.convo_continuity_max_segments
     )
+    # R2.3 — a short fixture (slot span ≤ the dial) signs on/off in one line.
+    short_show = False
+    max_min = settings.convo_flow_short_show_max_min
+    if max_min > 0:
+        span = programming.program_span(air_cursor)
+        if span is not None:
+            short_show = (span[1] - span[0]) <= timedelta(minutes=max_min)
     return ShowFlow(
         position=position,
         handoff=handoff,
@@ -352,6 +360,7 @@ def _show_flow(
         program_name=program.name,  # D12.4 — for the spoken sign-on/sign-off by name
         guest_chance=program.guest_chance,  # D12.4 — this show's interview cadence
         talk_length_sec=program.talk_length_sec or None,  # R2.2 — item length
+        short_show=short_show,  # R2.3 — one-breath sign-on/sign-off
     )
 
 
@@ -803,6 +812,26 @@ def top_up(now: datetime | None = None) -> list[dict]:
                     seg.air_time = air_cursor.isoformat()
             except Exception as exc:
                 log.warning("schedule_news_sting_error", error=str(exc))
+
+        # R2.3 — the A4 sweeper joins consecutive items INSIDE a fast-clock show
+        # (the flagships, via production_sweeper_programs): energy-matched motion
+        # between items. `content_since_break >= 1` is the whole gate — it is 0 at
+        # a program boundary (the theme owns that join) and 0 right after an ad
+        # break (the D18 pair owns those), so a sweeper only ever lands between
+        # two content items. Talk items only: news brings its own C8 sting.
+        if (
+            name == "talk"
+            and program is not None
+            and program.id in settings.production_sweeper_programs
+            and content_since_break >= 1
+        ):
+            try:
+                sweep = sweeper_segment(program, air_cursor)
+                if sweep is not None:
+                    _place_clip(sweep)
+                    seg.air_time = air_cursor.isoformat()
+            except Exception as exc:
+                log.warning("schedule_sweeper_error", error=str(exc))
 
         # Commit the advanced clock/rotation state now that the slot has aired, and
         # stamp the program onto the segment (for the D6.3 console / D6.4 feed). Advance

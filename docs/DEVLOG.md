@@ -38,6 +38,40 @@ A typical *build* session will be short, e.g.:
 
 ---
 
+## 2026-07-19 — Phase R — R2.3: pace + interstitials — the short grid sounds like motion ✅
+**Focus:** the joins at the new density: sweepers inside the flagships, one-breath opens for
+short fixtures, boundary behaviour reviewed.
+**Decisions:**
+- **A4 sweepers between flagship items**: new `media.sweeper_for_energy` (the R1.0
+  calm|steady|bright IS the A4 tier; daypart mapping stays the fallback) +
+  `placement.sweeper_segment` + scheduler weaving gated on the programs in the new
+  `production_sweeper_programs` dial (default: the two flagships; empty = rollback). The whole
+  placement gate is `content_since_break >= 1` — 0 at a boundary (the theme owns that join) and 0
+  after a break (the D18 pair owns those), so a sweeper only ever lands *between* two content
+  items; talk items only (news brings its own C8 sting).
+- **One-breath sign-on/sign-off for short fixtures**: new `programming.program_span(now)` (the
+  active slot's concrete [start, end) — also what the R7 feed will need for "until half past") →
+  `ShowFlow.short_show` when the span ≤ new dial `convo_flow_short_show_max_min` (45) → the
+  D12.4 sign-on/sign-off backbones append a "ONE short line — no ceremony" instruction. The 2h
+  flagships keep the fuller welcome; 0 disables.
+- **Reviewed, no change needed**: handover stings already fire only at `framing: handover`
+  (First Light/Nightfall — the only two in the new grid); boundary themes already fire once per
+  program change (no double-themes — the D7.2 last-program state).
+**Verified:** ruff green; **499 tests** (9 new: energy sweeper mapping + weaving/energy-match +
+off-dial rollback, program_span slot/gap/wrap/15-min cases, short_show riding the flow, the
+one-line backbone ×3); **acceptance ALL 8 PASS** — the simulated day now airs 469 slots (was
+448; the delta is the sweepers inside the flagships) with `talk_flow` still one-open-per-show
+and cost flat at 4.9 calls/slot (clips are free).
+**Changed:** `src/production/{media,placement}.py`, `src/scheduler.py`, `src/config.py`,
+`src/flow.py`, `src/world/programming.py`, `src/formats/talk.py`,
+`tests/{conftest,test_production_schedule,test_programming,test_scheduler_grid,test_flow}.py`,
+this DEVLOG.
+**Why:** more programs/hour only works if every join sounds deliberate — theme at the top,
+sweeper between items, sting into news, one-line hellos — otherwise density reads as churn.
+**Next:** R2.4 — docs (programming README new fields, ADMIN_MANUAL grid section + panel tags),
+tracker flip for R2.
+Commit: (this session)  ·  Clips: —
+
 ## 2026-07-19 — Phase R — R2.2: the GRID_V2 week is live — grid.yaml rewritten + `talk_length_sec` ✅
 **Focus:** implement the signed-off GRID_V2 design: the real speech-station week, on air.
 **Decisions:**

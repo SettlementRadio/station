@@ -33,6 +33,7 @@ programs:
     framing: handover
     daypart: first light
     clock: [talk, news@:00]
+    energy: bright
   default:
     name: "Settlement Radio"
     hosts: [vell, wren]
@@ -151,3 +152,42 @@ def test_boundary_does_not_refire_within_the_same_program(
     upcoming = scheduler.top_up(datetime(2026, 7, 5, 5, 15))
     themes = [e for e in upcoming if e["id"].startswith("theme-")]
     assert len(themes) <= 1
+
+
+# --- R2.3: the A4 sweeper joins consecutive flagship items -------------------
+
+
+def test_sweeper_joins_flagship_items_energy_matched(
+    monkeypatch, tmp_path, assets_tree
+):
+    _wire(monkeypatch, tmp_path, depth_hours=0.8)
+    monkeypatch.setattr(
+        scheduler.settings, "production_sweeper_programs", ["first_light"]
+    )
+
+    # 06:10, inside first_light, away from any boundary or pin: pure talk items.
+    upcoming = scheduler.top_up(now=datetime(2026, 7, 5, 6, 10))
+
+    ids = [e["id"] for e in upcoming]
+    sweeps = [i for i, x in enumerate(ids) if x.startswith("sting-sweeper-")]
+    assert sweeps, "no sweeper joined the fast items"
+    # Never before the FIRST content item of the run (that join belongs to the
+    # theme/boundary machinery), and always immediately followed by a talk item.
+    content_before_first_sweep = [
+        x for x in ids[: sweeps[0]] if not x.startswith(("sting-", "theme-", "ident-"))
+    ]
+    assert content_before_first_sweep, "a sweeper aired before any content"
+    for i in sweeps:
+        assert ids[i + 1].startswith("talk-"), "a sweeper must join INTO an item"
+    # Energy-matched: first_light is `bright` -> the bright A4 tier.
+    sweep_entries = [e for e in upcoming if e["id"].startswith("sting-sweeper-")]
+    assert all("a4_sweeper_bright" in e["audio_path"] for e in sweep_entries)
+
+
+def test_no_sweepers_for_programs_off_the_dial(monkeypatch, tmp_path, assets_tree):
+    _wire(monkeypatch, tmp_path, depth_hours=0.8)
+    monkeypatch.setattr(scheduler.settings, "production_sweeper_programs", [])
+
+    upcoming = scheduler.top_up(now=datetime(2026, 7, 5, 6, 10))
+
+    assert not [e for e in upcoming if e["id"].startswith("sting-sweeper-")]

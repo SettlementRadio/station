@@ -123,6 +123,15 @@ SWEEPERS: dict[str, str] = {
 }
 _SWEEPER_DEFAULT = "stings/a4_sweeper_mid.mp3"  # unmapped daypart (e.g. `default`)
 
+# R2.3 — the same A4 set keyed by the program's `energy` dial (R1.0), the direct
+# match GRID_V2 asked for: the grid's calm|steady|bright IS the sweeper tier.
+# The daypart table above stays as the fallback for programs without an energy.
+ENERGY_SWEEPERS: dict[str, str] = {
+    "calm": "stings/a4_sweeper_calm.mp3",
+    "steady": "stings/a4_sweeper_mid.mp3",
+    "bright": "stings/a4_sweeper_bright.mp3",
+}
+
 # Special/event themes — placed by their own moments, not the daily grid:
 # "conditions" for the space-weather segment, "letters" for Phase E dedications,
 # "lumen" for the one fixed canon event, "special_coverage" for any D3-generated
@@ -203,6 +212,18 @@ def sweeper_for_daypart(daypart: str) -> Path | None:
     """The A4 transition sweeper matching a daypart's energy (mid if unmapped)."""
     rel = SWEEPERS.get(daypart, _SWEEPER_DEFAULT)
     return _resolve(rel, kind="sweeper", key=daypart)
+
+
+def sweeper_for_energy(energy: str) -> Path | None:
+    """The A4 sweeper matching a program's `energy` (R2.3), or None if unmapped.
+
+    None (not the mid default) when the energy isn't one of calm|steady|bright,
+    so the caller can fall back to the daypart mapping instead."""
+    rel = ENERGY_SWEEPERS.get(energy)
+    if rel is None:
+        log.warning("media_unmapped", kind="sweeper_energy", key=energy)
+        return None
+    return _resolve(rel, kind="sweeper_energy", key=energy)
 
 
 # --- Track audio (the songs catalogue's file side) ----------------------------

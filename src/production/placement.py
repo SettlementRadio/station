@@ -158,6 +158,34 @@ def break_sting_segment(moment: str, now: datetime) -> Segment | None:
     )
 
 
+def sweeper_segment(program: Program, now: datetime) -> Segment | None:
+    """The A4 transition sweeper joining two items INSIDE a show (R2.3), or None.
+
+    The quick "moving parts" join for the fast flagship clocks: energy-matched
+    via the program's `energy` (calm|steady|bright → the A4 tier), falling back
+    to the daypart mapping when the program carries no energy. The scheduler
+    weaves it between consecutive content items of the programs listed in
+    `settings.production_sweeper_programs` — never at a boundary (the theme owns
+    that join) and never around a break (the D18 pair owns those).
+    """
+    clip = media.sweeper_for_energy(program.energy) if program.energy else None
+    if clip is None:
+        clip = media.sweeper_for_daypart(program.daypart)
+    if clip is None:
+        return None
+    return _clip_segment(
+        clip,
+        fmt="sting",
+        now=now,
+        seg_id=f"sting-sweeper-{now:%Y%m%dT%H%M%S}",
+        meta={
+            "sting": "sweeper",
+            "program": program.id,
+            "program_name": program.name,
+        },
+    )
+
+
 def news_sting_segment(now: datetime) -> Segment | None:
     """The C8 sting that fires immediately before a news bulletin, or None."""
     clip = media.sting("news")

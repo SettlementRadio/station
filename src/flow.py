@@ -131,6 +131,11 @@ class ShowFlow:
     # the conversation word budget. None = the global default (Seam #2: length is
     # a parameter, never a constant).
     talk_length_sec: int | None = None
+    # R2.3 — this show's grid slot is short (≤ `convo_flow_short_show_max_min`):
+    # the sign-on/sign-off tightens to ONE line — a breath, not a ceremony — so a
+    # 30-minute fixture doesn't spend itself on hellos. False on the direct paths
+    # and for the 2h flagships (they keep the fuller welcome).
+    short_show: bool = False
 
 
 def show_position(*, is_first: bool, is_last: bool) -> str:

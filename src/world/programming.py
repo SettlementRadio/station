@@ -381,6 +381,35 @@ def program_for(now: datetime) -> Program:
     return _default_program(grid)
 
 
+def program_span(now: datetime) -> tuple[datetime, datetime] | None:
+    """The concrete [start, end) datetimes of the grid slot active at `now`.
+
+    R2.3 — the "how long is this show?" answer: the winning slot's time range
+    resolved to real datetimes around `now` (midnight wraps handled; a full-day
+    slot spans the whole day). None when no slot matches (the default program has
+    no span). Used to tighten the sign-on for short fixtures, and later by the R7
+    public feeds ("until half past"). NOTE: this is the SLOT's span — the new grid
+    never tiles one program into adjacent slots, so slot == show run.
+    """
+    grid = _load_grid()
+    matches = [s for s in grid.slots if _slot_matches(s, now)]
+    if not matches:
+        return None
+    matches.sort(key=lambda s: (len(s.weekdays), s.order))
+    slot = matches[0]
+    day = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    s, e = slot.start_min, slot.end_min
+    if s == e:  # a full-day slot
+        return day, day + timedelta(days=1)
+    if s < e:  # ordinary same-day range
+        return day + timedelta(minutes=s), day + timedelta(minutes=e)
+    # Wraps midnight: before the wrap we started today; after it, yesterday.
+    m = now.hour * 60 + now.minute
+    if m >= s:
+        return day + timedelta(minutes=s), day + timedelta(days=1, minutes=e)
+    return day - timedelta(days=1) + timedelta(minutes=s), day + timedelta(minutes=e)
+
+
 def _default_program(grid: _Grid) -> Program:
     """The reserved fallback program — from the grid, else synthesised from settings.
 
@@ -490,5 +519,6 @@ __all__ = [
     "all_programs",
     "next_format",
     "program_for",
+    "program_span",
     "reload",
 ]
