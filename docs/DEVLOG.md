@@ -38,6 +38,36 @@ A typical *build* session will be short, e.g.:
 
 ---
 
+## 2026-07-19 — Phase R — R1.3: the cast-card pass — the cards stop steering to the academy
+**Focus:** one editing pass over `docs/canon/90-cast.md` (sample lines steer generations hardest);
+re-seeded with `make seed-canon`.
+**Changed (per card):**
+- **Wren** — "talks about ordinary things by default" beat added; two poetic sample lines replaced
+  with everyday ones (grain convoy early / hollowball final / kettle left on; "go to bed, Vell").
+- **Joss** — ordinary-things beat (dock rosters, seed prices — "history is what ordinary things
+  used to cost"); the "see you when the light turns" close grounded ("Somebody tell Marisol the
+  corridor light's out again"); keeps "The thread holds."
+- **Kael** — ordinary-things beat (shift-league table, gym booking dispute, the junior squad);
+  sample lines already concrete, untouched.
+- **Mira** — the big one: daytime desk is "a fan first" (gossips about premieres, talks ticket
+  prices), long thought reserved for late features; the examiner tics rewritten ("recommends the
+  way a friend does, never the way an examiner sets reading"); all three sample lines grounded —
+  the "What do you hear?" seminar move deleted.
+- **Zhe** — ONE line: "hear what the dark says back" → "listen to the rest of it" — the card
+  literally contained an R1.2 banned exemplar, and Zhe airs on the daytime Standing Watch;
+  register otherwise intact (not in the pack's named list — noted as a choice).
+- **Untouched:** Vell, the Archivist (they ARE the night), Thorn (the desk stays formal), Sera,
+  Orin (already concrete).
+**Verified:** re-seed confirmed in the DB (all five edited cards live); generated Common Ground
+(Wren+Mira) and Gallery (Mira+Orin) samples read as people, not a seminar — Mira files a
+mock-solemn one-line review and answers "That's bleak." with "That's auctions."; Orin tells the
+story of being politely turned away from a pipe workshop. 478 tests green.
+**Operator action:** review the card diffs — `git diff docs/canon/90-cast.md` (uncommitted with
+R1.0–R1.2).
+**Next:** R1.4 — the SPIRIT "HOW THE STATION TALKS" note + the `plain_register` acceptance
+property (8th).
+Commit: (pending)  ·  Clips: —
+
 ## 2026-07-19 — Phase R — R1.2: the register pass — normal people, not a lecture
 **Focus:** the delivery-layer half of the register fix in `src/writers/conversation.py`, driven by
 the R1.0 `energy` field so the night keeps its soul.
