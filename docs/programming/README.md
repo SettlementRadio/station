@@ -45,10 +45,23 @@ A `Program` is a named show (e.g. *The Long Night*, *First Light*, *Daywatch*) c
 | `clock` | the format **sequence** (see §2.2) — the load-bearing piece. |
 | `break_every` | **(D8.1, optional)** the show's **ad-break cadence**: one sparse break — 1..`commercial_break_max_segments` fresh-generated `commercial`/`promo` spots, bracketed by the d18 `break_in`/`break_out` stings — after every N **content** segments while the show is on air. Absent/`0` = the show takes **no** breaks (the handover shows and `default` stay break-free). The grid, not a global constant, owns each daypart's ad load; the counter resets at every program boundary. Keep it sparse — texture, not interruption. |
 | `brief` | **(R1.0, optional)** the show's **editorial brief** — 2–4 sentences: what this show covers, what a good item looks like, what it never does. Reaches the writers' room as a per-call "ON THIS SHOW" block (showrunner + orchestrator), and scopes the showrunner's fresh pick to *this* show's territory. Absent = the pre-R1 prompts exactly (the `default` program has none). Written per R1.1's rules — concrete stakes, an explicit "never" line. |
-| `energy` | **(R1.0, optional)** the delivery-pace hint: `calm` \| `steady` \| `bright`. Rides with the brief in the ON THIS SHOW block; anything else is logged and dropped (no hint). |
+| `energy` | **(R1.0, optional)** the delivery-pace hint: `calm` \| `steady` \| `bright`. Rides with the brief in the ON THIS SHOW block; anything else is logged and dropped (no hint). **R2.3:** also picks the show's A4 sweeper tier (see the sweeper note below). |
+| `talk_length_sec` | **(R2.2, optional)** this show's **talk-item length target** in seconds — the GRID_V2 flagship model: a flagship runs fast ~3–5-min items (`240`), a 30-min specialist ~6–8-min ones (`420`), a 15-min desk short reads (`180`). Rides `ShowFlow` into the talk builder, which scales the conversation word budget proportionally (`conversation._word_budget`). Absent/`0` = the global `segment_default_length_target_sec`. Length stays a parameter, never a constant (Seam #2). |
 
 A program does **not** own its air-times; the **grid** (§2.3) places it. One program can tile many slots
-(e.g. `daywatch` fills every weekday 07:00–17:00).
+(e.g. Conditions airs 11:30 AND 15:00 daily — same program, two slots).
+
+> **The shipped week is GRID_V2 (R2.2)** — the signed-off speech-station day: two 2-hour
+> flagships on fast item clocks, every other daytime program ≤30 minutes at a fixed daily time
+> (15-minute slots are legal — the range grammar is `HH:MM`), five rotating vertical windows +
+> a weekly belt, the night untouched. The design, tiling proof, and rota live in
+> [`GRID_V2.md`](GRID_V2.md); this README stays the *model* reference.
+>
+> Two R2.3 helpers ride the model: `program_span(now)` answers "when does the show at `now`
+> start/end" (the slot's concrete datetimes — feeds the one-breath sign-on for short fixtures,
+> and later the R7 public feed), and the scheduler weaves the **A4 transition sweeper** between
+> consecutive items of the programs in `settings.production_sweeper_programs` (energy-matched
+> via `energy`; boundary themes and break stings keep owning their own joins).
 
 ### 2.2 Clock — how a program sequences its formats (the load-bearing piece)
 

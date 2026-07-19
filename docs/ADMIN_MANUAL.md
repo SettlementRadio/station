@@ -247,16 +247,21 @@ that loads bible-authored figures is future work; the schema + split are in plac
 
 ## Programming the grid
 
-The station runs a **weekly programming grid**: a talk-first week of many short, themed programs —
-news/current-affairs flagships, subject *verticals* (politics, economy, conflict, law, science,
-travel, the arts…), sport, short music features, the night shows — each a **named program** with
-**hosts**, **framing** (solo / handover / ensemble), and a **clock** (a format sequence with
-run-lengths `music x3` and pinned slots `news@:00` / `news@:30`). A stable news rhythm surrounds a
-**rotating specialist** (two 2-hour weekday windows cycle Mon→Fri) so a listener hears every vertical
-across the week. Two format rules matter: **`talk` is a two-DJ conversation (needs ≥2 hosts, lead
-first)**; **`news` is read by the dedicated news desk (Thorn), not the show's host** — the bulletin
-cuts in on the hour and hands back. An interview/dispatch show sets its own guest cadence
-(`guest_chance`); a solo-desk show sets none.
+The station runs a **weekly programming grid** (the GRID_V2 speech-station week — the signed-off
+design lives in `docs/programming/GRID_V2.md`, R2): **two 2-hour flagships** (breakfast 07–09,
+drive 18–20) restructured into fast 3–5-minute items around `news@:00`/`news@:30` pins, and
+**everything else daytime ≤30 minutes at the same time every day** — magazines, twice-daily
+Conditions + Ledger updates, sport, the daily chart, dispatches, letters, the nightly 15-minute
+Serial at 20:00. **Five rotating vertical windows** (09:30 / 10:00 / 13:30 / 14:00 / 14:30 — each
+vertical owns ONE canonical time; the weekday pattern picks its days) plus the **15:30 weekly
+belt** carry the subject verticals (politics, economy, conflict, law, science, travel, health,
+style, story, history, the relay…). The night (20:15–07:00) is untouched. Each program is
+**named**, with **hosts**, **framing** (solo / handover / ensemble), and a **clock** (a format
+sequence with run-lengths `music x3` and pinned slots `news@:00`). Two format rules matter:
+**`talk` is a two-DJ conversation (needs ≥2 hosts, lead first)**; **`news` is read by the
+dedicated news desk (Thorn), not the show's host** — the bulletin cuts in on the hour and hands
+back. An interview/dispatch show sets its own guest cadence (`guest_chance`); a solo-desk show
+sets none.
 
 ### Edit the grid  → Phase E panel
 The grid is a hand-edited YAML — **the only thing you edit** (a web editor is Phase E). Workflow
@@ -275,7 +280,11 @@ programs:
     break_every: 5                   # ad-break cadence (see Commercials; absent/0 = no breaks)
     guest_chance: 0.8                # 0..1 — how often this talk show runs a guest/played record
     energy: steady                   # R1: delivery pace — calm | steady | bright (calm = the night's
-                                     # lyric register; steady/bright = the plain daytime register)
+                                     # lyric register; steady/bright = the plain daytime register;
+                                     # also picks the A4 sweeper tier, R2.3)
+    talk_length_sec: 420             # R2.2: this show's talk-ITEM length (flagships 240, 30-min
+                                     # specialists 420, 15-min desks 180; absent = the global
+                                     # default). Scales the word budget — length is a parameter.
     brief: >-                        # R1: the editorial identity — 2-4 sentences, concrete stakes,
       The arts as event: an opening, a premiere, a feud between schools.   # an explicit "never" line;
       Never hushed-gallery reverence.                                      # reaches the writers' room
@@ -334,6 +343,9 @@ standalone.
   (default `hourly` — the top of the hour + handovers, not every segment).
 - **`CONVO_FLOW_SIGNON`** — spoken program sign-on/sign-off by name at a show's first/last slot
   (default `true`).
+- **`CONVO_FLOW_SHORT_SHOW_MAX_MIN`** — R2.3: a show whose grid slot runs at most this many
+  minutes signs on/off in **one line** (a breath, not a ceremony — a 30-min fixture can't spend
+  itself on hellos). Default `45`; the 2h flagships keep the fuller welcome; `0` disables.
 - **`CONVO_GUEST_CHANCE`** — the *global* guest/interview rate; a program's own `guest_chance` (grid)
   overrides it per show.
 
@@ -377,6 +389,11 @@ make seed-tracks                  # refresh the `tracks` table; probes real dura
 - **Program boundary** → the show's theme (handover shows get the B6 "passing the light" sting
   first). Dial: `PRODUCTION_THEME_AT_BOUNDARY` (true).
 - **Before every news bulletin** → the C8 sting. Dial: `PRODUCTION_STING_BEFORE_NEWS` (true).
+- **Between items inside the fast-clock shows** → the A4 sweeper, energy-matched via the
+  program's `energy` (calm|steady|bright → the A4 tier; daypart fallback). Dial:
+  `PRODUCTION_SWEEPER_PROGRAMS` (default the two flagships; empty list = no sweepers). Never at
+  a boundary (the theme owns that join) and never around a break (the D18 pair owns those) —
+  R2.3.
 - **A1 sung station ident** every N content segments. Dial: `PRODUCTION_IDENT_EVERY_N` (8; 0=off).
   The C3 disclosure ident is separate and keeps airing.
 - **Beds under speech** — doubly opt-in: `PRODUCTION_BEDDED_PROGRAMS` × `PRODUCTION_BEDDED_FORMATS`

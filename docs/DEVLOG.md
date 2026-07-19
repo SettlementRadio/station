@@ -38,6 +38,25 @@ A typical *build* session will be short, e.g.:
 
 ---
 
+## 2026-07-19 — Phase R — R2.4: docs + tracker — R2 COMPLETE ✅
+**Focus:** make the docs match the as-built GRID_V2 station; close the R2 pack.
+**Changed:**
+- `docs/ADMIN_MANUAL.md` grid section rewritten to the GRID_V2 model (flagships + ≤30-min
+  fixtures + windows/belt), the YAML shape gains `talk_length_sec`, new dials documented with
+  panel tags: `CONVO_FLOW_SHORT_SHOW_MAX_MIN` (flow section) and `PRODUCTION_SWEEPER_PROGRAMS`
+  ("what airs where").
+- `docs/programming/README.md`: `talk_length_sec` row in the Program model, a "shipped week is
+  GRID_V2" pointer note + the R2.3 helpers (`program_span`, the sweeper weave); the energy row
+  notes its sweeper-tier role.
+- `docs/PHASE_R_TASKS.md` tracker: **R2 → ✅**.
+**Verified:** `make acceptance` re-run green (8/8) after the doc pass — docs-only, as expected.
+**R2 whole-pack recap (R2.0→R2.4, all today):** design signed off → canon/domains (health,
+style, food; 267 facts) → the grid live (34 programs, `talk_length_sec`, sub-hour pins proven) →
+interstitials (sweepers, one-breath opens) → docs. The station now runs a real speech-radio week.
+**Next:** R3.0 (the jingle placement audit — now against the NEW grid) and the R3.1/R6.0 human
+Suno batches it unblocks; or R4 (the living day), which is parallel.
+Commit: (this session)  ·  Clips: —
+
 ## 2026-07-19 — Phase R — R2.3: pace + interstitials — the short grid sounds like motion ✅
 **Focus:** the joins at the new density: sweepers inside the flagships, one-breath opens for
 short fixtures, boundary behaviour reviewed.
