@@ -315,9 +315,16 @@ dropped, never written — and the run stays varied via domain balancing, simila
 a new-vs-advance pacing cap. The story log lives in [`src/world/store.py`](src/world/store.py)
 (`stories` + beat-linked `events`, `source='tick'`) and **persists forever** — a canon refresh
 (`make seed-canon`) never wipes it; only `make reset-world` does.
+Between nightly ticks a light **intra-day micro-tick** (R4.1, `run_micro_tick`) keeps the day alive:
+fired every 2–4h, it may nudge ONE of *today's* live stories a small beat — a detail, a reaction, a
+complication — or do nothing (a quiet run is normal). It invents no new story and moves no arc (the
+nightly tick owns those); it only adds intra-day texture, rotating across the day's live threads so
+none runs away. It runs **haiku-tier on the direct path** (latency over the Batch discount — one small
+call), through the *same* safety + continuity gates.
 ```bash
 make world-tick                       # run one tick: invent + advance world stories (Claude Batch)
 LLM_BATCH_ENABLED=false make world-tick  # quick local run, synchronous (no async batch wait)
+make micro-tick                       # one intra-day micro-tick: nudge a live story (haiku; seconds)
 ```
 Cost levers are mandatory here (this is the high-volume job): the gate calls go through the **Batch API**
 (50% off, behind [`llm.generate_batch`](src/providers/llm.py) — the only place the vendor batch SDK is

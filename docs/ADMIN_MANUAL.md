@@ -28,7 +28,7 @@ All commands from the repo root; live-generation commands need a populated `.env
 | Station state: on-air/next, buffer, story log, cost | `make console` |
 | Health checks (non-zero exit when unhealthy) | `make health` |
 
-**The two recurring jobs** (cron/systemd on the box — C5; they are separate, don't fold them):
+**The recurring jobs** (cron/systemd on the box — C5; they are separate, don't fold them):
 - **Scheduler top-up** — `make schedule` (one-shot, the cron shape; `make schedule INTERVAL=300`
   loops locally). Tops the rolling buffer up to `BUFFER_DEPTH_HOURS` of measured audio, rewrites
   `segments/playlist.txt` (Liquidsoap re-reads it, no restart), refreshes the public now-playing
@@ -36,6 +36,16 @@ All commands from the repo root; live-generation commands need a populated `.env
 - **World tick, nightly** — `make world-tick`. *Writes* world state (stories/beats/events,
   figures/quotes); the scheduler *reads* it. Keep `LLM_BATCH_ENABLED=true` on the box (50% Batch
   discount). One-shot; exits non-zero on failure with the store untouched (one transaction).
+- **Micro-tick, every 2–4h** — `make micro-tick` (R4.1). The light, near-live counterpart to the
+  nightly tick: it may nudge ONE of *today's* live stories a small beat (a detail, a reaction, a
+  complication) so the day evolves between nightly ticks, or do nothing — a quiet run is normal and
+  common. Haiku-tier, direct (non-batch) path regardless of `LLM_BATCH_ENABLED`; runs in seconds;
+  invents no new story, moves no arc, and never touches the schedule. Cron it a few times through
+  the broadcast day (e.g. every 3h). Dials: `micro_tick_enabled` (kill switch),
+  `micro_tick_advance_probability` (how often a run acts), `micro_tick_live_window_hours` (how recent
+  a story's last beat must be to count as "live today"), `micro_tick_tier` / `micro_tick_max_tokens`
+  / `micro_tick_continuity_max_tokens`. *→ Phase E panel: a "run micro-tick now" button beside the
+  world screen (R5.2), and these dials on the dials screen (E1.5).*
 
 **Playout assets** (each also runs automatically; the target is the standalone prepare/verify):
 - `make fallback` — pre-render the never-dead fallback pool + evergreen playlist (auto at the top of

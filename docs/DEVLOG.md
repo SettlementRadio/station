@@ -38,6 +38,64 @@ A typical *build* session will be short, e.g.:
 
 ---
 
+## 2026-07-20 — Phase R — R4.1: the intra-day micro-tick — the day reacts between nightly ticks ✅
+**Focus:** the nightly tick runs once; a day is long. R4.1 adds a light, near-live run the cron fires
+every 2–4h that may nudge ONE of today's live stories a small beat — so the world evolves *during* the
+broadcast day, not just overnight.
+**Decisions:**
+- **`run_micro_tick` lives in `world_tick.py`; the CLI is a thin sibling `micro_tick.py`.** The
+  micro-tick reuses ~a dozen of the nightly advance internals (`_beat_event`, `_parse_advance`,
+  `_advance_text`, `_advance_continuity_system`, `_advance_people`, `_write_people`, `_embed_beats`,
+  `_TickContext`, `_Verdict`, `_beats_text`…). Importing that many private names across modules is a
+  smell, so the logic stays in `world_tick.py` and only the `python -m src.world.micro_tick` entry
+  point (→ `make micro-tick`) is separate — a clean cron one-liner distinct from the nightly job.
+- **It adds texture, it does not author.** A micro-run invents no new story and — deliberately —
+  **moves no arc stage**: it only inserts ONE small LANDED beat (a detail, a reaction, a complication).
+  Arc progression stays the nightly tick's job. Concretely it does *not* call `store.advance_story`, so
+  `stories.last_advanced_tick` is untouched and the nightly pacing/resolve math (keyed off that + the
+  nightly counter) is never polluted.
+- **Its own counter, isolated from the nightly one.** `world_micro_tick_count` in `state`, bumped
+  ONLY on a run that writes (beat ids `…-m{n}`, uniquely namespaced from nightly `…-a{tick}` / `…-b{j}`).
+  A quiet run writes nothing at all — not even the counter — so **two quiet runs in a row leave the DB
+  byte-identical** (the done-when). Quiet is the common, valid outcome: disabled, the dice
+  (`micro_tick_advance_probability`), no live story, the model returning `{"beat": null}`, or the gate
+  flagging it.
+- **Direct haiku path, NOT Batch.** The spec's call: latency matters (near-live) and the volume is one
+  call, so the 50%-off Batch discount isn't worth its async wait. Same safety + continuity gates as the
+  nightly advance, just run as single synchronous `llm.generate` calls. Token usage still flows through
+  the existing cost-probe/`llm_generate_done` telemetry automatically.
+- **The runaway fix (caught by running it for real).** First pass picked the *freshest* live story every
+  run — but each micro-beat makes that story the freshest again, so it re-picked the SAME thread forever
+  (I watched it pile 7 beats on one story in a row). Added `_micro_pick`: prefer the live story with the
+  **fewest micro-beats so far**, freshest as tie-break — so the day's several threads take turns. After
+  the fix, live runs #8/#9 correctly rotated to the two *other* live stories. This is exactly the kind of
+  emergent bug the "run it for real" step exists to catch; it doesn't show up in a single-story test.
+- **"Live today" = a story whose newest ALREADY-LANDED beat is within `micro_tick_live_window_hours`
+  (48h).** Planned-only (not-yet-started) arcs and stale threads are excluded — the micro-tick only pokes
+  what's genuinely in play.
+**Verified:** 538 tests green (9 new in `tests/test_micro_tick.py` — the quiet contract incl. two-quiet-
+runs-unchanged, the acting path incl. arc-stage-untouched + unique ids, the evolve bulletin, candidate
+filtering, and the rotation). `make acceptance` all 8 properties PASS. **Real `make micro-tick` on the
+dev DB:** ran in ~18s/call, logged usage, produced genuinely consistent content (reused the story's
+existing figures Kael/Sessene, reacted to the prior landed beat, added new detail, did NOT resolve the
+arc); the arc stayed `developing`, `last_advanced_tick` stayed at the nightly value, and the nightly
+R4.0 `PLANNED` 21:00 beat stayed intact + unaired. `news_select` on that live data leads on the fresh
+micro-beat.
+**Changed:** `src/world/world_tick.py` (`run_micro_tick` + helpers, `MicroTickResult`, `_write_people`
+signature widened), `src/world/micro_tick.py` (new CLI), `src/config.py` (6 `micro_tick_*` dials),
+`Makefile` (`make micro-tick`), `tests/test_micro_tick.py` (new); README, ADMIN_MANUAL (C5 job list +
+tags), PHASE_C_TASKS (the third timer); this DEVLOG; the R tracker.
+**Why:** topic 4 ("news doesn't evolve during the day") needs motion *between* the nightly ticks; R4.0
+gave the day a planned shape, R4.1 gives it the ability to react and surprise. Keeping it arc-frozen and
+counter-isolated means it can run often and cheaply without ever destabilising the nightly world engine.
+**📣 Postable:** "I asked the world-sim to react in real time, and it immediately over-focused on one
+story — each update made that thread the 'freshest', so it kept picking it. The fix is the same one a
+newsroom uses: rotate to the least-covered thread." A tidy emergent-behaviour anecdote (commit this session).
+**Next:** R4.2 — news desk: updates that *sound* like updates (evolve delta language) + countdowns that
+count (trailed proximity). Then R4.3 (verticals read their domain) and R4.4 (the `living_day` acceptance
+property, which also asserts the day-arc count from R4.0).
+Commit: (this session)  ·  Clips: —
+
 ## 2026-07-20 — Phase R — R4.0: same-day arcs — the tick writes a day that unfolds ✅
 **Focus:** the nightly tick landed every story whole, so the news desk had the same facts at 07:00
 and 19:00 and could only re-read them. R4.0 gives the day motion: a story may now be authored as a

@@ -19,6 +19,7 @@
 #   make buffer        Generate ~an hour of varied segments into segments/ (B6; needs seed).
 #   make schedule      Top up the rolling buffer to depth + write the playout playlist (C2).
 #   make world-tick    Run one world tick: invent + advance world stories (D3; needs seed).
+#   make micro-tick    Run one intra-day micro-tick: nudge a live story a small beat (R4.1).
 #
 # `generate`/`play`/`schedule` make live Anthropic + TTS calls (needs a populated
 # .env). Since C2, `serve` airs the SCHEDULER's playlist (segments/playlist.txt),
@@ -40,7 +41,7 @@ LIQ_LOG    := $(RUN_DIR)/liquidsoap.log
 PLAYER_URL := http://127.0.0.1:8000/
 STREAM_URL := http://127.0.0.1:8000/settlement.mp3
 
-.PHONY: help generate serve air play play-convo stop status console timeline now-playing seed seed-canon reset-world seed-tracks seed-sponsors demo context costprobe costprobe-ab conversation format buffer schedule ident prune fallback health world-tick news-demo figures-demo freshness-demo continuity-demo journal-demo programming-demo commercials-demo acceptance jingle-audit
+.PHONY: help generate serve air play play-convo stop status console timeline now-playing seed seed-canon reset-world seed-tracks seed-sponsors demo context costprobe costprobe-ab conversation format buffer schedule ident prune fallback health world-tick news-demo figures-demo freshness-demo continuity-demo journal-demo programming-demo commercials-demo acceptance jingle-audit micro-tick
 
 # B5 format default: `make format` builds a talk segment; override with FMT=news
 # or FMT=music. Pass a TOPIC=... to steer canon retrieval.
@@ -80,6 +81,7 @@ help:
 	@echo "  make health    run the health checks + alert on any issue (C4)"
 	@echo "  make schedule  top up the rolling buffer to depth + write the playlist (C2)"
 	@echo "  make world-tick run one world tick: invent + advance world stories (D3)"
+	@echo "  make micro-tick run one intra-day micro-tick: nudge a live story (R4.1)"
 	@echo "  make news-demo show the news desk reframe stories across a simulated day (D4)"
 	@echo "  make figures-demo show the world's people speak — attributed quotes (D10)"
 	@echo "  make freshness-demo show anti-repetition keep talk openings/beats varied (D5)"
@@ -135,6 +137,14 @@ seed-sponsors:
 world-tick:
 	@echo "==> Running one world tick (D3)…"
 	$(PY) -m src.world.world_tick
+
+# R4.1: run ONE intra-day micro-tick — the light, near-live nudge the C5 cron fires
+# every 2-4h BETWEEN nightly ticks. May advance one of today's live stories a small
+# beat, or do nothing (a quiet run is normal). Haiku-tier, direct (non-batch) path —
+# runs in seconds; never touches the schedule. Needs `make seed` + .env.
+micro-tick:
+	@echo "==> Running one intra-day micro-tick (R4.1)…"
+	$(PY) -m src.world.micro_tick
 
 # D4: show the news desk read the living story log across a SIMULATED day — one story
 # goes breaking → repeated → repeated-and-evolved → referenced-as-past while another is

@@ -129,7 +129,10 @@ condition raises an alert.
 in object storage alongside the DB. **`segments/` is NOT backed up** — it's regenerable one-shot
 audio, kept bounded by C2.5's retention GC. Deploy Liquidsoap + Icecast. systemd/cron for services +
 the **periodic scheduler top-up** (which now also prunes — C2.5 — so the disk stays bounded
-unattended); services restart on reboot. Secrets in env only, non-world-readable, redacted in logs
+unattended); services restart on reboot. **Three world/audio timers now:** the **nightly world tick**
+(`make world-tick`), the **periodic scheduler top-up** (`make schedule`), and — added in R4.1 — the
+**intra-day micro-tick** (`make micro-tick`, every 2–4h through the broadcast day: a light haiku nudge
+so the day evolves between nightly ticks; quiet runs are normal, it never touches the schedule). Secrets in env only, non-world-readable, redacted in logs
 (DB-URL pattern).
 **Done when:** the station runs on the VPS across a reboot, the DB **and `assets/`** are backed up
 nightly, the segment disk stays bounded across a long run, and no secret is world-readable or logged.

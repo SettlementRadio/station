@@ -566,6 +566,29 @@ class Settings(BaseSettings):
     world_tick_quotes_per_story_max: int = 4
     world_tick_advance_new_figures_max: int = 1
 
+    # --- Intra-day micro-tick (R4.1: the day reacts between nightly ticks) ------
+    # A light, HAIKU-tier, near-live run the C5 cron fires every 2-4h (`make
+    # micro-tick`). Unlike the nightly tick it invents NOTHING and moves no arc: it may
+    # add ONE small LANDED beat (a detail, a reaction, a complication) to a story that
+    # is live TODAY, or do nothing — a "quiet run" is a valid, common outcome. It never
+    # touches the schedule and uses the DIRECT (non-batch) LLM path — latency matters
+    # and the volume is tiny, so the Batch discount isn't worth the async wait.
+    #
+    # `*_enabled` kills it entirely. `*_advance_probability` is the chance a run acts at
+    # all (else quiet), so the day surprises sometimes rather than lurching every few
+    # hours. A story is a candidate only if its newest LANDED beat is within
+    # `*_live_window_hours` (a genuinely running thread, not an old arc). `*_tier` is
+    # the brain (haiku — cheap + fast, near-live). `*_max_tokens` /
+    # `*_continuity_max_tokens` hard-cap the one small generation + its continuity gate.
+    # The micro-tick keeps the story's arc stage FIXED (the nightly tick owns arc
+    # progression); it only adds intra-day texture.
+    micro_tick_enabled: bool = True
+    micro_tick_advance_probability: float = 0.6
+    micro_tick_live_window_hours: float = 48.0
+    micro_tick_tier: str = "haiku"
+    micro_tick_max_tokens: int = 900
+    micro_tick_continuity_max_tokens: int = 200
+
     # --- News desk (D4: the story-log-driven bulletin) -------------------------
     # The desk (src/formats/news.py) no longer asks for N flat headlines; it SELECTS
     # which running stories (D3 log) this hour reports (D4.1), tags each from the

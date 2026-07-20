@@ -31,6 +31,7 @@ SQL lives only in `world/store` (D10.0); voicing a quote as a soundbite is D9/D1
 from __future__ import annotations
 
 import json
+import random
 import re
 from dataclasses import dataclass, field, replace
 from datetime import datetime, timedelta
@@ -73,6 +74,13 @@ DOMAINS: tuple[str, ...] = (
 # State keys the tick owns (live in the `state` kv table; survive a canon refresh).
 _TICK_COUNT_KEY = "world_tick_count"
 _TICK_LAST_AT_KEY = "world_tick_last_at"
+# The intra-day micro-tick (R4.1) keeps its OWN counter, separate from the nightly
+# tick's — so a micro-run never pollutes the nightly pacing/resolve math (which is
+# keyed off `stories.created_tick`/`last_advanced_tick` vs the nightly counter). The
+# counter increments ONLY on a run that actually writes a beat, so beat ids stay unique
+# and two quiet runs in a row change nothing (R4.1 done-when).
+_MICRO_COUNT_KEY = "world_micro_tick_count"
+_MICRO_LAST_AT_KEY = "world_micro_tick_last_at"
 
 
 # --- Shapes -----------------------------------------------------------------
@@ -204,6 +212,24 @@ class TickResult:
     resolved: int = 0  # of those, stories that reached `past` (stopped advancing)
     story_ids: list[str] = field(default_factory=list)  # new stories created
     advanced_ids: list[str] = field(default_factory=list)  # running stories advanced
+    usage: dict[str, int] = field(default_factory=dict)
+
+
+@dataclass
+class MicroTickResult:
+    """What one `run_micro_tick()` did (R4.1) — printed by the CLI + logged.
+
+    `acted` is False on a quiet run (disabled, dice, no live story, model declined, or
+    the gate dropped the beat) — the common, valid outcome that writes nothing.
+    `micro_tick` is the counter AFTER this run: unchanged on a quiet run, +1 on an
+    acting one. `reason` explains a quiet/dropped run for the logs + CLI.
+    """
+
+    micro_tick: int
+    acted: bool = False
+    story_id: str | None = None
+    beat_id: str | None = None
+    reason: str = ""
     usage: dict[str, int] = field(default_factory=dict)
 
 
@@ -348,6 +374,244 @@ def _propose_and_gate(
     accepted = _dedup(accepted, recent, result)
     result.dropped = result.proposed - len(accepted) - result.duplicates
     return accepted
+
+
+# --- The intra-day micro-tick (R4.1) ----------------------------------------
+
+
+def _random_unit() -> float:
+    """A uniform draw in [0, 1) — the micro-tick's act-or-stay-quiet dice.
+
+    Wrapped so a test can force an acting run (patch to 0.0) or a quiet one (patch to
+    ~1.0) without touching global RNG state.
+    """
+    return random.random()
+
+
+def run_micro_tick(now: datetime | None = None) -> MicroTickResult:
+    """Run one intra-day micro-tick (R4.1): maybe advance ONE live story a small beat.
+
+    The light counterpart to the nightly `run_tick`. It invents no new stories and
+    moves no arc; at most it adds ONE small LANDED beat (a detail, a reaction, a
+    complication) to a story that is live TODAY, through the SAME safety+continuity
+    gates as the nightly advance but on the direct haiku path (latency over the Batch
+    discount). A QUIET run — disabled, the dice, no live story, the model declining,
+    or the gate dropping the beat — writes NOTHING (two quiet runs in a row leave the
+    world byte-identical). It never touches the schedule.
+
+    Transactional like the nightly tick: the single write happens in one short
+    `store.connect` block after all network I/O, so a failure rolls back cleanly.
+    """
+    now = now or datetime.now()
+    iw_now = clock.to_inworld(now)
+    log.info("micro_tick_start", now=now.isoformat(), inworld=iw_now.isoformat())
+
+    if not settings.micro_tick_enabled:
+        return _micro_quiet(now, "disabled")
+
+    # Read the world as it stands: the current micro counter + today's live stories.
+    with store.connect() as conn:
+        micro_count = int(store.get_state(conn, _MICRO_COUNT_KEY) or 0)
+        active = store.active_stories(
+            conn, limit=settings.world_tick_active_context_limit
+        )
+        live = _micro_live_stories(conn, active, iw_now)
+        chosen = _micro_pick(live)
+        prior_figures = store.figures_for_story(conn, chosen[0].id) if chosen else []
+        bible = canon_source.load_bible(settings.canon_dir, settings.canon_path)
+
+    if chosen is None:
+        return _micro_quiet(now, "no live story today")
+
+    # The dice: a quiet run is a valid, common outcome (dial the probability).
+    if _random_unit() >= settings.micro_tick_advance_probability:
+        return _micro_quiet(now, "quiet run (dice)")
+
+    story, prior_beats, _newest = chosen
+    ctx = _TickContext(
+        bible=bible,
+        active_summary=_summarise_active(active),
+        now=now,
+        iw_now=iw_now,
+    )
+
+    # Generate ONE small beat on the direct (non-batch) haiku path — near-live.
+    adv = _micro_generate(story, prior_beats, prior_figures, ctx)
+    if adv is None:
+        return _micro_quiet(now, "model added nothing")
+
+    verdict = _micro_gate(adv, ctx)
+    if not verdict.ok:
+        log.warning(
+            "micro_tick_dropped", story_id=story.id, reason=verdict.reason[:200]
+        )
+        return _micro_quiet(now, f"gate: {verdict.reason}")
+
+    # Act: write the one landed beat + any new people, bump the micro counter. The arc
+    # stage is left untouched (the nightly tick owns progression) — we only add texture.
+    micro_no = micro_count + 1
+    result = MicroTickResult(micro_tick=micro_no, acted=True, story_id=story.id)
+    beat = _beat_event(story.id, f"m{micro_no}", adv.beat, ctx)
+    with store.connect() as conn:
+        store.insert_beats(conn, [beat])
+        figures, quotes = _advance_people(adv, beat, prior_figures, micro_no)
+        _write_people(conn, figures, quotes, result)
+        result.usage["embeddings_written"] = result.usage.get(
+            "embeddings_written", 0
+        ) + _embed_beats(conn, [beat])
+        store.set_state(conn, _MICRO_COUNT_KEY, str(micro_no))
+        store.set_state(conn, _MICRO_LAST_AT_KEY, now.isoformat())
+    result.beat_id = beat.id
+
+    log.info(
+        "micro_tick_done",
+        micro_tick=micro_no,
+        acted=True,
+        story_id=story.id,
+        beat_id=beat.id,
+        planned=beat.planned,
+        **{f"usage_{k}": v for k, v in result.usage.items()},
+    )
+    return result
+
+
+def _micro_quiet(now: datetime, reason: str) -> MicroTickResult:
+    """A run that writes nothing (R4.1) — the counter is read only, not advanced."""
+    with store.connect() as conn:
+        micro_count = int(store.get_state(conn, _MICRO_COUNT_KEY) or 0)
+    log.info("micro_tick_quiet", micro_tick=micro_count, reason=reason)
+    return MicroTickResult(micro_tick=micro_count, acted=False, reason=reason)
+
+
+_MICRO_BEAT_ID_RE = re.compile(r"-m\d+$")  # a micro-tick beat id suffix (R4.1)
+
+
+def _micro_pick(
+    live: list[tuple[store.Story, list[store.Event], store.Event]],
+) -> tuple[store.Story, list[store.Event], store.Event] | None:
+    """Choose which live story this micro-tick nudges — spreading attention (R4.1).
+
+    Picking the plain freshest story every time would let ONE thread run away: each
+    micro-beat it gets makes it the freshest again, so it would be re-picked forever
+    and the rest of the day would go untouched. Instead prefer the live story with the
+    FEWEST micro-beats so far, tie-broken by freshest — so the day's several threads
+    take turns and a single story can't monopolise the intra-day updates.
+    """
+    if not live:
+        return None
+
+    def micro_beats(entry: tuple[store.Story, list[store.Event], store.Event]) -> int:
+        return sum(1 for b in entry[1] if _MICRO_BEAT_ID_RE.search(b.id))
+
+    # `live` is already freshest-first; `min` is stable, so among stories with an equal
+    # micro-beat count it returns the freshest — the tie-break we want.
+    return min(live, key=micro_beats)
+
+
+def _micro_live_stories(
+    conn, active: list[store.Story], iw_now: datetime
+) -> list[tuple[store.Story, list[store.Event], store.Event]]:
+    """Active stories live TODAY, freshest first (R4.1 candidate set).
+
+    A story qualifies when its newest ALREADY-LANDED beat (not a planned future beat)
+    is within `micro_tick_live_window_hours` of in-world now — a thread genuinely in
+    play, not an old arc the micro-tick has no business poking. Returns
+    `(story, all_beats, newest_landed_beat)`, most-recently-moved first, so the caller
+    advances the story most in play right now.
+    """
+    window = timedelta(hours=settings.micro_tick_live_window_hours)
+    out: list[tuple[store.Story, list[store.Event], store.Event]] = []
+    for s in active:
+        beats = store.story_beats(conn, s.id)
+        landed = [b for b in beats if not b.planned and b.in_world_datetime <= iw_now]
+        if not landed:
+            continue
+        newest = max(landed, key=lambda b: b.in_world_datetime)
+        if iw_now - newest.in_world_datetime <= window:
+            out.append((s, beats, newest))
+    out.sort(key=lambda t: t[2].in_world_datetime, reverse=True)
+    return out
+
+
+def _micro_generate(
+    story: store.Story,
+    prior_beats: list[store.Event],
+    prior_figures: list[store.Figure],
+    ctx: _TickContext,
+) -> ProposedAdvance | None:
+    """Ask haiku (direct path) for ONE small intra-day beat, or None if it declines."""
+    raw = llm.generate(
+        "Write the story's small next development as a JSON object, "
+        'or {"beat": null} if nothing new would plausibly have happened yet.',
+        system=_micro_advance_system(story, prior_beats, prior_figures, ctx),
+        model=settings.micro_tick_tier,
+        bible=ctx.bible,  # CO2: the shared bible cache block
+        max_tokens=settings.micro_tick_max_tokens,
+    )
+    return _parse_advance(raw, story, prior_beats)
+
+
+def _micro_advance_system(
+    story: store.Story,
+    beats: list[store.Event],
+    figures: list[store.Figure],
+    ctx: _TickContext,
+) -> str:
+    """Instructions for ONE small intra-day beat (R4.1) — shares the cached bible."""
+    people = (
+        "PEOPLE: the beat's `quotes` are attributable statements. REUSE this story's "
+        "EXISTING figures, quoted by their EXACT name:\n"
+        f"{_figures_text(figures)}\n"
+        "Only introduce a NEW person if the small beat truly needs one, then list them "
+        f"in `new_figures` (at most {settings.world_tick_advance_new_figures_max}).\n\n"
+        if settings.world_tick_figures_enabled
+        else ""
+    )
+    return (
+        "You are the world-simulation engine for Settlement Radio, a tribute "
+        f"science-fiction station set in the year {ctx.iw_now.year}. This is a LIGHT "
+        "intra-day update between the nightly world ticks, not a new chapter.\n\n"
+        f"In-world now: {clock.render_wall_clock(ctx.now)}.\n\n"
+        f"STORY: {story.title} — {story.summary}\n"
+        f"Current arc stage: {story.arc_stage}\n"
+        f"Prior beats (oldest first):\n{_beats_text(beats)}\n\n"
+        f"{people}"
+        "Add at most ONE SMALL development that would plausibly have emerged in the "
+        "last hour or two — a new detail, a reaction quote, a minor complication. It "
+        "is happening NOW: date it day_offset 0 at the current hour, and set "
+        '"planned": false. Keep it small and consistent with the beats above — do NOT '
+        "resolve the story, do NOT contradict a prior beat, and do NOT repeat one. If "
+        'nothing new would realistically have happened yet, reply {"beat": null}.\n\n'
+        "Return ONLY a JSON object (no prose, no code fence):\n"
+        '{"beat": {"title": str, "body": str, "beat_kind": str, "day_offset": 0, '
+        '"hour": int, "planned": false, '
+        '"quotes": [{"figure": str, "text": str, "stance": str}]}, '
+        '"new_figures": [{"name": str, "role": str, "bio": str, "tags": [str]}]}\n'
+        "Original world only — never real franchises, people, or trademarks. Use "
+        '{"beat": null} to add nothing.'
+    )
+
+
+def _micro_gate(adv: ProposedAdvance, ctx: _TickContext) -> _Verdict:
+    """Safety + a single continuity check for one micro-beat (direct, non-batch path).
+
+    Mirrors the nightly `_run_gate` logic but for exactly one item on the haiku path —
+    the Batch discount isn't worth its async latency for a single near-live call.
+    """
+    text = _advance_text(adv)
+    safety = safety_check(text)
+    if not safety.ok:
+        return _Verdict(False, f"safety: {safety.reason}")
+    note = llm.generate(
+        text,
+        system=_advance_continuity_system(ctx, adv),
+        model=settings.micro_tick_tier,
+        bible=ctx.bible,  # CO2: the shared bible cache block
+        max_tokens=settings.micro_tick_continuity_max_tokens,
+    )
+    if _is_ok(note):
+        return _Verdict(True, "OK")
+    return _Verdict(False, f"continuity: {note.strip()}")
 
 
 # --- Step 1: propose --------------------------------------------------------
@@ -932,9 +1196,15 @@ def _quote_rows(
 
 
 def _write_people(
-    conn, figures: list[store.Figure], quotes: list[store.Quote], result: TickResult
+    conn,
+    figures: list[store.Figure],
+    quotes: list[store.Quote],
+    result: TickResult | MicroTickResult,
 ) -> None:
-    """Write a story's figures + quotes, embed them (D10.1); update usage counters."""
+    """Write a story's figures + quotes, embed them (D10.1); update usage counters.
+
+    Shared by the nightly tick and the R4.1 micro-tick — both carry a `usage` dict.
+    """
     if figures:
         store.insert_figures(conn, figures)
         result.usage["figures_written"] = result.usage.get("figures_written", 0) + len(
