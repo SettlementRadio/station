@@ -38,6 +38,35 @@ A typical *build* session will be short, e.g.:
 
 ---
 
+## 2026-07-20 — Phase R — R3 COMPLETE: batch-3 assets dropped, verified, tracker flipped ✅
+**Focus:** the operator generated all 11 `JINGLE_PROMPTS_3.md` assets in Suno; verify placement and
+close out the R3 pack.
+**Decisions:**
+- **The 7 program themes were correct on the first drop** — exact filenames from the doc, all
+  resolve by convention, `make jingle-audit` shows every one flipping from `[fallback]` to
+  `[bespoke]`, zero left.
+- **The 4 utility stings were named after the `media.STINGS` registry KEY, not the file path the
+  registry actually points at** (`chart_countdown_approaching.mp3` vs. the registered
+  `d20a_chart_approaching.mp3`, etc.), so `media.sting(...)` was silently resolving to `None` for
+  all four — one also had a stray space (`"number one.mp3"`) instead of an underscore. Renamed all
+  four to the exact `§4` paths (plain filesystem `mv` — `assets/` is gitignored, nothing tracked
+  moved): `d20a_chart_approaching.mp3`, `d20b_chart_climbing.mp3`, `d20c_chart_number_one.mp3`,
+  `d21_quiz_point.mp3`. This is a naming-convention trap worth remembering for future asset
+  batches: **stings are exact-path-registered (rename to the §4 filename), themes resolve by
+  program-id convention (rename to `<program_id>.mp3`) — the two follow different rules and it's
+  easy to name a sting after its registry key by habit.**
+**Verified:** all 11 files resolve (`media.sting`/`media.theme_for_program` spot-checked directly);
+`make jingle-audit` 5/5 PASS, 56 theme fires, **zero fallbacks** in the mapping table; 521 tests
+still green.
+**Changed:** 4 files renamed under `assets/stings/` (gitignored, no repo diff); `docs/PHASE_R_TASKS.md`
+tracker (**R3 → ✅**); this DEVLOG.
+**Why:** the whole point of the R3.0 audit + R3.1 brief was to make "did the batch actually wire up"
+a checked fact, not a listening guess — running it against the real drop caught a real (if minor)
+naming mismatch before it shipped silent.
+**Next:** R4 (the living day) or R6 (music expansion + the chart show, which R6.1 will actually wire
+the D20 countdown ramp into) — both unblocked, ask the human which track.
+Commit: (this session)  ·  Clips: —
+
 ## 2026-07-20 — Phase R — R3.1: JINGLE_PROMPTS_3.md — the batch-3 brief ✅
 **Focus:** close the R3.0 audit's fallback list — spec themes for the 7 R2 programs still opening
 on `c9_talk.mp3`, plus the two small utility sting sets the new shows need.
