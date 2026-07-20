@@ -62,24 +62,54 @@ def _story_brief(sel: SelectedStory, now: datetime) -> str:
     lines = [head]
 
     if sel.coverage_tag == news_select.COVERAGE_EVOLVE:
+        # R4.2 — give the anchor BOTH sides of the delta: what we said last time (so it
+        # can reference it) and the new beat (so it frames the change, not a re-read).
+        prior = sel.prior_coverage
+        if prior is not None:
+            last_phrase = events_mod.phrase_for_datetime(prior.covered_at, now)
+            handle = prior.angle or s.title
+            lines.append(
+                f'  - you last reported this {last_phrase} (as "{handle}", at the '
+                f"'{prior.arc_stage}' stage)"
+            )
         delta = sel.new_beat or sel.lead_beat
         if delta is not None:
             phrase = events_mod.relative_phrase(delta, now)
             lines.append(
-                f"  - UPDATE (since you last covered this) — {phrase}: "
+                f"  - UPDATE — the new development, {phrase}: "
                 f"{delta.title} — {delta.body}"
             )
         else:
             lines.append(
                 "  - UPDATE: this story has moved on since you last reported it."
             )
+        lines.append(
+            "  - frame it AS an update: reference what you said before, then give this "
+            "new development ('as we reported this morning … the crew has now been "
+            "reached') — don't re-read the whole story."
+        )
+    elif sel.temporal_kind == news_select.KIND_TRAILED and sel.lead_beat is not None:
+        # R4.2 — a countdown: trail the approaching event and say how far off it is.
+        phrase = events_mod.relative_phrase(sel.lead_beat, now)
+        lines.append(
+            f"  - COUNTDOWN — {phrase}: {sel.lead_beat.title} — {sel.lead_beat.body}"
+        )
+        lines.append(
+            f"  - trail it as approaching: say plainly how far off it is ({phrase}) "
+            "and why it matters — the closer it gets, the more it's worth reporting."
+        )
     elif sel.lead_beat is not None:
         phrase = events_mod.relative_phrase(sel.lead_beat, now)
         lines.append(f"  - {phrase}: {sel.lead_beat.title} — {sel.lead_beat.body}")
     else:
         lines.append(f"  - {s.summary}")
 
-    if sel.coverage_tag == news_select.COVERAGE_REPEAT:
+    # A plain (non-countdown) repeat is a light "still developing" touch. A trailed
+    # repeat is a countdown re-mention (handled above), so it skips this.
+    if (
+        sel.coverage_tag == news_select.COVERAGE_REPEAT
+        and sel.temporal_kind != news_select.KIND_TRAILED
+    ):
         lines.append(
             "  - (no new development since you last reported this — keep it brief, a "
             "'still developing' touch; don't re-read it word for word)"
@@ -157,6 +187,26 @@ def _freshness_section(recent_openings: str) -> str:
     )
 
 
+def _bulletin_shape(now: datetime, flow: ShowFlow | None) -> tuple[int, bool]:
+    """How big + what flavour this bulletin is (R4.2), from the program's grid slot.
+
+    Returns `(story_count, day_summary)`. A SHORT program's news pin (the hourly
+    `news@:00` in a ≤30-min show — `flow.short_show`) runs a lean 2-3-item bulletin;
+    a flagship / dedicated desk runs the full mix. The DRIVE-time desk (in-world hour
+    in the day-summary window) additionally closes with a "the day so far" wrap — a
+    distinct flavour from the hourly shorts, so a short slot never gets the wrap.
+    """
+    short = bool(flow and flow.short_show)
+    count = settings.news_story_count_short if short else settings.news_story_count
+    iw_hour = clock.to_inworld(now).hour
+    day_summary = (not short) and (
+        settings.news_daysummary_start_hour
+        <= iw_hour
+        < settings.news_daysummary_end_hour
+    )
+    return count, day_summary
+
+
 def _build_system(
     ctx: AssembledContext,
     now: datetime,
@@ -165,6 +215,7 @@ def _build_system(
     *,
     revision_note: str | None = None,
     recent_openings: str = "",
+    day_summary: bool = False,
 ) -> str:
     """The per-call system prompt: anchor's voice + framed stories + continuity + rules.
 
@@ -216,7 +267,14 @@ def _build_system(
         "frame them in time ('the relay-keeper said yesterday: …') — quote the words "
         "given, don't invent new ones; skip quotes that don't add to the report.\n\n"
         "Shape: a short desk open (this is the settlement news) → the items above, in "
-        "a natural order → a brief sign-off back to the studio. Keep every item INSIDE "
+        "a natural order → "
+        + (
+            "a brief 'the day so far' wrap — one or two sentences drawing the day's "
+            "main threads together (this is the drive-time desk) → "
+            if day_summary
+            else ""
+        )
+        + "a brief sign-off back to the studio. Keep every item INSIDE "
         "the fiction — never real-world places, brands, franchises, people, or events; "
         "never mention being an AI. "
         f"Aim for {settings.format_news_words_low}-{settings.format_news_words_high} "
@@ -341,8 +399,10 @@ def _coverage_meta(selected: list[SelectedStory]) -> dict:
 def news(now: datetime, ctx: AssembledContext, flow: ShowFlow | None = None) -> Segment:
     """Generate one story-log-driven news `Segment` for `now` (D4.1–D4.3).
 
-    `flow` (D12.0) is accepted for the uniform format seam but unused — news
-    continuity is its own coverage memory (D4), not the talk thread (see D12 pack).
+    `flow` (D12.0) drives the bulletin's SHAPE (R4.2): a short program's news pin runs
+    a lean bulletin, a flagship/drive desk the full mix (+ a "day so far" wrap at
+    drive). News continuity is otherwise its own coverage memory (D4), not the talk
+    thread (see D12 pack).
 
     C0 — the GATE. Each attempt's draft must clear BOTH the content-safety check and
     the desk continuity check (against canon + prior coverage). A safety flag re-rolls
@@ -354,13 +414,18 @@ def news(now: datetime, ctx: AssembledContext, flow: ShowFlow | None = None) -> 
     anchor_card = common.require_speaker(ctx, "news")
     seg_id = common.make_seg_id("news", now)
 
+    # R4.2 — the bulletin's size + flavour come from the program's grid slot.
+    story_count, day_summary = _bulletin_shape(now, flow)
+
     # D4.1 — pick + tag the hour's stories from the living world (own short read txn).
-    selected = news_select.select_stories(now)
+    selected = news_select.select_stories(now, count=story_count)
     log.info(
         "format_news_start",
         seg_id=seg_id,
         anchor=anchor_card.id,
         selected=len(selected),
+        story_count=story_count,
+        day_summary=day_summary,
     )
 
     # D5.2 — recent news openings to vary against, read once for this bulletin (the
@@ -378,6 +443,7 @@ def news(now: datetime, ctx: AssembledContext, flow: ShowFlow | None = None) -> 
             selected,
             revision_note=revision_note,
             recent_openings=recent_openings,
+            day_summary=day_summary,
         )
         script = llm.generate(
             "Write the news bulletin now.",

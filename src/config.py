@@ -620,6 +620,23 @@ class Settings(BaseSettings):
     news_canon_weight: float = 0.5
     news_breaking_bonus: float = 1.0
     news_evolve_bonus: float = 0.5
+    # R4.2 — the living day, on air. `news_story_count_short` is the bulletin size for a
+    # SHORT program's news pin (the hourly `news@:00` inside a ≤30-min show, flagged
+    # `flow.short_show`) — 2-3 items, not the full mix a flagship/midday desk runs. A
+    # TRAILED future event must be able to COUNT DOWN across days without going cold:
+    # `news_repeat_max_stale_hours` (18h) would drop it a day after its last mention, so
+    # a trailed upcoming item uses the longer `news_trail_max_stale_hours` instead (a
+    # daily re-mention survives; a far-off event lapses then returns as it nears). And
+    # PROXIMITY raises coverage: `news_trail_proximity_bonus` lifts a trailed item's
+    # rank the closer its event is (the Olympics-in-a-week pattern: closer = more).
+    # The DRIVE bulletin (in-world hour in [`news_daysummary_start_hour`,
+    # `news_daysummary_end_hour`)) closes with a "the day so far" wrap of the day's
+    # threads — a distinct flavour from the hourly shorts.
+    news_story_count_short: int = 3
+    news_trail_max_stale_hours: float = 48.0
+    news_trail_proximity_bonus: float = 0.5
+    news_daysummary_start_hour: int = 18
+    news_daysummary_end_hour: int = 21
     # D4.3 — desk continuity: the bulletin is fed each re-reported story's PRIOR
     # coverage (the handle/angle + last stage) so it names + frames it consistently,
     # then a continuity editor pass checks the draft against canon + that prior

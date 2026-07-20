@@ -242,6 +242,14 @@ def _build_candidate(
         score += settings.news_breaking_bonus
     if coverage_tag == COVERAGE_EVOLVE:
         score += settings.news_evolve_bonus
+    # R4.2 — proximity raises coverage of a trailed event: the closer its upcoming beat,
+    # the higher it ranks (closer = more coverage — the Olympics-in-a-week pattern). The
+    # bonus ramps from ~full when the event is imminent to ~0 at the trail horizon.
+    if temporal_kind == KIND_TRAILED and lead_beat is not None:
+        days_ahead = max(0, (lead_beat.in_world_datetime.date() - iw_now.date()).days)
+        horizon = max(1, settings.news_trail_horizon_days)
+        nearness = max(0.0, 1.0 - days_ahead / horizon)
+        score += settings.news_trail_proximity_bonus * nearness
 
     return SelectedStory(
         story=story,
@@ -258,11 +266,29 @@ def _build_candidate(
 
 
 def _is_cold_repeat(cand: SelectedStory, iw_now: datetime) -> bool:
-    """True if a `repeat` is older than the staleness limit — too cold to re-air."""
+    """True if a `repeat` is older than its staleness limit — too cold to re-air.
+
+    R4.2: a TRAILED upcoming event is a countdown, not a stale rehash — it should be
+    able to recur across days as it approaches. So a trailed item whose lead beat is
+    still ahead of the clock uses the longer `news_trail_max_stale_hours` (a daily
+    re-mention survives; a far-off event still lapses if it goes untouched, then
+    returns as proximity lifts its rank). Every other repeat uses the ordinary
+    `news_repeat_max_stale_hours`.
+    """
     if cand.coverage_tag != COVERAGE_REPEAT or cand.prior_coverage is None:
         return False
+    is_trailed_upcoming = (
+        cand.temporal_kind == KIND_TRAILED
+        and cand.lead_beat is not None
+        and cand.lead_beat.in_world_datetime > iw_now
+    )
+    limit = (
+        settings.news_trail_max_stale_hours
+        if is_trailed_upcoming
+        else settings.news_repeat_max_stale_hours
+    )
     stale_hours = (iw_now - cand.prior_coverage.covered_at).total_seconds() / 3600.0
-    return stale_hours > settings.news_repeat_max_stale_hours
+    return stale_hours > limit
 
 
 # --- Selection (assemble the mix, ranked + bounded) -------------------------

@@ -220,6 +220,12 @@ A contradictory/unsafe proposal is regenerated once then dropped, never written 
 - **Timing windows:** `NEWS_BREAKING_WINDOW_HOURS` (a beat this close to now is "breaking"),
   `NEWS_TRAIL_HORIZON_DAYS` (how far ahead is still "trailed"), `NEWS_REPEAT_MAX_STALE_HOURS` (drop a
   repeat with no new beat older than this).
+- **Living day (R4.2):** `NEWS_STORY_COUNT_SHORT` (lean bulletin size for a short program's hourly
+  news pin — a flagship/desk runs the full `NEWS_STORY_COUNT`); `NEWS_TRAIL_MAX_STALE_HOURS` (the
+  longer staleness a *trailed* countdown gets so it recurs day to day instead of going cold at the
+  ordinary 18h); `NEWS_TRAIL_PROXIMITY_BONUS` (rank lift as an upcoming event nears — closer = more
+  coverage); `NEWS_DAYSUMMARY_START_HOUR`/`_END_HOUR` (the in-world window whose bulletin closes with
+  a "the day so far" wrap — the drive desk).
 - **Canon grounding:** `NEWS_CANON_RECALL_K`, `NEWS_CANON_WEIGHT` (degrades to temporal-only when
   RAG is off); rank lifts `NEWS_BREAKING_BONUS`, `NEWS_EVOLVE_BONUS`.
 - **Continuity:** `NEWS_CONTINUITY_MAX_ATTEMPTS` (drafts before evergreen), `NEWS_CONTINUITY_TIER`

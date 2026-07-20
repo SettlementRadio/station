@@ -38,6 +38,51 @@ A typical *build* session will be short, e.g.:
 
 ---
 
+## 2026-07-20 — Phase R — R4.2: the news desk speaks the living day (delta + countdowns + shape) ✅
+**Focus:** R4.0/R4.1 made the *world* evolve during the day; R4.2 makes the *on-air language* match —
+evolving stories reported as updates, approaching events counted down, and the bulletin sized to its
+grid slot.
+**Decisions:**
+- **`evolve` items get both sides of the delta.** The brief now hands the anchor "what you said last
+  time" — the prior coverage's angle + when it aired (`phrase_for_datetime(prior.covered_at)` → "this
+  morning") — alongside the new beat, plus an explicit instruction to *frame* the change ("as we
+  reported this morning … the crew has now been reached"), not re-read the story. The prior handle was
+  already in the continuity block for *consistency*; R4.2 also surfaces it in the item's own brief for
+  *framing*.
+- **`trailed` items are countdowns, and countdowns must not go cold.** Two coupled changes in
+  `news_select`: (1) a trailed *upcoming* repeat uses a longer staleness window
+  (`news_trail_max_stale_hours`, 48h) instead of the ordinary `news_repeat_max_stale_hours` (18h) —
+  so a once-a-day re-mention survives day to day, while a far-off event still lapses if untouched and
+  returns as it nears; (2) a **proximity bonus** (`news_trail_proximity_bonus`) lifts a trailed item's
+  rank the closer its event is — the Olympics-in-a-week pattern, closer = more coverage. The brief
+  frames it as a `COUNTDOWN` with the multi-day phrase, and a trailed repeat skips the "still
+  developing" ongoing touch (wrong register for a future event).
+- **Bulletin shape comes from the grid slot, via the `flow` news already receives.** `news()` ignored
+  `flow`; now `_bulletin_shape(now, flow)` reads it: a **short** program's news pin (the hourly
+  `news@:00` in a ≤30-min show — `flow.short_show`) runs a lean `news_story_count_short` (3) bulletin;
+  a flagship/desk runs the full mix; and the **drive** desk (in-world hour in the day-summary window)
+  closes with a "the day so far" wrap — a distinct flavour a short slot never gets. This reused the
+  existing R2.2/R2.3 flow fields rather than plumbing a new seam.
+**Verified:** 548 tests green (10 new in `tests/test_news_living_day.py` — evolve delta language,
+countdown language, the short/flagship/drive shape split, trailed-not-cold-across-days vs an ordinary
+repeat that does go cold, and proximity ranking). `make acceptance` all 8 properties PASS. **Real
+drive-time render** (a live Claude bulletin at in-world 18:30, prior coverage seeded to force evolves):
+the anchor opened evolves exactly as designed — "an update on the story we have been following since
+this morning … As we reported this afternoon … Tonight, a new development" — carried a future timeline
+("will reach Theta-9 in approximately seven days"), and CLOSED with the drive wrap: "The day so far: a
+frontier station under quarantine, another studying a charter … Three stories, and the thread running
+through them is the same." The delta/countdown/wrap language all landed in one real generation.
+**Changed:** `src/formats/news.py` (evolve/trailed briefs, `_bulletin_shape`, day-summary wrap in
+`_build_system`, `flow` now drives shape), `src/formats/news_select.py` (trailed staleness + proximity
+bonus), `src/config.py` (5 dials), `tests/test_news_living_day.py` (new), `tests/test_news_desk.py`
+(mock signature); this DEVLOG; the R tracker.
+**Why:** the machinery to evolve stories (R4.0/R4.1) is wasted if the anchor still reads every beat as
+if it were new. The delta/countdown framing is what makes a listener hear a *developing* day; the
+per-slot shape is what makes an hourly hit feel different from the drive flagship.
+**Next:** R4.3 — the verticals read their domain (The Exchange talks *this week's* trade story), then
+R4.4 (the `living_day` acceptance property, closing the R4 pack).
+Commit: (this session)  ·  Clips: —
+
 ## 2026-07-20 — Phase R — R4.1: the intra-day micro-tick — the day reacts between nightly ticks ✅
 **Focus:** the nightly tick runs once; a day is long. R4.1 adds a light, near-live run the cron fires
 every 2–4h that may nudge ONE of today's live stories a small beat — so the world evolves *during* the

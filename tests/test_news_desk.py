@@ -394,7 +394,7 @@ def _wire_gate(monkeypatch, editor):
     Returns the list that records coverage calls.
     """
     monkeypatch.setattr(
-        news.news_select, "select_stories", lambda now: _one_selection()
+        news.news_select, "select_stories", lambda now, **kw: _one_selection()
     )
     monkeypatch.setattr(
         news.common, "render_single_voice", lambda parts, voice, seg_id: "/fake.mp3"
