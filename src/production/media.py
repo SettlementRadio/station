@@ -57,6 +57,7 @@ PROGRAM_THEMES: dict[str, str] = {
     # Reuse existing special themes (no bespoke clip needed).
     "the_mailbag": "themes/c11_letters.mp3",  # the Letters show reuses C11
     "the_circuit": "themes/c12_games.mp3",  # the Sport show reuses C12
+    "conditions": "themes/d14_conditions.mp3",  # R3.1 — Conditions reuses D14
 }
 
 # Format themes — the opener for a *format* (not a daypart program): the news
@@ -100,6 +101,16 @@ STINGS: dict[str, str] = {
     # D8.0 L4 — the sparse ~2s brand-sting bookend, the ONLY prerecorded ad
     # audio (curated by the human; L4 degrades to a plain read until it exists).
     "brand": "stings/d8_brand.mp3",
+    # R3.1 — The Count's chart-countdown ramp (docs/JINGLE_PROMPTS_3.md D20) and
+    # The Relay Round's scoring ding (D21). Registered ahead of the machinery that
+    # calls them (R6.1 wires the chart countdown; the quiz format doesn't exist
+    # yet), same as C12's games theme in batch 1 — speculative/extensible: the
+    # name resolves the moment the human drops the file in, whichever pack ends
+    # up placing it.
+    "chart_countdown_approaching": "stings/d20a_chart_approaching.mp3",
+    "chart_countdown_climbing": "stings/d20b_chart_climbing.mp3",
+    "chart_countdown_number_one": "stings/d20c_chart_number_one.mp3",
+    "quiz_point": "stings/d21_quiz_point.mp3",
 }
 
 # Transition sweepers (A4 ×3) by the grid's `daypart` label — the quick

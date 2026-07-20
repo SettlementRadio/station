@@ -574,6 +574,29 @@ make acceptance            # 24h window; make acceptance HOURS=48 for the wider 
   plus a short end-to-end run). Debug a failure with `--dump PATH` to write the placed timeline JSON:
   `.venv/bin/python -m src.acceptance --hours 24 --dump /tmp/timeline.json`.
 
+### Jingle placement audit (R3.0)
+Proof, not assumption, that every curated clip (idents/themes/stings) fires where and when it
+should — run it after any grid change (new/moved programs) and before dropping in a new jingle
+batch (R3.1's JINGLE_PROMPTS_3).
+```bash
+make jingle-audit                    # 48h window; JINGLE_HOURS=72 for a wider run
+make jingle-audit DUMP=/tmp/t.json   # also dump the placed timeline JSON
+```
+- Prints a **mapping table** — every grid program → the clip it actually resolves to (`override` /
+  `bespoke` / `fallback` / `missing`), straight from the `placement.py` code path an operator can
+  eyeball for reuse choices (`the_mailbag` → `c11_letters.mp3`, etc.) and spot which programs are
+  still on a format fallback (`c9_talk.mp3`/`c7_news.mp3`) and so belong on the next jingle batch's
+  list.
+- Then asserts five DYNAMIC properties over a simulated week driven through the real scheduler:
+  every program boundary got its theme, every `news@` pin got the C8 sting immediately before it,
+  every handover got the B6 sting before its theme, every ad break got the D18 in/out bracket, and
+  no theme repeats back-to-back (two adjacent programs sharing a fallback clip skip the second
+  play rather than repeat it — see `placement.program_theme_segment`'s `avoid_repeat`).
+- Same isolation as `make acceptance` (mocked seams, one rolled-back Postgres transaction, no live
+  calls, no cost); reads your REAL `assets/` tree for the static mapping, so it also proves a
+  freshly-dropped clip actually resolves. `tests/test_jingle_audit.py` covers the same checks unit
+  + end-to-end in CI.
+
 ### Peek inside the world (read-only snippets)
 The story log the tick wrote:
 ```bash

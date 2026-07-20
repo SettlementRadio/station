@@ -12,6 +12,7 @@ from __future__ import annotations
 import os
 import time
 from datetime import datetime
+from pathlib import Path
 
 import pytest
 from src import scheduler
@@ -103,6 +104,19 @@ def test_media_resolves_registered_clips(assets_tree):
     assert media.ident("signature").name == "a1_signature.mp3"
 
 
+def test_r31_utility_stings_are_registered_but_not_yet_on_disk(assets_tree):
+    # D20/D21 (docs/JINGLE_PROMPTS_3.md) — registered ahead of the machinery that
+    # will place them (R6.1 / a future quiz format); the fixture tree is the
+    # partial batch-1/2 set, so these degrade to None until the human drops them
+    # in — never a crash, never a KeyError on an unregistered name.
+    assert media.sting("chart_countdown_approaching") is None
+    assert media.sting("chart_countdown_climbing") is None
+    assert media.sting("chart_countdown_number_one") is None
+    assert media.sting("quiz_point") is None
+    assert "chart_countdown_climbing" in media.STINGS
+    assert "quiz_point" in media.STINGS
+
+
 def test_media_missing_file_degrades_to_none(assets_tree):
     # advisory: a registered sting whose file is absent from the partial fixture.
     assert media.sting("advisory") is None
@@ -126,6 +140,15 @@ def test_theme_override_wins_over_convention(assets_tree, audio_factory):
     (assets_tree / "themes" / "c12_games.mp3").write_bytes(clip.read_bytes())
     (assets_tree / "themes" / "the_circuit.mp3").write_bytes(clip.read_bytes())
     assert media.theme_for_program("the_circuit").name == "c12_games.mp3"
+
+
+def test_conditions_reuses_d14_via_override(assets_tree, audio_factory):
+    # R3.1 — Conditions reuses the batch-1 D14 clip; no bespoke conditions.mp3
+    # is ever expected, even if one existed on disk.
+    clip = audio_factory(seconds=0.5)
+    (assets_tree / "themes" / "d14_conditions.mp3").write_bytes(clip.read_bytes())
+    (assets_tree / "themes" / "conditions.mp3").write_bytes(clip.read_bytes())
+    assert media.theme_for_program("conditions").name == "d14_conditions.mp3"
 
 
 def _prog_with_clock(*formats: ClockStep, pid="the_new_show") -> Program:
@@ -163,6 +186,48 @@ def test_boundary_theme_falls_back_to_format(assets_tree, audio_factory):
     music_first = _prog_with_clock(ClockStep(format="music"))
     seg = placement.program_theme_segment(music_first, NOW)
     assert seg is not None and seg.audio_path.endswith("c9_talk.mp3")
+
+
+# --- R3.0: back-to-back theme repeats are skipped, not replayed ----------------
+
+
+def test_theme_avoid_repeat_skips_an_identical_fallback(assets_tree, audio_factory):
+    # Two programs with no bespoke theme both fall back to c9_talk.mp3 — if they
+    # land back-to-back at the schedule level, the SECOND boundary must skip its
+    # theme rather than play the exact same clip twice (no boundary would sound
+    # like it happened at all).
+    clip = audio_factory(seconds=0.5)
+    (assets_tree / "themes" / "c9_talk.mp3").write_bytes(clip.read_bytes())
+    show_a = _prog_with_clock(ClockStep(format="talk"), pid="show_a")
+    show_b = _prog_with_clock(ClockStep(format="talk"), pid="show_b")
+
+    first = placement.program_theme_segment(show_a, NOW)
+    assert first is not None and first.audio_path.endswith("c9_talk.mp3")
+
+    second = placement.program_theme_segment(
+        show_b, NOW, avoid_repeat=Path(first.audio_path)
+    )
+    assert second is None
+
+    # A DIFFERENT resolved clip is unaffected by the guard.
+    (assets_tree / "themes" / "show_b.mp3").write_bytes(clip.read_bytes())
+    third = placement.program_theme_segment(
+        show_b, NOW, avoid_repeat=Path(first.audio_path)
+    )
+    assert third is not None and third.audio_path.endswith("show_b.mp3")
+
+
+def test_boundary_segments_passes_avoid_repeat_through(assets_tree, audio_factory):
+    clip = audio_factory(seconds=0.5)
+    (assets_tree / "themes" / "c9_talk.mp3").write_bytes(clip.read_bytes())
+    show_a = _prog_with_clock(ClockStep(format="talk"), pid="show_a")
+    show_b = _prog_with_clock(ClockStep(format="talk"), pid="show_b")
+
+    first = placement.program_theme_segment(show_a, NOW)
+    segs = placement.boundary_segments(show_b, NOW, avoid_repeat=Path(first.audio_path))
+    assert (
+        segs == []
+    )  # the would-be-repeated theme was skipped, nothing else to open with
 
 
 # --- D7.3: bed selection is doubly opt-in + honest re-measurement --------------

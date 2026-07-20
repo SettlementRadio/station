@@ -87,7 +87,9 @@ def station_ident_segment(now: datetime) -> Segment | None:
     )
 
 
-def program_theme_segment(program: Program, now: datetime) -> Segment | None:
+def program_theme_segment(
+    program: Program, now: datetime, *, avoid_repeat: Path | None = None
+) -> Segment | None:
     """The program's opening theme for a boundary (top of show), or None.
 
     Carries the program in its meta so the D6.3 console / D6.4 feed name the
@@ -96,7 +98,12 @@ def program_theme_segment(program: Program, now: datetime) -> Segment | None:
     Resolution: the program's own theme (bespoke clip or override), else a
     fallback to its opening FORMAT's theme (news → C7, talk → C9; a music-first
     show uses the talk theme), so a program with no bespoke clip yet still opens
-    on-brand rather than cold. None only when neither resolves.
+    on-brand rather than cold. None when neither resolves, OR (R3.0) when the
+    resolved clip is the literal same file as `avoid_repeat` — two adjacent
+    programs that both fall back to the same format theme would otherwise play
+    an identical clip back-to-back, which sounds like no boundary happened at
+    all; skipping it (like a missing clip) is the more honest degrade than a
+    repeat that lies about the join.
     """
     clip = media.theme_for_program(program.id)
     if clip is None:
@@ -105,6 +112,9 @@ def program_theme_segment(program: Program, now: datetime) -> Segment | None:
             fmt = "talk"  # music opens with a bumper sting, not a theme
         clip = media.theme_for_format(fmt) if fmt else None
     if clip is None:
+        return None
+    if avoid_repeat is not None and clip == avoid_repeat:
+        log.info("placement_theme_repeat_skipped", program=program.id, clip=clip.name)
         return None
     return _clip_segment(
         clip,
@@ -246,19 +256,24 @@ def apply_bed(seg: Segment, program: Program) -> Segment:
     return seg
 
 
-def boundary_segments(program: Program, now: datetime) -> list[Segment]:
+def boundary_segments(
+    program: Program, now: datetime, *, avoid_repeat: Path | None = None
+) -> list[Segment]:
     """The clips that open `program` at its boundary, in air order.
 
     A handover program (the light passes between hosts) opens with the B6
     handover sting, then its theme; a solo program opens with just its theme.
-    Missing clips drop out gracefully — the list may be empty.
+    Missing clips drop out gracefully — the list may be empty. `avoid_repeat`
+    (R3.0) is the clip that played at the PREVIOUS boundary, so back-to-back
+    fallback collisions get skipped rather than repeated — see
+    `program_theme_segment`.
     """
     out: list[Segment] = []
     if program.framing == _HANDOVER_FRAMING:
         sting = handover_sting_segment(program, now)
         if sting is not None:
             out.append(sting)
-    theme = program_theme_segment(program, now)
+    theme = program_theme_segment(program, now, avoid_repeat=avoid_repeat)
     if theme is not None:
         out.append(theme)
     return out

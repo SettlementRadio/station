@@ -40,7 +40,7 @@ LIQ_LOG    := $(RUN_DIR)/liquidsoap.log
 PLAYER_URL := http://127.0.0.1:8000/
 STREAM_URL := http://127.0.0.1:8000/settlement.mp3
 
-.PHONY: help generate serve air play play-convo stop status console timeline now-playing seed seed-canon reset-world seed-tracks seed-sponsors demo context costprobe costprobe-ab conversation format buffer schedule ident prune fallback health world-tick news-demo figures-demo freshness-demo continuity-demo journal-demo programming-demo commercials-demo acceptance
+.PHONY: help generate serve air play play-convo stop status console timeline now-playing seed seed-canon reset-world seed-tracks seed-sponsors demo context costprobe costprobe-ab conversation format buffer schedule ident prune fallback health world-tick news-demo figures-demo freshness-demo continuity-demo journal-demo programming-demo commercials-demo acceptance jingle-audit
 
 # B5 format default: `make format` builds a talk segment; override with FMT=news
 # or FMT=music. Pass a TOPIC=... to steer canon retrieval.
@@ -88,6 +88,7 @@ help:
 	@echo "  make programming-demo show the weekly grid: programs/hosts by daypart (D6; token-free)"
 	@echo "  make commercials-demo hear a fresh spot + see the sparse break + a Powered-by read (D8)"
 	@echo "  make acceptance run the integrated 24-48h acceptance simulation — the Phase-D gate (D11.3)"
+	@echo "  make jingle-audit run the R3.0 jingle placement audit — proof every clip fires where it should"
 	@echo "  make air       schedule + serve — the live scheduler-driven stream (C2)"
 
 # Seed/refresh the world-state DB from the canon bible (docs/canon/ folder, or the
@@ -346,6 +347,20 @@ HOURS ?= 24
 acceptance:
 	@echo "==> Integrated acceptance simulation ($(HOURS)h window, D11.3)…"
 	$(PY) -m src.acceptance --hours $(HOURS)
+
+# R3.0: the jingle placement audit — proof, not assumption, that every clip fires where
+# and when it should. Two passes: the STATIC mapping (every grid program's boundary
+# theme, resolved via the real placement.py code path — the report table an operator
+# can eyeball for reuse/fallback choices) and a DYNAMIC simulated run (reusing the
+# D11.3 harness) asserting five properties: every boundary themed, every news@ pin got
+# the C8 sting, every handover got the B6 sting, every break got the D18 bracket, and
+# no theme repeats back-to-back. Needs a reachable Postgres (isolated, rolled-back txn);
+# makes no live Anthropic/TTS calls. Tune with JINGLE_HOURS=… (default 48). e.g.
+# `make jingle-audit JINGLE_HOURS=72`, or dump the timeline: `make jingle-audit DUMP=/tmp/t.json`.
+JINGLE_HOURS ?= 48
+jingle-audit:
+	@echo "==> Jingle placement audit ($(JINGLE_HOURS)h window, R3.0)…"
+	$(PY) -m src.production.audit --hours $(JINGLE_HOURS) $(if $(DUMP),--dump $(DUMP),)
 
 # D8.3: the commercials & sponsorship demo — generate ONE commercial + ONE promo
 # (live Anthropic + TTS calls; needs `make seed`), show where the grid places the

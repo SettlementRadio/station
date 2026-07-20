@@ -38,6 +38,127 @@ A typical *build* session will be short, e.g.:
 
 ---
 
+## 2026-07-20 — Phase R — R3.1: JINGLE_PROMPTS_3.md — the batch-3 brief ✅
+**Focus:** close the R3.0 audit's fallback list — spec themes for the 7 R2 programs still opening
+on `c9_talk.mp3`, plus the two small utility sting sets the new shows need.
+**Decisions:**
+- **`docs/JINGLE_PROMPTS_3.md`** (new, mirrors `JINGLE_PROMPTS_2.md`'s format): 7 program-theme
+  Style prompts (The Ledger/Ward/Table/Count/Serial/Fit/Relay Round), each tiered off the grid's
+  `energy` per `JINGLE_PROMPTS.md` §0 (night/day/bright) with a distinct lead instrument so
+  same-tier shows stay tellable apart — e.g. The Ledger (steady, dry markets brief) gets crisp
+  ticker-tape mallets at 102 BPM, The Serial (calm, nightly episode) gets felt piano + a
+  page-turn-like mallet accent at 66 BPM.
+- **Utility, continuing the D-series (last used D19):** **D20** a 3-tier chart-countdown ramp for
+  The Count (approaching/climbing/number-one, mirrors the A4 sweeper's tiering but for chart
+  position rather than daypart) and **D21** a 1-second scoring ding for The Relay Round quiz.
+  Registered in `media.STINGS` ahead of the machinery that will place them (R6.1 owns the actual
+  chart mechanics; no `quiz` format exists yet) — same speculative-but-wired posture as batch 1's
+  C12 games theme.
+- **`conditions` was a code bug, not a missing clip**: the R3.0 mapping table showed it falling
+  back to the news theme, but `assets/themes/d14_conditions.mp3` already exists — the reuse
+  override was just never added to `media.PROGRAM_THEMES` (only `the_mailbag`/`the_circuit` were).
+  Added `"conditions": "themes/d14_conditions.mp3"` — this one needed **no human Suno work**, it
+  was live the moment the line landed.
+- **A4 sweeper energy-range recheck (R3.0's ask): no new asset needed.** Audited every grid
+  program's `energy` (old and new) — still exactly calm/steady/bright, the three existing sweepers
+  already cover it.
+**Verified:** ruff green; **521 tests** (2 new: the `conditions` override, the two new sting names
+resolving-to-None-not-crashing on the fixture tree); `make jingle-audit` re-run — `conditions` now
+reads `[override] d14_conditions.mp3` (was `[fallback] c7_news.mp3`), the 7 new programs still
+correctly read `[fallback] c9_talk.mp3` pending the human Suno drop (this is the accurate state,
+not a bug — R3.0's `avoid_repeat` fix keeps them from repeating in the meantime); 5/5 properties
+still pass.
+**Changed:** `docs/JINGLE_PROMPTS_3.md` (new), `src/production/media.py`, `tests/test_production.py`,
+this DEVLOG.
+**Why:** the R3.0 audit's whole point was to turn "which shows still sound generic" from a listening
+guess into a checked list — this session works that list down to zero code-side gaps, leaving only
+the human production step the pack always expected.
+**Next:** the operator generates the 11 batch-3 assets in Suno and drops them under `assets/`;
+re-run `make jingle-audit` after — zero fallbacks expected, flip R3 → ✅ in the tracker. Meanwhile
+R4 (the living day) is parallel and unblocked.
+Commit: (this session)  ·  Clips: —
+
+## 2026-07-20 — Phase R — R3.0: the jingle placement audit ✅
+**Focus:** proof, not assumption, that every clip fires where and when it should on the new
+GRID_V2 week — and fix the one real bug the audit found.
+**Decisions:**
+- **Two-pass audit (`src/production/audit.py`, `make jingle-audit`)**: a STATIC pass calls
+  `placement.program_theme_segment`/`handover_sting_segment` directly for every grid program (via
+  `programming.all_programs()`), so the mapping table is what the CODE resolves, not what a doc
+  claims — classified override / bespoke / fallback / missing. A DYNAMIC pass reuses the D11.3
+  acceptance harness verbatim (`acceptance._sim_environment`, same rolled-back-txn isolation) to
+  walk a simulated 48h week through the REAL scheduler and assert five properties: every program
+  boundary themed, every `news@` pin got the C8 sting immediately before it, every handover got
+  the B6 sting before its theme, every ad break got the D18 in/out bracket, no theme repeats
+  back-to-back.
+- **Found + fixed a real bug**: the first run flagged `the_ledger -> the_relay_round` and
+  `the_ledger -> the_fit` playing the literal same fallback clip (`c9_talk.mp3`) back-to-back —
+  two adjacent bespoke-less programs sharing a format fallback sounds like no boundary happened
+  at all. Fix: `program_theme_segment`/`boundary_segments` gained an `avoid_repeat` parameter;
+  the scheduler now tracks `last_theme_clip` (persisted in schedule state, same pattern as
+  `last_program_id`) and skips a boundary's theme when it would repeat the immediately-previous
+  one — a graceful degrade (no theme, not a repeat), consistent with "missing clip → skip, never
+  a crash." Re-run: 5/5 green.
+- **Confirmed already correct**: the doc's two reuse cases (`the_mailbag` → `c11_letters.mp3`,
+  `the_circuit` → `c12_games.mp3`) ARE wired in `media.PROGRAM_THEMES` — no drift between
+  JINGLE_PROMPTS_2.md and the code.
+**Mapping table** (static resolution, every grid program, this session — `common_ground` through
+`the_workshop` are bespoke; `first_light`/`nightfall`/`long_night`/`the_circuit`/`the_mailbag` are
+explicit overrides; **8 programs still fall back** to `c9_talk.mp3`/`c7_news.mp3` and are R3.1's
+batch-3 todo list):
+```
+common_ground        [bespoke ] common_ground.mp3
+conditions            [fallback] c7_news.mp3
+deep_field            [bespoke ] deep_field.mp3
+deep_hours            [bespoke ] deep_hours.mp3
+deep_listening        [bespoke ] deep_listening.mp3
+default               [fallback] c9_talk.mp3
+evening_currents      [bespoke ] evening_currents.mp3
+first_light           [override] b5_first_light.mp3  handover=b6_handover.mp3
+long_night            [override] b4_night.mp3
+morning_currents      [bespoke ] morning_currents.mp3
+nightfall             [override] b5b_nightfall.mp3  handover=b6_handover.mp3
+settlement_desk       [bespoke ] settlement_desk.mp3
+the_assembly          [bespoke ] the_assembly.mp3
+the_bridge            [bespoke ] the_bridge.mp3
+the_circuit           [override] c12_games.mp3
+the_commons           [bespoke ] the_commons.mp3
+the_compact           [bespoke ] the_compact.mp3
+the_count             [fallback] c9_talk.mp3   <- R3.1
+the_exchange          [bespoke ] the_exchange.mp3
+the_far_signal        [bespoke ] the_far_signal.mp3
+the_far_towns         [bespoke ] the_far_towns.mp3
+the_fit               [fallback] c9_talk.mp3   <- R3.1
+the_gallery           [bespoke ] the_gallery.mp3
+the_gathering         [bespoke ] the_gathering.mp3
+the_ledger            [fallback] c9_talk.mp3   <- R3.1
+the_long_view         [bespoke ] the_long_view.mp3
+the_mailbag           [override] c11_letters.mp3
+the_new_signal        [bespoke ] the_new_signal.mp3
+the_reading_room      [bespoke ] the_reading_room.mp3
+the_relay_round       [fallback] c9_talk.mp3   <- R3.1
+the_serial            [fallback] c9_talk.mp3   <- R3.1
+the_standing_watch    [bespoke ] the_standing_watch.mp3
+the_table             [fallback] c9_talk.mp3   <- R3.1
+the_thread            [bespoke ] the_thread.mp3
+the_ward              [fallback] c9_talk.mp3   <- R3.1
+the_workshop          [bespoke ] the_workshop.mp3
+```
+**Verified:** ruff green; **519 tests** (20 new: the `avoid_repeat` unit + scheduler-integration
+cases in `test_production.py`/`test_production_schedule.py`, 17 audit tests — the five dynamic
+checkers unit-tested clean AND on a planted defect, the static mapping's four resolution kinds,
+one end-to-end DB-backed run); `make jingle-audit` (48h window) **5/5 PASS** — 54 boundaries
+themed, 58 news bulletins pinned, 4 handover boundaries stung, 17 breaks bracketed, zero repeats.
+**Changed:** `src/production/audit.py` (new), `src/production/placement.py`, `src/scheduler.py`,
+`Makefile` (`make jingle-audit`), `tests/{test_jingle_audit.py (new),test_production,
+test_production_schedule}.py`, this DEVLOG.
+**Why:** "does it sound right" is a listening judgment; "does the RIGHT clip fire at the RIGHT
+moment, every time, across a real week" is a machine-checkable property — and running the check
+found a genuine bug a listen-through could easily have missed (two shows in a row, both quiet).
+**Next:** R3.1 — write `JINGLE_PROMPTS_3.md` for the 8 fallback programs above (human Suno work
+follows); or R4 (the living day), which is parallel.
+Commit: (this session)  ·  Clips: —
+
 ## 2026-07-19 — Phase R — R2.4: docs + tracker — R2 COMPLETE ✅
 **Focus:** make the docs match the as-built GRID_V2 station; close the R2 pack.
 **Changed:**

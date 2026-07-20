@@ -154,6 +154,65 @@ def test_boundary_does_not_refire_within_the_same_program(
     assert len(themes) <= 1
 
 
+# --- R3.0: two adjacent bespoke-less programs never repeat the same fallback --
+
+_REPEAT_GRID = """
+programs:
+  show_a:
+    name: "Show A"
+    hosts: [vell, wren]
+    framing: solo
+    daypart: x
+    clock: [talk]
+  show_b:
+    name: "Show B"
+    hosts: [vell, wren]
+    framing: solo
+    daypart: x
+    clock: [talk]
+  show_c:
+    name: "Show C"
+    hosts: [vell, wren]
+    framing: solo
+    daypart: x
+    clock: [talk]
+  default:
+    name: "Settlement Radio"
+    hosts: [vell, wren]
+    framing: legacy
+    rotation: [talk]
+grid:
+  daily:
+    "00:00-00:10": show_a
+    "00:10-00:20": show_b
+    "00:20-24:00": show_c
+"""
+
+
+def test_boundary_theme_does_not_repeat_across_adjacent_fallback_shows(
+    monkeypatch, tmp_path, assets_tree, audio_factory
+):
+    # None of show_a/b/c has a bespoke theme or override, so all three fall back
+    # to the same c9_talk.mp3 — the FIRST boundary (a -> b) still opens on it
+    # (nothing played yet to repeat), but the SECOND (b -> c) must skip it rather
+    # than play the identical clip twice in a row.
+    _wire(monkeypatch, tmp_path, depth_hours=0.5)
+    # _wire() writes its own shared _GRID fixture — overwrite it with this test's
+    # grid at the SAME path and reload again, so this grid wins.
+    (tmp_path / "grid.yaml").write_text(_REPEAT_GRID, encoding="utf-8")
+    programming.reload()
+    clip = audio_factory(seconds=0.5)
+    (assets_tree / "themes" / "c9_talk.mp3").write_bytes(clip.read_bytes())
+
+    upcoming = scheduler.top_up(datetime(2026, 7, 5, 0, 0))
+
+    ids = [e["id"] for e in upcoming]
+    theme_ids = [x for x in ids if x.startswith("theme-")]
+    assert len(theme_ids) == 1  # only the a->b boundary got one; b->c was skipped
+    assert theme_ids[0].startswith("theme-show_b-")
+    assert any(x.startswith("talk-") for x in ids[ids.index(theme_ids[0]) :])
+
+
 # --- R2.3: the A4 sweeper joins consecutive flagship items -------------------
 
 

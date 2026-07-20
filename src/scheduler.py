@@ -468,6 +468,11 @@ def top_up(now: datetime | None = None) -> list[dict]:
     # boundary that falls BETWEEN two top-up runs still gets its theme).
     content_since_station_ident = state.get("content_since_station_ident", 0)
     last_program_id: str | None = state.get("last_program_id")
+    # R3.0 — the clip (basename-qualified path) that played at the last boundary,
+    # so a program falling back to the same format theme as its neighbour skips
+    # rather than repeats it (see `placement.program_theme_segment`). Persisted
+    # like `last_program_id`, so this holds across top-up runs too.
+    last_theme_clip: str | None = state.get("last_theme_clip")
     # D8.1: the ad-break cadence — content placed since the last break (reset at
     # each program boundary so every show's ad load starts fresh), plus a running
     # total of break spots ever placed (drives the commercial-vs-promo rotation
@@ -622,6 +627,7 @@ def top_up(now: datetime | None = None) -> list[dict]:
         state["breaks_total"] = breaks_total
         state["sponsor_reads_total"] = sponsor_reads_total
         state["last_program_id"] = last_program_id
+        state["last_theme_clip"] = last_theme_clip
         state["last_topup_at"] = clock().isoformat()
         _save_state(state)
         return _write_playlist(upcoming, clock())
@@ -716,8 +722,13 @@ def top_up(now: datetime | None = None) -> list[dict]:
                     and last_program_id is not None
                 ):
                     try:
-                        for clip_seg in boundary_segments(program, air_cursor):
+                        avoid = Path(last_theme_clip) if last_theme_clip else None
+                        for clip_seg in boundary_segments(
+                            program, air_cursor, avoid_repeat=avoid
+                        ):
                             _place_clip(clip_seg)
+                            if clip_seg.format == "theme":
+                                last_theme_clip = clip_seg.audio_path
                     except Exception as exc:
                         log.warning("schedule_boundary_error", error=str(exc))
                 last_program_id = program.id
