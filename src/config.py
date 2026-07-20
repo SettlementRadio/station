@@ -518,6 +518,14 @@ class Settings(BaseSettings):
     world_tick_max_attempts: int = 2  # draft + one regenerate before dropping a story
     world_tick_beat_horizon_days: int = 21  # max |days| from now for a generated beat
     world_tick_active_context_limit: int = 30  # active stories shown for dedup/context
+    # R4.0 — same-day arcs: the tick plans a few of tonight's stories to UNFOLD across
+    # the coming day (missing at 07:00 → located at 13:00 → resolved at 19:00) instead
+    # of landing whole. `*_dayarc_stories_max` is how many of one tick's new stories are
+    # asked for this shape; `*_dayarc_beats_max` caps the beats in such an arc. The
+    # later beats are written `planned` (store.Event.planned) and stay off air until
+    # their hour passes (`events.airable`) — they are the plan, not the record.
+    world_tick_dayarc_stories_max: int = 2
+    world_tick_dayarc_beats_max: int = 4
     # D3.2 — advancing running stories so the world has day-to-day continuity.
     # `*_advance_max` caps how many running stories one tick moves on (the least-
     # recently-advanced first, so attention spreads and nothing starves);

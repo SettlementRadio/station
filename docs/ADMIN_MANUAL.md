@@ -606,10 +606,17 @@ with store.connect() as c:
     s = store.active_stories(c)
     print([(x.arc_stage, x.title) for x in s])
     if s:
-        print('beats:', [(b.beat_kind, b.in_world_datetime.isoformat())
+        print('beats:', [(b.beat_kind, b.in_world_datetime.isoformat(), b.planned)
                           for b in store.story_beats(c, s[0].id)])
 "
 ```
+A beat with `planned=True` (R4.0) is part of a **same-day arc**: the tick wrote it last night as the
+plan for later today, and the news desk will not report it until its hour passes. `make console`
+labels these `(planned)` in the story log. This is the ONE place the operator sees more than the air
+does — everything on-air goes through `events.airable`, so a planned beat can never air early. Dials:
+`world_tick_dayarc_stories_max` / `world_tick_dayarc_beats_max` (set stories to 0 to stop the tick
+planning day arcs at all). *→ Phase E panel: the world screen (R5.2) shows arcs in flight + today's
+expected beat timeline; these dials belong on the dials screen (E1.5).*
 What the news desk has covered (its recurrence memory):
 ```bash
 python -c "

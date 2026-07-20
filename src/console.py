@@ -37,7 +37,7 @@ from . import health
 from .config import settings
 from .logging_setup import get_logger
 from .scheduler import _duration_of, _load_state, onair_hosts, split_schedule
-from .world import programming, store
+from .world import events, programming, store
 
 log = get_logger(__name__)
 
@@ -163,8 +163,11 @@ def story_log_lines(conn, now: datetime) -> list[str]:
         lines.append(f"  • [{s.arc_stage}] {s.title}{tags}")
         beats = store.story_beats(conn, s.id)
         for beat in beats[-settings.console_beats_per_story :]:
-            when = beat.in_world_datetime.strftime("%Y-%m-%d")
-            lines.append(f"      ↳ {when}: {beat.title}")
+            when = beat.in_world_datetime.strftime("%Y-%m-%d %H:%M")
+            # R4.0: the operator sees the whole arc, plan included — unlike the news
+            # desk, which only ever sees the beats that have landed.
+            plan = "" if events.has_landed(beat, now) else "  (planned)"
+            lines.append(f"      ↳ {when}: {beat.title}{plan}")
     return lines
 
 

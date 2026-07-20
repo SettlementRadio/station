@@ -115,6 +115,14 @@ class Event:
     Crucially a beat is STILL just an event with an `in_world_datetime`, so the B2
     clock frames it future/now/past for free — we reuse the events machinery, not
     duplicate it.
+
+    `planned` (R4.0) marks a beat the tick wrote as the *plan* for later today, not
+    the *record* of something that happened: a same-day arc ("missing at 07:00 →
+    located at 13:00 → resolved at 19:00") is authored whole at tick time, but its
+    later beats must not reach air until their hour passes. It is DISTINCT from a
+    merely-future beat: an announced festival three days out is legitimately
+    trailable (`planned=False`), while a planned arc beat is invisible to the news
+    desk until it arrives. See `events.airable`, which is the gate.
     """
 
     id: str
@@ -126,6 +134,7 @@ class Event:
     source: str = "seed"
     story_id: str | None = None
     beat_kind: str | None = None
+    planned: bool = False
 
 
 # An event's provenance (the `events.source` column). A canon refresh replaces only
@@ -713,6 +722,12 @@ CREATE INDEX IF NOT EXISTS events_story_idx ON events (story_id);
 -- card's `Based:` bullet. Field hosts join only across the relay lag (canon 78),
 -- so the writers' room frames their segments as dispatches, never live banter.
 ALTER TABLE "cast" ADD COLUMN IF NOT EXISTS based text NOT NULL DEFAULT 'station';
+
+-- R4.0: a same-day arc's later beats are the PLAN, not the record. The tick writes
+-- them whole at tick time; `planned` keeps them off air until their hour passes (see
+-- `events.airable`). Defaults false, so every pre-R4 beat stays reportable exactly as
+-- before — an additive, in-place upgrade (OVERVIEW §2: migrations, never reseed).
+ALTER TABLE events ADD COLUMN IF NOT EXISTS planned boolean NOT NULL DEFAULT false;
 """
 
 # The world tables, in a stable order for a single TRUNCATE that reproduces the world
@@ -949,7 +964,8 @@ def insert_cast(conn: psycopg.Connection, members: Iterable[CastMember]) -> int:
 # The full events column list + a single row->Event mapper, so every read returns
 # the beat link (story_id/beat_kind, D3.0) without repeating the unpacking.
 _EVENT_COLUMNS = (
-    "id, title, body, in_world_datetime, status, tags, source, story_id, beat_kind"
+    "id, title, body, in_world_datetime, status, tags, source, story_id, beat_kind, "
+    "planned"
 )
 
 
@@ -965,6 +981,7 @@ def _event_from_row(row: tuple) -> Event:
         source=row[6],
         story_id=row[7],
         beat_kind=row[8],
+        planned=bool(row[9]),
     )
 
 
@@ -981,13 +998,14 @@ def insert_events(conn: psycopg.Connection, events: Iterable[Event]) -> int:
             e.source,
             e.story_id,
             e.beat_kind,
+            e.planned,
         )
         for e in events
     ]
     conn.cursor().executemany(
         "INSERT INTO events "
         "(id, title, body, in_world_datetime, status, tags, source, story_id, "
-        "beat_kind) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)",
+        "beat_kind, planned) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)",
         rows,
     )
     log.info("db_insert_events", count=len(rows))

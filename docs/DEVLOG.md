@@ -38,6 +38,68 @@ A typical *build* session will be short, e.g.:
 
 ---
 
+## 2026-07-20 — Phase R — R4.0: same-day arcs — the tick writes a day that unfolds ✅
+**Focus:** the nightly tick landed every story whole, so the news desk had the same facts at 07:00
+and 19:00 and could only re-read them. R4.0 gives the day motion: a story may now be authored as a
+2–4 beat arc across the coming day, with the later beats held off air until their hour passes.
+**Decisions:**
+- **`planned` is a first-class beat property, not a `source` value.** New `events.planned` boolean
+  (additive migration, defaults false — every pre-R4 beat behaves exactly as before). `source` stays
+  the seed/tick provenance split it has always been; overloading it would have tangled the §2a
+  seed/reset contract with an unrelated on-air concept.
+- **The key distinction the whole task turns on: `planned` ≠ "in the future".** An announced festival
+  three days out is `planned=False` and *should* be trailed on air — that's what `trailed` items are
+  for. A planned arc beat is the tick's *plan*, invisible until it lands. The prompts say this
+  explicitly in both the proposal and advancement paths, because a model that conflates the two
+  either mutes the trail queue or leaks tomorrow's news.
+- **One gate, `events.airable`, applied at every on-air read.** `news_select` (classification and
+  framing), and `context.assemble` — whose ±window reaches *forward*, so it would otherwise have
+  handed the DJ room a beat that hasn't happened. The operator surfaces deliberately do NOT filter:
+  `make console` now labels planned beats `(planned)` so the human sees the whole arc, and the tick's
+  own advancement prompt sees them (labelled `PLANNED for later`) so it doesn't pre-empt one.
+- **A story whose every beat is still planned is not selected at all.** Without this the desk would
+  air the story's *summary* — which describes the entire arc — before its first beat. The subtle leak
+  that a beat-level filter alone doesn't close.
+- **Two clamps on model output:** a beat marked planned but dated at/behind now has no hour left to
+  wait for, so the flag is dropped at materialise time (otherwise it is suppressed from air forever).
+  Dials `world_tick_dayarc_stories_max` (2) / `world_tick_dayarc_beats_max` (4); setting stories to 0
+  removes the instruction entirely.
+**Verified:** 529 tests green (8 new in `tests/test_day_arc.py`, covering both sides of the gate);
+`make acceptance` all 8 properties PASS. The frozen-clock DB test drives one arc across three
+simulated hours and asserts `breaking → evolve → evolve` with the later beats invisible at each step,
+and that nothing is selected at all before the first beat lands.
+**Verified on a REAL tick** (two live `LLM_BATCH_ENABLED=false make world-tick` runs, ticks #10/#11):
+- Tick #10 proposed **0** stories — 32 active was over `world_tick_max_active_stories=24`, so the
+  pacing cap ran advance-only and the day-arc prompt never fired. Worth knowing for anyone testing
+  proposal-path changes on a mature dev world: **you may need a tick or two of resolution first.**
+  It resolved 3, dropping active to 21, and tick #11 then proposed 4 — all 4 gated clean.
+- **3 of the 4 new stories took the day-arc shape unprompted-by-hand**, and the flags split exactly
+  on the clock (in-world now was 15:38): beats at 08:00/12:00 plain, beats at 20:00/21:00 and one at
+  tomorrow 09:00 marked `PLANNED`. The 4th story stayed a plain two-beat story — the instruction
+  reads as an option, not a mandate, which is what we wanted.
+- Read side against that live data: at 16:00 the desk sees 2 beats (newest = the midday protest); at
+  20:30 it sees 3 (newest = the evening beat). `context.assemble` likewise contains the evening beat
+  at 20:30 and **not** at 16:00 — the DJ-room leak is genuinely closed on real rows, not just fixtures.
+**Observations to carry forward (not bugs):**
+- The model produced **3** day arcs against `world_tick_dayarc_stories_max=2` — a prompt-only soft
+  cap. Harmless (overshoot just means more of the day is planned), but if too many stories are arcs,
+  more of them are *unstarted* at any given moment and bulletins thin out. R4.4's `living_day`
+  property is the natural place to assert the count.
+- `make console` labels planned beats correctly, but at the default `console_beats_per_story=1` the
+  label is nearly unreachable (you see only each story's newest beat). The R5.2 world screen — "arcs
+  in flight + today's expected beat timeline" — is the real operator surface for this.
+**Changed:** `src/world/store.py` (Event.planned + migration + columns), `src/world/events.py`
+(`has_landed`/`airable`), `src/world/world_tick.py` (day-arc prompt, schema, materialise clamp),
+`src/formats/news_select.py` (the gate + unstarted-arc drop), `src/world/context.py`, `src/console.py`,
+`src/config.py` (2 dials), `tests/test_day_arc.py` (new); this DEVLOG; the R tracker.
+**Why:** the audit's topic 4 ("news doesn't evolve during the day") was half-built already — beats
+carried `day_offset`/`hour` and `news_select` already classified `evolve`. What was missing was
+anything *asking* for a same-day arc, and a way to write tomorrow's beat tonight without airing it
+early. That second half is the safety-shaped part, which is why the gate is one function called from
+every read rather than a filter re-implemented per surface.
+**Next:** R4.1 — the intra-day micro-tick (haiku-tier, every 2–4h, advances one of today's stories).
+Commit: (this session)  ·  Clips: —
+
 ## 2026-07-20 — Phase R — R3 COMPLETE: batch-3 assets dropped, verified, tracker flipped ✅
 **Focus:** the operator generated all 11 `JINGLE_PROMPTS_3.md` assets in Suno; verify placement and
 close out the R3 pack.

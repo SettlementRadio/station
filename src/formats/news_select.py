@@ -25,6 +25,12 @@ mixing the three kinds via soft per-kind quotas. It carries everything D4.2 need
 write the brief (the lead beat for its relative phrase, the arc stage, the delta beat
 for an `evolve` update, and the prior coverage for consistent naming — D4.3).
 
+R4.0 adds the *living day*: a story's later same-day beats may be `planned` — written
+by the tick as the day's plan, not its record. Every read here goes through
+`events.airable`, so a planned beat is invisible until its hour passes; as the day
+runs, each landing beat makes the story re-tag ``evolve`` and the desk reports the
+delta. A story whose every beat is still planned hasn't started and is not selected.
+
 This module reads the log and the coverage memory; it writes NOTHING (the producer
 records coverage after a successful render, D4.2). All SQL stays behind `world.store`.
 """
@@ -38,7 +44,7 @@ from typing import TYPE_CHECKING
 from ..config import settings
 from ..logging_setup import get_logger
 from ..providers import embeddings
-from ..world import clock, store
+from ..world import clock, events, store
 from ..world.store import Event, Figure, NewsCoverage, Quote, Story
 
 if TYPE_CHECKING:  # type-only: psycopg stays behind the world.store seam at runtime
@@ -179,15 +185,35 @@ def _canon_score(story: Story) -> float:
 
 
 def _build_candidate(
-    conn: Connection, story: Story, iw_now: datetime, *, ground: bool = True
-) -> SelectedStory:
+    conn: Connection,
+    story: Story,
+    now: datetime,
+    iw_now: datetime,
+    *,
+    ground: bool = True,
+) -> SelectedStory | None:
     """Assemble one scored, tagged `SelectedStory` for a story (pre-selection).
 
+    Returns None when the story is not yet airable at all (R4.0 — every beat it has
+    is still a plan for later today). Takes both clocks: `iw_now` frames the beats,
+    `now` is the real time `events.airable` needs to decide which planned beats have
+    landed.
     `ground=False` skips the canon-recall step (no embedding model load) — the pure
     temporal/structured ranking, used by the offline demo and any caller that doesn't
     want RAG in the loop.
     """
-    beats = store.story_beats(conn, story.id)
+    # R4.0 — a same-day arc's later beats live in the log from tick time but are the
+    # PLAN, not the record: `airable` drops any still ahead of the clock, so the desk
+    # classifies and frames a story ONLY from what has actually landed. As each hour
+    # passes another beat becomes visible and the story re-tags `evolve` — the day's
+    # motion, with no risk of reporting a beat before it happens.
+    all_beats = store.story_beats(conn, story.id)
+    beats = events.airable(all_beats, now)
+    if all_beats and not beats:
+        # A story whose every beat is still a plan hasn't STARTED yet — airing it
+        # would leak the day's arc before its first hour. (A genuinely beatless
+        # story — a bare rumour — is not this case and stays selectable.)
+        return None
     prior = store.last_coverage(conn, story.id)
     # D10.2 — the story's newest attributable quotes (with their figure), so the brief
     # can attribute them. Bounded; empty (no extra read cost beyond the JOIN) for a
@@ -300,7 +326,8 @@ def select_for(
     iw_now = clock.to_inworld(now)
 
     active = store.active_stories(conn)
-    candidates = [_build_candidate(conn, s, iw_now, ground=ground) for s in active]
+    built = [_build_candidate(conn, s, now, iw_now, ground=ground) for s in active]
+    candidates = [c for c in built if c is not None]  # R4.0: drop unstarted arcs
     fresh = [c for c in candidates if not _is_cold_repeat(c, iw_now)]
     selected = _assemble_mix(fresh, n)
 
@@ -308,6 +335,7 @@ def select_for(
         "news_select",
         now=now.isoformat(),
         active=len(active),
+        dropped_unstarted=len(built) - len(candidates),
         dropped_cold=len(candidates) - len(fresh),
         selected=len(selected),
         tags=[f"{c.story.id}:{c.temporal_kind}/{c.coverage_tag}" for c in selected],

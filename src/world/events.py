@@ -21,6 +21,7 @@ config-vs-constant rule in that file).
 
 from __future__ import annotations
 
+from collections.abc import Iterable
 from dataclasses import replace
 from datetime import datetime
 
@@ -78,6 +79,27 @@ def progressed(event: Event, now: datetime) -> Event:
     live status; the stored snapshot from the seed is left untouched.
     """
     return replace(event, status=status_of(event, now))
+
+
+def has_landed(event: Event, now: datetime) -> bool:
+    """Whether a `planned` beat's hour has arrived — i.e. it may reach air (R4.0).
+
+    A same-day arc is authored whole at tick time: the 13:00 "located" and 19:00
+    "resolved" beats exist in the log from midnight, marked `planned`. They are the
+    PLAN, not the record, so the news desk must not report them before their hour.
+    An ordinary beat (`planned=False`) is always airable — a genuinely announced
+    future event is trailable, which is the whole point of `trailed` items.
+    """
+    return not event.planned or event.in_world_datetime <= clock.to_inworld(now)
+
+
+def airable(events: Iterable[Event], now: datetime) -> list[Event]:
+    """Filter to the beats that may reach air as of `now` — drops unlanded plans.
+
+    The one gate every on-air reader (the news desk, the showrunner's context) goes
+    through, so a planned beat can never air early from any surface. Order preserved.
+    """
+    return [e for e in events if has_landed(e, now)]
 
 
 def relative_phrase(event: Event, now: datetime) -> str:

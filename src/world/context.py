@@ -152,7 +152,12 @@ def assemble(
         quotes = _select_quotes(conn, topic, iw_now, window)
 
     # Recompute each event's status live so the writer never sees a stale snapshot.
-    near_events = [events_mod.progressed(e, now) for e in raw_events]
+    # R4.0: `airable` first — the window reaches forward, so it would otherwise pick up
+    # a same-day arc's PLANNED beats and hand the DJs something that hasn't happened
+    # yet. An ordinary future event stays (trailing what's coming is the point).
+    near_events = [
+        events_mod.progressed(e, now) for e in events_mod.airable(raw_events, now)
+    ]
 
     cards_text = _render_cards(cards)
     dynamic = _render_dynamic(near_events, canon, quotes, now)

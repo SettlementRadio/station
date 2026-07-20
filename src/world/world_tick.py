@@ -119,6 +119,11 @@ class ProposedBeat:
     happened, 0 = today, positive = upcoming); `hour` is 0–23. These anchor the beat
     in in-world time so the B2 clock frames it future/now/past. `quotes` are the
     attributable statements made *in* this beat (D10.1) — they inherit its datetime.
+
+    `planned` (R4.0) marks a later beat of a SAME-DAY ARC: authored now, but the plan
+    rather than the record, so it stays off air until its hour passes. Only meaningful
+    for a beat still ahead of the clock — `_beat_event` drops the flag on a beat dated
+    at/behind now (it has already landed; there is nothing left to wait for).
     """
 
     title: str
@@ -127,6 +132,7 @@ class ProposedBeat:
     day_offset: int
     hour: int
     quotes: list[ProposedQuote] = field(default_factory=list)
+    planned: bool = False
 
 
 @dataclass(frozen=True)
@@ -347,6 +353,36 @@ def _propose_and_gate(
 # --- Step 1: propose --------------------------------------------------------
 
 
+def _dayarc_instruction(ctx: _TickContext) -> str:
+    """Ask for a few of tonight's stories to UNFOLD across the coming day (R4.0).
+
+    The nightly tick otherwise lands each story whole, so the news desk has the same
+    facts at 07:00 and at 19:00 and can only re-read them. A same-day arc gives the
+    day motion: beats at distinct hours, the later ones `planned` so they reach air
+    only once their hour passes. Empty when the dials are off.
+    """
+    stories = settings.world_tick_dayarc_stories_max
+    beats = settings.world_tick_dayarc_beats_max
+    if stories <= 0 or beats < 2:
+        return ""
+    return (
+        f"SAME-DAY ARCS: up to {stories} of these stories must UNFOLD ACROSS THE "
+        f"COMING DAY rather than land whole — give such a story {beats} beats at "
+        "DISTINCT hours of day_offset 0 (spread across the broadcast day, e.g. a "
+        "vessel missing at 07:00, located at 13:00, its crew reached at 19:00 — it "
+        f"is currently {ctx.iw_now:%H:%M} in-world); a "
+        "final beat may fall on day_offset 1. Each beat must add a REAL development "
+        "(a discovery, a complication, a resolution) that the earlier beats do not "
+        "already contain — not a restatement.\n"
+        "Mark every beat of such an arc that is still AHEAD of the in-world clock "
+        'with "planned": true — it is the plan for later today, not the record, and '
+        "the news desk will hold it until its hour arrives. The beat that has "
+        'already happened is "planned": false. Ordinary stories (and genuinely '
+        'announced future events like a festival next week) stay "planned": false '
+        "— those are trailed on air as things that are coming.\n\n"
+    )
+
+
 def _propose(ctx: _TickContext) -> list[ProposedStory]:
     """Ask the writing brain for a bounded, domain-balanced mix of new happenings."""
     hi = ctx.new_max  # the pacing-capped upper bound (D3.3)
@@ -357,6 +393,7 @@ def _propose(ctx: _TickContext) -> list[ProposedStory]:
         if ctx.quiet_domains
         else ""
     )
+    dayarc = _dayarc_instruction(ctx)
     people = (
         "PEOPLE: give each story a FEW invented in-world figures (the people it is "
         f"about — at most {settings.world_tick_figures_per_story_max}: an official, an "
@@ -387,13 +424,14 @@ def _propose(ctx: _TickContext) -> list[ProposedStory]:
         "day_offset is whole in-world days from today (negative = already happened, "
         "0 = today, positive = upcoming), within "
         f"±{settings.world_tick_beat_horizon_days} days; hour is 0-23.\n\n"
+        f"{dayarc}"
         f"{people}"
         "Return ONLY a JSON array (no prose, no code fence). Each element:\n"
         '{"title": str, "summary": str, "scale": "large"|"small", "domain": str, '
         '"arc_stage": str, '
         '"figures": [{"name": str, "role": str, "bio": str, "tags": [str]}], '
         '"beats": [{"title": str, "body": str, "beat_kind": str, '
-        '"day_offset": int, "hour": int, '
+        '"day_offset": int, "hour": int, "planned": bool, '
         '"quotes": [{"figure": str, "text": str, "stance": str}]}]}\n\n'
         "Stay entirely inside the fiction: original world only — never real "
         "franchises, real people, or trademarks. The FIGURES are invented in-world "
@@ -432,7 +470,10 @@ def _regenerate(
         f"Rejected drafts and why:\n{notes}\n\n"
         "Return ONLY a JSON array in the SAME schema as before (title, summary, scale, "
         "domain, arc_stage, figures[name, role, bio, tags], beats[title, body, "
-        "beat_kind, day_offset, hour, quotes[figure, text, stance]]). Original world "
+        "beat_kind, day_offset, hour, planned, quotes[figure, text, stance]]). A "
+        "rewrite keeps its same-day-arc shape if the draft had one (beats at distinct "
+        'hours of day 0, the ones still ahead of the clock "planned": true). Original '
+        "world "
         "only — never real franchises, people, or trademarks (figures included)."
     )
     raw = llm.generate(
@@ -649,11 +690,11 @@ def _advance_system(
         '{"arc_stage": str, '
         '"new_figures": [{"name": str, "role": str, "bio": str, "tags": [str]}], '
         '"beat": {"title": str, "body": str, "beat_kind": str, '
-        '"day_offset": int, "hour": int, '
+        '"day_offset": int, "hour": int, "planned": bool, '
         '"quotes": [{"figure": str, "text": str, "stance": str}]}}'
         if settings.world_tick_figures_enabled
         else '{"arc_stage": str, "beat": {"title": str, "body": str, '
-        '"beat_kind": str, "day_offset": int, "hour": int}}'
+        '"beat_kind": str, "day_offset": int, "hour": int, "planned": bool}}'
     )
     return (
         "You are the world-simulation engine for Settlement Radio, a tribute "
@@ -671,6 +712,10 @@ def _advance_system(
         f"{forward or 'past'}) — NEVER backward; 'past' resolves the story. day_offset "
         "is whole in-world days from today (within "
         f"±{settings.world_tick_beat_horizon_days}); hour is 0-23.\n\n"
+        'Set "planned": true ONLY if you date this beat at an hour still AHEAD of the '
+        "in-world clock and it is a step you are scheduling for later today rather "
+        "than something that has happened — the news desk holds such a beat until its "
+        'hour arrives. A beat that has already happened is "planned": false.\n\n'
         "Return ONLY a JSON object (no prose, no code fence):\n"
         f"{schema}"
     )
@@ -759,6 +804,11 @@ def _beat_event(
 
     `suffix` makes the beat id unique within its story (`b{j}` for a creation beat,
     `a{tick}` for an advancement beat — one per tick per story, so never collides).
+
+    R4.0: a `planned` beat (a same-day arc's later step) keeps the flag only while it
+    is genuinely ahead of the clock. A beat the model marked planned but dated at or
+    behind now has already landed — there is no hour left to wait for, so it is stored
+    as an ordinary beat rather than one the news desk would suppress forever.
     """
     offset = max(
         -settings.world_tick_beat_horizon_days,
@@ -778,6 +828,7 @@ def _beat_event(
         source=store.EVENT_SOURCE_TICK,
         story_id=story_id,
         beat_kind=b.beat_kind,
+        planned=b.planned and beat_dt > ctx.iw_now,
     )
     return events_mod.progressed(beat, ctx.now)
 
@@ -1100,10 +1151,19 @@ def _advance_text(adv: ProposedAdvance) -> str:
 
 
 def _beats_text(beats: list[store.Event]) -> str:
-    """Render a story's prior beats for the advance/continuity prompts."""
+    """Render a story's prior beats for the advance/continuity prompts.
+
+    A `planned` beat (R4.0) is labelled as such, so the writer advancing the story
+    knows which of its history has actually happened and which is still the day's
+    plan — and doesn't write a beat that contradicts or pre-empts one.
+    """
     if not beats:
         return "  (none yet)"
-    return "\n".join(f"  [{b.beat_kind or 'beat'}] {b.title}: {b.body}" for b in beats)
+    return "\n".join(
+        f"  [{b.beat_kind or 'beat'}{', PLANNED for later' if b.planned else ''}] "
+        f"{b.title}: {b.body}"
+        for b in beats
+    )
 
 
 def _figures_text(figures: list[store.Figure]) -> str:
@@ -1254,6 +1314,7 @@ def _coerce_beat(item: object) -> ProposedBeat | None:
         day_offset=_as_int(item.get("day_offset"), 0),
         hour=_as_int(item.get("hour"), 12),
         quotes=quotes,
+        planned=bool(item.get("planned", False)),
     )
 
 
