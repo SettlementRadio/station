@@ -38,6 +38,46 @@ A typical *build* session will be short, e.g.:
 
 ---
 
+## 2026-07-21 — Phase R — R4.4: the living-day acceptance property — R4 COMPLETE ✅
+**Focus:** close the R4 pack with the integration gate that proves R4.0–R4.2 hold together end-to-end,
+and finish wiring the micro-tick into the ops docs.
+**Decisions:**
+- **A 9th acceptance property `living_day`.** Reads the desk's REAL coverage history (D4.0) against the
+  world's beats and asserts two things: (a) some story was **re-covered later in the day with a newer
+  beat** than a prior bulletin used — the observable signature of an R4.2 evolve over an R4.0 arc; and
+  (b) **no coverage ever recorded a PLANNED beat as its latest before that beat's in-world hour** — the
+  R4.0 `airable` gate held across the whole simulated day, not just in unit tests.
+- **The sim now authors a same-day arc so the property is non-vacuous.** The mock world-tick appends
+  one FIXED-identity arc ("The Meridian Relay Vote") each proposal — an opening now + two PLANNED beats
+  at +1h/+2h — so the tick's de-dup keeps exactly one arc that unfolds across the compressed day. Early
+  hours (01:00/02:00, not 10:00/18:00) so it evolves inside even the short 2h e2e test window. Without
+  a real planned beat in the world, "no planned airs early" would pass vacuously — now it's exercised.
+- **Detect evolve from coverage, not from a stored tag.** `news_coverage` doesn't store the evolve tag,
+  so the property reconstructs it: a story whose `last_beat_id` advances to a newer beat across two
+  bulletins evolved. This is why the arc has NO far-future beat — a far-future beat would sit as the
+  "latest" from the first bulletin and mask the intraday landings (a real subtlety I hit and designed
+  around).
+- **Micro-tick ops wiring finished.** The ADMIN_MANUAL recurring-jobs list, the PHASE_C C5 "three
+  timers" note, and the panel tag were added in R4.1; fixed the stale "two jobs" reference.
+**Verified:** 557 tests green (+4: three pure `_check_living_day` cases — passes on an evolve with the
+gate held, fails when a planned beat aired early, fails when nothing evolved — plus the e2e count bump
+to 9). **`make acceptance` PASSES all 9 properties**; the new one reported the Meridian arc "evolved
+across bulletins; 2 planned beat(s) held, none aired before its hour (107 coverage records)".
+**Changed:** `src/acceptance.py` (the `_check_living_day` property, the mock same-day arc, the coverage
+snapshot read, the 8→9 doc/wording), `tests/test_acceptance.py` (3 new pure tests + the e2e count),
+ADMIN_MANUAL (the "two jobs" fix); this DEVLOG; the R tracker (**R4 → ✅**).
+**Why:** R4.0–R4.2 each had surgical unit tests, but the living-day promise — a story that visibly
+develops on air while tomorrow's beat stays hidden until its hour — is an *integration* property: it
+only holds if the tick, the airable gate, news selection, coverage memory, and the desk framing all
+line up over a real timeline. This is the gate that proves they do, and it joins the C9-soak gate set.
+**📣 Postable:** "The radio station now passes a 'living day' test: across a simulated broadcast day, a
+story visibly develops on air — reported as an update, not a re-read — while the beats scheduled for
+later today stay off the air until their hour actually arrives." (commit this session)
+**Next:** the R4 pack is done. Remaining Phase R: R5 (panel extensions, the soak-week build slot), R6
+(music + the chart show — the operator's MEDIA_LIBRARY_V3 work feeds this), R7 (the public player).
+Ask the human which, and mind the server track (C5–C9) still gates broadcast.
+Commit: (this session)  ·  Clips: —
+
 ## 2026-07-20 — Phase R — R4.3: the verticals read their own domain ✅
 **Focus:** The Exchange, The Ward, The Circuit produced the same generic Settlement Radio talk as any
 other show — the writers' room never knew a vertical should talk *its* field. R4.3 gives each vertical

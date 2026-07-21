@@ -8,7 +8,7 @@ Two layers, matching how the harness is trusted:
   backwards schedule). A gate that can't fail is worthless, so the failing cases are the
   point.
 * the **end-to-end run** is exercised on a small isolated window against a live Postgres
-  (skipped cleanly without one): all eight properties must pass on the real spine driven
+  (skipped cleanly without one): all nine properties must pass on the real spine driven
   through the mocked provider seams. This is the same `run_acceptance` the `make`
   target/C9 gate calls, just short.
 """
@@ -47,13 +47,23 @@ def _contiguous(n, *, fmt="talk", dur=120.0, start=None):
     return out
 
 
-def _beat(title, iso_dt):
+def _beat(title, iso_dt, *, planned=False):
     return store.Event(
         id=title,
         title=title,
         body="",
         in_world_datetime=datetime.fromisoformat(iso_dt),
         status="",
+        planned=planned,
+    )
+
+
+def _cov(story_id, covered_at, last_beat_id):
+    return store.NewsCoverage(
+        story_id=story_id,
+        covered_at=covered_at,
+        arc_stage="happening",
+        last_beat_id=last_beat_id,
     )
 
 
@@ -180,6 +190,55 @@ def test_stories_evolve_fails_without_moving_present():
     assert "moving present" in r.detail
 
 
+# --- living_day (R4.4) ------------------------------------------------------
+_D0 = datetime(2626, 6, 24, 0, 0)
+_D10 = datetime(2626, 6, 24, 10, 0)
+
+
+def test_living_day_passes_on_evolve_with_planned_gate_held():
+    # A story re-covered with a NEWER beat (the 10:00 plan, reported only after it
+    # lands), and no planned beat aired before its hour.
+    world = {
+        "beats": {
+            "s1": [
+                _beat("b0", _D0.isoformat()),
+                _beat("b10", _D10.isoformat(), planned=True),
+            ]
+        },
+        "coverage": [
+            _cov("s1", _D0 + timedelta(hours=1), "b0"),  # 01:00 — the opening
+            _cov("s1", _D10 + timedelta(minutes=30), "b10"),  # 10:30 — the landed plan
+        ],
+    }
+    r = acc._check_living_day(world)
+    assert r.ok, r.detail
+
+
+def test_living_day_fails_when_a_planned_beat_aired_early():
+    # The desk reported the 10:00 planned beat at 08:00 — the R4.0 gate leaked.
+    world = {
+        "beats": {"s1": [_beat("b10", _D10.isoformat(), planned=True)]},
+        "coverage": [_cov("s1", datetime(2626, 6, 24, 8, 0), "b10")],
+    }
+    r = acc._check_living_day(world)
+    assert not r.ok
+    assert "before its hour" in r.detail
+
+
+def test_living_day_fails_when_nothing_evolved():
+    # A story covered twice but always at the SAME beat — a re-read, not an update.
+    world = {
+        "beats": {"s1": [_beat("b0", _D0.isoformat())]},
+        "coverage": [
+            _cov("s1", _D0 + timedelta(hours=1), "b0"),
+            _cov("s1", _D0 + timedelta(hours=5), "b0"),
+        ],
+    }
+    r = acc._check_living_day(world)
+    assert not r.ok
+    assert "evolved" in r.detail
+
+
 # --- cost_bounded -----------------------------------------------------------
 def test_cost_bounded_passes_within_envelope():
     r = acc._check_cost_bounded({"content_slots": 100, "llm_calls": 500})
@@ -276,7 +335,7 @@ def test_plain_register_fails_below_contraction_floor():
 
 
 def test_run_acceptance_end_to_end():
-    """A short isolated run on the real spine — all eight properties must pass.
+    """A short isolated run on the real spine — all nine properties must pass.
 
     Skips cleanly without Postgres/pgvector; otherwise it seeds nothing of its own and
     rolls the whole world back (isolated), so it never touches the operator's DB.
@@ -295,4 +354,4 @@ def test_run_acceptance_end_to_end():
     assert report.telemetry["content_slots"] > 0
     failures = [f"{r.name}: {r.detail}" for r in report.results if not r.ok]
     assert report.ok, "acceptance properties failed:\n" + "\n".join(failures)
-    assert len(report.results) == 8
+    assert len(report.results) == 9

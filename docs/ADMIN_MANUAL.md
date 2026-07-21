@@ -16,7 +16,7 @@
 
 ## Running the station
 
-Where it runs: the local Mac today; the VPS from **C5** (cron/systemd schedules the two jobs below).
+Where it runs: the local Mac today; the VPS from **C5** (cron/systemd schedules the recurring jobs below).
 All commands from the repo root; live-generation commands need a populated `.env`.
 
 | Do | Command |

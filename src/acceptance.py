@@ -3,7 +3,7 @@
 Beyond each pack's unit tests, Phase D must pass ONE end-to-end run that proves the
 whole pipeline holds together *over time* — the dress rehearsal before the C9 live
 7-day soak. This module drives the real spine — **world tick → news → freshness →
-grid → music/commercials** — across an accelerated 24–48h window and asserts the eight
+grid → music/commercials** — across an accelerated 24–48h window and asserts the nine
 integration properties that only an end-to-end run catches:
 
   1. **No dead gaps** — the schedule is continuous audio; the never-dead fallback never
@@ -24,6 +24,9 @@ integration properties that only an end-to-end run catches:
   8. **Plain register by day** — the R1.2 daytime register ban genuinely reaches the
      writers' room on daytime (steady/bright) shows, and daytime talk scripts carry
      no banned house-poetry abstraction and meet a crude contraction floor (R1.4).
+  9. **The living day** — a story is re-covered later in the day with a NEWER beat (the
+     desk carried a development, not a re-read — R4.2), and no PLANNED same-day-arc beat
+     was ever reported before its in-world hour (the R4.0 airable gate held end-to-end).
 
 **How it stays cheap + repeatable.** The one thing we do NOT exercise is the *writing
 quality* (that's the product, judged by ear) or the *voice* (Kokoro/ElevenLabs). So the
@@ -61,7 +64,7 @@ from .logging_setup import get_logger
 from .production import mix as mix_mod
 from .providers import embeddings, llm
 from .providers import tts as tts_mod
-from .world import events, programming, store, world_tick
+from .world import clock, events, programming, store, world_tick
 from .writers.conversation import BANNED_ABSTRACTIONS
 
 log = get_logger(__name__)
@@ -147,7 +150,7 @@ class PropertyResult:
 
 @dataclass
 class AcceptanceReport:
-    """The whole run: the seven verdicts + the telemetry they were judged on."""
+    """The whole run: the nine verdicts + the telemetry they were judged on."""
 
     window_hours: float
     results: list[PropertyResult] = field(default_factory=list)
@@ -388,6 +391,58 @@ class _MockGen:
                     ],
                 }
             )
+        # R4.4 — one SAME-DAY ARC (planned later beats) so the living-day property has
+        # a real intraday evolution to observe: an opening now, then two beats that LAND
+        # at 01:00 and 02:00, held until their hour by the R4.0 gate. The hours are
+        # early so the arc evolves inside even the short 2h window; the FIXED identity
+        # means the tick's de-dup keeps exactly one across the warmup + window ticks — a
+        # single arc that unfolds through the compressed day.
+        stories.append(
+            {
+                "title": "The Meridian Relay Vote",
+                "summary": (
+                    "Meridian station weighs a relay-bridge compact; the vote "
+                    "unfolds hour by hour."
+                ),
+                "scale": "large",
+                "domain": "nations",
+                "arc_stage": "happening",
+                "figures": [
+                    {
+                        "name": "Meridian Steward",
+                        "role": "presiding officer",
+                        "bio": "An invented in-world official.",
+                        "tags": ["nations"],
+                    }
+                ],
+                "beats": [
+                    {
+                        "title": "The vote opens",
+                        "body": "Meridian convenes on the relay compact.",
+                        "beat_kind": "announcement",
+                        "day_offset": 0,
+                        "hour": 0,  # lands as the window passes 00:00
+                        "planned": False,
+                    },
+                    {
+                        "title": "The first count",
+                        "body": "An hour in, the tally splits the hall.",
+                        "beat_kind": "development",
+                        "day_offset": 0,
+                        "hour": 1,  # PLANNED — held until 01:00
+                        "planned": True,
+                    },
+                    {
+                        "title": "The vote resolves",
+                        "body": "By the second hour Meridian settles the compact.",
+                        "beat_kind": "resolution",
+                        "day_offset": 0,
+                        "hour": 2,  # PLANNED — held until 02:00
+                        "planned": True,
+                    },
+                ],
+            }
+        )
         return json.dumps(stories)
 
     def _advance_json(self) -> str:
@@ -567,7 +622,7 @@ def run_acceptance(
     start: datetime | None = None,
     dump_path: str | None = None,
 ) -> AcceptanceReport:
-    """Run the accelerated window end-to-end and return the eight-property report.
+    """Run the accelerated window end-to-end and return the nine-property report.
 
     Imports the scheduler lazily so patching the provider seams is already in force
     before any generation runs. Accumulates every placed slot across the window (past
@@ -635,6 +690,7 @@ def run_acceptance(
         _check_no_repetition(timeline, final_world["openings"]),
         _check_talk_flow(timeline),
         _check_stories_evolve(final_world, advanced_total, end),
+        _check_living_day(final_world),
         _check_cost_bounded(telemetry),
         _check_schedule_sane(timeline),
         _check_journal_memory(timeline, final_world, gen),
@@ -657,12 +713,21 @@ def _snapshot_world(now: datetime) -> dict:
         beats = {s.id: store.story_beats(c, s.id) for s in stories}
         airplay = store.recent_airplay(c, now, within=timedelta(days=3))
         journal = store.journal_counts(c)  # D13: per-host accrual for the 7th property
+        # R4.4 — the desk's coverage history over the whole window, for the living-day
+        # property (which stories were reported, at what beat, when).
+        coverage = store.coverage_since(c, clock.to_inworld(now) - timedelta(days=30))
+        # Ensure every covered story's beats are in the map (a story that resolved
+        # since airing isn't in `active_stories`), so the property can resolve a
+        # coverage's `last_beat_id` to its beat.
+        for sid in {cov.story_id for cov in coverage} - beats.keys():
+            beats[sid] = store.story_beats(c, sid)
     total_beats = sum(len(b) for b in beats.values())
     log.info(
         "acceptance_world_snapshot",
         active_stories=len(stories),
         total_beats=total_beats,
         journal_rows=sum(journal.values()),
+        coverage_rows=len(coverage),
     )
     return {
         "stories": stories,
@@ -671,10 +736,11 @@ def _snapshot_world(now: datetime) -> dict:
             (r.format, r.opening, r.topic) for r in airplay if r.opening or r.topic
         ],
         "journal": journal,
+        "coverage": coverage,
     }
 
 
-# --- The eight property checks (pure — unit-testable in isolation) -----------
+# --- The nine property checks (pure — unit-testable in isolation) -----------
 def _check_no_dead_gaps(
     timeline: list[dict], start: datetime, end: datetime
 ) -> PropertyResult:
@@ -813,6 +879,71 @@ def _check_stories_evolve(
         True,
         f"{advanced_total} advancement(s); beats framed {past} past / {today} now / "
         f"{future} future around the clock",
+    )
+
+
+def _check_living_day(world: dict) -> PropertyResult:
+    """R4.4 — the living day: a story EVOLVES on air, and no PLANNED beat airs early.
+
+    Reads the desk's real coverage history (D4.0) against the world's beats:
+
+    * **evolves** — some story was re-covered later in the day with a NEWER beat than a
+      previous bulletin reported it at (the desk carried a development, not a re-read).
+      This is the observable signature of the R4.2 evolve framing over the R4.0 arc.
+    * **no early plan** — no coverage ever recorded a PLANNED beat as its latest before
+      that beat's in-world hour: the R4.0 gate (`events.airable`) held end-to-end. The
+      check is non-vacuous — the sim authors a same-day arc, so planned beats exist.
+    """
+    coverage = world.get("coverage", [])
+    beats_by_id = {b.id: b for beats in world["beats"].values() for b in beats}
+    planned = [b for b in beats_by_id.values() if b.planned]
+
+    # No planned beat may be the desk's reported latest before its hour has arrived.
+    for cov in coverage:
+        beat = beats_by_id.get(cov.last_beat_id) if cov.last_beat_id else None
+        if (
+            beat is not None
+            and beat.planned
+            and (cov.covered_at < beat.in_world_datetime)
+        ):
+            return PropertyResult(
+                "living_day",
+                False,
+                f"planned beat {beat.id} was reported at {cov.covered_at.isoformat()}, "
+                f"before its hour {beat.in_world_datetime.isoformat()}",
+            )
+
+    # Some story must have been re-covered with a newer beat than a prior bulletin used.
+    by_story: dict[str, list] = {}
+    for cov in coverage:
+        by_story.setdefault(cov.story_id, []).append(cov)
+    evolved: str | None = None
+    for sid, covs in by_story.items():
+        seen: datetime | None = None
+        for cov in sorted(covs, key=lambda c: c.covered_at):
+            beat = beats_by_id.get(cov.last_beat_id) if cov.last_beat_id else None
+            dt = beat.in_world_datetime if beat is not None else None
+            if dt is None:
+                continue
+            if seen is not None and dt > seen:
+                evolved = sid
+                break
+            seen = dt if seen is None else max(seen, dt)
+        if evolved:
+            break
+
+    if evolved is None:
+        return PropertyResult(
+            "living_day",
+            False,
+            f"no story was re-covered with a newer beat across {len(coverage)} "
+            "coverage record(s) — nothing evolved on air",
+        )
+    return PropertyResult(
+        "living_day",
+        True,
+        f"story {evolved} evolved across bulletins; {len(planned)} planned beat(s) "
+        f"held, none aired before its hour ({len(coverage)} coverage records)",
     )
 
 
