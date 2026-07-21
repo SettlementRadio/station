@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% block nav_cast %}active{% endblock %}
+{% block title %}Cast — Settlement Radio Operator Panel{% endblock %}
+
+{% block content %}
+<div class="asof">The DJs (<code>docs/canon/90-cast.md</code>). Edits round-trip the
+markdown cards → diff → write, then <b>seed-canon</b> loads them (safe scope — the
+living world survives).</div>
+
+{% if saved %}
+<div class="banner ok">
+  ✓ wrote <b>{{ saved }}</b> to the cast bible. Now seed to apply:
+  <form method="post" action="/actions/run" class="inline-seed">
+    <input type="hidden" name="action_id" value="seed-canon">
+    <button type="submit">Run make seed-canon</button>
+  </form>
+  (watch it on <a href="/actions">Actions</a>).
+</div>
+{% endif %}
+
+<section class="card span-full">
+  <div class="listhead">
+    <h2>Cast <span class="sub">({{ cards|length }})</span></h2>
+    <a class="btn-primary" href="/cast/new">+ Add DJ</a>
+  </div>
+  <table class="rows catalog-rows">
+    <tr><th>id</th><th>name</th><th>voice</th><th>based</th><th>tags</th><th>seeded</th><th></th></tr>
+    {% for c in cards %}
+    <tr>
+      <td class="mono">{{ c.id }}</td>
+      <td class="prog">{{ c.name }}</td>
+      <td class="mono sub">{{ c.voice }}</td>
+      <td>{{ c.based }}{% if c.based == 'field' %} <span class="chip">relay</span>{% endif %}</td>
+      <td class="sub">{{ c.tags }}</td>
+      <td>{% if c.in_db is none %}<span class="sub">—</span>{% elif c.in_db %}<span class="ok">● in DB</span>{% else %}<span class="warn">○ not seeded</span>{% endif %}</td>
+      <td class="rowacts"><a class="edit-link" href="/cast/edit/{{ c.id }}">edit</a></td>
+    </tr>
+    {% endfor %}
+  </table>
+  <div class="seedbar">
+    <form method="post" action="/actions/run" class="inline-seed">
+      <input type="hidden" name="action_id" value="seed-canon">
+      <button type="submit">Seed now (make seed-canon)</button>
+    </form>
+    <span class="sub">loads the cast + canon into the DB · runs on the Actions page</span>
+  </div>
+</section>
+{% endblock %}

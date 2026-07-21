@@ -607,3 +607,117 @@ def test_catalog_voices_map_write_flow(catalog_tmp):
     r = client.post("/catalog/voices/write", data={"candidate": cand, "key": key})
     assert r.status_code == 303 and (catalog_tmp / "voices.yaml.bak").exists()
     assert ce.row_form(cat, key)["kokoro"] == "bm_test"
+
+
+# --- E1.4: the cast manager ---------------------------------------------------
+
+
+@pytest.fixture
+def cast_tmp(tmp_path, monkeypatch):
+    """A throwaway COPY of the canon folder + voices.yaml as the live sources."""
+    import shutil
+
+    canon = tmp_path / "canon"
+    shutil.copytree(settings.canon_dir, canon)
+    monkeypatch.setattr(settings, "canon_dir", canon)
+    vdst = tmp_path / "voices.yaml"
+    vdst.write_text(settings.tts_voices_path.read_text("utf-8"), "utf-8")
+    monkeypatch.setattr(settings, "tts_voices_path", vdst)
+    return tmp_path
+
+
+def test_cast_noop_fidelity(cast_tmp):
+    """Re-applying a card's own values reproduces 90-cast.md byte-identically."""
+    from src.panel import cast_edit as ce
+
+    original = ce.current_text()
+    bad = [
+        c["id"]
+        for c in ce.list_cards()
+        if ce.apply_card_edit(c["id"], ce.card_form(c["id"])) != original
+    ]
+    assert bad == [], bad
+
+
+def test_cast_edit_minimal_diff_and_validate(cast_tmp):
+    """A tags edit is a one-line diff; a bad logical voice is rejected."""
+    from src.panel import cast_edit as ce
+
+    form = ce.card_form("vell")
+    form["tags"] = "night, warmth, calm"
+    candidate = ce.apply_card_edit("vell", form)
+    assert ce.validate(candidate).ok
+    changed = [
+        ln
+        for ln in ce.unified_diff(ce.current_text(), candidate).splitlines()
+        if ln[:1] in "+-" and not ln.startswith(("+++", "---"))
+    ]
+    assert len(changed) == 2 and changed[1].startswith(
+        "+- **Tags:** night, warmth, calm"
+    )
+
+    form = ce.card_form("vell")
+    form["logical_voice"] = "ghost_voice"
+    v = ce.validate(ce.apply_card_edit("vell", form))
+    assert not v.ok and any("has no entry" in e for e in v.errors)
+
+
+def test_cast_add_dj_with_new_voice_two_file_write(cast_tmp):
+    """Adding a DJ with a new voice writes both 90-cast.md and voices.yaml."""
+    from src.panel import cast_edit as ce
+    from src.panel import catalog_edit as cate
+
+    client = TestClient(panelapp.app, follow_redirects=False)
+    add = {
+        "_adding": "1",
+        "name": "Nova Test",
+        "logical_voice": "nova_test",
+        "based": "station",
+        "tags": "test, night",
+        "role": "the test shift",
+        "background": "a test",
+        "personality": "calm",
+        "humour": "dry",
+        "voice_tts": "flat",
+        "verbal_tics": "says test",
+        "never": "breaks character",
+        "sample_lines": "Hello.\nBye.",
+        "voice_kokoro": "bm_george",
+        "voice_elevenlabs": "xyz",
+        "voice_say": "Alex",
+    }
+    r = client.post("/cast/save", data=add)
+    assert r.status_code == 200 and "config/voices.yaml (new voice entry)" in r.text
+
+    import html
+    import re
+
+    ccand = html.unescape(
+        re.search(
+            r'<textarea name="candidate" hidden>(.*?)</textarea>', r.text, re.S
+        ).group(1)
+    )
+    vcand = html.unescape(
+        re.search(
+            r'<textarea name="voices_candidate" hidden>(.*?)</textarea>', r.text, re.S
+        ).group(1)
+    )
+    r = client.post(
+        "/cast/write",
+        data={"candidate": ccand, "cid": "nova-test", "voices_candidate": vcand},
+    )
+    assert r.status_code == 303
+    assert ce.card_form("nova-test") is not None
+    assert "nova_test" in cate.current_text(cate.catalog("voices"))
+
+
+def test_cast_retire_warns_on_grid_usage(cast_tmp):
+    """Retiring a scheduled host warns; removing it keeps the file valid."""
+    from src.panel import cast_edit as ce
+
+    client = TestClient(panelapp.app, follow_redirects=False)
+    assert ce.grid_uses("vell")  # vell is scheduled somewhere
+    r = client.post("/cast/delete", data={"_cid": "vell"})
+    assert r.status_code == 200 and "grid still schedules" in r.text
+    candidate = ce.remove_card("vell")
+    assert "### Vell" not in candidate and ce.validate(candidate).ok

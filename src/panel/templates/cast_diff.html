@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block nav_cast %}active{% endblock %}
+{% block title %}Confirm cast — Operator Panel{% endblock %}
+
+{% macro difblock(diff) %}
+<pre class="diff">{% for line in diff.splitlines() %}<span class="{{ 'add' if line.startswith('+') and not line.startswith('+++') else ('del' if line.startswith('-') and not line.startswith('---') else ('hunk' if line.startswith('@@') else '')) }}">{{ line }}</span>
+{% endfor %}</pre>
+{% endmacro %}
+
+{% block content %}
+<div class="asof"><a href="/cast">← cast</a></div>
+
+{% if warnings %}
+<div class="banner warn">⚠ {% for w in warnings %}{{ w }}{% if not loop.last %}; {% endif %}{% endfor %}</div>
+{% endif %}
+
+<section class="card span-full">
+  <h2>{% if action == 'delete' %}Retire{% else %}Review{% endif %}
+    <span class="mono">{{ cid }}</span></h2>
+  <p class="sub">Confirming writes <code>docs/canon/90-cast.md</code>
+  {% if voices_diff %} and <code>config/voices.yaml</code>{% endif %} atomically
+  (one-deep <code>.bak</code> each). Seed-canon afterwards to apply.</p>
+
+  <h3 class="difftitle">90-cast.md</h3>
+  {{ difblock(diff) }}
+
+  {% if voices_diff %}
+  <h3 class="difftitle">config/voices.yaml (new voice entry)</h3>
+  {{ difblock(voices_diff) }}
+  {% endif %}
+
+  <form method="post" action="/cast/write">
+    <textarea name="candidate" hidden>{{ candidate }}</textarea>
+    <textarea name="voices_candidate" hidden>{{ voices_candidate }}</textarea>
+    <input type="hidden" name="cid" value="{{ cid }}">
+    <div class="formactions">
+      <button type="submit" class="btn-primary">Confirm &amp; write</button>
+      <a href="/cast{% if action != 'delete' %}/edit/{{ cid }}{% endif %}" class="btn-plain">Back</a>
+    </div>
+  </form>
+</section>
+{% endblock %}

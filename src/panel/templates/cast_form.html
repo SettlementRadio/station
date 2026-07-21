@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+{% block nav_cast %}active{% endblock %}
+{% block title %}{{ 'Add' if adding else 'Edit' }} DJ — Operator Panel{% endblock %}
+
+{% block content %}
+<div class="asof"><a href="/cast">← cast</a></div>
+
+{% if no_change %}<div class="banner warn">No changes to save.</div>{% endif %}
+{% if errors %}
+<div class="banner warn">
+  <b>Rejected — not written.</b> The canon parser / voice registry found:
+  <ul>{% for e in errors %}<li>{{ e }}</li>{% endfor %}</ul>
+</div>
+{% endif %}
+
+<section class="card span-full">
+  <h2>{{ 'Add a DJ' if adding else 'Edit' }} {% if not adding %}<span class="mono">{{ cid }}</span>{% endif %}</h2>
+
+  <form method="post" action="/cast/save" class="gform">
+    <input type="hidden" name="_adding" value="{{ '1' if adding else '0' }}">
+    {% if not adding %}<input type="hidden" name="_cid" value="{{ cid }}">{% endif %}
+
+    {% if adding %}
+    <label>Name <span class="req">*</span> <span class="hint">the DJ's name (becomes the id + card heading)</span>
+      <input type="text" name="name" value="{{ form.get('name','') }}">
+    </label>
+    {% else %}
+    <input type="hidden" name="name" value="{{ form.get('name','') }}">
+    <div class="sub">Name <b>{{ form.get('name','') }}</b> (the id is fixed once created)</div>
+    {% endif %}
+
+    <label>Logical voice <span class="req">*</span>
+      <span class="hint">a voice from config/voices.yaml — or a new name (fill the mappings below)</span>
+      <input type="text" name="logical_voice" list="voice-list" value="{{ form.get('logical_voice','') }}">
+      <datalist id="voice-list">{% for v in voices %}<option value="{{ v }}">{% endfor %}</datalist>
+    </label>
+
+    <details class="newvoice">
+      <summary>New voice mapping (only if the voice above isn't in the registry)</summary>
+      <div class="grow2">
+        <label>kokoro <span class="hint">preset id (e.g. bm_george)</span>
+          <input type="text" name="voice_kokoro"></label>
+        <label>elevenlabs <span class="hint">vendor voice id</span>
+          <input type="text" name="voice_elevenlabs"></label>
+        <label>say <span class="hint">macOS voice</span>
+          <input type="text" name="voice_say"></label>
+      </div>
+    </details>
+
+    <div class="grow2">
+      <label>Based
+        <select name="based">
+          {% for b in based_values %}
+          <option value="{{ b }}" {% if b == form.get('based','station') %}selected{% endif %}>{{ b }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <label>Tags <span class="hint">comma separated; domain words give memory affinities</span>
+        <input type="text" name="tags" value="{{ form.get('tags','') }}"></label>
+    </div>
+
+    {% for fname, label in bullets %}
+    <label>{{ label }}
+      {% if fname in ('role','voice_tts') %}
+        <input type="text" name="{{ fname }}" value="{{ form.get(fname,'') }}">
+      {% else %}
+        <textarea name="{{ fname }}" rows="2">{{ form.get(fname,'') }}</textarea>
+      {% endif %}
+    </label>
+    {% endfor %}
+
+    <label>Sample lines <span class="hint">one per line (quotes added automatically)</span>
+      <textarea name="sample_lines" rows="4">{{ form.get('sample_lines','') }}</textarea>
+    </label>
+
+    <div class="formactions">
+      <button type="submit" class="btn-primary">Review changes…</button>
+      <a href="/cast" class="btn-plain">Cancel</a>
+    </div>
+  </form>
+
+  {% if not adding %}
+  <form method="post" action="/cast/delete" class="delform">
+    <input type="hidden" name="_cid" value="{{ cid }}">
+    <button type="submit" class="btn-danger-sm">Retire this DJ…</button>
+    <span class="sub">checks the grid + shows a diff before writing</span>
+  </form>
+  {% endif %}
+</section>
+{% endblock %}

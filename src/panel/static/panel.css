@@ -277,3 +277,13 @@ pre.preview {
   font-family: inherit; font-size: 13px; cursor: pointer; }
 .btn-plain2:hover { border-color: var(--blue); color: #fff; }
 .testit audio { height: 32px; }
+
+/* --- E1.4 cast manager --- */
+details.newvoice { border: 1px solid var(--border); border-radius: 6px; padding: 8px 12px; }
+details.newvoice summary { cursor: pointer; color: var(--muted); }
+details.newvoice .grow2 { margin-top: 10px; }
+h3.difftitle { font-size: 12px; color: var(--amber); text-transform: uppercase;
+  letter-spacing: .06em; margin: 16px 0 6px; }
+form.gform select { background: var(--bg); color: var(--text);
+  border: 1px solid var(--border); border-radius: 6px; padding: 7px 10px;
+  font-family: inherit; font-size: 14px; }

@@ -28,7 +28,7 @@ from fastapi.templating import Jinja2Templates
 
 from ..config import settings
 from ..logging_setup import get_logger
-from . import actions, catalog_edit, grid_edit, views
+from . import actions, cast_edit, catalog_edit, grid_edit, views
 
 log = get_logger(__name__)
 
@@ -400,6 +400,198 @@ def create_app() -> FastAPI:
                 "form": form,
                 "adding": adding,
                 "key": key,
+                "errors": errors or [],
+                "warnings": warnings or [],
+                "no_change": no_change,
+            },
+        )
+
+    # --- E1.4: the cast manager (DJs without editing markdown) ---------------
+
+    cast_bullets = [
+        ("role", "Role"),
+        ("background", "Background"),
+        ("personality", "Personality"),
+        ("humour", "Humour"),
+        ("voice_tts", "Voice (for TTS)"),
+        ("verbal_tics", "Verbal tics"),
+        ("never", "Never"),
+    ]
+
+    def _known_voices() -> list[str]:
+        try:
+            return sorted(cast_edit.tts.known_voices())
+        except Exception:  # noqa: BLE001 — registry unreadable → an empty picker
+            return []
+
+    @app.get("/cast", response_class=HTMLResponse)
+    def cast_list(request: Request, saved: str | None = None) -> HTMLResponse:  # noqa: ANN001
+        return _TEMPLATES.TemplateResponse(
+            request, "cast.html", {"cards": cast_edit.list_cards(), "saved": saved}
+        )
+
+    @app.get("/cast/new", response_class=HTMLResponse)
+    def cast_new(request: Request) -> HTMLResponse:  # noqa: ANN001
+        return _render_cast_form(request, {}, adding=True, cid="")
+
+    @app.get("/cast/edit/{cid}", response_class=HTMLResponse)
+    def cast_edit_form(request: Request, cid: str):  # noqa: ANN001
+        form = cast_edit.card_form(cid)
+        if form is None:
+            return _redirect("/cast")
+        return _render_cast_form(request, form, adding=False, cid=cid)
+
+    @app.post("/cast/save", response_class=HTMLResponse)
+    async def cast_save(request: Request):  # noqa: ANN001
+        data = await request.form()
+        adding = data.get("_adding") == "1"
+        cid = (data.get("_cid") or "").strip()
+        values = {k: (data.get(k) or "") for k, _ in cast_bullets}
+        values.update(
+            name=data.get("name") or "",
+            logical_voice=data.get("logical_voice") or "",
+            based=data.get("based") or "station",
+            tags=data.get("tags") or "",
+            sample_lines=data.get("sample_lines") or "",
+        )
+        try:
+            candidate = (
+                cast_edit.add_card(values)
+                if adding
+                else cast_edit.apply_card_edit(cid, values)
+            )
+        except (KeyError, ValueError) as exc:
+            return _render_cast_form(
+                request, values, adding=adding, cid=cid, errors=[str(exc)]
+            )
+
+        # A new voice not yet in the registry → optionally create its voices.yaml
+        # entry in the SAME flow (E1.3's editor, embedded).
+        voices_candidate = None
+        voice = values["logical_voice"].strip()
+        if voice and voice not in _known_voices():
+            engines = {
+                e: (data.get(f"voice_{e}") or "").strip()
+                for e in ("kokoro", "elevenlabs", "say")
+            }
+            if any(engines.values()):
+                vcat = catalog_edit.catalog("voices")
+                try:
+                    voices_candidate = catalog_edit.apply_row(
+                        vcat, voice, {**engines, "_flags": {}}, adding=True
+                    )
+                except ValueError as exc:
+                    return _render_cast_form(
+                        request, values, adding=adding, cid=cid, errors=[str(exc)]
+                    )
+                vv = vcat.validate(voices_candidate)
+                if not vv.ok:
+                    return _render_cast_form(
+                        request, values, adding=adding, cid=cid, errors=vv.errors
+                    )
+
+        validation = cast_edit.validate(candidate)
+        # If we're also creating the voice entry, the registry check (which reads the
+        # LIVE file) would still flag it — suppress that one, the entry is queued.
+        if voices_candidate is not None:
+            validation.errors = [
+                e for e in validation.errors if "has no entry" not in e
+            ]
+        if not validation.ok:
+            return _render_cast_form(
+                request, values, adding=adding, cid=cid, errors=validation.errors
+            )
+        diff = cast_edit.unified_diff(cast_edit.current_text(), candidate)
+        if not diff.strip() and voices_candidate is None:
+            return _render_cast_form(
+                request, values, adding=adding, cid=cid, no_change=True
+            )
+        vdiff = ""
+        if voices_candidate is not None:
+            vcat = catalog_edit.catalog("voices")
+            vdiff = catalog_edit.unified_diff(
+                catalog_edit.current_text(vcat), voices_candidate
+            )
+        return _TEMPLATES.TemplateResponse(
+            request,
+            "cast_diff.html",
+            {
+                "cid": cid or cast_edit._slug(values["name"]),
+                "diff": diff,
+                "candidate": candidate,
+                "voices_candidate": voices_candidate or "",
+                "voices_diff": vdiff,
+                "warnings": validation.warnings,
+                "action": "save",
+            },
+        )
+
+    @app.post("/cast/delete", response_class=HTMLResponse)
+    async def cast_delete(request: Request):  # noqa: ANN001
+        data = await request.form()
+        cid = (data.get("_cid") or "").strip()
+        try:
+            candidate = cast_edit.remove_card(cid)
+        except KeyError:
+            return _redirect("/cast")
+        uses = cast_edit.grid_uses(cid)
+        warnings = (
+            [
+                f"the grid still schedules this host on: {', '.join(uses)} — "
+                "reassign those programs (Grid) before seeding"
+            ]
+            if uses
+            else []
+        )
+        diff = cast_edit.unified_diff(cast_edit.current_text(), candidate)
+        return _TEMPLATES.TemplateResponse(
+            request,
+            "cast_diff.html",
+            {
+                "cid": cid,
+                "diff": diff,
+                "candidate": candidate,
+                "voices_candidate": "",
+                "voices_diff": "",
+                "warnings": warnings,
+                "action": "delete",
+            },
+        )
+
+    @app.post("/cast/write")
+    async def cast_write(request: Request) -> RedirectResponse:  # noqa: ANN001
+        data = await request.form()
+        cid = data.get("cid") or ""
+        voices_candidate = data.get("voices_candidate") or ""
+        try:
+            if voices_candidate.strip():  # write the new voice entry first
+                catalog_edit.write(catalog_edit.catalog("voices"), voices_candidate)
+            cast_edit.write(data.get("candidate") or "")
+        except ValueError as exc:
+            log.warning("cast_write_rejected", cid=cid, error=str(exc))
+            return _redirect("/cast")
+        return _redirect(f"/cast?saved={cid}")
+
+    def _render_cast_form(
+        request,
+        form,
+        *,
+        adding,
+        cid,
+        errors=None,  # noqa: ANN001
+        warnings=None,
+        no_change=False,
+    ):
+        return _TEMPLATES.TemplateResponse(
+            request,
+            "cast_form.html",
+            {
+                "form": form,
+                "adding": adding,
+                "cid": cid,
+                "bullets": cast_bullets,
+                "voices": _known_voices(),
+                "based_values": ["station", "field"],
                 "errors": errors or [],
                 "warnings": warnings or [],
                 "no_change": no_change,
