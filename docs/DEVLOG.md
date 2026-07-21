@@ -38,6 +38,47 @@ A typical *build* session will be short, e.g.:
 
 ---
 
+## 2026-07-20 — Phase R — R4.3: the verticals read their own domain ✅
+**Focus:** The Exchange, The Ward, The Circuit produced the same generic Settlement Radio talk as any
+other show — the writers' room never knew a vertical should talk *its* field. R4.3 gives each vertical
+its domain and prefers the story-log beats in it.
+**Decisions:**
+- **Program → domains, in the grid; the boost lives in `context.assemble`.** New optional
+  `domains: [finance]` grid field (a subset of the tick's DOMAINS) on each vertical — 17 shows mapped
+  (The Exchange/The Ledger→finance, The Ward→health, The Circuit→sports, The Assembly/The Compact→
+  nations, The Workshop/The Thread→technology, …). `context.assemble(domains=…)` fetches each near-
+  event's parent-story tags and **partitions** the events into "this show's subject (prefer these)"
+  and "also happening elsewhere", surfacing the vertical's own beats first. The showrunner already
+  reads `ctx.dynamic`, so no showrunner change was needed — the steer rides the context it already
+  consumes.
+- **Prefer, never restrict.** A vertical leads with its domain but still sees the rest as background,
+  and a domain with *no* matching story yet falls back to the full mix rather than going silent (the
+  D9.4 starvation lesson — which is also why food/weather/debate shows stay general: the tick writes
+  no story there, so tagging them would starve them).
+- **Threaded through the one dispatch chokepoint.** `make_format_segment` derives the on-air program
+  from the grid at `now` and passes its domains to `assemble` — one place, so the scheduler, `make
+  buffer`, and the direct CLI all get it; the flat rotation (no program) stays the full mix.
+- **New store read `story_tags_for`** (batch story-id → tags) keeps all SQL behind the store seam.
+**Verified:** 554 tests green (6 new: the `_split_by_domain` partition incl. the no-domain/no-match
+full-mix fallbacks, the two-section `_render_dynamic`, a mocked-seam `assemble` that leads with the
+finance beat then falls back to the plain mix for a general show, and the grid `domains` parse).
+`make acceptance` all 8 properties PASS. **Live dev-DB check:** assembling the *culture* vertical over
+the real story log surfaced **7 in-domain beats** under "On THIS show's subject — prefer these"
+(leading with a literary-archive story), while the general show got **0 preferred** — the full
+undifferentiated "Current events" mix, byte-for-byte the pre-R4.3 shape.
+**Changed:** `src/world/context.py` (`domains` param, `_split_by_domain`, two-section `_render_dynamic`),
+`src/world/programming.py` (`Program.domains` + parse), `src/world/store.py` (`story_tags_for`),
+`src/formats/__init__.py` (derive + thread domains), `docs/programming/grid.yaml` (17 verticals tagged),
+`tests/test_context.py` / `tests/test_programming.py` (new); programming README, ADMIN_MANUAL; this
+DEVLOG; the R tracker.
+**Why:** the R1.0 brief told a show *what it's about* in prose; R4.3 makes the *world state* it's fed
+match — so The Exchange doesn't just sound like a markets show, it reaches for the week's actual trade
+beat. The last piece of topic 6 ("living world, not philosophy"): concrete, domain-specific stories in
+front of the right hosts.
+**Next:** R4.4 — the `living_day` acceptance property (the 9th), closing the R4 pack, plus wiring the
+micro-tick into the C5 cron docs.
+Commit: (this session)  ·  Clips: —
+
 ## 2026-07-20 — Phase R — R4.2: the news desk speaks the living day (delta + countdowns + shape) ✅
 **Focus:** R4.0/R4.1 made the *world* evolve during the day; R4.2 makes the *on-air language* match —
 evolving stories reported as updates, approaching events counted down, and the bulletin sized to its

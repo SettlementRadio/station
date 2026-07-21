@@ -45,6 +45,7 @@ programs:
     brief: "The day desk: prices, disputes, arrivals. Never a meditation."
     energy: bright
     talk_length_sec: 240
+    domains: [finance, nations]
   archive_hour:
     name: "Archive Hour"
     hosts: [the-archivist]
@@ -189,6 +190,19 @@ def test_talk_length_parses_from_the_grid(grid_file):
 def test_bad_talk_length_is_dropped_not_propagated(grid_file):
     prog = programming.program_for(_sat(8))  # archive_hour: "fast"
     assert prog.talk_length_sec == 0
+
+
+# --- R4.3: the per-program world domains --------------------------------------
+
+
+def test_domains_parse_from_the_grid(grid_file):
+    day = programming.program_for(_mon(7))  # daywatch: domains [finance, nations]
+    assert day.domains == ("finance", "nations")
+
+
+def test_domains_default_empty_when_absent(grid_file):
+    night = programming.program_for(_mon(2))  # long_night: no domains key
+    assert night.domains == ()
 
 
 # --- The generalised frame preserves the two-host C1 behaviour EXACTLY ------

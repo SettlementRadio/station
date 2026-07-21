@@ -136,6 +136,7 @@ programs:
       come first.
 
   the_ledger:
+    domains: [finance]
     name: "The Ledger"            # [desk] the markets brief — Joss, dry and exact; 2x daily (AM + the close)
     hosts: [joss]
     framing: solo
@@ -151,6 +152,7 @@ programs:
       get out.
 
   common_ground:
+    domains: [peoples]
     name: "Common Ground"         # [interview] daily life across the worlds; an ordinary resident on air
     hosts: [wren, mira]
     framing: ensemble
@@ -169,6 +171,7 @@ programs:
 
   # ══ THE VERTICALS — five rotating windows, one canonical time each ═══════════
   the_assembly:
+    domains: [nations]
     name: "The Assembly"          # [interview] POLITICS & governance — W1 09:30 (Mon/Wed/Fri/Sun)
     hosts: [thorn, joss]
     framing: ensemble
@@ -186,6 +189,7 @@ programs:
       institution.
 
   the_compact:
+    domains: [nations]
     name: "The Compact"           # [interview] LAW & crime — W1 09:30 (Tue/Thu/Sat)
     hosts: [joss, sera]
     framing: ensemble
@@ -203,6 +207,7 @@ programs:
       story, it isn't a story.
 
   the_exchange:
+    domains: [finance]
     name: "The Exchange"          # [interview] ECONOMY & trade — W2 10:00 (Mon/Tue/Thu/Fri)
     hosts: [wren, joss]
     framing: ensemble
@@ -220,6 +225,7 @@ programs:
       name the cargo, the port, and the price.
 
   the_far_towns:
+    domains: [geography, peoples]
     name: "The Far Towns"         # [dispatch] TRAVEL & the peoples — W2 10:00 (Wed/Sat/Sun)
     hosts: [sera, mira]
     framing: ensemble
@@ -236,6 +242,7 @@ programs:
       Never do postcard wonder; if the item would fit a travel brochure, cut it.
 
   the_workshop:
+    domains: [technology]
     name: "The Workshop"          # [interview] SCIENCE & the relay — W3 13:30 (Mon/Wed/Fri/Sat)
     hosts: [wren, joss]
     framing: ensemble
@@ -253,6 +260,7 @@ programs:
       technology, and never marvel at what the audience maintains.
 
   the_ward:
+    domains: [health]
     name: "The Ward"              # [interview] HEALTH & medicine — W3 13:30 (Tue/Thu/Sun); NEW (R2.1 canon: 54-health)
     hosts: [wren, mira]
     framing: ensemble
@@ -271,6 +279,7 @@ programs:
       never mystify medicine, and never turn someone's illness into a metaphor.
 
   the_long_view:
+    domains: [history]
     name: "The Long View"         # [duo] HISTORY & deep time — W4 14:00 (Mon/Wed/Fri)
     hosts: [joss, the-archivist]
     framing: ensemble
@@ -287,6 +296,7 @@ programs:
       person in the archive, and let the Archivist's dust do the atmosphere.
 
   the_reading_room:
+    domains: [literature]
     name: "The Reading Room"      # [interview] STORY & the literary arts — W4 14:00 (Tue/Thu/Sat/Sun)
     hosts: [mira, the-archivist]
     framing: ensemble
@@ -303,6 +313,7 @@ programs:
       an opinion should be, and never treat story as improving medicine.
 
   the_standing_watch:
+    domains: [war]
     name: "The Standing Watch"    # [dispatch] CONFLICT & the frontier — W5 14:30 (Mon/Wed/Fri/Sun)
     hosts: [thorn, zhe]
     framing: ensemble
@@ -320,6 +331,7 @@ programs:
       grim enough on their own.
 
   the_thread:
+    domains: [technology]
     name: "The Thread"            # [dispatch] COMMUNICATION & the relay — W5 14:30 (Tue/Thu/Sat)
     hosts: [sera, joss]
     framing: ensemble
@@ -373,6 +385,7 @@ programs:
       seminar-speak — keep score like it matters.
 
   the_gallery:
+    domains: [culture]
     name: "The Gallery"           # [interview] the arts, daily
     hosts: [mira, orin]
     framing: ensemble
@@ -389,6 +402,7 @@ programs:
       hushed-gallery reverence — enthusiasm and disagreement, not curation.
 
   the_circuit:
+    domains: [sports]
     name: "The Circuit"           # [interview] SPORT, daily, late afternoon
     hosts: [kael, sera]
     framing: ensemble
@@ -480,6 +494,7 @@ programs:
 
   # ══ THE 15:30 WEEKLY BELT ════════════════════════════════════════════════════
   the_fit:
+    domains: [style]
     name: "The Fit"               # [dispatch] STYLE & dress — Mon + Thu; NEW (R2.1 canon: 56-style)
     hosts: [mira, orin]
     framing: ensemble
@@ -516,6 +531,7 @@ programs:
       has nothing.
 
   the_bridge:
+    domains: [culture, history]
     name: "The Bridge"            # [interview] culture & history magazine — Tue (back off the bench)
     hosts: [joss, mira]
     framing: ensemble
@@ -543,6 +559,7 @@ programs:
       a track, and never play filler.
 
   the_gathering:
+    domains: [religion]
     name: "The Gathering"         # [duo] faith, custom & the open questions — Sun (back off the bench)
     hosts: [the-archivist, vell]
     framing: solo

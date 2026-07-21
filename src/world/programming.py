@@ -129,6 +129,12 @@ class Program:
     # conversation word budget proportionally. 0 (key absent) = the global
     # `segment_default_length_target_sec` — length stays a parameter (Seam #2).
     talk_length_sec: int = 0
+    # R4.3: the world-domain tags this VERTICAL show covers (a subset of the tick's
+    # DOMAINS — finance, health, sports, …). When set, the writers' room prefers the
+    # story-log beats whose story is in one of these domains (context.assemble), so The
+    # Exchange talks THIS WEEK's trade story, not trade in the abstract. Empty (key
+    # absent) = a general show that keeps the full mix (the flagships, the debate desk).
+    domains: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -200,6 +206,9 @@ def _parse_program(pid: str, data: dict) -> Program:
                 value=data.get("guest_chance"),
             )
     brief = str(data.get("brief") or "").strip()
+    domains = tuple(
+        d for d in (str(x).strip().lower() for x in (data.get("domains") or [])) if d
+    )
     energy = str(data.get("energy") or "").strip().lower()
     if energy and energy not in _ENERGIES:
         log.warning("programming_bad_energy", program=pid, value=data.get("energy"))
@@ -226,6 +235,7 @@ def _parse_program(pid: str, data: dict) -> Program:
         brief=brief,
         energy=energy,
         talk_length_sec=talk_length_sec,
+        domains=domains,
     )
 
 

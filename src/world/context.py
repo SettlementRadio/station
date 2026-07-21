@@ -115,6 +115,7 @@ def assemble(
     *,
     topic: str | None = None,
     speakers: str | Sequence[str] | None = None,
+    domains: Sequence[str] | None = None,
 ) -> AssembledContext:
     """Assemble the world context for `now`.
 
@@ -127,12 +128,23 @@ def assemble(
             each one's card joins the cached stable core, so the writer — single
             DJ (B3) or a two-DJ conversation (B4) — speaks in character. An unknown
             id raises rather than silently dropping a persona.
+        domains: the on-air program's world-domains (R4.3). When set, the near-events
+            whose STORY is in one of these domains are surfaced as this show's own
+            beats (preferred), the rest as background — so a vertical (The Exchange,
+            The Ward) talks THIS week's story in its field, not the topic in the
+            abstract. None / empty keeps the full undifferentiated mix (a general show).
 
     Returns:
         An `AssembledContext` — cached stable core + dynamic now + the rows used.
     """
     ids = [speakers] if isinstance(speakers, str) else list(speakers or [])
-    log.info("context_assemble_start", now=now.isoformat(), topic=topic, speakers=ids)
+    log.info(
+        "context_assemble_start",
+        now=now.isoformat(),
+        topic=topic,
+        speakers=ids,
+        domains=list(domains or []),
+    )
 
     bible = canon_source.load_bible(settings.canon_dir, settings.canon_path)
     iw_now = clock.to_inworld(now)
@@ -150,6 +162,12 @@ def assemble(
         raw_events = store.events_in_range(conn, iw_now - window, iw_now + window)
         canon = _select_canon(conn, topic)
         quotes = _select_quotes(conn, topic, iw_now, window)
+        # R4.3 — the domain of each near-event lives on its parent story's tags.
+        story_tags = (
+            store.story_tags_for(conn, [e.story_id for e in raw_events if e.story_id])
+            if domains
+            else {}
+        )
 
     # Recompute each event's status live so the writer never sees a stale snapshot.
     # R4.0: `airable` first — the window reaches forward, so it would otherwise pick up
@@ -159,13 +177,21 @@ def assemble(
         events_mod.progressed(e, now) for e in events_mod.airable(raw_events, now)
     ]
 
+    # R4.3 — split into THIS show's own beats (its domain) and the background mix. Only
+    # when both a program domain is set AND at least one near-event is in it; otherwise
+    # the show keeps the full mix (a general show, or a vertical with no story yet).
+    preferred_events, near_events = _split_by_domain(near_events, domains, story_tags)
+
     cards_text = _render_cards(cards)
-    dynamic = _render_dynamic(near_events, canon, quotes, now)
+    dynamic = _render_dynamic(
+        near_events, canon, quotes, now, preferred_events=preferred_events
+    )
 
     log.info(
         "context_assemble_done",
         speakers=[c.id for c in cards],
         events=len(near_events),
+        preferred=len(preferred_events),
         canon=len(canon),
         quotes=len(quotes),
         # CO2 — the stable core is now two cache blocks; log both spans so a silent
@@ -179,10 +205,38 @@ def assemble(
         bible=bible,
         cards_text=cards_text,
         speakers=cards,
-        events=near_events,
+        events=preferred_events + near_events,
         canon=canon,
         quotes=quotes,
     )
+
+
+def _split_by_domain(
+    events: list[Event],
+    domains: Sequence[str] | None,
+    story_tags: dict[str, list[str]],
+) -> tuple[list[Event], list[Event]]:
+    """Partition near-events into (this-show's-domain, the rest) — R4.3.
+
+    An event is in-domain when its parent story's tags intersect the program's
+    `domains`. Returns `([], events)` unchanged when no domain is set or nothing
+    matches (a general show, or a vertical whose story hasn't happened yet — it keeps
+    the full mix rather than going silent). Order within each group is preserved.
+    """
+    if not domains:
+        return [], events
+    domset = {d.lower() for d in domains}
+
+    def in_domain(e: Event) -> bool:
+        return bool(e.story_id) and bool(
+            domset.intersection(story_tags.get(e.story_id, []))
+        )
+
+    preferred = [e for e in events if in_domain(e)]
+    if not preferred:
+        return [], events
+    rest = [e for e in events if not in_domain(e)]
+    return preferred, rest
 
 
 # --- Structured retrieval ---------------------------------------------------
@@ -288,20 +342,42 @@ def _join_core(bible: str, cards_text: str) -> str:
     return _CORE_SEP.join(p for p in (bible, cards_text) if p).strip()
 
 
+def _event_line(e: Event, now: datetime) -> str:
+    """One event rendered for the dynamic block: title, relative time, status, body."""
+    return f"- {e.title} — {events_mod.relative_phrase(e, now)} ({e.status}): {e.body}"
+
+
 def _render_dynamic(
     events: list[Event],
     canon: list[CanonFact],
     quotes: list[tuple[Quote, Figure]],
     now: datetime,
+    *,
+    preferred_events: list[Event] | None = None,
 ) -> str:
-    """The per-call dynamic block: what is true right now, for the system prompt."""
+    """The per-call dynamic block: what is true right now, for the system prompt.
+
+    `preferred_events` (R4.3) are this show's own-domain beats. When present they lead
+    as a "this show's beat — prefer these" section, and `events` (the rest) follow as
+    background — so a vertical picks from its field first. When None/empty the events
+    render as one undifferentiated "Current events" list (a general show, as before).
+    """
     sections: list[str] = []
 
-    if events:
-        lines = [
-            f"- {e.title} — {events_mod.relative_phrase(e, now)} ({e.status}): {e.body}"
-            for e in events
-        ]
+    if preferred_events:
+        lines = [_event_line(e, now) for e in preferred_events]
+        sections.append(
+            "On THIS show's subject — prefer these, they're what the show covers:\n"
+            + "\n".join(lines)
+        )
+        if events:
+            other = [_event_line(e, now) for e in events]
+            sections.append(
+                "Also happening elsewhere (only if it genuinely fits the show):\n"
+                + "\n".join(other)
+            )
+    elif events:
+        lines = [_event_line(e, now) for e in events]
         header = "Current events (reference naturally, don't recite):\n"
         sections.append(header + "\n".join(lines))
 

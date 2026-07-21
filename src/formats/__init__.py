@@ -27,7 +27,7 @@ from ..flow import ShowFlow
 from ..logging_setup import get_logger
 from ..providers import tts
 from ..segment import Segment
-from ..world import context
+from ..world import context, programming
 from ..world.context import AssembledContext
 
 # Import the builders under aliases so the submodules (`formats.news`, etc.) keep
@@ -117,8 +117,20 @@ def make_format_segment(
     spec = FORMATS[name]
     now = datetime.fromisoformat(now_iso)
     speaker_ids = list(speakers) if speakers else list(spec.speaker_ids())
-    log.info("format_dispatch", name=name, topic=topic, speakers=speaker_ids)
-    ctx = context.assemble(now, topic=topic, speakers=speaker_ids)
+    # R4.3 — a vertical program prefers the story-log beats in its own domain. Derived
+    # from the grid at `now` (the same program the scheduler placed here); a general
+    # show / the flat rotation has no domains, so the context keeps the full mix.
+    domains = (
+        programming.program_for(now).domains if settings.programming_enabled else ()
+    )
+    log.info(
+        "format_dispatch",
+        name=name,
+        topic=topic,
+        speakers=speaker_ids,
+        domains=list(domains),
+    )
+    ctx = context.assemble(now, topic=topic, speakers=speaker_ids, domains=domains)
     return stamp_duration(spec.build(now, ctx, flow))
 
 

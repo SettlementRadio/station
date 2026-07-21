@@ -87,6 +87,96 @@ def test_render_dynamic_is_empty_with_no_world():
     assert context._render_dynamic([], [], [], datetime(2026, 6, 19)) == ""
 
 
+# --- R4.3: a vertical prefers its own domain's beats ------------------------
+
+
+def _ev(eid: str, story_id: str, title: str) -> Event:
+    return Event(
+        id=eid,
+        title=title,
+        body=f"body of {eid}",
+        in_world_datetime=datetime(2626, 6, 24, 9, 0),
+        status="past",
+        story_id=story_id,
+        beat_kind="development",
+    )
+
+
+def test_split_by_domain_partitions_in_domain_first():
+    fin = _ev("f1", "fin-story", "A convoy runs late")
+    hea = _ev("h1", "health-story", "A ward fills up")
+    tags = {"fin-story": ["finance", "large"], "health-story": ["health"]}
+
+    preferred, rest = context._split_by_domain([hea, fin], ["finance"], tags)
+    assert [e.id for e in preferred] == ["f1"]
+    assert [e.id for e in rest] == ["h1"]
+
+
+def test_split_by_domain_no_domain_or_no_match_keeps_full_mix():
+    fin = _ev("f1", "fin-story", "A convoy runs late")
+    tags = {"fin-story": ["finance"]}
+    # No program domain -> the whole list stays as the undifferentiated mix.
+    assert context._split_by_domain([fin], None, {}) == ([], [fin])
+    # A domain with no matching story yet -> full mix, not silence.
+    assert context._split_by_domain([fin], ["sports"], tags) == ([], [fin])
+
+
+def test_render_dynamic_leads_with_the_shows_own_subject():
+    now = datetime(2026, 6, 24, 12, 0)
+    fin = events_mod.progressed(_ev("f1", "fin-story", "A convoy runs late"), now)
+    hea = events_mod.progressed(_ev("h1", "health-story", "A ward fills up"), now)
+
+    out = context._render_dynamic([hea], [], [], now, preferred_events=[fin])
+
+    assert "On THIS show's subject" in out
+    assert "Also happening elsewhere" in out
+    # The show's own beat leads; the background beat follows it.
+    assert out.index("A convoy runs late") < out.index("A ward fills up")
+
+
+def test_assemble_prefers_the_program_domain(monkeypatch):
+    from src.world.store import CastMember
+
+    now = datetime(2026, 6, 24, 12, 0)
+    fin = _ev("f1", "fin-story", "A convoy runs late")
+    hea = _ev("h1", "health-story", "A ward fills up")
+    tags = {"fin-story": ["finance"], "health-story": ["health"]}
+
+    class _Conn:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *exc):
+            return False
+
+    monkeypatch.setattr(context.canon_source, "load_bible", lambda *a: "bible")
+    monkeypatch.setattr(context.store, "connect", lambda: _Conn())
+    monkeypatch.setattr(
+        context.store,
+        "get_cast_member",
+        lambda conn, sid: CastMember(sid, sid.title(), "host", "voice-a"),
+    )
+    monkeypatch.setattr(context.store, "events_in_range", lambda conn, a, b: [hea, fin])
+    monkeypatch.setattr(context.store, "all_canon", lambda conn: [])
+    monkeypatch.setattr(
+        context.store, "attributed_quotes_near", lambda conn, a, b, limit=0: []
+    )
+    monkeypatch.setattr(context.store, "story_tags_for", lambda conn, ids: tags)
+
+    # The finance vertical leads with its own story; the health beat is background.
+    fin_ctx = context.assemble(now, speakers="vell", domains=["finance"])
+    assert fin_ctx.events[0].story_id == "fin-story"
+    assert "On THIS show's subject" in fin_ctx.dynamic
+    assert fin_ctx.dynamic.index("A convoy runs late") < fin_ctx.dynamic.index(
+        "A ward fills up"
+    )
+
+    # A general show (no domains) keeps the undifferentiated mix — no prefer header.
+    gen_ctx = context.assemble(now, speakers="vell")
+    assert "On THIS show's subject" not in gen_ctx.dynamic
+    assert "Current events" in gen_ctx.dynamic
+
+
 # --- _select_canon: the D2.4 hybrid (semantic + tag), DB/model mocked -------
 
 

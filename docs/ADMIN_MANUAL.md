@@ -305,6 +305,10 @@ programs:
       The arts as event: an opening, a premiere, a feud between schools.   # an explicit "never" line;
       Never hushed-gallery reverence.                                      # reaches the writers' room
                                                                            # as the ON THIS SHOW block
+    domains: [culture]               # R4.3: the world-domain(s) this VERTICAL covers — the writers'
+                                     # room prefers story-log beats in these domains (finance/health/
+                                     # sports/nations/…). Absent = a general show, full mix. Only use
+                                     # domains the tick actually writes, or the show starves.
 grid:
   daily:                             # daily | weekdays | weekends | mon-fri | sat | mon,wed
     "07:00-20:00": the_gallery       # weekday range -> HH:MM-HH:MM (may wrap midnight) -> program id

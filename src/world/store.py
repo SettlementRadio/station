@@ -1496,6 +1496,24 @@ def get_story(conn: psycopg.Connection, story_id: str) -> Story | None:
     return None if row is None else _story_from_row(row)
 
 
+def story_tags_for(
+    conn: psycopg.Connection, story_ids: Iterable[str]
+) -> dict[str, list[str]]:
+    """Map each given story id to its tags (its domain + scale) — R4.3.
+
+    The read behind per-program domain preference (context.assemble): a beat's domain
+    lives on its parent story's tags, so the desk/showrunner can prefer the beats whose
+    story is in the on-air program's domain. Unknown ids are simply absent from the map.
+    """
+    ids = list(dict.fromkeys(story_ids))  # de-dupe, keep order
+    if not ids:
+        return {}
+    rows = conn.execute(
+        "SELECT id, tags FROM stories WHERE id = ANY(%s)", (ids,)
+    ).fetchall()
+    return {r[0]: list(r[1]) for r in rows}
+
+
 def active_stories(
     conn: psycopg.Connection, *, limit: int | None = None
 ) -> list[Story]:
