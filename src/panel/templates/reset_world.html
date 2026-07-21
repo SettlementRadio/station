@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% block nav_actions %}active{% endblock %}
+{% block title %}Reset the world — Settlement Radio Operator Panel{% endblock %}
+
+{% block content %}
+<div class="asof"><a href="/actions">← back to actions</a></div>
+
+{% if msg %}<div class="banner warn">⚠ {{ msg }}</div>{% endif %}
+{% if mutation %}
+<div class="banner running">
+  ● Another action is running ({{ mutation.label }}) — reset is blocked until it finishes.
+</div>
+{% endif %}
+
+<section class="card reset-card">
+  <h2 class="danger-title">⚠ Reset the world — DESTRUCTIVE</h2>
+  <p>This runs <code>make reset-world</code>. It cannot be undone.</p>
+
+  <p><b>It ERASES the entire living world and rebuilds it from the canon bible:</b></p>
+  <ul class="destroys">
+    <li>all generated stories, beats, figures &amp; quotes (the whole story log)</li>
+    <li>the hosts' journal, world-memory, embeddings, and freshness / airplay history</li>
+    <li>the world-tick heartbeat + counter</li>
+    <li>then re-seeds canon + cast + SEED events from <code>docs/canon/</code></li>
+  </ul>
+
+  <p class="sub"><b>It does NOT touch</b> station config or catalog — tracks,
+  sponsors, pronunciation, and voices keep their own seed paths (§2a matrix).
+  It also cannot run while another mutating action is in progress.</p>
+
+  <form method="post" action="/actions/reset-world" class="reset-form">
+    <label for="phrase">Type <code class="phrase">{{ phrase }}</code> to confirm:</label>
+    <input type="text" id="phrase" name="phrase" autocomplete="off"
+           spellcheck="false" placeholder="{{ phrase }}">
+    <button type="submit" id="reset-btn" class="btn-danger"
+            {% if mutation %}disabled data-mutation="1"{% endif %}>
+      Reset the world
+    </button>
+  </form>
+  <p class="sub">Wrong or empty phrase = inert (the server rejects it either way).</p>
+</section>
+
+<script>
+  // Nicety: keep the destructive button disabled until the phrase matches exactly.
+  // The server enforces the same check, so this only sharpens the UX (no-JS still
+  // works — the server rejects a wrong phrase). Never enable while a mutation runs.
+  (function () {
+    var want = {{ phrase | tojson }};
+    var input = document.getElementById("phrase");
+    var btn = document.getElementById("reset-btn");
+    if (btn.dataset.mutation) return;  // blocked by a running action — leave disabled
+    function sync() { btn.disabled = input.value !== want; }
+    input.addEventListener("input", sync);
+    sync();
+  })();
+</script>
+{% endblock %}

@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+{% block nav_actions %}active{% endblock %}
+{% block title %}Actions — Settlement Radio Operator Panel{% endblock %}
+{% if running %}{% block refresh %}<meta http-equiv="refresh" content="{{ refresh_sec }}">{% endblock %}{% endif %}
+
+{% set group_titles = {
+  'seed': 'Seed / refresh', 'world': 'World', 'air': 'Air / playout', 'ops': 'Ops'
+} %}
+
+{% block content %}
+<div class="asof">
+  Operator actions — each runs the exact <code>make</code> command as an isolated
+  subprocess. Mutating actions take a single lock (one at a time). The C5 cron
+  top-up runs independently and is <b>not</b> blocked by this page.
+  {% if running %}· refreshing every {{ refresh_sec }}s while a run is active{% endif %}
+</div>
+
+{% if msg %}<div class="banner warn">⚠ {{ msg }}</div>{% endif %}
+{% if started %}<div class="banner ok">▶ started run {{ started }} — output below.</div>{% endif %}
+
+{% if mutation %}
+<div class="banner running">
+  ● Running: <b>{{ mutation.label }}</b> ({{ '%.0f'|format(mutation.duration_sec) }}s)
+  — mutating actions are blocked until it finishes.
+</div>
+{% endif %}
+
+{% for group, title in group_titles.items() %}
+  {% if groups.get(group) %}
+  <section class="card">
+    <h2>{{ title }}</h2>
+    <div class="actions">
+      {% for a in groups[group] %}
+      <form method="post" action="/actions/run" class="action">
+        <input type="hidden" name="action_id" value="{{ a.id }}">
+        <button type="submit" {% if a.mutating and mutation %}disabled{% endif %}>
+          {{ a.label }}
+        </button>
+        <span class="adesc">{{ a.desc }}</span>
+      </form>
+      {% endfor %}
+    </div>
+  </section>
+  {% endif %}
+{% endfor %}
+
+<section class="card danger-zone">
+  <h2>Danger zone</h2>
+  <p class="adesc">
+    <b>Reset the world</b> is destructive — it wipes the entire living world and
+    canon. It lives on its own confirmation page and needs a typed phrase.
+  </p>
+  <a class="btn-danger" href="/actions/reset-world">Reset the world…</a>
+</section>
+
+<section class="card span-full">
+  <h2>Recent runs</h2>
+  {% if not runs %}
+    <div class="sub">no actions run yet.</div>
+  {% else %}
+    {% for r in runs %}
+    <details class="run" {% if r.status == 'running' or loop.first %}open{% endif %}>
+      <summary>
+        <span class="badge {{ r.status }}">{{ r.status }}</span>
+        <b>{{ r.label }}</b>
+        <span class="sub">· {{ r.started_at.strftime('%H:%M:%S') }} ·
+          {{ '%.1f'|format(r.duration_sec) }}s{% if r.returncode is not none %}
+          · rc={{ r.returncode }}{% endif %} · {{ r.id }}</span>
+      </summary>
+      <pre class="run-out">{{ r.output }}</pre>
+    </details>
+    {% endfor %}
+  {% endif %}
+</section>
+{% endblock %}
