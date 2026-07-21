@@ -14,12 +14,14 @@ health checks have their own tests.
 
 from __future__ import annotations
 
+import json
 from datetime import datetime, timedelta
 
 import pytest
 from fastapi.testclient import TestClient
+from src import scheduler
 from src.config import settings
-from src.panel import actions, grid_edit, views
+from src.panel import actions, grid_edit, schedule_view, views
 from src.panel import app as panelapp
 from src.world import programming
 
@@ -842,3 +844,191 @@ def test_dials_env_writer_preserves_unrelated_lines(tmp_path, monkeypatch):
     text = dials.current_text()
     assert text.count("LOG_LEVEL=info") == 1 and "ANTHROPIC_API_KEY=secret-xyz" in text
     assert "FRESHNESS_MODE=avoid" in text
+
+
+# --- R5.0 (=E1.7): the schedule screen (queue / history / retry) -------------
+
+
+@pytest.fixture
+def sched_tmp(tmp_path, monkeypatch):
+    """Point the schedule state, playlist, and segments dir at a scratch tmp dir."""
+    seg = tmp_path / "segments"
+    seg.mkdir()
+    monkeypatch.setattr(settings, "segments_dir", seg)
+    monkeypatch.setattr(settings, "schedule_state_path", seg / "schedule.json")
+    monkeypatch.setattr(settings, "schedule_playlist_path", seg / "playlist.txt")
+    return seg
+
+
+def _sidecar(seg, sid, air_time, *, script=None, audio=False, dur=120.0):
+    """Write a segment sidecar (a `Segment` asdict) into the scratch segments dir."""
+    (seg / f"{sid}.json").write_text(
+        json.dumps(
+            {
+                "id": sid,
+                "format": "talk",
+                "air_time": air_time,
+                "actual_duration_sec": dur,
+                "length_target_sec": int(dur),
+                "script": script,
+                "audio_path": str(seg / f"{sid}.mp3") if audio else None,
+                "meta": {"program": "the_workshop", "program_name": "The Workshop"},
+            }
+        ),
+        encoding="utf-8",
+    )
+    if audio:
+        (seg / f"{sid}.mp3").write_bytes(b"x")
+
+
+def test_drop_upcoming_only_removes_future(sched_tmp):
+    """`drop_upcoming` drops a future slot; on-air/aired/unknown are immutable."""
+    now = datetime(2026, 6, 22, 14, 30)
+    state = {
+        "entries": [
+            {
+                "id": "past-1",
+                "format": "talk",
+                "air_time": (now - timedelta(minutes=5)).isoformat(),
+                "actual_duration_sec": 120,
+            },
+            {
+                "id": "up-1",
+                "format": "talk",
+                "air_time": (now + timedelta(minutes=5)).isoformat(),
+                "actual_duration_sec": 120,
+            },
+            {
+                "id": "up-2",
+                "format": "news",
+                "air_time": (now + timedelta(minutes=10)).isoformat(),
+                "actual_duration_sec": 120,
+            },
+        ]
+    }
+    scheduler._save_state(state)
+
+    assert schedule_view.drop_upcoming("nope", now) is None  # unknown id
+    assert schedule_view.drop_upcoming("past-1", now) is None  # already aired
+    removed = schedule_view.drop_upcoming("up-1", now)
+    assert removed is not None and removed["id"] == "up-1"
+    ids = [e["id"] for e in scheduler._load_state()["entries"]]
+    assert ids == ["past-1", "up-2"]  # only the one future slot is gone
+
+
+def test_aired_history_paginates_and_reads_scripts(sched_tmp):
+    """History is sidecar-sourced, newest-first, paginated, with scripts + audio."""
+    now = datetime(2026, 6, 22, 14, 30)
+    for i, off in enumerate((-30, -20, -10)):  # three aired
+        at = (now + timedelta(minutes=off)).isoformat()
+        _sidecar(sched_tmp, f"seg{i}", at, script=f"script {i}", audio=(i == 0))
+    # a not-yet-aired sidecar must be excluded from history
+    _sidecar(sched_tmp, "future", (now + timedelta(minutes=30)).isoformat())
+
+    h = schedule_view.aired_history(now, page=0, per_page=2)
+    assert h["total"] == 3 and h["pages"] == 2 and h["has_next"] and not h["has_prev"]
+    assert [r["id"] for r in h["rows"]] == ["seg2", "seg1"]  # newest first
+    assert h["rows"][0]["script"] == "script 2"
+
+    h2 = schedule_view.aired_history(now, page=1, per_page=2)
+    assert [r["id"] for r in h2["rows"]] == ["seg0"] and h2["rows"][0]["has_audio"]
+    assert h2["has_prev"] and not h2["has_next"]
+
+
+def test_audio_path_guard(sched_tmp):
+    """Only a plain, existing segment id resolves to a file — no path traversal."""
+    (sched_tmp / "ok.mp3").write_bytes(b"x")
+    assert schedule_view.audio_path_for("ok") == (sched_tmp / "ok.mp3").resolve()
+    assert schedule_view.audio_path_for("missing") is None
+    assert schedule_view.audio_path_for("../secret") is None
+    assert schedule_view.audio_path_for("a/b") is None
+
+
+def test_playout_actions_wrap_service_commands_and_share_the_lock(no_launch):
+    """Playout start/stop/restart exist, chain stop→start, and take the E1.1 lock."""
+    assert set(actions.PLAYOUT_ACTIONS) == {
+        "playout-start",
+        "playout-stop",
+        "playout-restart",
+    }
+    # an empty restart command means "stop then start" (two chained commands)
+    assert actions.PLAYOUT_ACTIONS["playout-restart"].commands == [
+        ["make", "stop"],
+        ["make", "serve"],
+    ]
+
+    client = TestClient(panelapp.app, follow_redirects=False)
+    r = client.post("/schedule/playout", data={"action_id": "nope"})
+    assert r.status_code == 303 and "unknown" in r.headers["location"]
+
+    r = client.post("/schedule/playout", data={"action_id": "playout-start"})
+    assert r.status_code == 303 and "started" in r.headers["location"]
+    assert actions.current_mutation() is not None  # start holds the mutation lock
+
+    r = client.post("/schedule/playout", data={"action_id": "playout-stop"})
+    assert "busy" in r.headers["location"]  # blocked while start still holds it
+
+
+def test_skip_and_regenerate_routes(sched_tmp, no_launch):
+    """Skip drops a slot; regenerate drops it then launches the top-up path."""
+    now = datetime.now()
+    scheduler._save_state(
+        {
+            "entries": [
+                {
+                    "id": "up-x",
+                    "format": "talk",
+                    "air_time": (now + timedelta(minutes=5)).isoformat(),
+                    "actual_duration_sec": 120,
+                },
+                {
+                    "id": "up-y",
+                    "format": "news",
+                    "air_time": (now + timedelta(minutes=10)).isoformat(),
+                    "actual_duration_sec": 120,
+                },
+            ]
+        }
+    )
+    client = TestClient(panelapp.app, follow_redirects=False)
+
+    r = client.post("/schedule/segment/up-x/skip")
+    assert r.status_code == 303 and "skipped" in r.headers["location"]
+    assert [e["id"] for e in scheduler._load_state()["entries"]] == ["up-y"]
+
+    r = client.post("/schedule/segment/up-y/regenerate")
+    assert r.status_code == 303 and "started" in r.headers["location"]
+    assert scheduler._load_state()["entries"] == []  # dropped
+    assert actions.current_mutation() is not None  # top-up holds the lock
+
+
+def test_schedule_page_renders(sched_tmp, no_launch):
+    """The schedule screen renders (200) from a scratch state + one aired sidecar."""
+    now = datetime.now()
+    scheduler._save_state(
+        {
+            "entries": [
+                {
+                    "id": "up-z",
+                    "format": "talk",
+                    "program": "the_workshop",
+                    "program_name": "The Workshop",
+                    "air_time": (now + timedelta(minutes=4)).isoformat(),
+                    "actual_duration_sec": 200,
+                }
+            ]
+        }
+    )
+    _sidecar(
+        sched_tmp,
+        "aired-1",
+        (now - timedelta(minutes=20)).isoformat(),
+        script="hello world",
+        audio=True,
+    )
+
+    client = TestClient(panelapp.app)
+    resp = client.get("/schedule")
+    assert resp.status_code == 200
+    assert "Upcoming queue" in resp.text and "Aired history" in resp.text
+    assert "regenerate" in resp.text and "Restart playout" in resp.text

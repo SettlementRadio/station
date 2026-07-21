@@ -38,6 +38,33 @@ A typical *build* session will be short, e.g.:
 
 ---
 
+## 2026-07-21 — Phase R — R5.0 (=E1.7): the Schedule screen — queue / history / retry
+**Focus:** first R5 task — extend the E1 panel with a live schedule surface: on-air + upcoming
+queue with runway, paginated aired history (script + audio), per-slot regenerate/skip, and playout
+start/stop/restart.
+**Decisions:**
+- **Regenerate = drop + re-run the existing top-up path**, never edit a rendered file (E1 principle
+  #1). "Skip" drops an upcoming entry from `schedule.json` + rewrites the playlist; "regenerate"
+  additionally launches the `schedule` action so fresh audio re-renders and re-enters the queue.
+  Both act ONLY on not-yet-started slots — on-air and aired history are immutable here.
+- **Aired history is sidecar-sourced**, not a new store: the durable `segments/<id>.json` sidecars
+  the scheduler already writes are read newest-first and paginated, so history is naturally bounded
+  by the C2.5 retention GC (no second source of truth).
+- **Playout controls WRAP service commands** via new `PANEL_PLAYOUT_*_CMD` settings (local `make`
+  defaults; `systemctl …` on the VPS), run through the existing E1.1 mutation lock + Run machinery
+  (generalised `Action` to allow raw multi-command chains, e.g. stop→start for restart).
+- Audio served through a traversal-guarded `/schedule/audio/{id}` route (plain basename → an
+  existing `segments/<id>.mp3` only).
+**Changed:** `src/panel/schedule_view.py` (new), `src/panel/app.py` (+5 routes, nav),
+`src/panel/actions.py` (raw-command chains + `PLAYOUT_ACTIONS`), `src/panel/templates/schedule.html`
+(new) + `base.html` nav + `panel.css`, `src/config.py` (`panel_playout_*`,
+`panel_schedule_history_per_page`), `tests/test_panel.py` (+6 tests → 595 green), `.env.example`,
+`docs/ADMIN_MANUAL.md` (Panel → Schedule tag + hand-edit fallback).
+**Why:** the operator needs to see the air queue and fix a bad segment without hand-deleting files
+and re-running seeds; playout on/off from the same private surface closes the daily-ops loop.
+**Next:** R5.1 (=E1.8) — the budgets screen on the usage telemetry.
+Commit: (pending) · Clips: —
+
 ## 2026-07-21 — Phase E — E1.0–E1.6: the operator PANEL — E1 COMPLETE ✅
 **Focus:** build the private, loopback-only operator panel (`src/panel/`, FastAPI) — the write
 control surface that upgrades the read-only console into forms-over-files editing, and close it out

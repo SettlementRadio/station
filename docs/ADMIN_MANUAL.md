@@ -34,6 +34,26 @@ All commands from the repo root; live-generation commands need a populated `.env
 | Station state: on-air/next, buffer, story log, cost | `make console` |
 | Health checks (non-zero exit when unhealthy) | `make health` |
 
+**Playout start/stop/restart + the queue** are also on the panel — see *Watch the queue &
+regenerate a bad segment* below.
+
+### Watch the queue & regenerate a bad segment  → Phase E panel · **Panel → Schedule** (R5.0)
+The **Schedule** screen (`make panel` → `/schedule`) is the operator's live view over the same
+`segments/schedule.json` + segment sidecars the scheduler writes and Liquidsoap plays:
+- **On air now / upcoming queue** with runway (the same answer `make console` gives).
+- **Regenerate** an upcoming slot = drop it and re-run the top-up (`make schedule`) so a fresh
+  segment re-renders and re-enters the queue; **skip** = drop it so it never airs. Neither ever
+  edits a rendered file (E1 principle #1); both act only on *not-yet-started* slots.
+- **Aired history** (paginated) with each segment's script + an audio play link, bounded by the
+  `SEGMENT_RETENTION_HOURS` GC window.
+- **Playout start / stop / restart** buttons wrapping the service commands (locally `make
+  serve` / `make stop`; point `PANEL_PLAYOUT_*_CMD` at `systemctl …` on the VPS). They share the
+  E1.1 mutation lock. **Stopping takes the station off air** — the C4 never-dead fallback keeps
+  air only while playout is *running* and the buffer drains, so it cannot cover a stopped stream.
+
+*Fallback (panel down):* the queue is `make console`; regenerate is `make schedule` after deleting
+the bad `segments/<id>.*`; playout is `make serve` / `make stop`.
+
 **The recurring jobs** (cron/systemd on the box — C5; they are separate, don't fold them):
 - **Scheduler top-up** — `make schedule` (one-shot, the cron shape; `make schedule INTERVAL=300`
   loops locally). Tops the rolling buffer up to `BUFFER_DEPTH_HOURS` of measured audio, rewrites

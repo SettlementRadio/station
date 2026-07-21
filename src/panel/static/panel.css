@@ -278,6 +278,15 @@ pre.preview {
 .btn-plain2:hover { border-color: var(--blue); color: #fff; }
 .testit audio { height: 32px; }
 
+/* R5.0 — schedule screen: per-row retry actions + history pager */
+.qacts { display: flex; gap: 8px; align-items: center; white-space: nowrap; }
+.qacts form { margin: 0; }
+.qacts button.btn-plain { background: none; border: none; padding: 4px 8px;
+  cursor: pointer; font: inherit; }
+.qacts button:disabled { opacity: .45; cursor: not-allowed; }
+.pager { margin-top: 12px; display: flex; gap: 16px; }
+details.run summary a.btn-plain { margin-left: 8px; }
+
 /* --- E1.4 cast manager --- */
 details.newvoice { border: 1px solid var(--border); border-radius: 6px; padding: 8px 12px; }
 details.newvoice summary { cursor: pointer; color: var(--muted); }

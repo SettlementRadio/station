@@ -1,0 +1,151 @@
+{% extends "base.html" %}
+{% block nav_schedule %}active{% endblock %}
+{% block title %}Schedule — Settlement Radio Operator Panel{% endblock %}
+{% if running %}{% block refresh %}<meta http-equiv="refresh" content="{{ refresh_sec }}">{% endblock %}{% endif %}
+
+{% block content %}
+<div class="asof">
+  The live queue over <code>schedule.json</code> + the aired segment sidecars — the
+  same "what's on" the console and now-playing feed read. <b>Regenerate</b> drops an
+  upcoming slot and re-runs the top-up (fresh audio re-enters the queue); <b>skip</b>
+  drops it so it never airs. Neither edits a rendered file.
+  {% if running %}· refreshing every {{ refresh_sec }}s while a job runs{% endif %}
+</div>
+
+{% if msg %}<div class="banner warn">⚠ {{ msg }}</div>{% endif %}
+{% if started %}<div class="banner ok">▶ started run {{ started }} — output below.</div>{% endif %}
+{% if mutation %}
+<div class="banner running">
+  ● Running: <b>{{ mutation.label }}</b> ({{ '%.0f'|format(mutation.duration_sec) }}s)
+  — regenerate / skip / playout are blocked until it finishes.
+</div>
+{% endif %}
+
+<!-- Playout control -->
+<section class="card">
+  <h2>Playout</h2>
+  <p class="adesc">
+    Start / stop / restart the stream (Icecast + Liquidsoap). <b>Stopping takes the
+    station off air</b> — the C4 never-dead fallback (evergreen pool + disclosure
+    ident) only keeps air while playout is <i>running</i> and the buffer drains; it
+    cannot cover a stopped stream. These wrap the configured service commands.
+  </p>
+  <div class="actions">
+    {% for a in playout %}
+    <form method="post" action="/schedule/playout" class="action">
+      <input type="hidden" name="action_id" value="{{ a.id }}">
+      <button type="submit" {% if mutation %}disabled{% endif %}>{{ a.label }}</button>
+      <span class="adesc">{{ a.desc }}</span>
+    </form>
+    {% endfor %}
+  </div>
+</section>
+
+<!-- On air now -->
+<section class="card">
+  <h2>On air now</h2>
+  {% if q.current %}
+  <div class="onair-head">
+    <span class="prog">{{ q.current.program }}</span>
+    <span class="fmt">{{ q.current.format }}</span>
+    <span class="hosts">{{ q.current.hosts }}</span>
+    <span class="dur">{{ q.current.into }} in · {{ q.current.dur }} · {{ q.current.id }}</span>
+  </div>
+  {% if q.current.track %}<div class="sub">♪ {{ q.current.track }}</div>{% endif %}
+  {% else %}
+  <div class="onair idle">nothing on air (no current entry) — check playout + buffer.</div>
+  {% endif %}
+</section>
+
+<!-- Upcoming queue -->
+<section class="card">
+  <h2>Upcoming queue
+    <span class="sub">· runway {{ q.runway_hours }}h of {{ q.target_hours }}h target
+      · {{ q.count }} segment{{ '' if q.count == 1 else 's' }}</span>
+  </h2>
+  {% if not q.upcoming %}
+    <div class="sub">nothing queued — run a top-up (Actions) or check the generator.</div>
+  {% else %}
+  <table class="rows">
+    <tr><th>Airs in</th><th>At</th><th>Program</th><th>Format</th><th>Hosts</th>
+        <th>Len</th><th>Id</th><th>Retry</th></tr>
+    {% for e in q.upcoming %}
+    <tr>
+      <td>{{ e.airs_in }}</td>
+      <td class="mono">{{ e.when }}</td>
+      <td class="prog">{{ e.program }}</td>
+      <td class="fmt">{{ e.format }}</td>
+      <td>{{ e.hosts }}</td>
+      <td class="dur">{{ e.dur }}</td>
+      <td class="mono sub">{{ e.id }}</td>
+      <td class="qacts">
+        <form method="post" action="/schedule/segment/{{ e.id }}/regenerate">
+          <button type="submit" class="btn-plain" {% if mutation %}disabled{% endif %}
+            title="Drop this slot and re-run top-up">regenerate</button>
+        </form>
+        <form method="post" action="/schedule/segment/{{ e.id }}/skip">
+          <button type="submit" class="btn-danger-sm" {% if mutation %}disabled{% endif %}
+            title="Drop this slot — it will not air">skip</button>
+        </form>
+      </td>
+    </tr>
+    {% endfor %}
+  </table>
+  {% endif %}
+</section>
+
+<!-- Aired history -->
+<section class="card span-full">
+  <h2>Aired history
+    <span class="sub">· {{ history.total }} kept (bounded by segment retention)
+      · page {{ history.page + 1 }} of {{ history.pages }}</span>
+  </h2>
+  {% if not history.rows %}
+    <div class="sub">nothing aired yet (or all pruned past the retention window).</div>
+  {% else %}
+  {% for e in history.rows %}
+  <details class="run">
+    <summary>
+      <span class="mono">{{ e.date }}</span>
+      <b class="prog">{{ e.program }}</b>
+      <span class="fmt">{{ e.format }}</span>
+      <span class="sub">· {{ e.hosts }} · {{ e.dur }} · {{ e.id }}</span>
+      {% if e.has_audio %}
+      <a class="btn-plain" href="/schedule/audio/{{ e.id }}" target="_blank">▶ audio</a>
+      {% endif %}
+      {% if e.track %}<span class="sub">· ♪ {{ e.track }}</span>{% endif %}
+    </summary>
+    {% if e.script %}<pre class="run-out">{{ e.script }}</pre>
+    {% else %}<div class="sub">(no script — music / clip)</div>{% endif %}
+  </details>
+  {% endfor %}
+  <div class="pager">
+    {% if history.has_prev %}
+      <a class="btn-plain" href="/schedule?page={{ history.page - 1 }}">← newer</a>
+    {% endif %}
+    {% if history.has_next %}
+      <a class="btn-plain" href="/schedule?page={{ history.page + 1 }}">older →</a>
+    {% endif %}
+  </div>
+  {% endif %}
+</section>
+
+<!-- Recent playout / regenerate output -->
+{% if runs %}
+<section class="card span-full">
+  <h2>Recent playout &amp; top-up runs</h2>
+  {% for r in runs %}
+  <details class="run" {% if r.status == 'running' or loop.first %}open{% endif %}>
+    <summary>
+      <span class="badge {{ r.status }}">{{ r.status }}</span>
+      <b>{{ r.label }}</b>
+      <span class="sub">· {{ r.started_at.strftime('%H:%M:%S') }} ·
+        {{ '%.1f'|format(r.duration_sec) }}s{% if r.returncode is not none %}
+        · rc={{ r.returncode }}{% endif %} · {{ r.id }}</span>
+    </summary>
+    <pre class="run-out">{{ r.output }}</pre>
+  </details>
+  {% endfor %}
+</section>
+{% endif %}
+{% endblock %}

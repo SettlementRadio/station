@@ -14,6 +14,7 @@ actions page, editors, dials — arrive in E1.1+ on this same app + templates.
 from __future__ import annotations
 
 import sys
+from datetime import datetime
 from pathlib import Path
 
 from fastapi import FastAPI, Form, Request
@@ -28,7 +29,15 @@ from fastapi.templating import Jinja2Templates
 
 from ..config import settings
 from ..logging_setup import get_logger
-from . import actions, cast_edit, catalog_edit, dials, grid_edit, views
+from . import (
+    actions,
+    cast_edit,
+    catalog_edit,
+    dials,
+    grid_edit,
+    schedule_view,
+    views,
+)
 
 log = get_logger(__name__)
 
@@ -646,6 +655,82 @@ def create_app() -> FastAPI:
             log.warning("dials_write_failed", error=str(exc))
             return _redirect(f"/dials?msg=write+failed:+{exc}")
         return _redirect(f"/dials?saved={slug}")
+
+    # --- R5.0 (=E1.7): the schedule screen (queue / history / retry) ----------
+
+    schedule_run_ids = {"schedule", "playout-start", "playout-stop", "playout-restart"}
+
+    @app.get("/schedule", response_class=HTMLResponse)
+    def schedule_page(
+        request: Request,
+        page: int = 0,  # noqa: ANN001
+        msg: str | None = None,
+        started: str | None = None,
+    ) -> HTMLResponse:
+        """On-air + upcoming queue (with retry) + paginated aired history + playout."""
+        now = datetime.now()
+        state = schedule_view._load_state()
+        runs = [r for r in actions.recent_runs() if r.action_id in schedule_run_ids]
+        return _TEMPLATES.TemplateResponse(
+            request,
+            "schedule.html",
+            {
+                "q": schedule_view.queue_view(now, state),
+                "history": schedule_view.aired_history(now, page=page),
+                "playout": list(actions.PLAYOUT_ACTIONS.values()),
+                "mutation": actions.current_mutation(),
+                "runs": runs,
+                "running": any(r.status == "running" for r in runs),
+                "refresh_sec": settings.panel_refresh_sec,
+                "msg": msg,
+                "started": started,
+            },
+        )
+
+    @app.post("/schedule/segment/{seg_id}/skip")
+    def schedule_skip(seg_id: str) -> RedirectResponse:
+        """Drop an upcoming segment from the queue (it will not air)."""
+        if actions.current_mutation() is not None:
+            return _redirect("/schedule?msg=busy:+an+action+is+running")
+        removed = schedule_view.drop_upcoming(seg_id)
+        if removed is None:
+            return _redirect("/schedule?msg=nothing+to+skip+(not+upcoming)")
+        return _redirect(f"/schedule?msg=skipped+{seg_id}")
+
+    @app.post("/schedule/segment/{seg_id}/regenerate")
+    def schedule_regenerate(seg_id: str) -> RedirectResponse:
+        """Drop an upcoming segment, then re-run top-up so a fresh one re-enters."""
+        if actions.current_mutation() is not None:
+            return _redirect("/schedule?msg=busy:+an+action+is+running")
+        removed = schedule_view.drop_upcoming(seg_id)
+        if removed is None:
+            return _redirect("/schedule?msg=nothing+to+regenerate+(not+upcoming)")
+        try:
+            run = actions.start_action("schedule")  # the existing top-up path
+        except actions.Busy as busy:
+            return _redirect(f"/schedule?msg=dropped,+but+busy:+{busy.holder.label}")
+        return _redirect(f"/schedule?started={run.id}")
+
+    @app.post("/schedule/playout")
+    def schedule_playout(action_id: str = Form(...)) -> RedirectResponse:
+        """Start / stop / restart playout (wraps the configured service commands)."""
+        if action_id not in actions.PLAYOUT_ACTIONS:
+            return _redirect("/schedule?msg=unknown+playout+action")
+        try:
+            run = actions.start_action(action_id)
+        except actions.Busy as busy:
+            return _redirect(f"/schedule?msg=busy:+{busy.holder.label}+is+running")
+        return _redirect(f"/schedule?started={run.id}")
+
+    @app.get("/schedule/audio/{seg_id}")
+    def schedule_audio(seg_id: str):  # noqa: ANN201
+        """Serve an aired segment's render for the operator to listen back."""
+        path = schedule_view.audio_path_for(seg_id)
+        if path is None:
+            return PlainTextResponse("no audio", status_code=404)
+        return FileResponse(
+            path, media_type="audio/mpeg", headers={"Cache-Control": "no-store"}
+        )
 
     return app
 

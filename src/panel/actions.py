@@ -23,6 +23,7 @@ the CLI's interactive prompt). See docs/PHASE_E_PANEL_TASKS.md E1.1 + principle 
 from __future__ import annotations
 
 import os
+import shlex
 import subprocess
 import sys
 import threading
@@ -65,10 +66,21 @@ class Action:
     mutating: bool = True  # takes the mutation lock (read-only actions don't)
     destructive: bool = False  # own page + typed-phrase gate (principle #4)
     confirm_phrase: str | None = None
+    # R5.0 — a playout control (start/stop/restart) is one or more RAW service
+    # commands (e.g. `make serve`, `systemctl restart …`), not a `-m` module. When
+    # set, these run in sequence instead of `argv`; a non-zero exit stops the chain.
+    raw_commands: tuple[tuple[str, ...], ...] | None = None
 
     @property
     def argv(self) -> list[str]:
         return [_PY, "-m", *self.args]
+
+    @property
+    def commands(self) -> list[list[str]]:
+        """The command(s) to run: the raw service commands, else the one `-m` argv."""
+        if self.raw_commands is not None:
+            return [list(cmd) for cmd in self.raw_commands]
+        return [self.argv]
 
 
 # Ordered as the page groups them. Each `args` mirrors the Makefile target exactly.
@@ -159,6 +171,58 @@ _ACTION_LIST: tuple[Action, ...] = (
 )
 
 ACTIONS: dict[str, Action] = {a.id: a for a in _ACTION_LIST}
+
+
+# R5.0 — playout start/stop/restart, wrapping the configured service commands. Kept
+# in their OWN registry (not on the /actions page) — the schedule screen drives them
+# — but they share the E1.1 mutation lock and Run machinery via `start_action`.
+def _build_playout_actions() -> dict[str, Action]:
+    start = tuple(shlex.split(settings.panel_playout_start_cmd))
+    stop = tuple(shlex.split(settings.panel_playout_stop_cmd))
+    restart_raw = settings.panel_playout_restart_cmd.strip()
+    # An explicit restart command, else "stop then start" (two chained commands).
+    restart = (tuple(shlex.split(restart_raw)),) if restart_raw else (stop, start)
+
+    out: dict[str, Action] = {}
+    if start:
+        out["playout-start"] = Action(
+            "playout-start",
+            "Start playout",
+            "Start the stream (Icecast + Liquidsoap).",
+            (),
+            "air",
+            raw_commands=(start,),
+        )
+    if stop:
+        out["playout-stop"] = Action(
+            "playout-stop",
+            "Stop playout",
+            "Stop the stream — the station goes off air (the fallback stops too).",
+            (),
+            "air",
+            raw_commands=(stop,),
+        )
+    if restart[0]:  # a start/stop pair or an explicit restart command exists
+        out["playout-restart"] = Action(
+            "playout-restart",
+            "Restart playout",
+            "Restart the stream (stop, then start) so it re-reads config + playlist.",
+            (),
+            "air",
+            raw_commands=restart,
+        )
+    return out
+
+
+PLAYOUT_ACTIONS: dict[str, Action] = _build_playout_actions()
+
+
+def _lookup(action_id: str) -> Action:
+    """Find an action by id across the operator + playout registries (KeyError if none)."""  # noqa: E501
+    action = ACTIONS.get(action_id) or PLAYOUT_ACTIONS.get(action_id)
+    if action is None:
+        raise KeyError(action_id)
+    return action
 
 
 # --- Run records -------------------------------------------------------------
@@ -269,7 +333,7 @@ def start_action(action_id: str, *, phrase: str | None = None) -> Run:
     Raises KeyError (unknown action), PermissionError (destructive w/o the phrase),
     or Busy (a mutation is already running). Returns the live Run on success.
     """
-    action = ACTIONS[action_id]  # KeyError propagates for an unknown id
+    action = _lookup(action_id)  # KeyError propagates for an unknown id
     if action.destructive and (phrase or "").strip() != action.confirm_phrase:
         raise PermissionError(f"confirmation phrase required for {action_id}")
 
@@ -288,24 +352,35 @@ def start_action(action_id: str, *, phrase: str | None = None) -> Run:
 
 
 def _execute(action: Action, run: Run) -> None:
-    """Run the subprocess, streaming combined stdout/stderr into the run record."""
-    log.info("panel_action_start", action=action.id, run=run.id, argv=action.argv)
-    run.append(f"$ {' '.join(action.argv)}\n\n")
+    """Run the action's command(s) in sequence, streaming output into the run record.
+
+    Most actions are a single `-m` command; a playout control (R5.0) may chain two
+    (stop then start). A non-zero exit stops the chain and marks the run failed.
+    """
+    commands = action.commands
+    log.info("panel_action_start", action=action.id, run=run.id, commands=commands)
+    run.returncode = 0
+    run.status = "done"
     try:
-        proc = subprocess.Popen(
-            action.argv,
-            cwd=str(_REPO_ROOT),
-            stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT,
-            text=True,
-            bufsize=1,
-        )
-        assert proc.stdout is not None
-        for line in proc.stdout:  # streams as the child prints
-            run.append(line)
-        proc.wait()
-        run.returncode = proc.returncode
-        run.status = "done" if proc.returncode == 0 else "failed"
+        for cmd in commands:
+            run.append(f"$ {' '.join(cmd)}\n\n")
+            proc = subprocess.Popen(
+                cmd,
+                cwd=str(_REPO_ROOT),
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                text=True,
+                bufsize=1,
+            )
+            assert proc.stdout is not None
+            for line in proc.stdout:  # streams as the child prints
+                run.append(line)
+            proc.wait()
+            run.returncode = proc.returncode
+            if proc.returncode != 0:  # a failed step stops the chain
+                run.status = "failed"
+                run.append(f"\n[panel] command exited {proc.returncode} — stopping.\n")
+                break
     except Exception as exc:  # noqa: BLE001 — a launch failure must be visible, not fatal
         run.append(f"\n[panel] failed to launch: {exc}\n")
         run.returncode = -1

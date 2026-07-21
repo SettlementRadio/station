@@ -424,6 +424,12 @@ def concat_audio(parts: list[str], out_path: str) -> str:
     too, next to `_to_mp3`. The turns are all rendered by the same backend, so they
     share a codec and can be stream-copied (`-c copy`) via the concat demuxer — no
     re-encode, no quality loss.
+
+    Log level is `fatal`, not `error`: stream-copying gapless MP3s (each with its own
+    LAME/Xing encoder-delay header) makes the mp3 muxer emit a false-positive
+    "non monotonically increasing dts" line at every turn join. The output is valid
+    (it clamps and writes), so those are pure noise; a genuine concat failure still
+    surfaces via ffmpeg's non-zero exit + `check=True`, independent of verbosity.
     """
     import subprocess
     import tempfile
@@ -446,7 +452,7 @@ def concat_audio(parts: list[str], out_path: str) -> str:
                 "ffmpeg",
                 "-y",
                 "-loglevel",
-                "error",
+                "fatal",
                 "-f",
                 "concat",
                 "-safe",

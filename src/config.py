@@ -875,6 +875,18 @@ class Settings(BaseSettings):
     panel_allow_nonlocal: bool = False  # escape hatch for a non-loopback bind
     panel_refresh_sec: int = 10  # dashboard auto-refresh cadence (seconds)
 
+    # R5.0 (=E1.7) — the schedule screen (queue / history / retry). Playout
+    # start/stop/restart WRAP the existing service commands (E1 principle #1): the
+    # defaults are the local `make` targets; on the VPS point these at the service
+    # manager (e.g. `sudo systemctl restart liquidsoap icecast`). They run as locked
+    # background jobs (the E1.1 mutation lock), shlex-split. An empty
+    # `panel_playout_restart_cmd` means "stop then start". `panel_schedule_history_*`
+    # bound the aired-history page size.
+    panel_playout_start_cmd: str = "make serve"
+    panel_playout_stop_cmd: str = "make stop"
+    panel_playout_restart_cmd: str = ""  # empty → stop then start
+    panel_schedule_history_per_page: int = 20  # aired-history rows per page
+
     def model_id(self, tier: str) -> str:
         """Map a logical tier ("haiku"|"sonnet"|"opus") to its real model id."""
         ids = {
