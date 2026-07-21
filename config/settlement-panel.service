@@ -1,0 +1,42 @@
+# settlement-panel.service — the private operator PANEL (E1.6), VPS-only.
+#
+# The panel binds LOOPBACK ONLY (settings.panel_host = 127.0.0.1) and is reached
+# from your laptop over an SSH tunnel — NEVER a public DNS name / reverse proxy /
+# Vercel (CLAUDE.md hard rule: public read-only, admin private). This unit just
+# keeps it running on the box; the loopback bind is what makes it private, and the
+# app itself REFUSES a non-loopback bind without PANEL_ALLOW_NONLOCAL=true.
+#
+# Install (as the deploy user, adjust WorkingDirectory/User to the box):
+#   sudo cp config/settlement-panel.service /etc/systemd/system/
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable --now settlement-panel
+#   systemctl status settlement-panel
+#
+# Reach it from your laptop (loopback stays private; the tunnel is the only door):
+#   ssh -L 8787:localhost:8787 <vps>     # then open http://127.0.0.1:8787/
+#
+# Verify it is NOT internet-reachable (do this on the C9 soak checklist):
+#   from a SECOND machine (no tunnel):  curl -m 5 http://<vps-public-ip>:8787/
+#   → must fail (connection refused / timeout). Only the SSH tunnel reaches it.
+
+[Unit]
+Description=Settlement Radio — private operator panel (loopback-only)
+After=network.target
+
+[Service]
+Type=simple
+# Adjust these two to the box (mirror the scheduler/tick units from C5):
+User=radio
+WorkingDirectory=/opt/settlement-radio
+# Loopback bind is the security boundary. Do NOT set PANEL_ALLOW_NONLOCAL here.
+Environment=PANEL_HOST=127.0.0.1
+Environment=PANEL_PORT=8787
+ExecStart=/opt/settlement-radio/.venv/bin/python -m src.panel
+Restart=on-failure
+RestartSec=5
+# Hardening: the panel needs no elevated access beyond the repo + its venv.
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

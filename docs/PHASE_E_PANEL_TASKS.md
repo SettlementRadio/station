@@ -1,5 +1,11 @@
 # PHASE_E_PANEL_TASKS.md — E1: The Operator Panel (the write control surface)
 
+> **STATUS: E1.0–E1.6 BUILT ✅ (2026-07-21).** `make panel` → `http://127.0.0.1:8787/` (loopback-only).
+> Screens: Dashboard (E1.0), Actions (E1.1), Grid (E1.2), Catalogs — Tracks/Sponsors/Pronunciation/
+> Voices (E1.3), Cast (E1.4), Dials (E1.5); deploy + tests + docs capstone (E1.6:
+> `config/settlement-panel.service`, `tests/test_panel.py`, ADMIN_MANUAL tags → screens). 589 tests
+> green, ruff clean. **Next: R5.0–R5.4 (=E1.7–E1.11)** in `docs/PHASE_R_TASKS.md` extend this panel.
+>
 > Sub-pack **E1** of Phase E — the first Phase E pack, deliberately pulled forward: **build it during
 > the C9 soak week** (7 days of hands-off waiting = free build capacity), so the panel is ready the
 > day the station goes public and the human switches from *building* the station to *running* it.

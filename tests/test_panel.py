@@ -802,3 +802,43 @@ def test_dials_bad_type_route_rejected(dials_tmp):
     client = TestClient(panelapp.app, follow_redirects=False)
     r = client.post("/dials/music/save", data={"music_select_jitter": "abc"})
     assert r.status_code == 303 and "rejected" in r.headers["location"]
+
+
+def test_dials_env_writer_preserves_unrelated_lines(tmp_path, monkeypatch):
+    """A dial write is a surgical line edit — comments + other keys are untouched."""
+    from src.panel import dials
+
+    env = tmp_path / ".env"
+    env.write_text(
+        "# a header comment\n"
+        "ANTHROPIC_API_KEY=secret-xyz\n"
+        "# WORLD_TICK_NEW_STORIES_MIN is unset here\n"
+        "LOG_LEVEL=info\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(dials, "_ENV_PATH", env)
+
+    # append a brand-new override
+    g = dials.group_by_slug("world_tick")
+    dials.write(
+        dials.apply_changes(
+            dials.stage_group_edit(g, {"world_tick_new_stories_min": "3"}).changes
+        )
+    )
+    text = dials.current_text()
+    assert "# a header comment" in text  # comment preserved
+    assert "ANTHROPIC_API_KEY=secret-xyz" in text  # unrelated secret untouched
+    assert "LOG_LEVEL=info" in text  # unrelated dial untouched
+    assert "WORLD_TICK_NEW_STORIES_MIN=3" in text  # the override appended
+
+    # update an EXISTING active line in place (no duplicate)
+    dials.write(
+        dials.apply_changes(
+            dials.stage_group_edit(
+                dials.group_by_slug("freshness"), {"freshness_mode": "avoid"}
+            ).changes
+        )
+    )
+    text = dials.current_text()
+    assert text.count("LOG_LEVEL=info") == 1 and "ANTHROPIC_API_KEY=secret-xyz" in text
+    assert "FRESHNESS_MODE=avoid" in text

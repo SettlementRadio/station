@@ -11,6 +11,12 @@
 > an env dial* workflow carries this tag. These are deliberate interim mechanics; the Phase E operator
 > control surface (ROADMAP "management / control surface") is built from exactly the tagged list —
 > a missing tag is a missing panel feature.
+>
+> **Status (E1 BUILT — `make panel`, loopback-only):** each tag below now names its **Panel** screen
+> (`**Panel → Grid**`, `**Panel → Dials → …**`, etc.). The hand-edit how-to under every tag STILL
+> stands — it is the fallback when the panel is down (E1 principle #1: the files remain the source of
+> truth). A few tags are `**deferred in E1**` (bible *prose* editing stays a text-editor job); the
+> world-screen digest is R5.2. See `docs/PHASE_E_PANEL_TASKS.md` for the screen ↔ workflow map.
 
 ---
 
@@ -44,8 +50,8 @@ All commands from the repo root; live-generation commands need a populated `.env
   the broadcast day (e.g. every 3h). Dials: `micro_tick_enabled` (kill switch),
   `micro_tick_advance_probability` (how often a run acts), `micro_tick_live_window_hours` (how recent
   a story's last beat must be to count as "live today"), `micro_tick_tier` / `micro_tick_max_tokens`
-  / `micro_tick_continuity_max_tokens`. *→ Phase E panel: a "run micro-tick now" button beside the
-  world screen (R5.2), and these dials on the dials screen (E1.5).*
+  / `micro_tick_continuity_max_tokens`. *→ these dials are on **Panel → Dials → Micro-tick** (E1.5);
+  a "run micro-tick now" button lands with the world screen (R5.2).*
 
 **Playout assets** (each also runs automatically; the target is the standalone prepare/verify):
 - `make fallback` — pre-render the never-dead fallback pool + evergreen playlist (auto at the top of
@@ -99,7 +105,7 @@ The summary prints proposed / accepted / dropped / duplicates and advanced / res
 If pgvector/embeddings are unavailable, retrieval returns `[]` and the writers degrade to structured
 (date/tag) recall — no crash; look for `embeddings_retrieve_unavailable` in the logs.
 
-**Embeddings dials** (`.env`; defaults sane)  → Phase E panel:
+**Embeddings dials** (`.env`; defaults sane)  → **Panel → Dials → Embeddings**:
 `EMBEDDINGS_PROVIDER` (`local`|`voyage`), `EMBEDDINGS_MODEL`, `EMBEDDINGS_DIM` (must match the model —
 it's the `vector(N)` column; changing it means re-embed + migration), `CONTEXT_CANON_TOP_K` (facts per
 topic). **Switching model:** change model+dim together, then `make seed-canon` to re-embed.
@@ -127,7 +133,7 @@ hand-authored *static substrate* the world is seeded from. The authoring contrac
 conventions, fact-id scheme, tags) is [`docs/canon/README.md`](canon/README.md). The folder is the
 source of truth; the DB is the queryable projection.
 
-### Edit the world bible  → Phase E panel
+### Edit the world bible  → Phase E panel · **Panel → Cast** (cast file; bible prose stays a text-editor job in E1)
 1. Edit / add files under `docs/canon/`. Filenames are `NN-stem.md` — `NN` sets reading order
    (sorted numerically; gaps are fine), `stem` names the file's facts (`canon-<stem>-N`).
 2. Inside a file, three `## ` headings are special: `## Canon facts` (numbered list → facts),
@@ -143,20 +149,20 @@ edit pays a one-time cache write to re-warm the shared block; every generation a
 cheaply again. That is expected — nothing to clear or restart. Cost visibility: the `cache_creation`
 vs `cache_read` token split is logged on every call (`make costprobe` runs a repeatable before/after
 probe). See [`docs/CACHE_OPTIMIZATION_TASKS.md`](CACHE_OPTIMIZATION_TASKS.md); the bible-block TTL dial
-is `settings.llm_cache_bible_ttl` (`.env`)  → Phase E panel.
+is `settings.llm_cache_bible_ttl` (`.env`)  → **Panel → Dials → Cache TTL**.
 
-### Add a new cornerstone file  → Phase E panel
+### Add a new cornerstone file  → Phase E panel · **deferred in E1** — bible prose stays a text-editor job
 Drop a new `NN-stem.md` in `docs/canon/` (unique stem). Scaffold files ship with guidance above the
 first `## ` heading and an empty `## Canon facts` — they seed nothing until authored (see
 `docs/canon/README.md` §7). Author by adding `## Topic` prose + a `## Canon facts` list, then
 `make seed-canon`.
 
-### Tag canon facts (sharpens semantic recall)  → Phase E panel
+### Tag canon facts (sharpens semantic recall)  → Phase E panel · **deferred in E1** — bible prose stays a text-editor job
 In a `## Canon facts` item, add a child bullet `   - **Tags:** a, b, c` (lowercase single words — the
 query side lowercases + splits on non-alphanumerics, so `Lumen-Festival` won't match `lumen`). Re-run
 `make seed-canon`. Tags also let `store.canon_by_tags` narrow by topic.
 
-### Add / edit / remove a DJ  → Phase E panel
+### Add / edit / remove a DJ  → Phase E panel · **Panel → Cast**
 1. Author/edit the card in `docs/canon/90-cast.md` (the `Logical voice` line is required;
    keep a few tick-DOMAIN words on the `Tags:` line — they drive that DJ's on-air memory
    affinity, see the file's intro). Set `- **Based:** field` for a travelling correspondent
@@ -200,7 +206,7 @@ make format FMT=news  # one voiced bulletin from the REAL world (Claude + TTS; n
                       # a couple of world-tick runs so there are stories to report)
 ```
 
-### Tune the world tick  → Phase E panel
+### Tune the world tick  → Phase E panel · **Panel → Dials → World tick**
 - **Counts/mix:** `WORLD_TICK_NEW_STORIES_MIN/MAX`, `WORLD_TICK_LARGE_RATIO`,
   `WORLD_TICK_BEAT_HORIZON_DAYS` (how far from "now" a beat may be dated).
 - **Continuity/pacing:** `WORLD_TICK_ADVANCE_MAX` (running stories advanced per tick),
@@ -214,7 +220,7 @@ make format FMT=news  # one voiced bulletin from the REAL world (Claude + TTS; n
 
 A contradictory/unsafe proposal is regenerated once then dropped, never written (the C0 gates).
 
-### Tune the news desk  → Phase E panel
+### Tune the news desk  → Phase E panel · **Panel → Dials → News desk**
 - **Selection mix:** `NEWS_STORY_COUNT` (stories per bulletin), `NEWS_TARGET_BREAKING/_TRAILED/_ONGOING`
   (soft per-kind quotas).
 - **Timing windows:** `NEWS_BREAKING_WINDOW_HOURS` (a beat this close to now is "breaking"),
@@ -234,7 +240,7 @@ A contradictory/unsafe proposal is regenerated once then dropped, never written 
 Per-story coverage memory (`news_coverage`) drives recurrence; it survives `seed-canon`, cleared by
 `reset-world`.
 
-### Tune freshness / anti-repetition  → Phase E panel
+### Tune freshness / anti-repetition  → Phase E panel · **Panel → Dials → Freshness**
 - **`FRESHNESS_ENABLED`** — master toggle (false = the writers ignore the memory).
 - **`FRESHNESS_WINDOW_HOURS`** — the "recently on air" look-back (broadcast timeline). Keep it
   comfortably ABOVE `BUFFER_DEPTH_HOURS` so the whole upcoming buffer counts as recent. Default 6.
@@ -247,7 +253,7 @@ never audio), outlives the audio (it is NOT collected by the disk GC; its own sw
 is DISTINCT from news coverage: coverage drives *which* stories recur, freshness keeps the *wording*
 fresh. Survives `seed-canon`; cleared by `reset-world`.
 
-### Tune figures & quotes  → Phase E panel
+### Tune figures & quotes  → Phase E panel · **Panel → Dials → Figures & quotes**
 - **Generation (the tick):** `WORLD_TICK_FIGURES_ENABLED` (master toggle; false => people-less
   stories), `WORLD_TICK_FIGURES_PER_STORY_MAX` (3), `WORLD_TICK_QUOTES_PER_STORY_MAX` (4),
   `WORLD_TICK_ADVANCE_NEW_FIGURES_MAX` (reuse-vs-new: max new people an advancement adds, 1).
@@ -279,7 +285,7 @@ dedicated news desk (Thorn), not the show's host** — the bulletin cuts in on t
 back. An interview/dispatch show sets its own guest cadence (`guest_chance`); a solo-desk show
 sets none.
 
-### Edit the grid  → Phase E panel
+### Edit the grid  → Phase E panel · **Panel → Grid**
 The grid is a hand-edited YAML — **the only thing you edit** (a web editor is Phase E). Workflow
 mirrors the bible: **edit → live** (no re-seed, no restart — mtime-reloaded).
 ```bash
@@ -331,7 +337,7 @@ make programming-demo   # the weekly daypart map, the clock walking across the d
                         # news landing on the hour), run-lengths, and the console + now-playing feed
 ```
 
-### Dials (`.env`; defaults sane)  → Phase E panel
+### Dials (`.env`; defaults sane)  → Phase E panel · **Panel → Dials**
 - **`PROGRAMMING_ENABLED`** — master switch. `false` = rollback to the flat `BUFFER_ROTATION`
   (pre-D6); `true` = the grid drives what/who airs (`BUFFER_ROTATION` is only the default
   program's mix).
@@ -344,7 +350,7 @@ make programming-demo   # the weekly daypart map, the clock walking across the d
 The grid is **config, not world**: both `seed-canon` and `reset-world` leave it alone; git is its
 backup. No DB rows in Phase D (`make seed-grid` + the DB projection land in Phase E).
 
-### Talk continuity / show flow (D12)  → Phase E panel
+### Talk continuity / show flow (D12)  → Phase E panel · **Panel → Dials → Talk continuity / flow**
 Consecutive talk segments in one program play as **one flowing show**, not N mini-shows: the show
 opens once (a spoken sign-on by name), the middle segments come in **cold** and carry the same thread
 forward, a settlement-time check fires only occasionally, and it signs off once at the end. It's
@@ -391,7 +397,7 @@ variants), `assets/stings/`, `assets/music/`, plus the fixed `assets/bed.mp3` (C
 clip→placement registry in `src/production/media.py`. A registered clip whose file is missing is
 skipped with a warning, never a crash.
 
-### Register / update a song  → Phase E panel
+### Register / update a song  → Phase E panel · **Panel → Catalogs → Tracks**
 ```bash
 $EDITOR config/tracks.yaml        # write the row: id/title/artist/album/era/mood/tags/story_blurb/
                                   #   audio_path (+ licence via licence_default or per-row)
@@ -405,7 +411,7 @@ make seed-tracks                  # refresh the `tracks` table; probes real dura
 - To **promote** a track, add the tag `featured` or `pinned` to its manifest row (+ re-seed) — the
   selector boosts it.
 
-### What airs where (the dials)  → Phase E panel
+### What airs where (the dials)  → Phase E panel · **Panel → Dials → Music selector weights** (per-show break_every lives in **Grid**)
 - **Program boundary** → the show's theme (handover shows get the B6 "passing the light" sting
   first). Dial: `PRODUCTION_THEME_AT_BOUNDARY` (true).
 - **Before every news bulletin** → the C8 sting. Dial: `PRODUCTION_STING_BEFORE_NEWS` (true).
@@ -448,7 +454,7 @@ table (empty until CM). Spots run the C0 gate + evergreen fallback like every pr
 make commercials-demo                         # spots + the break walk + a sponsor-read demo
 ```
 
-### Tune the ad load  → Phase E panel
+### Tune the ad load  → Phase E panel · **Panel → Dials → Ad load** (per-show break_every in **Grid**)
 - **Which shows take breaks, how often** — `break_every: N` per program in
   `docs/programming/grid.yaml` (absent/0 = no breaks). Shipped: daywatch 4, long_night 6,
   handovers + default none. Edit → live (the grid reloads on change).
@@ -459,7 +465,7 @@ make commercials-demo                         # spots + the break walk + a spons
   3=testimonial via voice+figures, 4=brand-sting bookend once the clip exists — unbuilt levels
   degrade to 1, the effective level is in the segment meta).
 
-### Manage sponsors ("Powered by" reads)  → Phase E panel
+### Manage sponsors ("Powered by" reads)  → Phase E panel · **Panel → Catalogs → Sponsors**
 1. Edit `config/sponsors.yaml` — id, name, `powered_by_text` blurb, optional `audio_path`
    (supplied clip under `assets/sponsors/`), `run_start`/`run_end` (real dates, half-open window),
    `weight` (rotation share). **Leave empty until CM (donations live).**
@@ -484,12 +490,12 @@ pytest -q tests/test_commercials.py    # builder, gate fallback, cadence+cap, ru
 
 Roster changes (add/edit/remove a DJ) live under *Authoring the bible* — a cast card is bible.
 
-### Fix a mispronounced invented name  → Phase E panel
+### Fix a mispronounced invented name  → Phase E panel · **Panel → Catalogs → Pronunciation**
 Edit `config/pronunciation.yaml` (`respell` = any engine; `phonemes` = exact Kokoro sound,
 misaki alphabet — see the header). Applies on the next render, no restart. Unknown names
 pass through unharmed. Off switch: `TTS_LEXICON_ENABLED=false`.
 
-### Tune emotion  → Phase E panel
+### Tune emotion  → Phase E panel · **Panel → Dials → Emotion**
 - Writers tag turns themselves (`Vell [somber]:` — vocabulary: warm | wry | somber | bright |
   urgent); un-tagged turns take the daypart mood floor (`_PART_OF_DAY_EMOTION`,
   writers/conversation.py), then `.env` `TTS_EMOTION_DEFAULT` ("" = engine default).
@@ -497,18 +503,18 @@ pass through unharmed. Off switch: `TTS_LEXICON_ENABLED=false`.
   ships is the C6 decision; C6 also retunes the per-emotion curves (`_ELEVENLABS_EMOTIONS`,
   providers/tts.py) by ear and confirms the 8 new DJs' premade voice ids.
 
-### Guests / soundbites  → Phase E panel
+### Guests / soundbites  → Phase E panel · **Panel → Dials → Guests**
 `.env`: `CONVO_GUEST_ENABLED` (true), `CONVO_GUEST_CHANCE` (0.2 — share of talk slots; the
 draw is per-slot deterministic). A figure with a quote airs as a soundbite in its own
 stable voice (`guest_*` pool in `config/voices.yaml`; a `figures.voice_id` naming a registry
 voice wins); no figures = a one-off invited persona. Hosts always open and close (gated).
 
-### DJ memory  → Phase E panel
+### DJ memory  → Phase E panel · **Panel → Dials → DJ memory**
 `.env`: `CONVO_MEMORY_ENABLED` (true), `CONVO_MEMORY_PER_HOST` (3), `CONVO_MEMORY_WINDOW_DAYS`
 (60 — the look-back). A host prefers stories whose tags overlap their card tags; the
 continuity editor sees the same block, so misremembering re-rolls the draft.
 
-### Self & interpersonal memory — the journal (D13)  → Phase E panel
+### Self & interpersonal memory — the journal (D13)  → Phase E panel · **Panel → Dials → DJ memory** (journal dials)
 The hosts' durable record of what THEY said on air (opinions, personal details, running bits,
 host-to-host exchanges): captured post-air by one `haiku` call per scheduled talk segment,
 recalled into future segments, and enforced by the continuity editor (a host reversing a
@@ -553,7 +559,7 @@ make timeline           # its web sibling: http://127.0.0.1:8010/ (loopback ONLY
 The **timeline** page auto-refreshes: what's ON AIR (with progress), the generated
 segments queued next, and the grid's intended program blocks for the hours ahead —
 the side-by-side view for listening tests. Read-only; binds 127.0.0.1; never expose.
-`TIMELINE_PORT` moves the port.  → Phase E panel
+`TIMELINE_PORT` moves the port.  → **Panel → Dashboard** (the console/timeline as a web page)
 Panels: **on air / next** (program · format · hosts · duration), **buffer** runway (the health
 calc), **last run** heartbeat, the **story log** (active stories + newest beats), the **host
 journal** (D13 — entries accrued per host), and a **cost** rollup (omitted until the jobs
@@ -722,7 +728,15 @@ editing the file + `make seed-canon`, never by a reset.
   server, not world-readable (`chmod 600 .env`).
 - **AI disclosure stays on** (spoken ident + player line) — a hard rule on every public surface.
 - The **Phase E panel** (VPS-only, single-operator, private) replaces the hand-edit workflows —
-  it is specified by exactly the `→ Phase E panel` tags in this manual. **Its task pack is
-  written: `docs/PHASE_E_PANEL_TASKS.md` (E1)** — forms-over-files (these hand-edit how-tos remain
-  the fallback path, so they stay in this manual even after the panel ships), loopback-only behind
-  an SSH tunnel, planned for the C9 soak week.
+  it is specified by exactly the `→ Phase E panel` tags in this manual. **E1 is BUILT
+  (`docs/PHASE_E_PANEL_TASKS.md`): `make panel` → `http://127.0.0.1:8787/`** — Dashboard, Actions,
+  Grid, Catalogs (Tracks/Sponsors/Pronunciation/Voices), Cast, Dials. Forms-over-files (these
+  hand-edit how-tos remain the fallback path, so they stay in this manual). **Private by network
+  position:** it binds `127.0.0.1` ONLY and REFUSES a non-loopback bind without
+  `PANEL_ALLOW_NONLOCAL=true`; reach it on the VPS via an SSH tunnel — never a public DNS name /
+  reverse proxy / Vercel:
+  - Deploy: `sudo cp config/settlement-panel.service /etc/systemd/system/ && sudo systemctl
+    enable --now settlement-panel` (adjust `User`/`WorkingDirectory` to the box).
+  - Reach it: `ssh -L 8787:localhost:8787 <vps>`, then open `http://127.0.0.1:8787/`.
+  - **Soak/C9 check:** from a second machine (no tunnel), `curl -m 5 http://<vps-public-ip>:8787/`
+    MUST fail (refused/timeout) — only the tunnel reaches it.

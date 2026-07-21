@@ -38,6 +38,46 @@ A typical *build* session will be short, e.g.:
 
 ---
 
+## 2026-07-21 — Phase E — E1.0–E1.6: the operator PANEL — E1 COMPLETE ✅
+**Focus:** build the private, loopback-only operator panel (`src/panel/`, FastAPI) — the write
+control surface that upgrades the read-only console into forms-over-files editing, and close it out
+with the deploy unit + docs (E1.6 capstone).
+**Decisions:**
+- **Private by NETWORK POSITION, not auth code.** The app binds `127.0.0.1` only and REFUSES a
+  non-loopback bind without `PANEL_ALLOW_NONLOCAL=true` (a loud warning). Single operator + SSH
+  tunnel = no login system to get wrong. The one security invariant every screen inherits.
+- **Files stay the source of truth (principle #1).** Every editor edits the EXISTING human-authored
+  file and runs the EXISTING seed/refresh path — no DB projection, no second store. So it had to
+  diff like a HAND edit: **ruamel round-trip + change-only mutation** for YAML (grid/tracks/sponsors/
+  pronunciation/voices), and **surgical line-editing** for the markdown cast cards — an untouched
+  row/card stays byte-identical (proven by no-op fidelity tests across all 36 programs / 95 tracks /
+  15 cards). Every write is validated **through the real consumer** (the programming loader, the
+  seeders' `load_manifest`, the canon parser, the tts registry, pydantic field types), shown as a
+  unified diff, then written atomically with a one-deep `.bak`.
+- **Subprocess actions + a mutation lock.** The Actions page runs the exact `make` command as an
+  isolated subprocess (a seed/tick crash can't take the panel down), in a background thread so the
+  page never hangs; one mutation lock stops two writes overlapping. `reset-world` is gated behind a
+  typed phrase and `--force`. The cron top-up runs independently — the panel is a manual extra.
+- **Honest about restart.** The Dials page shows effective (live `settings`) vs default vs `.env`
+  file value, and says plainly that a change lands on a consumer's next run / a restart — the
+  effective column stays truthfully stale until then.
+- **The cast add flow is a two-file write** (card + a new `voices.yaml` entry), both diffed + written
+  on confirm; retire warns if the grid still schedules the host.
+**Changed:** `src/panel/` (app, views, actions, grid_edit, catalog_edit, cast_edit, dials + templates
++ static), `src/config.py` (`panel_*`), `Makefile` (`make panel`), `requirements.txt` (fastapi,
+uvicorn, jinja2, python-multipart, ruamel.yaml), `config/settlement-panel.service`, `.env.example`
+(`PANEL_*`), `docs/ADMIN_MANUAL.md` (every `→ Phase E panel` tag names its screen; deploy + tunnel +
+soak check), `README.md`, `tests/test_panel.py` (35 tests). 589 tests green, ruff clean.
+**Why:** the panel is ready the day the station goes public, so the human switches from *building*
+the station to *running* it — without hand-editing files and re-seeding by hand.
+**📣 Postable:** "an AI radio station's operator panel, built by Claude Code — forms over files, every
+edit validated through the real loader and diffed before it's written, bound to localhost so it's
+private by construction." Clip: the grid host-swap → diff → on air.
+**Next:** R5.0 (=E1.7) — the queue/history/retry screen — extends the panel during the soak.
+Commit: <hash>  ·  Clips: <filenames in devlog/>
+
+---
+
 ## 2026-07-21 — Phase R — R4.4: the living-day acceptance property — R4 COMPLETE ✅
 **Focus:** close the R4 pack with the integration gate that proves R4.0–R4.2 hold together end-to-end,
 and finish wiring the micro-tick into the ops docs.

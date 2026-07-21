@@ -68,6 +68,15 @@ cuts in on the hour and hands back.
   itself).
 - **Operator console** (private, read-only) — `make console` shows on-air/next, buffer runway, the
   last-run heartbeat, and the world story log. Never internet-exposed.
+- **Operator panel** (private, write control surface — E1) — `make panel` serves a loopback-only web
+  UI at `http://127.0.0.1:8787/`: a live Dashboard, Actions (seed/tick/schedule/prune/… as buttons,
+  with a mutation lock + a typed-phrase gate on `reset-world`), and forms-over-files editors — Grid,
+  Catalogs (Tracks/Sponsors/Pronunciation/Voices), Cast, and Dials — each validating through the real
+  loader, showing a diff, and writing atomically with a `.bak`. It binds `127.0.0.1` ONLY and refuses
+  a non-loopback bind without `PANEL_ALLOW_NONLOCAL=true`; on the VPS it's reached via an SSH tunnel
+  (`ssh -L 8787:localhost:8787 <vps>`), never a public URL. Deploy with
+  `config/settlement-panel.service`. The files stay the source of truth, so the hand-edit workflows in
+  `docs/ADMIN_MANUAL.md` remain the fallback.
 - **Public now-playing feed** — `make now-playing` writes `segments/nowplaying.json` (refreshed on every
   scheduler top-up): the public-safe subset (on-now/next + program + hosts + AI-disclosure line + the
   playing track's title/artist/album/era) the web player reads. The player UI itself is C8.
