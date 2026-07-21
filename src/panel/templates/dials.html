@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% block nav_dials %}active{% endblock %}
+{% block title %}Dials — Settlement Radio Operator Panel{% endblock %}
+
+{% block content %}
+<div class="asof">
+  The tuning knobs (<code>settings.*</code>), written to <code>.env</code>. Setting a
+  dial to its <b>default</b> removes the override. Writes are diffed first, atomic,
+  with a <code>.env.bak</code>.
+</div>
+
+<div class="banner">
+  <b>Restart semantics.</b> <code>settings</code> is read once at process start, so a
+  change applies on a consumer's <b>next run</b>: the cron scheduler/tick pick it up
+  next time; a long-running <code>serve</code> and this panel need a restart. The
+  <b>effective</b> column shows the LIVE value — it can lag <code>.env</code> until then.
+  Use <a href="/actions">Actions → Schedule top-up</a> to exercise a new value now.
+</div>
+
+{% if saved %}<div class="banner ok">✓ wrote <b>{{ saved }}</b> dials to <code>.env</code>. Effective values below still show the pre-restart state.</div>{% endif %}
+{% if msg %}<div class="banner warn">{{ msg }}</div>{% endif %}
+
+{% for group, rows in groups %}
+<section class="card span-full" id="{{ group.slug }}">
+  <h2>{{ group.title }} <span class="sub">— {{ group.note }}</span></h2>
+  {% if group.slug == 'safety' %}
+  <div class="banner warn">⚠ In production these MUST stay ON (CLAUDE.md hard rules:
+  content safety + AI disclosure).</div>
+  {% endif %}
+  <form method="post" action="/dials/{{ group.slug }}/save">
+    <table class="rows dials-table">
+      <tr><th>dial</th><th>effective</th><th>default</th><th>.env</th><th>new value</th></tr>
+      {% for r in rows %}
+      <tr class="{{ 'warnrow' if r.warn else '' }}">
+        <td class="mono">{{ r.name }}</td>
+        <td class="mono">{{ r.effective }}</td>
+        <td class="mono sub">{{ r.default }}</td>
+        <td class="mono">{% if r.file_value is not none %}<span class="amber">{{ r.file_value }}</span>{% else %}<span class="sub">unset</span>{% endif %}</td>
+        <td>
+          {% if not r.editable %}
+            <span class="sub">list — edit in .env</span>
+          {% elif r.kind == 'bool' %}
+            <select name="{{ r.name }}">
+              <option value="true" {% if r.effective == 'true' %}selected{% endif %}>true</option>
+              <option value="false" {% if r.effective == 'false' %}selected{% endif %}>false</option>
+            </select>
+          {% else %}
+            <input type="text" name="{{ r.name }}" value="{{ r.effective }}" class="dialinput">
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </table>
+    <div class="formactions">
+      <button type="submit" class="btn-primary">Review {{ group.title }} changes…</button>
+    </div>
+  </form>
+</section>
+{% endfor %}
+{% endblock %}

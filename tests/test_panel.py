@@ -721,3 +721,84 @@ def test_cast_retire_warns_on_grid_usage(cast_tmp):
     assert r.status_code == 200 and "grid still schedules" in r.text
     candidate = ce.remove_card("vell")
     assert "### Vell" not in candidate and ce.validate(candidate).ok
+
+
+# --- E1.5: the dials page -----------------------------------------------------
+
+
+@pytest.fixture
+def dials_tmp(tmp_path, monkeypatch):
+    """A throwaway COPY of .env as the live dials file."""
+    from src.panel import dials
+
+    dst = tmp_path / ".env"
+    src = dials._ENV_PATH
+    dst.write_text(src.read_text("utf-8") if src.exists() else "# test\n", "utf-8")
+    monkeypatch.setattr(dials, "_ENV_PATH", dst)
+    return dst
+
+
+def test_dials_grouping_and_state(dials_tmp):
+    """Rows carry effective/default/file state and the right editability + warnings."""
+    from src.panel import dials
+
+    rows = {r.name: r for r in dials.group_rows(dials.group_by_slug("world_tick"))}
+    r = rows["world_tick_new_stories_min"]
+    assert r.effective == "2" and r.default == "2" and r.file_value is None
+    assert r.editable and r.kind == "int"
+
+    safety = {r.name: r for r in dials.group_rows(dials.group_by_slug("safety"))}
+    assert safety["safety_enabled"].warn and safety["safety_enabled"].kind == "bool"
+
+
+def test_dials_stage_set_reset_and_bad_type(dials_tmp):
+    """Staging: a change sets an override; the default removes it; bad type errors."""
+    from src.panel import dials
+
+    g = dials.group_by_slug("world_tick")
+    staged = dials.stage_group_edit(g, {"world_tick_new_stories_min": "3"})
+    assert staged.changes == {"WORLD_TICK_NEW_STORIES_MIN": "3"} and not staged.errors
+
+    bad = dials.stage_group_edit(g, {"world_tick_large_ratio": "notafloat"})
+    assert bad.errors and not bad.changes
+
+    # write the override, then setting it to the default removes it
+    dials.write(dials.apply_changes(staged.changes))
+    reset = dials.stage_group_edit(g, {"world_tick_new_stories_min": "2"})
+    assert reset.changes == {"WORLD_TICK_NEW_STORIES_MIN": None}
+
+
+def test_dials_route_write_and_truthful_state(dials_tmp):
+    """A dial changed in the browser lands in .env; effective stays truthfully stale."""
+    import html
+    import re
+
+    from src.panel import dials
+
+    client = TestClient(panelapp.app, follow_redirects=False)
+    r = client.post("/dials/world_tick/save", data={"world_tick_new_stories_max": "9"})
+    assert r.status_code == 200 and "WORLD_TICK_NEW_STORIES_MAX=9" in r.text
+    assert "9" not in dials.env_overrides().get(
+        "WORLD_TICK_NEW_STORIES_MAX", ""
+    )  # unwritten
+
+    cand = html.unescape(
+        re.search(
+            r'<textarea name="candidate" hidden>(.*?)</textarea>', r.text, re.S
+        ).group(1)
+    )
+    r = client.post("/dials/write", data={"candidate": cand, "slug": "world_tick"})
+    assert r.status_code == 303 and (dials._ENV_PATH.parent / ".env.bak").exists()
+    assert dials.env_overrides()["WORLD_TICK_NEW_STORIES_MAX"] == "9"  # file truth
+
+    rows = {r.name: r for r in dials.group_rows(dials.group_by_slug("world_tick"))}
+    row = rows["world_tick_new_stories_max"]
+    assert row.file_value == "9"  # .env truth
+    assert row.effective == "4"  # live settings (loaded at import) — truthfully stale
+
+
+def test_dials_bad_type_route_rejected(dials_tmp):
+    """The save route rejects a bad type without writing."""
+    client = TestClient(panelapp.app, follow_redirects=False)
+    r = client.post("/dials/music/save", data={"music_select_jitter": "abc"})
+    assert r.status_code == 303 and "rejected" in r.headers["location"]

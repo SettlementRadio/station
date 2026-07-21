@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block nav_dials %}active{% endblock %}
+{% block title %}Confirm dials — Operator Panel{% endblock %}
+
+{% block content %}
+<div class="asof"><a href="/dials">← dials</a></div>
+
+<section class="card span-full">
+  <h2>Review {{ group.title }} changes to <code>.env</code></h2>
+  <p class="sub">Confirming writes <code>.env</code> atomically (a <code>.env.bak</code>
+  is kept). It takes effect on the next scheduler/tick run; a long-running process
+  needs a restart.</p>
+
+  <ul class="changelist">
+    {% for key, value in changes.items() %}
+    <li><span class="mono">{{ key }}</span> →
+      {% if value is none %}<span class="del">removed (reset to default)</span>
+      {% else %}<span class="add mono">{{ value }}</span>{% endif %}
+    </li>
+    {% endfor %}
+  </ul>
+
+  <pre class="diff">{% for line in diff.splitlines() %}<span class="{{ 'add' if line.startswith('+') and not line.startswith('+++') else ('del' if line.startswith('-') and not line.startswith('---') else ('hunk' if line.startswith('@@') else '')) }}">{{ line }}</span>
+{% endfor %}</pre>
+
+  <form method="post" action="/dials/write">
+    <textarea name="candidate" hidden>{{ candidate }}</textarea>
+    <input type="hidden" name="slug" value="{{ group.slug }}">
+    <div class="formactions">
+      <button type="submit" class="btn-primary">Confirm &amp; write</button>
+      <a href="/dials#{{ group.slug }}" class="btn-plain">Back</a>
+    </div>
+  </form>
+</section>
+{% endblock %}

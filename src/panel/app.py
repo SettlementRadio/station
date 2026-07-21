@@ -28,7 +28,7 @@ from fastapi.templating import Jinja2Templates
 
 from ..config import settings
 from ..logging_setup import get_logger
-from . import actions, cast_edit, catalog_edit, grid_edit, views
+from . import actions, cast_edit, catalog_edit, dials, grid_edit, views
 
 log = get_logger(__name__)
 
@@ -597,6 +597,55 @@ def create_app() -> FastAPI:
                 "no_change": no_change,
             },
         )
+
+    # --- E1.5: the dials page (the tagged .env groups) -----------------------
+
+    @app.get("/dials", response_class=HTMLResponse)
+    def dials_page(
+        request: Request,
+        saved: str | None = None,  # noqa: ANN001
+        msg: str | None = None,
+    ) -> HTMLResponse:
+        groups = [(g, dials.group_rows(g)) for g in dials.DIAL_GROUPS]
+        return _TEMPLATES.TemplateResponse(
+            request, "dials.html", {"groups": groups, "saved": saved, "msg": msg}
+        )
+
+    @app.post("/dials/{slug}/save", response_class=HTMLResponse)
+    async def dials_save(request: Request, slug: str):  # noqa: ANN001
+        group = dials.group_by_slug(slug)
+        if group is None:
+            return _redirect("/dials")
+        data = await request.form()
+        submitted = {name: (data.get(name) or "") for name in group.fields}
+        staged = dials.stage_group_edit(group, submitted)
+        if staged.errors:
+            return _redirect(f"/dials?msg=rejected:+{staged.errors[0]}")
+        if not staged.changes:
+            return _redirect(f"/dials?msg=no+changes+in+{group.title}")
+        candidate = dials.apply_changes(staged.changes)
+        diff = dials.unified_diff(dials.current_text(), candidate)
+        return _TEMPLATES.TemplateResponse(
+            request,
+            "dials_diff.html",
+            {
+                "group": group,
+                "diff": diff,
+                "candidate": candidate,
+                "changes": staged.changes,
+            },
+        )
+
+    @app.post("/dials/write")
+    async def dials_write(request: Request) -> RedirectResponse:  # noqa: ANN001
+        data = await request.form()
+        slug = data.get("slug") or ""
+        try:
+            dials.write(data.get("candidate") or "")
+        except Exception as exc:  # noqa: BLE001 — a write failure surfaces, not crashes
+            log.warning("dials_write_failed", error=str(exc))
+            return _redirect(f"/dials?msg=write+failed:+{exc}")
+        return _redirect(f"/dials?saved={slug}")
 
     return app
 

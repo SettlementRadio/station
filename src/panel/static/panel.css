@@ -287,3 +287,19 @@ h3.difftitle { font-size: 12px; color: var(--amber); text-transform: uppercase;
 form.gform select { background: var(--bg); color: var(--text);
   border: 1px solid var(--border); border-radius: 6px; padding: 7px 10px;
   font-family: inherit; font-size: 14px; }
+
+/* --- E1.5 dials --- */
+table.dials-table td { vertical-align: middle; }
+table.dials-table td.mono { font-size: 12.5px; }
+.dialinput { width: 120px; background: var(--bg); color: var(--text);
+  border: 1px solid var(--border); border-radius: 6px; padding: 5px 8px;
+  font-family: inherit; font-size: 13px; }
+table.dials-table select { background: var(--bg); color: var(--text);
+  border: 1px solid var(--border); border-radius: 6px; padding: 5px 8px;
+  font-family: inherit; font-size: 13px; }
+.amber { color: var(--amber); }
+tr.warnrow td.mono:first-child { color: var(--amber); }
+ul.changelist { margin: 8px 0 12px; }
+ul.changelist li { margin: 2px 0; }
+ul.changelist .add { color: var(--green); }
+ul.changelist .del { color: var(--red); }
