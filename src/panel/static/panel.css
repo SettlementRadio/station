@@ -189,3 +189,47 @@ pre.run-out {
   padding: 10px; overflow-x: auto; font-size: 12px; color: var(--muted);
   max-height: 380px; margin: 8px 0 0; white-space: pre-wrap; word-break: break-word;
 }
+
+/* --- E1.2 grid editor --- */
+.mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+table.grid-list td { vertical-align: top; }
+.clocklabel { white-space: normal; }
+a.edit-link { color: var(--blue); text-decoration: none; }
+a.edit-link:hover { text-decoration: underline; }
+
+.slotblock { margin: 10px 0 16px; }
+.slotblock .wk {
+  color: var(--amber); text-transform: uppercase; letter-spacing: .06em;
+  font-size: 12px; margin-bottom: 4px;
+}
+
+form.gform { display: flex; flex-direction: column; gap: 12px; max-width: 760px; }
+form.gform label { display: flex; flex-direction: column; gap: 4px; }
+form.gform .hint { color: var(--muted); font-size: 12px; font-weight: 400; }
+form.gform input[type=text], form.gform select, form.gform textarea {
+  background: var(--bg); color: var(--text); border: 1px solid var(--border);
+  border-radius: 6px; padding: 7px 10px; font-family: inherit; font-size: 14px;
+}
+form.gform textarea { resize: vertical; line-height: 1.5; }
+.grow2 { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 12px; }
+@media (max-width: 700px) { .grow2 { grid-template-columns: 1fr 1fr; } }
+
+.formactions { display: flex; gap: 12px; align-items: center; margin-top: 6px; }
+.btn-primary {
+  background: #16324a; color: #cfe6ff; border: 1px solid #2f5d80;
+  border-radius: 6px; padding: 8px 16px; font-family: inherit; font-size: 14px;
+  cursor: pointer;
+}
+.btn-primary:hover { background: #1d4a6b; color: #fff; }
+.btn-plain { color: var(--muted); text-decoration: none; padding: 8px 4px; }
+.btn-plain:hover { color: var(--text); }
+
+pre.diff {
+  background: var(--bg); border: 1px solid var(--border); border-radius: 6px;
+  padding: 12px; overflow-x: auto; font-size: 12.5px; line-height: 1.5;
+  max-height: 460px;
+}
+pre.diff span { display: block; }
+pre.diff .add { color: var(--green); background: rgba(126,224,138,.07); }
+pre.diff .del { color: var(--red); background: rgba(224,150,126,.07); }
+pre.diff .hunk { color: var(--blue); }

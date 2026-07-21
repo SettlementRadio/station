@@ -23,7 +23,7 @@ from fastapi.templating import Jinja2Templates
 
 from ..config import settings
 from ..logging_setup import get_logger
-from . import actions, views
+from . import actions, grid_edit, views
 
 log = get_logger(__name__)
 
@@ -121,6 +121,110 @@ def create_app() -> FastAPI:
         except actions.Busy as busy:
             return _redirect(f"/actions/reset-world?msg=busy:+{busy.holder.label}")
         return _redirect(f"/actions?started={run.id}")
+
+    # --- E1.2: the grid editor (forms over grid.yaml, diff-before-write) ------
+
+    @app.get("/grid", response_class=HTMLResponse)
+    def grid_page(request: Request, saved: str | None = None) -> HTMLResponse:  # noqa: ANN001
+        """The program list + the read-only weekly slot map."""
+        programs = [
+            (pid, grid_edit.program_display(pid)) for pid in grid_edit.program_ids()
+        ]
+        return _TEMPLATES.TemplateResponse(
+            request,
+            "grid.html",
+            {"programs": programs, "slot_map": grid_edit.slot_map(), "saved": saved},
+        )
+
+    @app.get("/grid/program/{pid}", response_class=HTMLResponse)
+    def grid_program_page(request: Request, pid: str) -> HTMLResponse:  # noqa: ANN001
+        """The per-program edit form."""
+        try:
+            form = grid_edit.program_form(pid)
+        except KeyError:
+            return _redirect("/grid?saved=")  # unknown program → back to the list
+        return _render_program_form(request, form, validation=None)
+
+    @app.post("/grid/program/{pid}", response_class=HTMLResponse)
+    def grid_program_edit(  # noqa: ANN001, PLR0913 — one arg per editable field
+        request: Request,
+        pid: str,
+        name: str = Form(""),
+        hosts: str = Form(""),
+        framing: str = Form("solo"),
+        daypart: str = Form(""),
+        clock: str = Form(""),
+        break_every: str = Form(""),
+        guest_chance: str = Form(""),
+        brief: str = Form(""),
+        energy: str = Form(""),
+        talk_length_sec: str = Form(""),
+        domains: str = Form(""),
+    ) -> HTMLResponse:
+        """Build the candidate, validate it, and show the diff (never write here)."""
+        form = grid_edit.ProgramForm(
+            id=pid,
+            name=name,
+            hosts=hosts,
+            framing=framing,
+            daypart=daypart,
+            clock=clock,
+            break_every=break_every,
+            guest_chance=guest_chance,
+            brief=brief,
+            energy=energy,
+            talk_length_sec=talk_length_sec,
+            domains=domains,
+        )
+        try:
+            candidate = grid_edit.apply_program_edit(pid, form)
+        except KeyError:
+            return _redirect("/grid?saved=")
+        validation = grid_edit.validate_text(candidate, focus=pid)
+        if not validation.ok:
+            return _render_program_form(request, form, validation=validation)
+
+        diff = grid_edit.unified_diff(grid_edit.current_text(), candidate)
+        if not diff.strip():  # no change → nothing to confirm
+            return _render_program_form(
+                request, form, validation=validation, no_change=True
+            )
+        return _TEMPLATES.TemplateResponse(
+            request,
+            "grid_diff.html",
+            {
+                "pid": pid,
+                "form": form,
+                "diff": diff,
+                "candidate": candidate,
+                "warnings": validation.warnings,
+            },
+        )
+
+    @app.post("/grid/program/{pid}/confirm")
+    def grid_program_confirm(pid: str, candidate: str = Form(...)) -> RedirectResponse:
+        """Write the confirmed candidate (atomic + .bak); re-validates as defence."""
+        try:
+            grid_edit.write_grid(candidate, focus=pid)
+        except ValueError as exc:
+            log.warning("grid_confirm_rejected", program=pid, error=str(exc))
+            return _redirect(f"/grid/program/{pid}")
+        return _redirect(f"/grid?saved={pid}")
+
+    def _render_program_form(request, form, *, validation, no_change=False):  # noqa: ANN001
+        """Shared render of the program edit form with optional validation state."""
+        return _TEMPLATES.TemplateResponse(
+            request,
+            "grid_program.html",
+            {
+                "form": form,
+                "framings": ["solo", "handover", "ensemble", "legacy"],
+                "energies": ["", "calm", "steady", "bright"],
+                "errors": validation.errors if validation else [],
+                "warnings": validation.warnings if validation else [],
+                "no_change": no_change,
+            },
+        )
 
     return app
 

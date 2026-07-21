@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block nav_grid %}active{% endblock %}
+{% block title %}Confirm {{ pid }} — Settlement Radio Operator Panel{% endblock %}
+
+{% block content %}
+<div class="asof"><a href="/grid/program/{{ pid }}">← back to editing</a></div>
+
+{% if warnings %}
+<div class="banner">⚠ {% for w in warnings %}{{ w }}{% if not loop.last %}; {% endif %}{% endfor %}</div>
+{% endif %}
+
+<section class="card span-full">
+  <h2>Review the change to <span class="mono">{{ pid }}</span></h2>
+  <p class="sub">You are confirming this exact diff to <code>grid.yaml</code>. A
+  one-deep <code>grid.yaml.bak</code> is kept; the write is atomic.</p>
+  <pre class="diff">{% for line in diff.splitlines() %}<span class="{{ 'add' if line.startswith('+') and not line.startswith('+++') else ('del' if line.startswith('-') and not line.startswith('---') else ('hunk' if line.startswith('@@') else '')) }}">{{ line }}</span>
+{% endfor %}</pre>
+
+  <form method="post" action="/grid/program/{{ pid }}/confirm">
+    <textarea name="candidate" hidden>{{ candidate }}</textarea>
+    <div class="formactions">
+      <button type="submit" class="btn-primary">Confirm &amp; write</button>
+      <a href="/grid/program/{{ pid }}" class="btn-plain">Back</a>
+    </div>
+  </form>
+</section>
+{% endblock %}

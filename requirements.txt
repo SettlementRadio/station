@@ -43,6 +43,10 @@ fastapi>=0.110
 uvicorn>=0.27
 jinja2>=3.1
 python-multipart>=0.0.9  # FastAPI form POSTs (the E1.1 action buttons)
+# ruamel.yaml (E1.2 grid editor): COMMENT-PRESERVING round-trip YAML, so a panel
+# edit to grid.yaml diffs like a hand edit (yaml.safe_dump would discard every
+# comment). Round-trip mode only touches the fields the operator changed.
+ruamel.yaml>=0.18
 
 # Dev tooling (B0.5) — lint/format + the pre-commit gate. Not needed at runtime;
 # installed in the dev venv. See README "Engineering standards / pre-commit".

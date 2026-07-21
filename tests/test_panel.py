@@ -19,8 +19,9 @@ from datetime import datetime, timedelta
 import pytest
 from fastapi.testclient import TestClient
 from src.config import settings
-from src.panel import actions, views
+from src.panel import actions, grid_edit, views
 from src.panel import app as panelapp
+from src.world import programming
 
 NOW = datetime(2026, 6, 22, 14, 30, 0)  # a Monday afternoon (grid: the_workshop)
 
@@ -232,3 +233,146 @@ def test_reset_page_and_wrong_phrase_are_inert(no_launch):
     r = client.post("/actions/reset-world", data={"phrase": "nope"})
     assert r.status_code == 303 and "did+not+match" in r.headers["location"]
     assert actions.recent_runs() == []  # inert — nothing launched
+
+
+# --- E1.2: the grid editor (round-trip fidelity + validation + write flow) -----
+
+
+@pytest.fixture
+def grid_tmp(tmp_path, monkeypatch):
+    """A throwaway COPY of the real grid.yaml as the live grid, with a known cast.
+
+    Points settings + the programming loader at the temp file so writes never touch
+    the repo's grid, and fixes the cast set (every host the grid uses + `joss`) so
+    host validation is deterministic without a DB.
+    """
+    real = programming.settings.programming_grid_path
+    tmp = tmp_path / "grid.yaml"
+    tmp.write_text(real.read_text(encoding="utf-8"), encoding="utf-8")
+    monkeypatch.setattr(settings, "programming_grid_path", tmp)
+    programming.reload()
+    # the cast = every host referenced in the grid (so existing hosts all validate)
+    known = {h for p in programming.all_programs().values() for h in p.hosts}
+    monkeypatch.setattr(grid_edit, "_cast_ids", lambda: known)
+    yield tmp
+    programming.reload()
+
+
+def test_grid_noop_edit_is_byte_identical(grid_tmp):
+    """Re-applying a program's own current values reproduces the file exactly."""
+    original = grid_edit.current_text()
+    for pid in grid_edit.program_ids():
+        form = grid_edit.program_form(pid)
+        assert grid_edit.apply_program_edit(pid, form) == original, pid
+
+
+def test_grid_host_swap_is_a_minimal_diff(grid_tmp):
+    """A host change touches only the hosts line (hand-quality diff)."""
+    form = grid_edit.program_form("morning_currents")
+    form.hosts = "thorn, joss"
+    candidate = grid_edit.apply_program_edit("morning_currents", form)
+    v = grid_edit.validate_text(candidate, focus="morning_currents")
+    assert v.ok
+    changed = [
+        ln
+        for ln in grid_edit.unified_diff(
+            grid_edit.current_text(), candidate
+        ).splitlines()
+        if ln[:1] in "+-" and not ln.startswith(("+++", "---"))
+    ]
+    assert changed == ["-    hosts: [thorn, wren]", "+    hosts: [thorn, joss]"]
+
+
+def test_grid_validation_rejects_bad_edits(grid_tmp):
+    """The real parser catches an unknown host, clock format, framing, and bad YAML."""
+    form = grid_edit.program_form("the_gallery")
+    form.hosts = "thorn, ghost_host"
+    v = grid_edit.validate_text(
+        grid_edit.apply_program_edit("the_gallery", form), focus="the_gallery"
+    )
+    assert not v.ok and any("unknown host id" in e for e in v.errors)
+
+    form = grid_edit.program_form("the_gallery")
+    form.clock = "talk talkk"
+    v = grid_edit.validate_text(
+        grid_edit.apply_program_edit("the_gallery", form), focus="the_gallery"
+    )
+    assert not v.ok and any("unknown clock format" in e for e in v.errors)
+
+    form = grid_edit.program_form("the_gallery")
+    form.framing = "duet"
+    v = grid_edit.validate_text(
+        grid_edit.apply_program_edit("the_gallery", form), focus="the_gallery"
+    )
+    assert not v.ok and any("unknown framing" in e for e in v.errors)
+
+    v = grid_edit.validate_text("programs: [broken: yaml")
+    assert not v.ok and any("YAML syntax error" in e for e in v.errors)
+
+
+def test_grid_route_flow_diff_then_write(grid_tmp):
+    """POST edit → diff (no write); confirm → atomic write + .bak; loader re-reads."""
+    client = TestClient(panelapp.app, follow_redirects=False)
+    morning = datetime(2026, 7, 21, 7, 30)  # a Tuesday → morning_currents on air
+    assert programming.program_for(morning).hosts == ("thorn", "wren")  # baseline
+
+    form = grid_edit.program_form("morning_currents")
+    data = {
+        k: getattr(form, k)
+        for k in (
+            "name",
+            "framing",
+            "daypart",
+            "clock",
+            "break_every",
+            "guest_chance",
+            "brief",
+            "energy",
+            "talk_length_sec",
+            "domains",
+        )
+    }
+
+    # an invalid edit is rejected and NOT written (no diff page); loader unchanged
+    bad = {**data, "hosts": "thorn, ghost_host"}
+    r = client.post("/grid/program/morning_currents", data=bad)
+    assert r.status_code == 200 and "Confirm" not in r.text
+    programming.reload()
+    assert programming.program_for(morning).hosts == ("thorn", "wren")
+
+    # a valid edit shows the diff but does NOT write (the diff step is unskippable)
+    good = {**data, "hosts": "thorn, mira"}
+    r = client.post("/grid/program/morning_currents", data=good)
+    assert r.status_code == 200 and "Confirm &amp; write" in r.text
+    programming.reload()
+    assert programming.program_for(morning).hosts == (
+        "thorn",
+        "wren",
+    )  # still unwritten
+
+    # confirm the candidate → atomic write + one-deep backup + live reload
+    import html
+    import re
+
+    candidate = html.unescape(
+        re.search(
+            r'<textarea name="candidate" hidden>(.*?)</textarea>', r.text, re.S
+        ).group(1)
+    )
+    r = client.post(
+        "/grid/program/morning_currents/confirm", data={"candidate": candidate}
+    )
+    assert r.status_code == 303 and "saved=morning_currents" in r.headers["location"]
+    # the backup is named like write_grid makes it (grid.yaml.bak)
+    assert grid_tmp.with_suffix(grid_tmp.suffix + ".bak").exists()
+    # the edit is a MINIMAL diff and the loader now returns the new hosts
+    changed = [
+        ln
+        for ln in grid_edit.unified_diff(
+            grid_tmp.with_suffix(grid_tmp.suffix + ".bak").read_text(),
+            grid_edit.current_text(),
+        ).splitlines()
+        if ln[:1] in "+-" and not ln.startswith(("+++", "---"))
+    ]
+    assert changed == ["-    hosts: [thorn, wren]", "+    hosts: [thorn, mira]"]
+    assert programming.program_for(morning).hosts == ("thorn", "mira")

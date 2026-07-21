@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% block nav_grid %}active{% endblock %}
+{% block title %}Grid — Settlement Radio Operator Panel{% endblock %}
+
+{% block content %}
+<div class="asof">
+  The weekly programming grid (<code>docs/programming/grid.yaml</code>) — the source
+  of truth. Edits are validated through the real loader, shown as a diff, then
+  written atomically (with a one-deep <code>.bak</code>). No seed needed: the grid
+  is re-read live on the next placement.
+</div>
+
+{% if saved %}<div class="banner ok">✓ saved <b>{{ saved }}</b> — the next top-up airs it.</div>{% endif %}
+
+<section class="card span-full">
+  <h2>Programs</h2>
+  <table class="rows grid-list">
+    <tr><th>id</th><th>name</th><th>hosts</th><th>framing</th><th>clock</th><th></th></tr>
+    {% for pid, p in programs %}
+    <tr>
+      <td class="mono">{{ pid }}</td>
+      <td class="prog">{{ p.name if p else pid }}</td>
+      <td class="hosts">{{ p.hosts | join(', ') if p else '' }}</td>
+      <td>{{ p.framing if p else '' }}</td>
+      <td class="sub clocklabel">
+        {%- if p -%}
+          {%- for step in p.clock -%}
+            {{ step.format }}{% if step.pin_minute is not none %}@:{{ '%02d'|format(step.pin_minute) }}{% endif %}{% if step.count > 1 %} x{{ step.count }}{% endif %}{% if not loop.last %} · {% endif %}
+          {%- endfor -%}
+        {%- endif -%}
+      </td>
+      <td><a class="edit-link" href="/grid/program/{{ pid }}">edit</a></td>
+    </tr>
+    {% endfor %}
+  </table>
+</section>
+
+<section class="card span-full">
+  <h2>Weekly slot map <span class="sub">(read-only)</span></h2>
+  <p class="sub">Re-tiling the week stays a file edit for now (the grid must tile
+  with no gaps). Program cards above are fully editable.</p>
+  {% for wk_key, rows in slot_map %}
+  <div class="slotblock">
+    <div class="wk">{{ wk_key }}</div>
+    <table class="rows">
+      {% for rng, pid, name in rows %}
+      <tr><td class="mono">{{ rng }}</td><td class="prog">{{ name }}</td>
+        <td class="mono sub">{{ pid }}</td></tr>
+      {% endfor %}
+    </table>
+  </div>
+  {% endfor %}
+</section>
+{% endblock %}
