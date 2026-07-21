@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block nav_catalog %}active{% endblock %}
+{% block title %}Confirm {{ cat.title }} — Operator Panel{% endblock %}
+
+{% block content %}
+<div class="asof"><a href="/catalog/{{ cat.slug }}">← {{ cat.title }}</a></div>
+
+{% if warnings %}
+<div class="banner">⚠ {% for w in warnings %}{{ w }}{% if not loop.last %}; {% endif %}{% endfor %}</div>
+{% endif %}
+
+<section class="card span-full">
+  <h2>
+    {% if action == 'delete' %}Remove{% else %}Review{% endif %}
+    <span class="mono">{{ key }}</span> in <code>{{ cat.path().name }}</code>
+  </h2>
+  <p class="sub">You are confirming this exact diff. A one-deep <code>.bak</code>
+  is kept; the write is atomic.
+  {% if cat.seed_action %}After writing, seed to apply it.{% else %}It is
+  live-reloaded — no seed needed.{% endif %}</p>
+
+  <pre class="diff">{% for line in diff.splitlines() %}<span class="{{ 'add' if line.startswith('+') and not line.startswith('+++') else ('del' if line.startswith('-') and not line.startswith('---') else ('hunk' if line.startswith('@@') else '')) }}">{{ line }}</span>
+{% endfor %}</pre>
+
+  <form method="post" action="/catalog/{{ cat.slug }}/write">
+    <textarea name="candidate" hidden>{{ candidate }}</textarea>
+    <input type="hidden" name="key" value="{{ key }}">
+    <div class="formactions">
+      <button type="submit" class="btn-primary">Confirm &amp; write</button>
+      <a href="/catalog/{{ cat.slug }}{% if action != 'delete' %}/edit/{{ key }}{% endif %}"
+         class="btn-plain">Back</a>
+    </div>
+  </form>
+</section>
+{% endblock %}

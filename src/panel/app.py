@@ -17,13 +17,18 @@ import sys
 from pathlib import Path
 
 from fastapi import FastAPI, Form, Request
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import (
+    FileResponse,
+    HTMLResponse,
+    PlainTextResponse,
+    RedirectResponse,
+)
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
 from ..config import settings
 from ..logging_setup import get_logger
-from . import actions, grid_edit, views
+from . import actions, catalog_edit, grid_edit, views
 
 log = get_logger(__name__)
 
@@ -222,6 +227,181 @@ def create_app() -> FastAPI:
                 "energies": ["", "calm", "steady", "bright"],
                 "errors": validation.errors if validation else [],
                 "warnings": validation.warnings if validation else [],
+                "no_change": no_change,
+            },
+        )
+
+    # --- E1.3: the catalog editors (tracks / sponsors / …) -------------------
+
+    @app.get("/catalog", response_class=HTMLResponse)
+    def catalog_index(request: Request) -> HTMLResponse:  # noqa: ANN001
+        """A small index of the editable config catalogs."""
+        return _TEMPLATES.TemplateResponse(
+            request, "catalog_index.html", {"catalogs": catalog_edit.CATALOGS.values()}
+        )
+
+    @app.get("/catalog/{slug}", response_class=HTMLResponse)
+    def catalog_list(request: Request, slug: str, saved: str | None = None):  # noqa: ANN001
+        cat = catalog_edit.catalog(slug)
+        if cat is None:
+            return _redirect("/catalog")
+        return _TEMPLATES.TemplateResponse(
+            request,
+            "catalog_list.html",
+            {"cat": cat, "rows": catalog_edit.list_rows(cat), "saved": saved},
+        )
+
+    @app.get("/catalog/{slug}/new", response_class=HTMLResponse)
+    def catalog_new(request: Request, slug: str) -> HTMLResponse:  # noqa: ANN001
+        cat = catalog_edit.catalog(slug)
+        if cat is None:
+            return _redirect("/catalog")
+        return _render_catalog_form(
+            request, cat, catalog_edit.blank_form(cat), adding=True, key=""
+        )
+
+    @app.get("/catalog/{slug}/edit/{key}", response_class=HTMLResponse)
+    def catalog_edit_form(request: Request, slug: str, key: str):  # noqa: ANN001
+        cat = catalog_edit.catalog(slug)
+        if cat is None:
+            return _redirect("/catalog")
+        form = catalog_edit.row_form(cat, key)
+        if form is None:
+            return _redirect(f"/catalog/{slug}")
+        return _render_catalog_form(request, cat, form, adding=False, key=key)
+
+    @app.post("/catalog/{slug}/save", response_class=HTMLResponse)
+    async def catalog_save(request: Request, slug: str):  # noqa: ANN001
+        cat = catalog_edit.catalog(slug)
+        if cat is None:
+            return _redirect("/catalog")
+        data = await request.form()
+        adding = data.get("_adding") == "1"
+        key = (data.get("_key") or data.get(cat.key_field) or "").strip()
+        values = {f.name: (data.get(f.name) or "") for f in cat.fields}
+        values["_flags"] = {t: data.get(f"flag_{t}") == "on" for t in cat.feature_tags}
+        form_state = {**values, "_flags": values["_flags"]}
+        try:
+            candidate = catalog_edit.apply_row(cat, key, values, adding=adding)
+        except (KeyError, ValueError) as exc:
+            return _render_catalog_form(
+                request, cat, form_state, adding=adding, key=key, errors=[str(exc)]
+            )
+        validation = cat.validate(candidate)
+        if not validation.ok:
+            return _render_catalog_form(
+                request,
+                cat,
+                form_state,
+                adding=adding,
+                key=key,
+                errors=validation.errors,
+                warnings=validation.warnings,
+            )
+        diff = catalog_edit.unified_diff(catalog_edit.current_text(cat), candidate)
+        if not diff.strip():
+            return _render_catalog_form(
+                request, cat, form_state, adding=adding, key=key, no_change=True
+            )
+        return _TEMPLATES.TemplateResponse(
+            request,
+            "catalog_diff.html",
+            {
+                "cat": cat,
+                "key": key,
+                "diff": diff,
+                "candidate": candidate,
+                "warnings": validation.warnings,
+                "action": "save",
+            },
+        )
+
+    @app.post("/catalog/{slug}/delete", response_class=HTMLResponse)
+    async def catalog_delete(request: Request, slug: str):  # noqa: ANN001
+        cat = catalog_edit.catalog(slug)
+        if cat is None:
+            return _redirect("/catalog")
+        data = await request.form()
+        key = (data.get("_key") or "").strip()
+        try:
+            candidate = catalog_edit.delete_row(cat, key)
+        except KeyError:
+            return _redirect(f"/catalog/{slug}")
+        diff = catalog_edit.unified_diff(catalog_edit.current_text(cat), candidate)
+        return _TEMPLATES.TemplateResponse(
+            request,
+            "catalog_diff.html",
+            {
+                "cat": cat,
+                "key": key,
+                "diff": diff,
+                "candidate": candidate,
+                "warnings": [],
+                "action": "delete",
+            },
+        )
+
+    @app.get("/catalog/pronunciation/test")
+    def pronunciation_test(text: str = ""):  # noqa: ANN201
+        """Render a name/respelling through the TTS seam and serve the throwaway clip.
+
+        Closes the mispronunciation loop in one screen: the lexicon is applied inside
+        `tts.synthesize`, so this hears exactly what the engine will say (after a save,
+        since the lexicon live-reloads). First call may load the local model.
+        """
+        phrase = (text or "").strip()[:120]
+        if not phrase:
+            return PlainTextResponse("no text", status_code=400)
+        from ..providers import tts
+
+        out = settings.segments_dir / "panel-tts-test.mp3"
+        try:
+            out.parent.mkdir(parents=True, exist_ok=True)
+            tts.synthesize(phrase, voice=settings.disclosure_voice, out_path=str(out))
+        except Exception as exc:  # noqa: BLE001 — a TTS failure is a 500 with the reason
+            log.warning("panel_tts_test_failed", error=str(exc))
+            return PlainTextResponse(f"TTS failed: {exc}", status_code=500)
+        return FileResponse(
+            out, media_type="audio/mpeg", headers={"Cache-Control": "no-store"}
+        )
+
+    @app.post("/catalog/{slug}/write")
+    async def catalog_write(request: Request, slug: str) -> RedirectResponse:  # noqa: ANN001
+        cat = catalog_edit.catalog(slug)
+        if cat is None:
+            return _redirect("/catalog")
+        data = await request.form()
+        candidate = data.get("candidate") or ""
+        key = data.get("key") or ""
+        try:
+            catalog_edit.write(cat, candidate)
+        except ValueError as exc:
+            log.warning("catalog_write_rejected", catalog=slug, error=str(exc))
+            return _redirect(f"/catalog/{slug}")
+        return _redirect(f"/catalog/{slug}?saved={key}")
+
+    def _render_catalog_form(
+        request,
+        cat,
+        form,
+        *,
+        adding,
+        key,  # noqa: ANN001
+        errors=None,
+        warnings=None,
+        no_change=False,
+    ):
+        """Shared render of a catalog add/edit form."""
+        return _TEMPLATES.TemplateResponse(
+            request,
+            "catalog_form.html",
+            {
+                "cat": cat,
+                "form": form,
+                "adding": adding,
+                "key": key,
+                "errors": errors or [],
+                "warnings": warnings or [],
                 "no_change": no_change,
             },
         )

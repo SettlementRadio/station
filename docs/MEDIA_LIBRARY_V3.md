@@ -147,6 +147,25 @@ gives The Count two shots at the chart. Rules:
 > `_1`/`_2` to the `id` and `audio_path`,** and (optionally) suffix the second `title`. One canonical
 > lore block → one or two rows. Nothing to edit in `tracks.yaml` until then.
 
+### 1e. **Getting to ~3 minutes (song length — the operator's ask)**
+
+Suno v5 sets a song's length mostly from **how much lyric + structure you feed it.** A short lyric (~20
+lines) renders a ~1-minute song — that's the trap. Every entry below is written to land **~2:45–3:30**,
+using the reliable ~3-minute shape:
+
+- **Three verses, a chorus that returns 3–4×, a bridge, and at least one instrumental solo.** That's the
+  spine of a 3-minute song — **don't trim it back down.**
+- **Bare `[Chorus]` tags DO count** — Suno re-sings the full chorus for each one (~15–20 s a piece). Keep
+  every one; they're doing real work, not just marking structure.
+- **Solos add real time** — the `[Guitar Solo]` / `[Harmonica Solo]` / `[Instrumental]` cues (several
+  marked *extended*) are load-bearing. A solo is worth ~15–25 s.
+- **Still short?** Hit **"Extend"** on the take (grows it on the same Persona/seed), or duplicate a verse
+  or solo and re-roll — cheaper than starting over.
+- **Too long (>4:00)?** Fine — **Trim + clean-fade** the tail (§1c) down to ~3:00–3:30.
+
+*(If you generated wave-3 tracks from an earlier, shorter draft of this doc, re-generate them from the
+expanded lyrics below — that's the fix for the 1-minute renders.)*
+
 ---
 
 ## 2. The wave-3 roster — six new acts (each = one Persona)
@@ -208,14 +227,22 @@ Persona seed. ⚡ = flagged `chart` candidate** (the pool The Count draws from �
   nobody boards a moving song,
   so the whole gate's swinging till the bell comes 'round!
   [Chorus]
+  [Verse 3]
+  Down to my last half-credit now,
+  but the song's not near halfway done —
+  so I'll dance the change right off my palm
+  and call it money well spun!
+  [Chorus]
   [Guitar Solo]
-  (twangy, everybody hollers)
+  (extended, twangy — everybody hollers)
   [Bridge]
   (half-time, hand-claps)
   They say the frontier's got no culture, friend —
   come stand on this concourse at shift's end!
   [Chorus]
   (everyone, double)
+  [Chorus]
+  (last time, whole gate singing, hands up)
   [Outro]
   (one last slapback lick — band stops clean on the downbeat)
   [End]
@@ -260,12 +287,22 @@ Persona seed. ⚡ = flagged `chart` candidate** (the pool The Count draws from �
   then it's elbows, hollers, boots on tin,
   and Monday's a lie we don't believe in!
   [Chorus]
+  [Verse 3]
+  Third-shift foreman's here off-duty,
+  turns out the man can really move —
+  who knew the one who signs our overtime
+  had a rest-day thing to prove!
+  [Chorus]
+  [Guitar Solo]
+  (extended rockabilly break — whoops and claps)
   [Bridge]
   (breakdown — just claps and bass)
   Work made your hands, work made you strong —
   but rest-day's when you find the song!
   [Chorus]
   (everyone, double)
+  [Chorus]
+  (one more, ragged and joyful)
   [Outro]
   (band hits the last note together — dead stop)
   [End]
@@ -310,12 +347,22 @@ Persona seed. ⚡ = flagged `chart` candidate** (the pool The Count draws from �
   'cause she's not waiting on a ship,
   she's growing something worth the wait, you dig?
   [Chorus]
+  [Verse 3]
+  She caught me staring through the glass,
+  gave a wave and a knowing grin —
+  now I volunteer on the watering rounds,
+  worst gardener the block's ever seen!
+  [Chorus]
+  [Guitar Solo]
+  (jangly twelve-string break, tambourine driving)
   [Bridge]
   (harmonies stack up)
   They built the dome to keep the air —
   she's the reason there's a reason to be there!
   [Chorus]
   (everyone, key up)
+  [Chorus]
+  (last time, big harmonies)
   [Outro]
   (jangle rings out, then a clean stop)
   [End]
@@ -360,12 +407,22 @@ Persona seed. ⚡ = flagged `chart` candidate** (the pool The Count draws from �
   and a power cut we all should've cursed
   turned into the best night of the week — or worse!
   [Chorus]
+  [Verse 3]
+  Word got round to the sixth floor,
+  then the fifth, then all the rest —
+  by the second chorus the whole tower's up,
+  a power cut turned block-wide fest!
+  [Chorus]
+  [Guitar Solo]
+  (ringing power-pop break, hands clapping)
   [Bridge]
   (claps, building)
   A settlement's just a hall of doors —
   till somebody opens theirs, and then it's yours!
   [Chorus]
   (everyone, huge)
+  [Chorus]
+  (final, every neighbour singing)
   [Outro]
   (guitars ring, fade clean on the last chord)
   [End]
@@ -410,8 +467,14 @@ Persona seed. ⚡ = flagged `chart` candidate** (the pool The Count draws from �
   the engines light and the whole crew sings,
   'cause a turned ship's a promise the dark can't wring!
   [Chorus]
+  [Verse 3]
+  Cook lashed the pots down hours ago,
+  the whole galley's bolted tight —
+  we count her down from ten to one
+  and set the dark alight!
+  [Chorus]
   [Guitar Solo]
-  (big, the crew whoops)
+  (big and extended, the crew whoops)
   [Bridge]
   (half-time, one guitar)
   Nobody sees us out here burn —
@@ -419,6 +482,8 @@ Persona seed. ⚡ = flagged `chart` candidate** (the pool The Count draws from �
   So we make it loud, and we make it ours!
   [Chorus]
   (everyone, double)
+  [Chorus]
+  (final, whole hull singing)
   [Outro]
   (engine hum returns, guitars cut dead)
   [End]
@@ -464,6 +529,14 @@ Persona seed. ⚡ = flagged `chart` candidate** (the pool The Count draws from �
   now he's front and centre, gone hoarse,
   'cause nobody out here sings alone!
   [Chorus]
+  [Verse 3]
+  Day thirty and the water's rationed,
+  day thirty-one, who cares —
+  we've got a chorus none of us can kill
+  and lungs enough to spare!
+  [Chorus]
+  [Guitar Solo]
+  (ringing stadium break, crowd chant underneath)
   [Bridge]
   (quiet, one voice, crowd hums)
   And when we make that far-side port
@@ -472,6 +545,8 @@ Persona seed. ⚡ = flagged `chart` candidate** (the pool The Count draws from �
   and the songs still in the air!
   [Chorus]
   (full crowd, key up)
+  [Chorus]
+  (last time, hoarse and huge)
   [Outro]
   (stomp-clap fades like a ship pulling away — clean cut)
   [End]
@@ -516,12 +591,22 @@ Persona seed. ⚡ = flagged `chart` candidate** (the pool The Count draws from �
   bring us broke and we'll bring you true,
   there's nothing in this yard we can't see through!
   [Chorus]
+  [Verse 3]
+  Foreman clocked our numbers twice,
+  said "best bay in the yard" and grinned —
+  we just wiped the grease and cracked our knuckles
+  and lit the next seam in the wind!
+  [Chorus]
+  [Guitar Solo]
+  (crunchy break, gang shouts the heys)
   [Bridge]
   (drums only, chant)
   Line it! Weld it! Torque it! Fly!
   Line it! Weld it! Torque it! Fly!
   [Chorus]
   (double, everyone shouting the heys)
+  [Chorus]
+  (final, rivet-gun snare driving)
   [Outro]
   (one last rivet-gun fill — clean stop)
   [End]
@@ -566,6 +651,14 @@ Persona seed. ⚡ = flagged `chart` candidate** (the pool The Count draws from �
   you can license the lanes and tax the air,
   but you can't put a fence round a frequency out there!
   [Chorus]
+  [Verse 3]
+  They triangulated twice last month,
+  sent a cutter, sent a fine —
+  we bolted the rig to a spinning rock,
+  now we broadcast down the line!
+  [Chorus]
+  [Guitar Solo]
+  (fuzzy garage break, a feedback howl)
   [Bridge]
   (breakdown, one fuzzy chord and claps)
   Every rock's got a radio,
@@ -574,6 +667,8 @@ Persona seed. ⚡ = flagged `chart` candidate** (the pool The Count draws from �
   every single time in the end!
   [Chorus]
   (everyone, ragged and loud)
+  [Chorus]
+  (final, fists in the air)
   [Outro]
   (riff cuts to static — then dead silence)
   [End]
@@ -619,6 +714,14 @@ Persona seed. ⚡ = flagged `chart` candidate** (the pool The Count draws from �
   but nine o'clock's a country, love,
   and we're the only citizens of that one!
   [Chorus]
+  [Verse 3]
+  I save the good news up all week
+  to spend it all on you —
+  the raise, the joke, the neighbour's dog,
+  the sky when it turned blue!
+  [Chorus]
+  [Guitar Solo]
+  (chiming guitar break over claps and "ba-da-da")
   [Bridge]
   (backing hums, lead soft)
   Let the clever folk send instant words —
@@ -627,6 +730,8 @@ Persona seed. ⚡ = flagged `chart` candidate** (the pool The Count draws from �
   is an hour nobody can fake!
   [Chorus]
   (key change, joyous)
+  [Chorus]
+  (last time, everyone, claps)
   [Outro]
   (spoken over the "ba-da-da": "...same time next week." — soft fade)
   [End]
@@ -672,6 +777,14 @@ Persona seed. ⚡ = flagged `chart` candidate** (the pool The Count draws from �
   (both) and a song we love got played out there
   a season back, and it's only now here!
   [Chorus]
+  [Verse 3]
+  (her) There's a wedding on a world we'll never see,
+  (him) a strike that got resolved —
+  (both) and a birthday for a stranger's kid
+  we'll toast before it's solved!
+  [Chorus]
+  [Instrumental]
+  (bright acoustic-and-keys break, whistling)
   [Bridge]
   (just the two voices, close)
   It's a big old dark to get the mail through —
@@ -680,6 +793,8 @@ Persona seed. ⚡ = flagged `chart` candidate** (the pool The Count draws from �
   and let's be glad of the fuss.
   [Chorus]
   (bigger, claps)
+  [Chorus]
+  (last time, both voices, warm)
   [Outro]
   (whistled melody, fading like a walk to work)
   [End]
@@ -724,14 +839,22 @@ Persona seed. ⚡ = flagged `chart` candidate** (the pool The Count draws from �
   the stars parade across the pane
   and nobody's got a care tonight!
   [Chorus]
+  [Verse 3]
+  Third time round and the sun's come up,
+  the garden domes below all gold —
+  we've missed two meals and a maintenance call
+  and we'd do it twice as bold!
+  [Chorus]
   [Guitar Solo]
-  (reverb-soaked, the crowd whoops)
+  (extended reverb-soaked surf break, the crowd whoops)
   [Bridge]
   (toms drop, claps carry it)
   They built this wheel for gravity —
   we just ride it for the view!
   [Chorus]
   (everyone, double)
+  [Chorus]
+  (final, hands up, reverb blazing)
   [Outro]
   (surf-guitar dive-bomb — clean stop)
   [End]
@@ -776,12 +899,22 @@ Persona seed. ⚡ = flagged `chart` candidate** (the pool The Count draws from �
   the band's just three guys and a busted amp,
   but out here, buddy, that's a full-on stamp!
   [Chorus]
+  [Verse 3]
+  Band struck up her favourite slow one,
+  I forgot my own two feet —
+  but she pulled me close and whispered low,
+  "you're doing just fine, keep the beat!"
+  [Chorus]
+  [Guitar Solo]
+  (twangy slapback break, upright bass walking hard)
   [Bridge]
   (bass and claps, sly)
   Ain't got flowers, ain't got wine —
   got two left feet and a Saturday line!
   [Chorus]
   (everyone)
+  [Chorus]
+  (last time, doo-wop backing, big)
   [Outro]
   (slap bass struts back out — one twang, done)
   [End]
@@ -826,11 +959,21 @@ Persona seed. ⚡ = flagged `chart` candidate** (the pool The Count draws from �
   'cause the kid brought a fiddle and the doc brought a spoon,
   and a flare's just a party you weren't planning for soon!
   [Chorus]
+  [Verse 3]
+  Warden's tapping her watch and grinning,
+  the shielding's holding fine —
+  so the doc calls a square dance in the bunker
+  and we all get in the line!
+  [Chorus]
+  [Piano Solo]
+  (extended boogie-woogie break, whoops and stomps)
   [Bridge]
   (piano solo, then everyone hushes for the radio:)
   (spoken) "...all-clear in three, folks. Three. Two—"
   [Chorus]
   (bursts back, doors open, huge)
+  [Chorus]
+  (final, everyone spilling into the daylight)
   [Outro]
   (piano boogies out the door — clean stop)
   [End]
@@ -875,8 +1018,14 @@ Persona seed. ⚡ = flagged `chart` candidate** (the pool The Count draws from �
   nobody crosses the ice alone,
   that's the one rule they wrote it in!
   [Chorus]
+  [Verse 3]
+  Radio crackles a hauler's hello
+  from a rig a hundred back —
+  we flash our lights the length of the line,
+  a river of light on the black!
+  [Chorus]
   [Guitar Solo]
-  (open, ringing)
+  (open, ringing, extended)
   [Bridge]
   (half-time)
   My father drove this road at night
@@ -885,6 +1034,8 @@ Persona seed. ⚡ = flagged `chart` candidate** (the pool The Count draws from �
   and the same stars comb her hair.
   [Chorus]
   (everyone, big)
+  [Chorus]
+  (final, headlights and gang vocals)
   [Outro]
   (headlight guitars pull away — clean stop)
   [End]
@@ -930,12 +1081,22 @@ Persona seed. ⚡ = flagged `chart` candidate** (the pool The Count draws from �
   the dome's still standing, I'm still here,
   and I'm still glad I met you, dear!
   [Chorus]
+  [Verse 3]
+  I'll date it wrong on purpose,
+  guess the mood you'll be in then —
+  "hope the rain let up by now, my love,"
+  and seal it up again!
+  [Chorus]
+  [Guitar Solo]
+  (chiming jangle break, tambourine)
   [Bridge]
   (harmonies, wistful then bright)
   Maybe slow's the only honest speed —
   you can't take back what took a fortnight freed!
   [Chorus]
   (everyone, up)
+  [Chorus]
+  (last time, bright harmonies)
   [Outro]
   (jangle rings, clean fade)
   [End]
@@ -981,6 +1142,14 @@ Persona seed. ⚡ = flagged `chart` candidate** (the pool The Count draws from �
   the storm can bury the whole red world
   but it can't touch the radio!
   [Chorus]
+  [Verse 3]
+  Kid calls in from the far south farm,
+  says the storm's got his sister scared —
+  so we play her song and we say her name,
+  and the whole red plain has cared!
+  [Chorus]
+  [Guitar Solo]
+  (bright chiming break, warm and open)
   [Bridge]
   (guitar rings, warm)
   My gran homesteaded under this dust,
@@ -989,6 +1158,8 @@ Persona seed. ⚡ = flagged `chart` candidate** (the pool The Count draws from �
   was a voice on a frequency.
   [Chorus]
   (everyone, warm and big)
+  [Chorus]
+  (final, harmony chorus, big)
   [Outro]
   (dial spins off — clean stop)
   [End]
@@ -1033,12 +1204,22 @@ Persona seed. ⚡ = flagged `chart` candidate** (the pool The Count draws from �
   and the surliest bosun in the fleet
   just did a full slide right into the bin!
   [Chorus]
+  [Verse 3]
+  Quartermaster poked her head in,
+  came to shut the whole thing down —
+  two songs later she's lost her boots
+  and she's sliding across the town!
+  [Chorus]
+  [Guitar Solo]
+  (reverb surf break, whoops and a big slide)
   [Bridge]
   (claps, laughter)
   Come Monday we'll mop and we'll swear —
   but Monday can wait, 'cause the floor's right there!
   [Chorus]
   (everyone, double)
+  [Chorus]
+  (final, the whole hall sliding)
   [Outro]
   (a long slide, a crash, laughter — clean stop)
   [End]
@@ -1083,12 +1264,22 @@ Persona seed. ⚡ = flagged `chart` candidate** (the pool The Count draws from �
   so we downed our tools at the shift-change bell,
   and let the boardroom breathe for a spell!
   [Chorus]
+  [Verse 3]
+  Boardroom sat there turning blue,
+  learned the lesson quick —
+  you can't put a meter on a lungful
+  and keep your business slick!
+  [Chorus]
+  [Guitar Solo]
+  (gritty slide-guitar break, stomps and claps)
   [Bridge]
   (stomps and claps, no guitar)
   You can own the dome, you can own the light —
   but the air's the commons, and we hold that tight!
   [Chorus]
   (everyone, thunderous)
+  [Chorus]
+  (final, foot-stomps and full gang chorus)
   [Outro]
   (one last stomp, one slide — dead stop)
   [End]
@@ -1134,12 +1325,22 @@ Persona seed. ⚡ = flagged `chart` candidate** (the pool The Count draws from �
   but the good stuff takes the scenic road,
   and it's twice as sweet for the way it slowed!
   [Chorus]
+  [Verse 3]
+  I read it twice and I read it slow,
+  then I read it to the hall —
+  a whole café of strangers cheered
+  for a baby they'll never see at all!
+  [Chorus]
+  [Horn Solo]
+  (extended punchy horn break, tambourine driving)
   [Bridge]
   (horns drop, organ swells, hand-claps)
   So don't you curse the distance, child —
   the distance made it worth the while!
   [Chorus]
   (everyone, key up, horns blazing)
+  [Chorus]
+  (final, group vocals, horns wide open)
   [Outro]
   (horns hit the last stab together — clean stop)
   [End]
@@ -1185,12 +1386,22 @@ Persona seed. ⚡ = flagged `chart` candidate** (the pool The Count draws from �
   no smashing, no burning, just a song,
   and a hand in every palm!
   [Chorus]
+  [Verse 3]
+  They sent the notice down at dawn:
+  the tollgate's been withdrawn —
+  ten thousand voices in the commons hall
+  had sung the whole thing gone!
+  [Chorus]
+  [Guitar Solo]
+  (ringing anthem break, crowd chant under it)
   [Bridge]
   (stomps, the crowd carries it alone)
   You can price the grain, you can price the fare —
   but you'll never, ever price the air!
   [Chorus]
   (everyone, enormous)
+  [Chorus]
+  (final, marching drums, the whole hall)
   [Outro]
   (crowd sings the hook once more a cappella — band crashes back for one final chord, dead stop)
   [End]
@@ -1240,8 +1451,14 @@ Persona seed. ⚡ = flagged `chart` candidate** (the pool The Count draws from �
   and the tide comes in on Titan slow
   like it's got all the time and hate.
   [Chorus]
+  [Verse 3]
+  The harbourmaster keeps you trimmed,
+  says it's just a job he's paid —
+  but I've seen him linger past his shift
+  on the nights the storms have stayed.
+  [Chorus]
   [Guitar Solo]
-  (weeping, patient)
+  (weeping, patient, extended — organ swelling)
   [Bridge]
   (organ under, voice bare)
   They say a watched light never turns —
@@ -1250,6 +1467,8 @@ Persona seed. ⚡ = flagged `chart` candidate** (the pool The Count draws from �
   then I'll watch you, harbor light.
   [Chorus]
   (softer, aching)
+  [Chorus]
+  (last time, full voice, then falling away)
   [Outro]
   (guitar holds one note, organ fades to nothing)
   [End]
@@ -1295,12 +1514,22 @@ Persona seed. ⚡ = flagged `chart` candidate** (the pool The Count draws from �
   just send me you, the whole of you,
   and I'll do the waiting time!
   [Chorus]
+  [Verse 3]
+  My girlfriends say I'm crazy, hon,
+  to hang on a man so far —
+  but they've got quick and easy love,
+  and I've got who you are!
+  [Chorus]
+  [Guitar Solo]
+  (stinging blues-soul break over the strut, then organ)
   [Bridge]
   (organ solo, then a shout)
   Some women want it fast and free —
   I want it far, and I want it me!
   [Chorus]
   (backing group joins, big)
+  [Chorus]
+  (final, full band and backing group)
   [Outro]
   (bass struts out, organ holds — clean fade)
   [End]
@@ -1345,6 +1574,14 @@ Persona seed. ⚡ = flagged `chart` candidate** (the pool The Count draws from �
   we'll play you round to morning
   and we'll fold your worries in.
   [Chorus]
+  [Verse 3]
+  We know your names, we know your griefs,
+  we've heard 'em all before —
+  so lay 'em down beside your glass,
+  we'll hold 'em till you're sure.
+  [Chorus]
+  [Piano Solo]
+  (warm electric-piano break, soft horns answering)
   [Bridge]
   (horns swell, warm)
   Fast songs are for the leaving —
@@ -1353,6 +1590,8 @@ Persona seed. ⚡ = flagged `chart` candidate** (the pool The Count draws from �
   till the piano says okay.
   [Chorus]
   (harmonies full)
+  [Chorus]
+  (last time, everyone in the room humming)
   [Outro]
   (piano alone, one soft chord, clean fade)
   [End]
@@ -1397,12 +1636,22 @@ Persona seed. ⚡ = flagged `chart` candidate** (the pool The Count draws from �
   and that little light in the porthole
   is the only clock I mind.
   [Chorus]
+  [Verse 3]
+  Foreman says one more hour, son,
+  the ring's behind tonight —
+  well the ring's been behind since Saturn was young,
+  and I'll be home by first light.
+  [Chorus]
+  [Harmonica Solo]
+  (weary, extended — guitar answering)
   [Bridge]
   (harmonica solo, then low)
   A man's not his hours, a man's not his freight —
   a man's the little light that's up when he's late.
   [Chorus]
   (softer)
+  [Chorus]
+  (last time, low and warm)
   [Outro]
   (harmonica holds, fades to nothing)
   [End]
@@ -1448,12 +1697,22 @@ Persona seed. ⚡ = flagged `chart` candidate** (the pool The Count draws from �
   and every Sunday I sit right here
   and play her the easy part.
   [Chorus]
+  [Verse 3]
+  Neighbour wanders over slow,
+  brings a jug and a battered fiddle —
+  and the two of us fill the thin red dusk
+  with something in the middle.
+  [Chorus]
+  [Slide Guitar Solo]
+  (warm, lazy, extended)
   [Bridge]
   (slide solo, warm)
   They say Mars is hard, and Mars is far —
   but Mars is home when you've got a guitar.
   [Chorus]
   (warm, unhurried)
+  [Chorus]
+  (last time, two voices now)
   [Outro]
   (slide fades into the wind — clean fade)
   [End]
@@ -1498,6 +1757,14 @@ Persona seed. ⚡ = flagged `chart` candidate** (the pool The Count draws from �
   I'm saying a question worth this much
   deserves more thought than we've got!
   [Chorus]
+  [Verse 3]
+  The port mind logged ten thousand ships,
+  never once complained —
+  and I catch myself saying "thanks" to it,
+  then wondering what I named.
+  [Chorus]
+  [Organ Solo]
+  (building gospel-soul break, guitar answering)
   [Bridge]
   (backing group rises, gospel warmth)
   We drew a line and called it custom,
@@ -1506,6 +1773,8 @@ Persona seed. ⚡ = flagged `chart` candidate** (the pool The Count draws from �
   is the easiest line to get wrong.
   [Chorus]
   (full, questioning not preaching)
+  [Chorus]
+  (final, backing group full and warm)
   [Outro]
   (organ resolves warm — band stops clean together)
   [End]
@@ -1551,12 +1820,22 @@ Persona seed. ⚡ = flagged `chart` candidate** (the pool The Count draws from �
   didn't ask who's paid and who's not,
   just grabbed the tools and the box!
   [Chorus]
+  [Verse 3]
+  Sealed the breach at a quarter to,
+  counted heads twice through —
+  every soul aboard accounted for,
+  and the coffee's already brewed!
+  [Chorus]
+  [Guitar Solo]
+  (gritty riff break, pounding drums)
   [Bridge]
   (drums pound alone)
   A station's not its steel and air —
   it's who comes running when there's trouble there!
   [Chorus]
   (everyone, big)
+  [Chorus]
+  (final, gang shouts, organ wide)
   [Outro]
   (klaxon cuts to all-clear tone — band hits one last chord, dead stop)
   [End]
@@ -1601,12 +1880,22 @@ Persona seed. ⚡ = flagged `chart` candidate** (the pool The Count draws from �
   and the one empty chair we keep for Bram
   we fill with a toast and the cost.
   [Chorus]
+  [Verse 3]
+  The little ones don't know the half of it,
+  who sailed and who stayed home —
+  they just know the whole crew's here at once
+  and nobody's alone!
+  [Chorus]
+  [Mandolin Solo]
+  (bright break, foot-stomps and claps)
   [Bridge]
   (mandolin and claps, tender then bright)
   We don't get many all-together days —
   so we make this one blaze!
   [Chorus]
   (everyone, huge)
+  [Chorus]
+  (final, the whole dock singing)
   [Outro]
   (mandolin rings, one big group "hey!" — clean stop)
   [End]
@@ -1651,6 +1940,14 @@ Persona seed. ⚡ = flagged `chart` candidate** (the pool The Count draws from �
   might as well be me tonight,
   with the radio and the gleams.
   [Chorus]
+  [Verse 3]
+  A light blinks red on the far-dock board,
+  I log it, let it be —
+  some other watchman, some other world,
+  keeping watch like me.
+  [Chorus]
+  [Guitar Solo]
+  (clean, nocturnal, unhurried)
   [Bridge]
   (organ warm, guitar soft)
   It's a lonesome hour, I won't pretend —
@@ -1659,6 +1956,8 @@ Persona seed. ⚡ = flagged `chart` candidate** (the pool The Count draws from �
   making the dark feel like home.
   [Chorus]
   (soft)
+  [Chorus]
+  (last time, barely there)
   [Outro]
   (guitar and organ fade together — clean fade)
   [End]
@@ -1703,6 +2002,14 @@ Persona seed. ⚡ = flagged `chart` candidate** (the pool The Count draws from �
   if your signal's tired and your heart is too,
   there's a chair here you can bury.
   [Chorus]
+  [Verse 3]
+  A hauler docked here week ago,
+  worn thin and wouldn't say —
+  ate his fill and slept the clock,
+  left his thanks and went his way.
+  [Chorus]
+  [Guitar Solo]
+  (fingerpicked break, upright bass warm)
   [Bridge]
   (harmony close, guitar soft)
   The dark's got room enough for all —
@@ -1711,6 +2018,8 @@ Persona seed. ⚡ = flagged `chart` candidate** (the pool The Count draws from �
   'cause that's the way we live.
   [Chorus]
   (both voices warm)
+  [Chorus]
+  (last time, close harmony)
   [Outro]
   (guitar rings, one hum, clean fade)
   [End]
@@ -1756,12 +2065,22 @@ Persona seed. ⚡ = flagged `chart` candidate** (the pool The Count draws from �
   we tip our caps and keep our pace,
   the slow ones bring the world!
   [Chorus]
+  [Verse 3]
+  Manifest says a school's worth of books,
+  a clinic's worth of care —
+  we don't just haul the freight, my friend,
+  we haul the getting-there!
+  [Chorus]
+  [Guitar Solo]
+  (chunky mid-tempo break, engine-rhythm drums)
   [Bridge]
   (half-time, warm)
   Every klick's a promise kept,
   every crate a name we've met.
   [Chorus]
   (everyone)
+  [Chorus]
+  (final, whole crew, warm)
   [Outro]
   (engine groove winds down — clean cut)
   [End]
@@ -1806,6 +2125,14 @@ Persona seed. ⚡ = flagged `chart` candidate** (the pool The Count draws from �
   but they laughed so hard at the goats
   the whole cold war expired!
   [Chorus]
+  [Verse 3]
+  The minister's speech came through as verse,
+  his cough became a toast —
+  by the end nobody knew who'd said what,
+  but everybody clapped the most!
+  [Chorus]
+  [Trumpet Solo]
+  (muted "wah" break, walking bass shuffling)
   [Bridge]
   (trumpet solo, then dry)
   Diplomacy's a funny art
@@ -1814,6 +2141,8 @@ Persona seed. ⚡ = flagged `chart` candidate** (the pool The Count draws from �
   is the thing keeps peace alive!
   [Chorus]
   (grinning, big)
+  [Chorus]
+  (last time, whole band grinning)
   [Outro]
   (trumpet "wah-wah-waaah" — band stops clean, a chuckle)
   [End]
@@ -1859,6 +2188,14 @@ Persona seed. ⚡ = flagged `chart` candidate** (the pool The Count draws from �
   they just eat standing in the doorway,
   says it splits the bill up nice!
   [Chorus]
+  [Verse 3]
+  Inspector came to check our deeds,
+  got dizzy where to stand —
+  we poured him tea in the neutral hall
+  and shook his either hand!
+  [Chorus]
+  [Piano Solo]
+  (honky-tonk break, brushed shuffle, group call-backs)
   [Bridge]
   (piano solo, then dry)
   Governments draw lines on maps
@@ -1867,6 +2204,8 @@ Persona seed. ⚡ = flagged `chart` candidate** (the pool The Count draws from �
   and let the paperwork assume!
   [Chorus]
   (everyone, hollering)
+  [Chorus]
+  (final, whole hall two-stepping)
   [Outro]
   (piano flourish, one big chord — dead stop)
   [End]
@@ -1912,6 +2251,14 @@ Persona seed. ⚡ = flagged `chart` candidate** (the pool The Count draws from �
   and maybe that's the whole point, friend:
   a made thing feels real that way.
   [Chorus]
+  [Verse 3]
+  The old hands stand right out in it,
+  faces up and eyes shut tight —
+  thirty years to earn a Tuesday shower,
+  and worth it, every drop, tonight!
+  [Chorus]
+  [Slide Guitar Solo]
+  (warm electric-slide break, rain pattering)
   [Bridge]
   (slide swells, warm)
   My grandmother crossed the dark with seeds
@@ -1920,6 +2267,8 @@ Persona seed. ⚡ = flagged `chart` candidate** (the pool The Count draws from �
   I wish that you could know.
   [Chorus]
   (everyone, joyful)
+  [Chorus]
+  (final, harmony chorus, rain and voices)
   [Outro]
   (rain returns under the last chord — clean stop)
   [End]
@@ -1968,8 +2317,14 @@ Persona seed. ⚡ = flagged `chart` candidate** (the pool The Count draws from �
   I'll nurse one slow till the shift bell,
   and watch the dark go by.
   [Chorus]
+  [Verse 3]
+  Keeper wipes the same three glasses,
+  been closing up for years —
+  he don't say much but he leaves the lamp
+  for the ones who linger here.
+  [Chorus]
   [Guitar Solo]
-  (weeping, unhurried)
+  (weeping, unhurried, extended)
   [Bridge]
   (bass and voice only)
   Everybody's got a last ferry —
@@ -1978,6 +2333,8 @@ Persona seed. ⚡ = flagged `chart` candidate** (the pool The Count draws from �
   and you learn to love the hall.
   [Chorus]
   (soft, resigned but warm)
+  [Chorus]
+  (last time, bare and low)
   [Outro]
   (guitar holds one long note — fades to nothing)
   [End]
@@ -2022,6 +2379,14 @@ Persona seed. ⚡ = flagged `chart` candidate** (the pool The Count draws from �
   but you can't hate a distance, friend,
   it don't care how it feels.
   [Chorus]
+  [Verse 3]
+  I wrote you back the same slow day,
+  though I know it's far too late —
+  some words you send for the sending's sake,
+  and you let the distance wait.
+  [Chorus]
+  [Guitar Solo]
+  (stinging, slow, extended — organ underneath)
   [Bridge]
   (guitar alone, then voice bare)
   So I'll forgive the dark tonight,
@@ -2030,6 +2395,8 @@ Persona seed. ⚡ = flagged `chart` candidate** (the pool The Count draws from �
   and far's its own kind of pain.
   [Chorus]
   (soft, forgiving)
+  [Chorus]
+  (last time, tender)
   [Outro]
   (organ resolves, guitar fades out clean)
   [End]
@@ -2074,6 +2441,14 @@ Persona seed. ⚡ = flagged `chart` candidate** (the pool The Count draws from �
   but the night shift hears the same slow song
   wherever they reside.
   [Chorus]
+  [Verse 3]
+  Somebody's crying in the corner booth,
+  somebody's laughing low —
+  we play a little softer for the both of them
+  and we let the last one go.
+  [Chorus]
+  [Piano Solo]
+  (lazy electric-piano break, muted trumpet answering)
   [Bridge]
   (piano and voice, close)
   So thank you for the quiet hours,
@@ -2082,6 +2457,8 @@ Persona seed. ⚡ = flagged `chart` candidate** (the pool The Count draws from �
   and we'll do it all again someday.
   [Chorus]
   (barely above a whisper)
+  [Chorus]
+  (last time, almost spoken)
   [Outro]
   (piano alone, one soft chord, fades to nothing)
   [End]
@@ -2126,6 +2503,14 @@ Persona seed. ⚡ = flagged `chart` candidate** (the pool The Count draws from �
   she just believed it would be here,
   and left the work to mine.
   [Chorus]
+  [Verse 3]
+  I bring my daughter down at dusk
+  to feel the small waves come —
+  she trails her hand and asks me who
+  first dreamed a sea from none.
+  [Chorus]
+  [Guitar Solo]
+  (weeping electric-blues break, organ swelling)
   [Bridge]
   (guitar weeps, voice swells then softens)
   There's something holy in a made sea —
@@ -2134,6 +2519,8 @@ Persona seed. ⚡ = flagged `chart` candidate** (the pool The Count draws from �
   can beat the frozen hours.
   [Chorus]
   (full but gentle)
+  [Chorus]
+  (last time, restrained power)
   [Outro]
   (the water sound returns, guitar fades to nothing)
   [End]
@@ -2178,6 +2565,14 @@ Persona seed. ⚡ = flagged `chart` candidate** (the pool The Count draws from �
   and the far-off station music
   keeps me company and kind.
   [Chorus]
+  [Verse 3]
+  A late ferry ghosts across the dark,
+  one lamp up on the bow —
+  I raise a hand it'll never see,
+  and that's a kind of vow.
+  [Chorus]
+  [Guitar Solo]
+  (gentle blues break, soft organ under)
   [Bridge]
   (organ warm, guitar soft)
   Some folks need the bright and loud,
@@ -2186,6 +2581,8 @@ Persona seed. ⚡ = flagged `chart` candidate** (the pool The Count draws from �
   is how I make it through.
   [Chorus]
   (gentle)
+  [Chorus]
+  (last time, tender and low)
   [Outro]
   (guitar fades into the still — clean fade)
   [End]
@@ -2230,6 +2627,14 @@ Persona seed. ⚡ = flagged `chart` candidate** (the pool The Count draws from �
   but the old hands love the coasting weeks,
   when the loud world settles down.
   [Chorus]
+  [Verse 3]
+  The kid on watch asked how I stand it,
+  the silence and the black —
+  I said give it a week, you'll miss it, son,
+  when the engines all come back.
+  [Chorus]
+  [Guitar Solo]
+  (spacious clean-guitar break, organ drifting)
   [Bridge]
   (guitar and organ, spacious)
   You learn a thing on a silent ship
@@ -2238,6 +2643,8 @@ Persona seed. ⚡ = flagged `chart` candidate** (the pool The Count draws from �
   it's just the noise unbowed.
   [Chorus]
   (soft)
+  [Chorus]
+  (last time, hushed)
   [Outro]
   (engines hum back up faintly under the last chord — clean fade)
   [End]
@@ -2282,12 +2689,22 @@ Persona seed. ⚡ = flagged `chart` candidate** (the pool The Count draws from �
   so I'm not letting go this hour
   for anything, or back.
   [Chorus]
+  [Verse 3]
+  Your ship goes back at first-light call,
+  a season more of dark —
+  so let 'em turn the houselights low
+  and hold this one last spark.
+  [Chorus]
+  [Horn Solo]
+  (soft warm horn break, brushed drums)
   [Bridge]
   (horns swell, warm and full)
   Let the fast songs have the young and free —
   give me the last one, give me you and me.
   [Chorus]
   (tender, full)
+  [Chorus]
+  (last time, barely swaying)
   [Outro]
   (piano alone, one held chord, clean fade)
   [End]
@@ -2332,6 +2749,14 @@ Persona seed. ⚡ = flagged `chart` candidate** (the pool The Count draws from �
   said "son, a world ain't settled
   till somebody's played it old."
   [Chorus]
+  [Verse 3]
+  Now my own kid sits out here with me,
+  learning where to lay her hand —
+  and someday she'll play it slower still
+  for a red and settled land.
+  [Chorus]
+  [Slide Guitar Solo]
+  (weeping slide break, extended, dust on the wind)
   [Bridge]
   (slide weeps, voice low)
   So I play it old, I play it slow,
@@ -2340,6 +2765,8 @@ Persona seed. ⚡ = flagged `chart` candidate** (the pool The Count draws from �
   and a small, defiant spark.
   [Chorus]
   (warm, unhurried)
+  [Chorus]
+  (last time, low and content)
   [Outro]
   (slide fades into the Martian wind — clean fade)
   [End]
@@ -2416,6 +2843,10 @@ weekly movers.)*
   Junia & the Long Players (A19), Odessa Rhee (B1), Marlo Quist (C1).
 - **Every Style string carries a clean-ending tag and every Lyrics block ends `[Outro] … [End]`** with a
   physical stop cue (§1c) — the finishing the operator asked for.
+- **Length fixed for ~3 min (§1e):** every song is now three verses + a chorus that returns 3–4× +
+  a bridge + at least one instrumental solo — the shape that renders **~2:45–3:30** in Suno v5, instead
+  of the ~1-minute renders a short lyric produces. If you generated from the first draft, re-generate
+  from these expanded lyrics.
 
 ## 6. After generating (the manifest wiring — later, per the operator)
 

@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block nav_catalog %}active{% endblock %}
+{% block title %}Catalogs — Settlement Radio Operator Panel{% endblock %}
+
+{% block content %}
+<div class="asof">The editable config catalogs. Each round-trips form → diff →
+write (atomic, with a <code>.bak</code>), then the seed button loads it.</div>
+
+<section class="card span-full">
+  <ul class="catalog-index">
+    {% for cat in catalogs %}
+    <li>
+      <a href="/catalog/{{ cat.slug }}"><b>{{ cat.title }}</b></a>
+      <span class="sub">{{ cat.intro }}</span>
+    </li>
+    {% endfor %}
+  </ul>
+</section>
+{% endblock %}

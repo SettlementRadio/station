@@ -1,0 +1,89 @@
+{% extends "base.html" %}
+{% block nav_catalog %}active{% endblock %}
+{% block title %}{{ cat.title }} — Settlement Radio Operator Panel{% endblock %}
+
+{% block content %}
+<div class="asof"><a href="/catalog">← catalogs</a> · {{ cat.intro }}</div>
+
+{% if saved %}
+<div class="banner ok">
+  ✓ wrote <b>{{ saved }}</b> to <code>{{ cat.path().name }}</code> (a <code>.bak</code> was kept).
+  {% if cat.seed_action %}
+    Now <b>seed</b> to apply it:
+    <form method="post" action="/actions/run" class="inline-seed">
+      <input type="hidden" name="action_id" value="{{ cat.seed_action }}">
+      <button type="submit">Run make {{ cat.seed_action }}</button>
+    </form>
+    (watch it on <a href="/actions">Actions</a>).
+  {% else %}
+    It is live-reloaded — no seed needed.
+  {% endif %}
+</div>
+{% endif %}
+
+<section class="card span-full">
+  <div class="listhead">
+    <h2>{{ cat.title }} <span class="sub">({{ rows|length }})</span></h2>
+    <a class="btn-primary" href="/catalog/{{ cat.slug }}/new">+ Add {{ cat.title[:-1] if cat.title.endswith('s') else cat.title }}</a>
+  </div>
+
+  {% if not rows %}
+    <div class="sub">empty — add a row to begin.</div>
+  {% else %}
+  <table class="rows catalog-rows">
+    <tr>
+      <th>{{ cat.key_field }}</th>
+      {% if cat.slug == 'tracks' %}<th>title</th><th>artist</th><th>playable</th><th>flags</th>
+      {% elif cat.slug == 'sponsors' %}<th>name</th><th>window</th><th>weight</th>
+      {% elif cat.slug == 'pronunciation' %}<th>respell</th><th>phonemes</th>
+      {% elif cat.slug == 'voices' %}<th>kokoro</th><th>elevenlabs</th><th>say</th>{% endif %}
+      <th></th>
+    </tr>
+    {% for r in rows %}
+    <tr>
+      <td class="mono">{{ r._key }}</td>
+      {% if cat.slug == 'tracks' %}
+        <td>{{ r.title }}</td>
+        <td>{{ r.artist }}</td>
+        <td>{% if r._playable %}<span class="ok">● on disk</span>{% else %}<span class="warn">○ no file</span>{% endif %}</td>
+        <td>{% for f in r._flags %}<span class="chip">{{ f }}</span>{% endfor %}</td>
+      {% elif cat.slug == 'sponsors' %}
+        <td>{{ r.name }}</td>
+        <td class="sub mono">{{ r.run_start or '—' }} → {{ r.run_end or '∞' }}</td>
+        <td>{{ r.weight or 1 }}</td>
+      {% elif cat.slug == 'pronunciation' %}
+        <td>{{ r.respell }}</td>
+        <td class="mono sub">{{ r.phonemes }}</td>
+      {% elif cat.slug == 'voices' %}
+        <td class="mono sub">{{ r.kokoro }}</td>
+        <td class="mono sub">{{ r.elevenlabs }}</td>
+        <td class="mono sub">{{ r.say }}</td>
+      {% endif %}
+      <td class="rowacts">
+        <a class="edit-link" href="/catalog/{{ cat.slug }}/edit/{{ r._key }}">edit</a>
+      </td>
+    </tr>
+    {% endfor %}
+  </table>
+  {% endif %}
+
+  {% if cat.seed_action %}
+  <div class="seedbar">
+    <form method="post" action="/actions/run" class="inline-seed">
+      <input type="hidden" name="action_id" value="{{ cat.seed_action }}">
+      <button type="submit">Seed now (make {{ cat.seed_action }})</button>
+    </form>
+    <span class="sub">loads {{ cat.path().name }} into the DB · runs on the Actions page</span>
+  </div>
+  {% endif %}
+</section>
+
+{% if cat.slug == 'sponsors' %}
+<section class="card span-full">
+  <h2>How a sponsor airs</h2>
+  <p class="sub">The on-air lead-in is templated and BINDING — always
+  “<b>Powered by</b> …”, never “Sponsored by”:</p>
+  <pre class="preview">… Settlement Radio is powered by {name}. {powered_by_text}</pre>
+</section>
+{% endif %}
+{% endblock %}

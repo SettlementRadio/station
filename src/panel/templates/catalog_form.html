@@ -1,0 +1,102 @@
+{% extends "base.html" %}
+{% block nav_catalog %}active{% endblock %}
+{% block title %}{{ 'Add' if adding else 'Edit' }} {{ cat.title }} — Operator Panel{% endblock %}
+
+{% block content %}
+<div class="asof"><a href="/catalog/{{ cat.slug }}">← {{ cat.title }}</a></div>
+
+{% if no_change %}<div class="banner warn">No changes to save.</div>{% endif %}
+{% if errors %}
+<div class="banner warn">
+  <b>Rejected — not written.</b> The seeder's parser found:
+  <ul>{% for e in errors %}<li>{{ e }}</li>{% endfor %}</ul>
+</div>
+{% endif %}
+{% if warnings %}
+<div class="banner">⚠ {% for w in warnings %}{{ w }}{% if not loop.last %}; {% endif %}{% endfor %}</div>
+{% endif %}
+
+<section class="card span-full">
+  <h2>{{ 'Add a' if adding else 'Edit' }} {{ cat.title[:-1] if cat.title.endswith('s') else cat.title }}
+    {% if not adding %}<span class="mono">{{ key }}</span>{% endif %}</h2>
+
+  <form method="post" action="/catalog/{{ cat.slug }}/save" class="gform">
+    <input type="hidden" name="_adding" value="{{ '1' if adding else '0' }}">
+    {% if not adding %}<input type="hidden" name="_key" value="{{ key }}">{% endif %}
+
+    {% if cat.kind == 'map' and adding %}
+    <label>{{ cat.key_field }} <span class="req">*</span>
+      <span class="hint">the logical voice name (the mapping key)</span>
+      <input type="text" name="{{ cat.key_field }}" value="" pattern="[a-z0-9._\-]+">
+    </label>
+    {% endif %}
+
+    {% for f in cat.fields %}
+    {% if f.name == cat.key_field and not adding %}
+      {# the identity key is fixed once created #}
+    {% else %}
+    <label class="{{ 'prominent' if f.prominent else '' }}">
+      {{ f.label }}{% if f.required %} <span class="req">*</span>{% endif %}
+      {% if f.hint %}<span class="hint">{{ f.hint }}</span>{% endif %}
+      {% if f.kind == 'textarea' %}
+        <textarea name="{{ f.name }}" rows="3">{{ form[f.name] }}</textarea>
+      {% elif f.kind == 'date' %}
+        <input type="date" name="{{ f.name }}" value="{{ form[f.name] }}">
+      {% else %}
+        <input type="text" name="{{ f.name }}" value="{{ form[f.name] }}"
+               {% if f.name == cat.key_field %}pattern="[a-z0-9._\-]+"{% endif %}>
+      {% endif %}
+    </label>
+    {% endif %}
+    {% endfor %}
+
+    {% if cat.feature_tags %}
+    <div class="flags">
+      <span class="hint">Promote (adds the tag to the music selector):</span>
+      {% for t in cat.feature_tags %}
+      <label class="cb"><input type="checkbox" name="flag_{{ t }}"
+        {% if form._flags and form._flags[t] %}checked{% endif %}> {{ t }}</label>
+      {% endfor %}
+    </div>
+    {% endif %}
+
+    <div class="formactions">
+      <button type="submit" class="btn-primary">Review changes…</button>
+      <a href="/catalog/{{ cat.slug }}" class="btn-plain">Cancel</a>
+    </div>
+  </form>
+
+  {% if cat.slug == 'pronunciation' %}
+  <div class="testit">
+    <button type="button" id="test-btn" class="btn-plain2">▶ Test it</button>
+    <span class="sub">renders the respell on the current TTS engine (may take a few seconds)</span>
+    <audio id="test-audio" controls preload="none" style="display:none"></audio>
+  </div>
+  <script>
+    (function () {
+      var btn = document.getElementById("test-btn");
+      var au = document.getElementById("test-audio");
+      btn.addEventListener("click", function () {
+        var v = document.querySelector('[name="respell"]').value ||
+                document.querySelector('[name="name"]').value;
+        if (!v) return;
+        btn.textContent = "… rendering";
+        au.style.display = "block";
+        au.src = "/catalog/pronunciation/test?text=" + encodeURIComponent(v);
+        au.play().catch(function(){});
+        au.onloadeddata = function () { btn.textContent = "▶ Test it"; };
+        au.onerror = function () { btn.textContent = "▶ Test it (failed)"; };
+      });
+    })();
+  </script>
+  {% endif %}
+
+  {% if not adding %}
+  <form method="post" action="/catalog/{{ cat.slug }}/delete" class="delform">
+    <input type="hidden" name="_key" value="{{ key }}">
+    <button type="submit" class="btn-danger-sm">Remove this {{ cat.title[:-1] if cat.title.endswith('s') else cat.title }}…</button>
+    <span class="sub">shows a diff to confirm before writing</span>
+  </form>
+  {% endif %}
+</section>
+{% endblock %}

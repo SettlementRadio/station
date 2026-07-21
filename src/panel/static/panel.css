@@ -233,3 +233,47 @@ pre.diff span { display: block; }
 pre.diff .add { color: var(--green); background: rgba(126,224,138,.07); }
 pre.diff .del { color: var(--red); background: rgba(224,150,126,.07); }
 pre.diff .hunk { color: var(--blue); }
+
+/* --- E1.3 catalog editors --- */
+ul.catalog-index { list-style: none; padding: 0; margin: 0; }
+ul.catalog-index li { padding: 10px 0; border-top: 1px solid var(--border); }
+ul.catalog-index li:first-child { border-top: none; }
+ul.catalog-index a { color: var(--blue); text-decoration: none; margin-right: 10px; }
+
+.listhead { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+table.catalog-rows td { vertical-align: top; }
+.rowacts a { margin-right: 8px; }
+.seedbar { margin-top: 14px; display: flex; align-items: center; gap: 12px;
+  padding-top: 12px; border-top: 1px solid var(--border); }
+form.inline-seed { display: inline; margin: 0; }
+form.inline-seed button, .seedbar button {
+  background: #16324a; color: #cfe6ff; border: 1px solid #2f5d80;
+  border-radius: 6px; padding: 6px 12px; font-family: inherit; font-size: 13px;
+  cursor: pointer;
+}
+form.inline-seed button:hover { background: #1d4a6b; color: #fff; }
+
+label.prominent { border-left: 3px solid var(--amber); padding-left: 10px; }
+.req { color: var(--red); }
+.flags { display: flex; gap: 16px; align-items: center; flex-wrap: wrap; }
+label.cb { flex-direction: row; align-items: center; gap: 6px; }
+.delform { margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--border);
+  display: flex; align-items: center; gap: 10px; }
+.btn-danger-sm {
+  background: #3a1d17; color: #ffb3a0; border: 1px solid #6b3a2f;
+  border-radius: 6px; padding: 6px 12px; font-family: inherit; font-size: 13px;
+  cursor: pointer;
+}
+.btn-danger-sm:hover { background: #5a2a20; color: #fff; }
+pre.preview {
+  background: var(--bg); border: 1px solid var(--border); border-radius: 6px;
+  padding: 10px 12px; color: var(--amber); white-space: pre-wrap;
+}
+
+.testit { margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--border);
+  display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.btn-plain2 { background: var(--panel-2); color: var(--text);
+  border: 1px solid var(--border); border-radius: 6px; padding: 6px 12px;
+  font-family: inherit; font-size: 13px; cursor: pointer; }
+.btn-plain2:hover { border-color: var(--blue); color: #fff; }
+.testit audio { height: 32px; }

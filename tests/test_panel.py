@@ -376,3 +376,234 @@ def test_grid_route_flow_diff_then_write(grid_tmp):
     ]
     assert changed == ["-    hosts: [thorn, wren]", "+    hosts: [thorn, mira]"]
     assert programming.program_for(morning).hosts == ("thorn", "mira")
+
+
+# --- E1.3: the catalog editors (tracks + sponsors) ----------------------------
+
+
+@pytest.fixture
+def catalog_tmp(tmp_path, monkeypatch):
+    """Throwaway COPIES of the four catalog files as the live catalogs."""
+
+    mapping = {
+        "tracks_manifest_path": "tracks.yaml",
+        "sponsors_manifest_path": "sponsors.yaml",
+        "tts_lexicon_path": "pronunciation.yaml",
+        "tts_voices_path": "voices.yaml",
+    }
+    for attr, name in mapping.items():
+        dst = tmp_path / name
+        dst.write_text(getattr(settings, attr).read_text(encoding="utf-8"), "utf-8")
+        monkeypatch.setattr(settings, attr, dst)
+    return tmp_path
+
+
+def test_catalog_tracks_noop_fidelity(catalog_tmp):
+    """Re-applying a track's own values reproduces the manifest byte-identically."""
+    from src.panel import catalog_edit as ce
+
+    cat = ce.catalog("tracks")
+    original = ce.current_text(cat)
+    bad = [
+        r["_key"]
+        for r in ce.list_rows(cat)
+        if ce.apply_row(cat, r["_key"], ce.row_form(cat, r["_key"])) != original
+    ]
+    assert bad == [], bad
+
+
+def test_catalog_tracks_edit_and_validate(catalog_tmp):
+    """A valid edit is a minimal diff; a cleared required field is rejected."""
+    from src.panel import catalog_edit as ce
+
+    cat = ce.catalog("tracks")
+    key = ce.list_rows(cat)[0]["_key"]
+    form = ce.row_form(cat, key)
+    form["mood"] = "zzz-testmood"
+    candidate = ce.apply_row(cat, key, form)
+    assert cat.validate(candidate).ok
+    changed = [
+        ln
+        for ln in ce.unified_diff(ce.current_text(cat), candidate).splitlines()
+        if ln[:1] in "+-" and not ln.startswith(("+++", "---"))
+    ]
+    assert changed == ['-    mood: "melancholy"', '+    mood: "zzz-testmood"']
+
+    form = ce.row_form(cat, key)
+    form["title"] = ""  # clearing a required field removes the key
+    v = cat.validate(ce.apply_row(cat, key, form))
+    assert not v.ok and any("missing required field" in e for e in v.errors)
+
+
+def test_catalog_tracks_write_flow(catalog_tmp):
+    """POST save → diff (no write); confirm → write + .bak; featured tag added."""
+    from src.panel import catalog_edit as ce
+
+    client = TestClient(panelapp.app, follow_redirects=False)
+    cat = ce.catalog("tracks")
+    key = ce.list_rows(cat)[0]["_key"]
+    data = {f.name: ce.row_form(cat, key)[f.name] for f in cat.fields}
+    data.update(
+        {"_adding": "0", "_key": key, "mood": "zzz-testmood", "flag_featured": "on"}
+    )
+
+    r = client.post("/catalog/tracks/save", data=data)
+    assert r.status_code == 200 and "Confirm &amp; write" in r.text
+    assert ce.row_form(cat, key)["mood"] == "melancholy"  # not written yet
+
+    import html
+    import re
+
+    cand = html.unescape(
+        re.search(
+            r'<textarea name="candidate" hidden>(.*?)</textarea>', r.text, re.S
+        ).group(1)
+    )
+    r = client.post("/catalog/tracks/write", data={"candidate": cand, "key": key})
+    assert r.status_code == 303 and f"saved={key}" in r.headers["location"]
+    assert (catalog_tmp / "tracks.yaml.bak").exists()
+    assert ce.row_form(cat, key)["mood"] == "zzz-testmood"
+    assert "featured" in ce.row_form(cat, key)["tags"]
+
+
+def test_catalog_sponsors_add_delete_with_date(catalog_tmp):
+    """Add a sponsor with a date window (validated by the seeder), then delete."""
+    from src.panel import catalog_edit as ce
+
+    client = TestClient(panelapp.app, follow_redirects=False)
+    sp = ce.catalog("sponsors")
+
+    import html
+    import re
+
+    add = {
+        "_adding": "1",
+        "id": "sig-friend",
+        "name": "a friend of the signal",
+        "powered_by_text": "lit",
+        "audio_path": "",
+        "run_start": "2027-01-01",
+        "run_end": "",
+        "weight": "1",
+        "tags": "",
+    }
+    r = client.post("/catalog/sponsors/save", data=add)
+    assert r.status_code == 200 and "Confirm &amp; write" in r.text
+    cand = html.unescape(
+        re.search(
+            r'<textarea name="candidate" hidden>(.*?)</textarea>', r.text, re.S
+        ).group(1)
+    )
+    r = client.post(
+        "/catalog/sponsors/write", data={"candidate": cand, "key": "sig-friend"}
+    )
+    assert r.status_code == 303
+    assert any(row["_key"] == "sig-friend" for row in ce.list_rows(sp))
+
+    # a bad date is rejected by the seeder's parser
+    bad = {**add, "run_start": "not-a-date", "id": "bad-date"}
+    assert not sp.validate(ce.apply_row(sp, "bad-date", bad, adding=True)).ok
+
+    # delete → diff → write
+    r = client.post("/catalog/sponsors/delete", data={"_key": "sig-friend"})
+    assert r.status_code == 200 and "Remove" in r.text
+    cand = html.unescape(
+        re.search(
+            r'<textarea name="candidate" hidden>(.*?)</textarea>', r.text, re.S
+        ).group(1)
+    )
+    r = client.post(
+        "/catalog/sponsors/write", data={"candidate": cand, "key": "sig-friend"}
+    )
+    assert r.status_code == 303
+    assert not any(row["_key"] == "sig-friend" for row in ce.list_rows(sp))
+
+
+@pytest.mark.parametrize("slug", ["pronunciation", "voices"])
+def test_catalog_registry_noop_fidelity(catalog_tmp, slug):
+    """Pronunciation (top-level list) + voices (map) round-trip byte-identically."""
+    from src.panel import catalog_edit as ce
+
+    cat = ce.catalog(slug)
+    original = ce.current_text(cat)
+    bad = [
+        r["_key"]
+        for r in ce.list_rows(cat)
+        if ce.apply_row(cat, r["_key"], ce.row_form(cat, r["_key"])) != original
+    ]
+    assert bad == [], bad
+
+
+def test_catalog_pronunciation_edit_and_validate(catalog_tmp):
+    """A respell edit is a minimal diff; a missing respell is rejected."""
+    from src.panel import catalog_edit as ce
+
+    cat = ce.catalog("pronunciation")
+    key = ce.list_rows(cat)[0]["_key"]
+    form = ce.row_form(cat, key)
+    form["respell"] = "TEST-RESPELL"
+    candidate = ce.apply_row(cat, key, form)
+    assert cat.validate(candidate).ok
+    changed = [
+        ln
+        for ln in ce.unified_diff(ce.current_text(cat), candidate).splitlines()
+        if ln[:1] in "+-" and not ln.startswith(("+++", "---"))
+    ]
+    assert changed == ["-  respell: Vell", "+  respell: TEST-RESPELL"]
+
+    form = ce.row_form(cat, key)
+    form["respell"] = ""
+    assert not cat.validate(ce.apply_row(cat, key, form)).ok
+
+
+def test_catalog_voices_edit_add_validate(catalog_tmp):
+    """A voices (map) edit is minimal; a new voice missing an engine is rejected."""
+    from src.panel import catalog_edit as ce
+
+    cat = ce.catalog("voices")
+    key = ce.list_rows(cat)[0]["_key"]
+    form = ce.row_form(cat, key)
+    form["kokoro"] = "bm_test"
+    candidate = ce.apply_row(cat, key, form)
+    assert cat.validate(candidate).ok
+    changed = [
+        ln
+        for ln in ce.unified_diff(ce.current_text(cat), candidate).splitlines()
+        if ln[:1] in "+-" and not ln.startswith(("+++", "---"))
+    ]
+    assert changed == ["-  kokoro: bm_george", "+  kokoro: bm_test"]
+
+    # a new voice missing an engine mapping is rejected by the real registry loader
+    cand = ce.apply_row(
+        cat,
+        "test_voice",
+        {"kokoro": "bm_x", "elevenlabs": "", "say": "Alex", "_flags": {}},
+        adding=True,
+    )
+    v = cat.validate(cand)
+    assert not v.ok and any("missing elevenlabs" in e for e in v.errors)
+
+
+def test_catalog_voices_map_write_flow(catalog_tmp):
+    """POST save → diff → confirm writes a map entry; the .bak is kept."""
+    from src.panel import catalog_edit as ce
+
+    client = TestClient(panelapp.app, follow_redirects=False)
+    cat = ce.catalog("voices")
+    key = ce.list_rows(cat)[0]["_key"]
+    data = {f.name: ce.row_form(cat, key)[f.name] for f in cat.fields}
+    data.update({"_adding": "0", "_key": key, "kokoro": "bm_test"})
+    r = client.post("/catalog/voices/save", data=data)
+    assert r.status_code == 200 and "Confirm &amp; write" in r.text
+
+    import html
+    import re
+
+    cand = html.unescape(
+        re.search(
+            r'<textarea name="candidate" hidden>(.*?)</textarea>', r.text, re.S
+        ).group(1)
+    )
+    r = client.post("/catalog/voices/write", data={"candidate": cand, "key": key})
+    assert r.status_code == 303 and (catalog_tmp / "voices.yaml.bak").exists()
+    assert ce.row_form(cat, key)["kokoro"] == "bm_test"
