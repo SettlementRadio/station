@@ -1,0 +1,151 @@
+{% extends "base.html" %}
+{% block nav_dashboard %}active{% endblock %}
+{% block refresh %}<meta http-equiv="refresh" content="{{ d.refresh_sec }}">{% endblock %}
+
+{% block content %}
+<div class="asof">
+  as of {{ d.now.strftime('%A %Y-%m-%d %H:%M:%S') }} ·
+  programming {{ 'ON' if d.programming_on else 'OFF (flat)' }} ·
+  refreshes every {{ d.refresh_sec }}s
+</div>
+
+<div class="grid">
+
+  <!-- ON AIR / NEXT -->
+  <section class="card span2">
+    <h2>On air / next</h2>
+    {% set nn = d.now_next %}
+    {% if nn.current %}
+      <div class="onair">
+        <div class="onair-head">
+          <span class="fmt">{{ nn.current.format }}</span>
+          <span class="prog">{{ nn.current.program }}</span>
+          <span class="hosts">[{{ nn.current.hosts }}]</span>
+          <span class="dur">{{ nn.current.dur }}</span>
+        </div>
+        <div class="sub">
+          {{ nn.current.id }} · {{ nn.current.into }} into the segment
+          {% if nn.current.track %} · ♪ {{ nn.current.track }}{% endif %}
+        </div>
+      </div>
+    {% else %}
+      <div class="onair idle">nothing on air — buffer empty or between segments
+        (playout is on the never-dead fallback until the generator catches up)</div>
+    {% endif %}
+
+    {% if nn.upcoming %}
+      <div class="sub next-label">next {{ nn.upcoming|length }} of {{ nn.upcoming_total }} queued</div>
+      <table class="rows">
+        <tr><th>air</th><th>program</th><th>format</th><th>hosts</th><th>dur</th></tr>
+        {% for e in nn.upcoming %}
+        <tr>
+          <td>{{ e.when }}</td>
+          <td class="prog">{{ e.program }}</td>
+          <td class="fmt">{{ e.format }}</td>
+          <td class="hosts">{{ e.hosts }}</td>
+          <td>{{ e.dur }}</td>
+        </tr>
+        {% endfor %}
+      </table>
+    {% else %}
+      <div class="sub">nothing queued ahead</div>
+    {% endif %}
+  </section>
+
+  <!-- BUFFER -->
+  <section class="card">
+    <h2>Buffer</h2>
+    {% set b = d.buffer %}
+    <div class="stat">
+      <span class="big">{{ '%.2f'|format(b.runway_hours) }}h</span>
+      <span class="sub">runway in {{ b.count }} segment(s) · target {{ b.target_hours }}h</span>
+    </div>
+    {% if b.ok %}
+      <div class="ok">✓ above the safe floor</div>
+    {% else %}
+      <div class="warn">⚠ {{ b.issue }}</div>
+    {% endif %}
+  </section>
+
+  <!-- LAST RUN + HEALTH -->
+  <section class="card">
+    <h2>Generator + health</h2>
+    {% set lr = d.last_run %}
+    <div class="sub">last top-up: {{ lr.when }}</div>
+    {% if lr.ok %}<div class="ok">✓ generator live</div>
+    {% else %}<div class="warn">⚠ {{ lr.issue }}</div>{% endif %}
+    <table class="rows checks">
+      {% for c in d.health.rows %}
+      <tr>
+        <td>{{ '✓' if c.ok else '✗' }}</td>
+        <td>{{ c.name }}</td>
+        <td class="{{ 'ok' if c.ok else 'warn' }}">{{ c.issue or 'passed' }}</td>
+      </tr>
+      {% endfor %}
+    </table>
+  </section>
+
+  <!-- WORLD TICK + STORY LOG -->
+  <section class="card span2">
+    <h2>World</h2>
+    {% set w = d.world %}
+    {% if not w.available %}
+      <div class="warn">world/story log unavailable: {{ w.error }}</div>
+    {% else %}
+      <div class="sub">
+        last tick: {{ w.tick.when }} · ticks run: {{ w.tick.count }} ·
+        active stories: {{ w.tick.active }}
+      </div>
+      {% if w.stories %}
+        <ul class="stories">
+          {% for s in w.stories %}
+          <li>
+            <span class="stage">[{{ s.stage }}]</span> {{ s.title }}
+            {% for t in s.tags %}<span class="chip">#{{ t }}</span>{% endfor %}
+            {% for beat in s.beats %}
+            <div class="beat">↳ {{ beat.when }}: {{ beat.title }}
+              {% if beat.planned %}<span class="planned">(planned)</span>{% endif %}
+            </div>
+            {% endfor %}
+          </li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <div class="sub">no active stories — run the world tick to grow the world</div>
+      {% endif %}
+    {% endif %}
+  </section>
+
+  <!-- JOURNAL + COST -->
+  <section class="card">
+    <h2>Journal + cost</h2>
+    {% set w = d.world %}
+    {% if not w.available %}
+      <div class="sub">(unavailable — DB down)</div>
+    {% else %}
+      {% if w.journal %}
+        <div class="sub">journal:
+          {% for host, n in w.journal.items() %}{{ host }}: {{ n }}{% if not loop.last %} · {% endif %}{% endfor %}
+        </div>
+      {% else %}
+        <div class="sub">no journal entries yet</div>
+      {% endif %}
+      <div class="sub cost">cost: {{ w.cost or '(no usage rollup recorded yet)' }}</div>
+    {% endif %}
+  </section>
+
+  <!-- PUBLIC FEED -->
+  <section class="card">
+    <h2>Public feed</h2>
+    {% set f = d.feed %}
+    {% if f.error %}
+      <div class="sub">{{ f.path }}</div>
+      <div class="warn">⚠ {{ f.error }}</div>
+    {% else %}
+      <div class="sub">{{ f.path }} · updated {{ f.feed.updated_at }}</div>
+      <pre class="feed">{{ f.feed | tojson(indent=2) }}</pre>
+    {% endif %}
+  </section>
+
+</div>
+{% endblock %}

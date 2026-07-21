@@ -857,6 +857,24 @@ class Settings(BaseSettings):
     sponsor_read_every_n_breaks: int = 2
     sponsor_read_voice: str = "vell_night"
 
+    # --- Operator panel (E1: the private write-control surface) -----------------
+    # The single-operator admin panel (src/panel/) — a FastAPI app that upgrades the
+    # read-only console (D6.3)/timeline into a real operator surface (edit the grid,
+    # run seeds/ticks, tune dials, see the queue/history). It is the OPPOSITE of the
+    # public web player: PRIVATE by network position (CLAUDE.md hard rule, E1
+    # principle #2) — it binds LOOPBACK ONLY and is reached on the VPS through an SSH
+    # tunnel, never a public DNS name / reverse proxy / Vercel.
+    #
+    # `panel_host` MUST be a loopback address; the app REFUSES to start on a
+    # non-loopback bind unless `panel_allow_nonlocal=True` is set explicitly (the
+    # escape hatch logs a loud warning). `panel_refresh_sec` is how often the
+    # read-only dashboard auto-refreshes so it can sit open on a second monitor
+    # during the soak. `make panel` runs uvicorn on host:port.
+    panel_host: str = "127.0.0.1"  # LOOPBACK ONLY — never expose (E1 principle #2)
+    panel_port: int = 8787
+    panel_allow_nonlocal: bool = False  # escape hatch for a non-loopback bind
+    panel_refresh_sec: int = 10  # dashboard auto-refresh cadence (seconds)
+
     def model_id(self, tier: str) -> str:
         """Map a logical tier ("haiku"|"sonnet"|"opus") to its real model id."""
         ids = {

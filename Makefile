@@ -41,7 +41,7 @@ LIQ_LOG    := $(RUN_DIR)/liquidsoap.log
 PLAYER_URL := http://127.0.0.1:8000/
 STREAM_URL := http://127.0.0.1:8000/settlement.mp3
 
-.PHONY: help generate serve air play play-convo stop status console timeline now-playing seed seed-canon reset-world seed-tracks seed-sponsors demo context costprobe costprobe-ab conversation format buffer schedule ident prune fallback health world-tick news-demo figures-demo freshness-demo continuity-demo journal-demo programming-demo commercials-demo acceptance jingle-audit micro-tick
+.PHONY: help generate serve air play play-convo stop status console timeline panel now-playing seed seed-canon reset-world seed-tracks seed-sponsors demo context costprobe costprobe-ab conversation format buffer schedule ident prune fallback health world-tick news-demo figures-demo freshness-demo continuity-demo journal-demo programming-demo commercials-demo acceptance jingle-audit micro-tick
 
 # B5 format default: `make format` builds a talk segment; override with FMT=news
 # or FMT=music. Pass a TOPIC=... to steer canon retrieval.
@@ -67,6 +67,7 @@ help:
 	@echo "  make status    show what's running (playout pids + mount)"
 	@echo "  make console   read-only station status: on-air/next, buffer, story log (D6.3)"
 	@echo "  make timeline  private web timeline: on-air progress, queued next, the grid ahead"
+	@echo "  make panel     private operator PANEL (loopback web UI): status + controls (E1)"
 	@echo "  make now-playing write + print the public now-playing feed (D6.4)"
 	@echo "  make seed-canon  refresh the world from docs/canon/ (safe; keeps tick state)"
 	@echo "  make reset-world DESTRUCTIVE full world+canon wipe + rebuild (warns/confirms)"
@@ -329,6 +330,14 @@ console:
 
 timeline:
 	@$(PY) -m src.timeline
+
+# Private OPERATOR PANEL (E1): the loopback-only web control surface — the console's
+# write-capable sibling. Binds 127.0.0.1 (settings.panel_host); REFUSES a non-loopback
+# bind without PANEL_ALLOW_NONLOCAL=true. Reach it on the VPS via an SSH tunnel:
+#   ssh -L 8787:localhost:8787 <vps>   then open http://127.0.0.1:8787/
+# NEVER internet-exposed (CLAUDE.md hard rule: public read-only, admin private).
+panel:
+	@$(PY) -m src.panel
 
 # Public now-playing / program-info feed (D6.4): write the small JSON the C8 web
 # player reads (on-now/next + program + hosts + disclosure) and print it. PUBLIC-SAFE

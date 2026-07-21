@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  {% block refresh %}{% endblock %}
+  <title>{% block title %}Settlement Radio — Operator Panel{% endblock %}</title>
+  <link rel="stylesheet" href="/static/panel.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      Settlement&nbsp;Radio <span class="tag">operator panel</span>
+      <span class="private" title="Bound to loopback only — never internet-exposed">
+        ● private (loopback)
+      </span>
+    </div>
+    <nav class="nav">
+      <a href="/" class="{% block nav_dashboard %}{% endblock %}">Dashboard</a>
+    </nav>
+  </header>
+  <main class="wrap">
+    {% block content %}{% endblock %}
+  </main>
+  <footer class="foot">
+    Read-only status surface (E1.0). Actions, editors, and dials arrive in E1.1+.
+  </footer>
+</body>
+</html>

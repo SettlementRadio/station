@@ -35,6 +35,14 @@ structlog>=24.1
 # grid.yaml), read by src/world/programming.py. PyYAML parses it.
 PyYAML>=6.0
 
+# Operator panel (E1): the private, loopback-only write-control surface
+# (src/panel/, `make panel`). FastAPI + uvicorn serve it; Jinja2 renders the
+# server-side templates (no CDN — the panel is a self-contained single-operator
+# tool). NOT on the public path (never Vercel); see docs/PHASE_E_PANEL_TASKS.md.
+fastapi>=0.110
+uvicorn>=0.27
+jinja2>=3.1
+
 # Dev tooling (B0.5) — lint/format + the pre-commit gate. Not needed at runtime;
 # installed in the dev venv. See README "Engineering standards / pre-commit".
 ruff>=0.8
