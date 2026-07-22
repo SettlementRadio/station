@@ -1032,3 +1032,182 @@ def test_schedule_page_renders(sched_tmp, no_launch):
     assert resp.status_code == 200
     assert "Upcoming queue" in resp.text and "Aired history" in resp.text
     assert "regenerate" in resp.text and "Restart playout" in resp.text
+
+
+# --- R5.1 (=E1.8): budgets — the usage ledger + the screen --------------------
+
+from src import usage  # noqa: E402
+from src.panel import budgets  # noqa: E402
+
+
+@pytest.fixture
+def clean_usage():
+    """Reset the in-process usage accumulator around a test."""
+    with usage._lock:
+        usage._accum.clear()
+    yield
+    with usage._lock:
+        usage._accum.clear()
+
+
+def test_llm_cost_matches_pricing(monkeypatch):
+    """Token→USD matches the price list (the costprobe rollup done-when)."""
+    monkeypatch.setattr(
+        settings,
+        "model_prices",
+        {
+            "sonnet": {"input": 3.0, "output": 15.0},
+            "haiku": {"input": 1.0, "output": 5.0},
+        },
+    )
+    monkeypatch.setattr(settings, "price_cache_write_mult", 1.25)
+    monkeypatch.setattr(settings, "price_cache_read_mult", 0.1)
+
+    # a costprobe-style pass-1 row: bible cache created once
+    fields = {
+        "input_tokens": 50,
+        "output_tokens": 16,
+        "cache_creation_input_tokens": 50_000,
+        "cache_read_input_tokens": 0,
+    }
+    expected = (50 * 3 + 50_000 * 3 * 1.25 + 16 * 15) / 1_000_000
+    assert usage.llm_cost_usd("sonnet", fields) == pytest.approx(expected)
+
+    # a cache-read row on haiku
+    f2 = {
+        "input_tokens": 2130,
+        "output_tokens": 253,
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 37_584,
+    }
+    exp2 = (2130 * 1 + 37_584 * 1 * 0.1 + 253 * 5) / 1_000_000
+    assert usage.llm_cost_usd("haiku", f2) == pytest.approx(exp2)
+    assert usage.llm_cost_usd("unknown-tier", fields) == 0.0  # unpriced → 0
+
+
+def test_usage_records_by_job_and_merges(clean_usage):
+    """LLM spend attributes to the job scope; TTS + embeddings track their kinds."""
+    with usage.job("news"):
+        usage._on_llm_usage(
+            {
+                "tier": "sonnet",
+                "input_tokens": 100,
+                "output_tokens": 50,
+                "cache_creation_input_tokens": 0,
+                "cache_read_input_tokens": 0,
+            }
+        )
+    with usage.job("talk"):
+        usage._on_llm_usage(
+            {
+                "tier": "haiku",
+                "input_tokens": 10,
+                "output_tokens": 5,
+                "cache_creation_input_tokens": 0,
+                "cache_read_input_tokens": 0,
+            }
+        )
+    usage.record_tts(300, "kokoro")  # 300 chars ≈ 20s at 15 chars/s
+    usage.record_embeddings(3)
+
+    rollup = usage._merge({}, {k: dict(v) for k, v in usage._accum.items()})
+    day = rollup["days"][usage.date.today().isoformat()]
+    assert set(day) == {"news", "talk", "tts", "embeddings"}
+    assert day["news"]["usd"] == pytest.approx((100 * 3 + 50 * 15) / 1_000_000)
+    assert day["tts"]["tts_sec"] == pytest.approx(20.0)
+    assert day["embeddings"]["emb_count"] == 3
+
+
+def test_flush_persists_and_clears(clean_usage, monkeypatch):
+    """flush() merges the tally into the rollup row and clears the accumulator."""
+
+    class _FakeConn:
+        def __init__(self):
+            self.stored = None
+
+        def execute(self, sql, params=()):  # noqa: ANN001
+            conn = self
+
+            class _Res:
+                def fetchone(self_inner):  # noqa: ANN001, N805
+                    return None  # empty rollup to start
+
+            if sql.strip().upper().startswith("INSERT"):
+                conn.stored = params  # set_state's (key, value)
+            return _Res()
+
+    with usage.job("tick"):
+        usage._on_llm_usage(
+            {
+                "tier": "sonnet",
+                "input_tokens": 1000,
+                "output_tokens": 200,
+                "cache_creation_input_tokens": 0,
+                "cache_read_input_tokens": 0,
+            }
+        )
+    fake = _FakeConn()
+    assert usage.flush(conn=fake) is True
+    assert fake.stored is not None and fake.stored[0] == usage.USAGE_ROLLUP_KEY
+    written = json.loads(fake.stored[1])
+    day = written["days"][usage.date.today().isoformat()]
+    assert day["tick"]["usd"] == pytest.approx((1000 * 3 + 200 * 15) / 1_000_000)
+    with usage._lock:
+        assert not usage._accum  # cleared after a successful flush
+
+
+def test_budget_alert_at_forced_low_threshold(monkeypatch):
+    """The alert flips on when spend crosses the (forced low) threshold."""
+    today = datetime.now().date().isoformat()
+    rollup = {"days": {today: {"tick": {"usd": 0.9}}}}
+    monkeypatch.setattr(settings, "budget_daily_usd", 1.0)
+    monkeypatch.setattr(settings, "budget_alert_pct", 80.0)
+    status = usage.budget_status(rollup)
+    assert status["pct"] == pytest.approx(90.0)
+    assert status["alert"] and not status["over"]
+    # a tiny budget makes today's spend blow past the line
+    monkeypatch.setattr(settings, "budget_daily_usd", 0.5)
+    over = usage.budget_status(rollup)
+    assert over["over"] and over["alert"]
+
+
+def test_budgets_page_renders_and_degrades(monkeypatch):
+    """/budgets renders the bar from a seeded rollup, and 200s when the DB is down."""
+    from contextlib import contextmanager
+
+    today = datetime.now().date().isoformat()
+    rollup = {
+        "days": {
+            today: {
+                "tick": {
+                    "usd": 0.4,
+                    "calls": 2,
+                    "input_tokens": 1000,
+                    "output_tokens": 100,
+                    "cache_read_input_tokens": 0,
+                },
+                "tts": {"usd": 0.0, "tts_sec": 120},
+            }
+        }
+    }
+
+    @contextmanager
+    def _fake_connect():
+        yield object()
+
+    monkeypatch.setattr(budgets.store, "connect", _fake_connect)
+    monkeypatch.setattr(budgets.usage, "load_rollup", lambda conn: rollup)
+    monkeypatch.setattr(settings, "budget_daily_usd", 1.0)
+
+    client = TestClient(panelapp.app)
+    resp = client.get("/budgets")
+    assert resp.status_code == 200
+    assert "World tick" in resp.text and "Today by job" in resp.text
+
+    # DB down → the page degrades to a note, never a 500
+    def _boom():
+        raise RuntimeError("connection refused")
+
+    monkeypatch.setattr(budgets.store, "connect", _boom)
+    resp2 = client.get("/budgets")
+    assert resp2.status_code == 200 and "unavailable" in resp2.text.lower()

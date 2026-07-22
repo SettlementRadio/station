@@ -1,0 +1,89 @@
+{% extends "base.html" %}
+{% block nav_budgets %}active{% endblock %}
+{% block title %}Budgets — Settlement Radio Operator Panel{% endblock %}
+{% block refresh %}<meta http-equiv="refresh" content="{{ refresh_sec }}">{% endblock %}
+
+{% block content %}
+<div class="asof">
+  Estimated spend from the logged token / TTS usage — priced by the
+  <a class="btn-plain" href="/dials">Budgets dials</a> (<code>model_prices</code>,
+  <code>budget_daily_usd</code>). Visibility only — there is no auto-shutoff; the
+  kill decision stays yours.
+</div>
+
+{% if not b.available %}
+  <section class="card"><div class="warn">⚠ budgets unavailable: {{ b.error }}</div></section>
+{% else %}
+
+{% set bud = b.budget %}
+<section class="card">
+  <h2>Today — {{ b.today }}</h2>
+  <div class="budgetbar big {{ 'over' if bud.alert else 'ok' }}">
+    <div class="budgetbar-fill" style="width: {{ [bud.pct, 100]|min }}%"></div>
+  </div>
+  <div class="stat">
+    <span class="big">${{ '%.2f'|format(bud.spent_usd) }}</span>
+    <span class="sub">of ${{ '%.2f'|format(bud.limit_usd) }} daily
+      ({{ bud.pct }}% · alert at {{ bud.alert_pct }}%)</span>
+  </div>
+  {% if bud.alert %}
+    <div class="warn">⚠ spend is past the alert threshold{% if bud.over %} — over the daily line{% endif %}.</div>
+  {% else %}
+    <div class="ok">✓ within budget</div>
+  {% endif %}
+</section>
+
+<section class="card span-full">
+  <h2>Today by job</h2>
+  {% if not b.today_rows %}
+    <div class="sub">no spend recorded today yet.</div>
+  {% else %}
+  <table class="rows">
+    <tr><th>Job / kind</th><th>USD</th><th>Calls</th><th>Input tok</th>
+        <th>Output tok</th><th>Cache-read tok</th><th>TTS min</th><th>Embeds</th></tr>
+    {% for r in b.today_rows %}
+    <tr>
+      <td>{{ r.label }}</td>
+      <td>${{ '%.4f'|format(r.usd) }}</td>
+      <td class="sub">{{ r.calls }}</td>
+      <td class="sub">{{ '{:,}'.format(r.input_tokens) }}</td>
+      <td class="sub">{{ '{:,}'.format(r.output_tokens) }}</td>
+      <td class="sub">{{ '{:,}'.format(r.cache_read_input_tokens) }}</td>
+      <td class="sub">{{ r.tts_min if r.tts_min else '—' }}</td>
+      <td class="sub">{{ r.emb_count if r.emb_count else '—' }}</td>
+    </tr>
+    {% endfor %}
+    <tr class="total">
+      <td><b>Total</b></td>
+      <td><b>${{ '%.4f'|format(b.today_total) }}</b></td>
+      <td colspan="6"></td>
+    </tr>
+  </table>
+  {% endif %}
+</section>
+
+<section class="card span-full">
+  <h2>Last 7 days
+    <span class="sub">· ${{ '%.2f'|format(b.week_total) }} total</span>
+  </h2>
+  <table class="rows">
+    <tr><th>Day</th><th>USD</th><th></th></tr>
+    {% set wmax = b.week | map(attribute='usd') | max %}
+    {% for d in b.week %}
+    <tr>
+      <td class="mono {{ 'prog' if d.is_today }}">{{ d.day }}{% if d.is_today %} (today){% endif %}</td>
+      <td>${{ '%.4f'|format(d.usd) }}</td>
+      <td class="daybar">
+        <div class="daybar-fill" style="width: {{ (d.usd / wmax * 100) if wmax else 0 }}%"></div>
+      </td>
+    </tr>
+    {% endfor %}
+  </table>
+</section>
+
+{% if b.empty %}
+  <div class="sub">No usage recorded yet — run a top-up, tick, or micro-tick to populate the ledger.</div>
+{% endif %}
+
+{% endif %}
+{% endblock %}

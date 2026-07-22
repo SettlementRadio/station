@@ -588,6 +588,23 @@ gracefully if the DB is down. **Operator-only, never internet-exposed.** Distinc
 `make status`, which shows the playout processes + mount. Panel sizes:
 `PROGRAMMING_CONSOLE_UPCOMING` / `CONSOLE_STORY_LIMIT` / `CONSOLE_BEATS_PER_STORY`.
 
+### Watch the cost / set a budget  → Phase E panel · **Panel → Budgets** (R5.1)
+The **Budgets** screen (`make panel` → `/budgets`) estimates spend from the logged token /
+TTS usage the pipeline flushes to the `usage_rollup` world-state row:
+- **Today's spend vs `BUDGET_DAILY_USD`** as a bar (also on the Dashboard); crossing
+  `BUDGET_ALERT_PCT` flips it red and logs loudly. **No auto-shutoff** — the kill decision
+  stays yours (stop the timers / playout by hand).
+- **Spend by job** (world tick · micro-tick · news · talk · music · … · TTS minutes ·
+  embeddings) for today, plus a **last-7-days** total.
+- Cost is **estimated**, not billed: prices come from the `MODEL_PRICES` dial (USD per
+  million tokens per tier) with `PRICE_CACHE_WRITE_MULT` / `PRICE_CACHE_READ_MULT` for cache
+  economics; Kokoro/local TTS + local embeddings are free (volume still tracked). Update
+  `MODEL_PRICES` when Anthropic pricing changes. → the price + budget dials are on
+  **Panel → Dials → Budgets**.
+
+*Fallback (panel down):* every job still logs its `usage` token split to the structured logs;
+the rollup is in the `state` table under `usage_rollup` (`make console` shows the raw blob).
+
 ### The public now-playing feed
 The small JSON the web player reads — **public-safe fields only** (on-now / next + program + hosts +
 track info + the AI-disclosure line), never operator/internal state. The scheduler refreshes it on

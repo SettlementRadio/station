@@ -83,6 +83,13 @@ def embed(texts: Sequence[str]) -> list[list[float]]:
 
     _validate_dims(vectors)
     log.info("embeddings_embed_done", count=len(vectors), dim=len(vectors[0]))
+    # R5.1 — record embedding volume for the budgets ledger (local model = free).
+    try:
+        from .. import usage
+
+        usage.record_embeddings(len(vectors))
+    except Exception:  # noqa: BLE001 — accounting must never break embedding
+        pass
     return vectors
 
 

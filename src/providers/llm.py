@@ -402,6 +402,12 @@ def _generate_batch_api(
         for r in reqs
     ]
     ok = sum(1 for r in out if r.ok)
+    # R5.1 — emit each succeeded row's usage so the batch path's spend reaches the
+    # usage ledger just like the live path (the tick runs here). Tier = the request's
+    # model (out is built in request order, so it zips with reqs).
+    for req, res in zip(reqs, out, strict=False):
+        if res.ok and res.usage:
+            _emit_usage({"source": "batch", "tier": req.model, **res.usage})
     # CO0 — rollup of the cache-economics token split across the whole batch.
     totals = {
         key: sum(r.usage.get(key, 0) for r in out)

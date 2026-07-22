@@ -24,12 +24,17 @@ log = get_logger(__name__)
 
 def main() -> int:
     """Run one micro-tick from the CLI; print a one-line summary; return exit code."""
+    from .. import usage
+
     try:
-        r = world_tick.run_micro_tick()
+        with usage.job("micro-tick"):
+            r = world_tick.run_micro_tick()
     except Exception as exc:  # noqa: BLE001 — fail loud for the timer; store rolled back
         log.error("micro_tick_failed", error=str(exc))
+        usage.flush()
         print(f"Micro-tick FAILED (store unchanged): {exc}")
         return 1
+    usage.flush()  # R5.1 — persist the micro-tick's LLM spend to the usage rollup
 
     if r.acted:
         print(

@@ -287,6 +287,17 @@ pre.preview {
 .pager { margin-top: 12px; display: flex; gap: 16px; }
 details.run summary a.btn-plain { margin-left: 8px; }
 
+/* R5.1 — budget bar + per-day spend bars */
+.budgetbar { height: 8px; border-radius: 4px; background: var(--panel-2);
+  overflow: hidden; margin: 8px 0; }
+.budgetbar.big { height: 14px; }
+.budgetbar-fill { height: 100%; background: var(--green); transition: width .3s; }
+.budgetbar.over .budgetbar-fill { background: var(--red); }
+table.rows tr.total td { border-top: 2px solid var(--border); }
+.daybar { width: 40%; }
+.daybar-fill { height: 10px; border-radius: 3px; background: var(--blue);
+  min-width: 1px; }
+
 /* --- E1.4 cast manager --- */
 details.newvoice { border: 1px solid var(--border); border-radius: 6px; padding: 8px 12px; }
 details.newvoice summary { cursor: pointer; color: var(--muted); }

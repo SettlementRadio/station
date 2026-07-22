@@ -1672,12 +1672,17 @@ def main() -> int:
     READS it to make audio and fill the rolling buffer. On the box both run on their
     own timers — the nightly tick feeds the buffer the scheduler tops up.
     """
+    from .. import usage
+
     try:
-        r = run_tick()
+        with usage.job("tick"):
+            r = run_tick()
     except Exception as exc:  # noqa: BLE001 — fail loud for the timer; store rolled back
         log.error("world_tick_failed", error=str(exc))
+        usage.flush()  # money spent on batch calls even if the tick rolled back
         print(f"World tick FAILED (store unchanged): {exc}")
         return 1
+    usage.flush()  # R5.1 — persist the tick's LLM spend to the usage rollup
 
     print(
         f"\nWorld tick #{r.tick}: proposed {r.proposed}, accepted {r.accepted}, "

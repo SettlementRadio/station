@@ -38,6 +38,33 @@ A typical *build* session will be short, e.g.:
 
 ---
 
+## 2026-07-21 — Phase R — R5.1 (=E1.8): the Budgets screen — cost visibility
+**Focus:** turn the logged token/TTS usage into dollars and put a daily budget line in front
+of the operator — spend by job, a dashboard bar, a red alert past the threshold.
+**Decisions:**
+- **A durable usage ledger, written at the seams, flushed at job boundaries.** New `src/usage.py`
+  listens on the existing `llm.add_usage_listener` seam, prices each call from `settings.model_prices`,
+  and buckets spend by the **job on air** via a context var the call sites set (`usage.job("talk")`
+  in the format dispatch, `"tick"`/`"micro-tick"` in the tick entrypoints). It accumulates
+  in-process and `flush()`es once per job (top-up / tick / micro-tick end) into the `usage_rollup`
+  world-state row — no per-call DB writes, no new table. This finally *writes* the `usage_rollup`
+  the dashboard/console already read.
+- **Batch spend counted too** — added a per-result `_emit_usage` in `llm._generate_batch_api`, so the
+  nightly tick's batch calls reach the ledger just like the live path.
+- **Estimates, not billing.** Prices are operator dials (Haiku $1/$5, Sonnet $3/$15, Opus $5/$25 per
+  MTok; cache write 1.25×, read 0.1×); Kokoro/local TTS + local embeddings are free (volume tracked).
+  Recording is best-effort behind try/except everywhere — a ledger bug can never break generation.
+- **Visibility, not a kill-switch** (R5 scope): the bar flips red + logs loudly past
+  `BUDGET_ALERT_PCT`; stopping the station stays a manual operator call.
+**Changed:** `src/usage.py` (new), `src/panel/budgets.py` (new) + `budgets.html` + dashboard bar +
+nav + `panel.css`, `src/config.py` (`model_prices`, `price_cache_*_mult`, `budget_*`),
+`llm.py`/`tts.py`/`embeddings.py`/`formats/__init__.py`/`scheduler.py`/`world_tick.py`/`micro_tick.py`
+(record + flush hooks), `tests/test_panel.py` (+5 → 600 green), `.env.example`, `ADMIN_MANUAL.md`.
+**Why:** an unattended 24/7 station needs a cost line the operator can see at a glance without adding
+up structured logs by hand; the cache economics make the token→USD math non-obvious, so the panel does it.
+**Next:** R5.2 (=E1.9) — the world screen (post-tick digest).
+Commit: (pending) · Clips: —
+
 ## 2026-07-21 — Phase R — R5.0 (=E1.7): the Schedule screen — queue / history / retry
 **Focus:** first R5 task — extend the E1 panel with a live schedule surface: on-air + upcoming
 queue with runway, paginated aired history (script + audio), per-slot regenerate/skip, and playout

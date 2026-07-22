@@ -235,4 +235,12 @@ def dashboard(now: datetime | None = None) -> dict:
         "health": health_checks(now),
         "feed": public_feed(),
         "world": world_panels(now),
+        "budget": _budget_bar(now),
     }
+
+
+def _budget_bar(now: datetime) -> dict:
+    """The dashboard's compact budget bar (R5.1) — today's spend vs the daily line."""
+    from .budgets import dashboard_bar
+
+    return dashboard_bar(now)

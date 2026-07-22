@@ -1147,6 +1147,10 @@ def main(argv: list[str]) -> int:
 
     def _run_once() -> None:
         upcoming = top_up()
+        # R5.1 — persist this top-up's LLM/TTS/embedding spend to the usage rollup.
+        from . import usage
+
+        usage.flush()
         total = sum(_duration_of(e) for e in upcoming)
         print(f"\n----- SCHEDULE: {len(upcoming)} segment(s) upcoming -----")
         for e in upcoming:

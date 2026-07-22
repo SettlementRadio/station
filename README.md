@@ -72,9 +72,10 @@ cuts in on the hour and hands back.
   UI at `http://127.0.0.1:8787/`: a live Dashboard, Actions (seed/tick/schedule/prune/… as buttons,
   with a mutation lock + a typed-phrase gate on `reset-world`), a Schedule screen (on-air + upcoming
   queue with per-slot regenerate/skip, paginated aired history with scripts + audio, and playout
-  start/stop/restart), and forms-over-files editors — Grid, Catalogs (Tracks/Sponsors/Pronunciation/
-  Voices), Cast, and Dials — each validating through the real loader, showing a diff, and writing
-  atomically with a `.bak`. It binds `127.0.0.1` ONLY and refuses
+  start/stop/restart), a Budgets screen (estimated spend by job/day from the logged token + TTS
+  usage, a daily-budget bar + red alert), and forms-over-files editors — Grid, Catalogs (Tracks/
+  Sponsors/Pronunciation/Voices), Cast, and Dials — each validating through the real loader, showing
+  a diff, and writing atomically with a `.bak`. It binds `127.0.0.1` ONLY and refuses
   a non-loopback bind without `PANEL_ALLOW_NONLOCAL=true`; on the VPS it's reached via an SSH tunnel
   (`ssh -L 8787:localhost:8787 <vps>`), never a public URL. Deploy with
   `config/settlement-panel.service`. The files stay the source of truth, so the hand-edit workflows in

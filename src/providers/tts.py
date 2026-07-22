@@ -210,6 +210,13 @@ def synthesize(
         lambda: backend(text, voice=voice, emotion=emotion, out_path=out_path),
     )
     log.info("tts_synthesize_done", provider=provider, voice=voice, out_path=result)
+    # R5.1 — record TTS volume for the budgets ledger (best-effort; free for Kokoro).
+    try:
+        from .. import usage
+
+        usage.record_tts(len(text), provider)
+    except Exception:  # noqa: BLE001 — accounting must never break synthesis
+        pass
     return result
 
 

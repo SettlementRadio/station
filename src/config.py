@@ -93,6 +93,33 @@ class Settings(BaseSettings):
     llm_batch_poll_interval_sec: float = 30.0
     llm_batch_max_wait_sec: float = 86_400.0  # 24h — the Batch API's own max lifetime
 
+    # --- Cost accounting (R5.1: the budgets screen's price list) ----------------
+    # USD per MILLION tokens, per logical tier (input, output). Used ONLY to turn
+    # the logged `usage` token split into a dollar estimate for the panel — nothing
+    # in the pipeline reads these. Cache economics: a cache WRITE bills at
+    # `price_cache_write_mult`x the input rate (1.25x for the 5-min TTL, 2x for 1h),
+    # a cache READ at `price_cache_read_mult`x (~0.1x). Kokoro/local TTS + local
+    # embeddings are free; `tts_elevenlabs_per_min` prices the flagship path if used.
+    # Update these when Anthropic pricing changes — they are estimates, not billing.
+    model_prices: dict[str, dict[str, float]] = Field(
+        default_factory=lambda: {
+            "haiku": {"input": 1.0, "output": 5.0},
+            "sonnet": {"input": 3.0, "output": 15.0},
+            "opus": {"input": 5.0, "output": 25.0},
+        }
+    )
+    price_cache_write_mult: float = 1.25  # 5-min TTL write premium (2.0 for 1h)
+    price_cache_read_mult: float = 0.1  # cache-read discount vs full input
+    tts_elevenlabs_per_min: float = 0.0  # flagship TTS $/min (Kokoro/local = free)
+
+    # --- Budgets (R5.1: visibility, not a kill-switch) -------------------------
+    # `budget_daily_usd` is the daily spend line the panel draws a bar against;
+    # crossing `budget_alert_pct` of it flips the bar red and logs loudly. There is
+    # NO auto-shutoff in R5 — the kill decision stays an operator call. Text cost is
+    # near-trivial by design (batch + caching), so the default is deliberately low.
+    budget_daily_usd: float = 5.0
+    budget_alert_pct: float = 80.0
+
     # --- TTS seam --------------------------------------------------------------
     # Which implementation tts.py selects: kokoro (default, local/free) |
     # elevenlabs (flagship cloud) | say (macOS offline fallback). The vendor

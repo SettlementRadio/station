@@ -116,21 +116,32 @@
     {% endif %}
   </section>
 
-  <!-- JOURNAL + COST -->
+  <!-- JOURNAL + BUDGET -->
   <section class="card">
-    <h2>Journal + cost</h2>
+    <h2>Journal + budget</h2>
     {% set w = d.world %}
     {% if not w.available %}
-      <div class="sub">(unavailable — DB down)</div>
+      <div class="sub">journal (unavailable — DB down)</div>
+    {% elif w.journal %}
+      <div class="sub">journal:
+        {% for host, n in w.journal.items() %}{{ host }}: {{ n }}{% if not loop.last %} · {% endif %}{% endfor %}
+      </div>
     {% else %}
-      {% if w.journal %}
-        <div class="sub">journal:
-          {% for host, n in w.journal.items() %}{{ host }}: {{ n }}{% if not loop.last %} · {% endif %}{% endfor %}
-        </div>
-      {% else %}
-        <div class="sub">no journal entries yet</div>
-      {% endif %}
-      <div class="sub cost">cost: {{ w.cost or '(no usage rollup recorded yet)' }}</div>
+      <div class="sub">no journal entries yet</div>
+    {% endif %}
+
+    {% set bud = d.budget %}
+    {% if bud.available %}
+      <div class="budgetbar {{ 'over' if bud.alert else 'ok' }}">
+        <div class="budgetbar-fill" style="width: {{ [bud.pct, 100]|min }}%"></div>
+      </div>
+      <div class="sub">
+        today ${{ '%.2f'|format(bud.spent_usd) }} of ${{ '%.2f'|format(bud.limit_usd) }}
+        ({{ bud.pct }}%){% if bud.alert %} <span class="warn">⚠ over alert</span>{% endif %}
+        · <a class="btn-plain" href="/budgets">details</a>
+      </div>
+    {% else %}
+      <div class="sub">budget: (unavailable — DB down)</div>
     {% endif %}
   </section>
 

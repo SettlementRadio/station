@@ -31,6 +31,7 @@ from ..config import settings
 from ..logging_setup import get_logger
 from . import (
     actions,
+    budgets,
     cast_edit,
     catalog_edit,
     dials,
@@ -730,6 +731,17 @@ def create_app() -> FastAPI:
             return PlainTextResponse("no audio", status_code=404)
         return FileResponse(
             path, media_type="audio/mpeg", headers={"Cache-Control": "no-store"}
+        )
+
+    # --- R5.1 (=E1.8): the Budgets screen (cost visibility) ------------------
+
+    @app.get("/budgets", response_class=HTMLResponse)
+    def budgets_page(request: Request) -> HTMLResponse:  # noqa: ANN001
+        """Spend by job, by day/week, over the usage telemetry — read-only."""
+        return _TEMPLATES.TemplateResponse(
+            request,
+            "budgets.html",
+            {"b": budgets.view(), "refresh_sec": settings.panel_refresh_sec},
         )
 
     return app

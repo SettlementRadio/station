@@ -131,7 +131,12 @@ def make_format_segment(
         domains=list(domains),
     )
     ctx = context.assemble(now, topic=topic, speakers=speaker_ids, domains=domains)
-    return stamp_duration(spec.build(now, ctx, flow))
+    # R5.1 — attribute this segment's LLM + TTS spend to the format on air, so the
+    # budgets screen can break spend down by job (talk / news / music / …).
+    from .. import usage
+
+    with usage.job(name):
+        return stamp_duration(spec.build(now, ctx, flow))
 
 
 __all__ = ["FORMATS", "FormatSpec", "make_format_segment", "stamp_duration"]
