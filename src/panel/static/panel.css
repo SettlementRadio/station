@@ -298,6 +298,10 @@ table.rows tr.total td { border-top: 2px solid var(--border); }
 .daybar-fill { height: 10px; border-radius: 3px; background: var(--blue);
   min-width: 1px; }
 
+/* R5.2 — world screen: the digest prose */
+.digest-text { margin: 8px 0 4px; color: var(--text); line-height: 1.5;
+  white-space: pre-wrap; }
+
 /* --- E1.4 cast manager --- */
 details.newvoice { border: 1px solid var(--border); border-radius: 6px; padding: 8px 12px; }
 details.newvoice summary { cursor: pointer; color: var(--muted); }

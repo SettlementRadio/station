@@ -25,10 +25,13 @@ log = get_logger(__name__)
 def main() -> int:
     """Run one micro-tick from the CLI; print a one-line summary; return exit code."""
     from .. import usage
+    from . import digest
 
     try:
         with usage.job("micro-tick"):
             r = world_tick.run_micro_tick()
+            # R5.2 — digest an ACTING micro-tick (a quiet run writes nothing).
+            digest.generate_and_store(r, kind="micro-tick")
     except Exception as exc:  # noqa: BLE001 — fail loud for the timer; store rolled back
         log.error("micro_tick_failed", error=str(exc))
         usage.flush()

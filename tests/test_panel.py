@@ -1211,3 +1211,207 @@ def test_budgets_page_renders_and_degrades(monkeypatch):
     monkeypatch.setattr(budgets.store, "connect", _boom)
     resp2 = client.get("/budgets")
     assert resp2.status_code == 200 and "unavailable" in resp2.text.lower()
+
+
+# --- R5.2 (=E1.9): the world screen — digest + arcs + timeline ----------------
+
+from datetime import datetime as _dt  # noqa: E402
+
+from src.panel import world_view  # noqa: E402
+from src.world import digest  # noqa: E402
+
+
+class _FakeStory:
+    def __init__(self, sid, title, stage="rumour", tags=()):
+        self.id = sid
+        self.title = title
+        self.arc_stage = stage
+        self.tags = list(tags)
+
+
+class _FakeBeat:
+    def __init__(self, title, when, planned=False):
+        self.title = title
+        self.in_world_datetime = when
+        self.planned = planned
+
+
+def test_digest_build_facts_from_tick_result(monkeypatch):
+    """build_facts turns a TickResult + store reads into the digest's raw material."""
+    from src.world import clock
+    from src.world.world_tick import TickResult
+
+    now = _dt(2026, 6, 22, 3, 0)
+    iw = clock.to_inworld(now)  # beats live in in-world time (year + offset)
+    stories = {
+        "st-new": _FakeStory("st-new", "The relay goes dark", tags=["tech"]),
+        "st-adv": _FakeStory(
+            "st-adv", "The harvest dispute", "developing", ["economy"]
+        ),
+    }
+    # a still-to-come planned beat later "today" (in-world 15:00 > in-world now 03:00)
+    beats = {
+        "st-new": [_FakeBeat("first reports", iw)],
+        "st-adv": [
+            _FakeBeat("morning: a claim", iw),
+            _FakeBeat("afternoon: a ruling", iw.replace(hour=15), planned=True),
+        ],
+    }
+    monkeypatch.setattr(digest.store, "get_story", lambda conn, sid: stories.get(sid))
+    monkeypatch.setattr(
+        digest.store, "story_beats", lambda conn, sid: beats.get(sid, [])
+    )
+    monkeypatch.setattr(digest.store, "figures_for_story", lambda conn, sid: [1, 2])
+    monkeypatch.setattr(digest.store, "quotes_for_story", lambda conn, sid: [1])
+
+    result = TickResult(
+        tick=7,
+        proposed=3,
+        accepted=1,
+        dropped=1,
+        advanced=1,
+        story_ids=["st-new"],
+        advanced_ids=["st-adv"],
+    )
+    facts = digest.build_facts(object(), result, kind="tick", now=now)
+
+    assert facts["tick"] == 7 and facts["accepted"] == 1
+    assert facts["new_stories"][0]["title"] == "The relay goes dark"
+    assert facts["new_figures"] == 2 and facts["new_quotes"] == 1
+    adv = facts["advanced"][0]
+    assert adv["title"] == "The harvest dispute" and adv["stage"] == "developing"
+    assert adv["next_planned"]["title"] == "afternoon: a ruling"  # the planned beat
+
+
+def test_digest_generate_and_store_guards(monkeypatch):
+    """Disabled → None; a quiet micro-tick → None; an acting run stores the text."""
+    from src.world.world_tick import MicroTickResult
+
+    monkeypatch.setattr(settings, "world_digest_enabled", False)
+    assert digest.generate_and_store(object(), kind="tick") is None  # disabled
+
+    monkeypatch.setattr(settings, "world_digest_enabled", True)
+    quiet = MicroTickResult(micro_tick=2, acted=False, reason="dice")
+    assert digest.generate_and_store(quiet, kind="micro-tick") is None  # quiet run
+
+    # an acting micro-tick stores a digest (LLM + DB stubbed)
+    from contextlib import contextmanager
+
+    saved = {}
+
+    class _Conn:
+        pass
+
+    @contextmanager
+    def _fake_connect():
+        yield _Conn()
+
+    monkeypatch.setattr(digest.store, "connect", _fake_connect)
+    monkeypatch.setattr(digest.store, "get_state", lambda conn, key: None)
+    monkeypatch.setattr(
+        digest.store, "set_state", lambda conn, key, value: saved.update({key: value})
+    )
+    monkeypatch.setattr(
+        digest.store,
+        "get_story",
+        lambda conn, sid: _FakeStory(sid, "A late complication"),
+    )
+    monkeypatch.setattr(
+        digest, "generate_text", lambda facts: "Something moved tonight."
+    )
+
+    acted = MicroTickResult(micro_tick=3, acted=True, story_id="st-x", beat_id="b1")
+    text = digest.generate_and_store(acted, kind="micro-tick")
+    assert text == "Something moved tonight."
+    stored = json.loads(saved[digest.DIGEST_KEY])
+    assert stored[0]["kind"] == "micro-tick" and stored[0]["text"] == text
+
+
+def test_world_view_assembles_arcs_and_timeline(monkeypatch):
+    """view() builds arcs (next planned beat) + today's beats; degrades on DB down."""
+    from contextlib import contextmanager
+
+    from src.world import clock
+
+    now = _dt(2026, 6, 22, 9, 0)
+    iw_today = clock.to_inworld(now).date()
+    story = _FakeStory("st-1", "The water tariff", "developing", ["economy"])
+    beats = [
+        _FakeBeat("morning claim", clock.to_inworld(now).replace(hour=7)),
+        _FakeBeat(
+            "afternoon ruling", clock.to_inworld(now).replace(hour=15), planned=True
+        ),
+    ]
+
+    @contextmanager
+    def _fake_connect():
+        yield object()
+
+    monkeypatch.setattr(world_view.store, "connect", _fake_connect)
+    monkeypatch.setattr(world_view.store, "active_stories", lambda conn: [story])
+    monkeypatch.setattr(world_view.store, "story_beats", lambda conn, sid: beats)
+    monkeypatch.setattr(
+        world_view.digest,
+        "recent",
+        lambda conn, limit=None: [
+            {"kind": "tick", "text": "hi", "when": now.isoformat()}
+        ],
+    )
+
+    out = world_view.view(now)
+    assert out["available"] and out["arcs"][0]["title"] == "The water tariff"
+    assert out["arcs"][0]["next_planned"]["title"] == "afternoon ruling"
+    # both beats are dated to in-world today → both on the timeline, hour-sorted
+    assert [b["when"] for b in out["timeline"]] == ["07:00", "15:00"]
+    assert iw_today == clock.to_inworld(now).date()  # sanity: same in-world day
+
+    # DB down → readable note, not a 500
+    def _boom():
+        raise RuntimeError("connection refused")
+
+    monkeypatch.setattr(world_view.store, "connect", _boom)
+    assert world_view.view(now)["available"] is False
+
+
+def test_world_page_renders_and_run_button(monkeypatch, no_launch):
+    """/world renders from a stubbed view; /world/run starts the tick under the lock."""
+    monkeypatch.setattr(
+        world_view,
+        "view",
+        lambda now=None: {
+            "available": True,
+            "error": None,
+            "digests": [
+                {
+                    "kind": "tick",
+                    "tick": 5,
+                    "when": "2026-06-22T03:00:00",
+                    "text": "The relay recovered overnight.",
+                }
+            ],
+            "arcs": [
+                {
+                    "id": "s1",
+                    "title": "The relay",
+                    "stage": "developing",
+                    "tags": ["tech"],
+                    "latest": "first reports",
+                    "next_planned": None,
+                }
+            ],
+            "timeline": [],
+            "in_world_today": "Monday 2626-06-22",
+        },
+    )
+    client = TestClient(panelapp.app, follow_redirects=False)
+    resp = client.get("/world")
+    assert resp.status_code == 200
+    assert "The relay recovered overnight." in resp.text
+    assert "Arcs in flight" in resp.text and "World tick" in resp.text
+
+    r = client.post("/world/run", data={"action_id": "world-tick"})
+    assert r.status_code == 303 and "started" in r.headers["location"]
+    assert actions.current_mutation() is not None  # the tick holds the lock
+
+    r = client.post("/world/run", data={"action_id": "nope"})
+    assert "unknown" in r.headers["location"]

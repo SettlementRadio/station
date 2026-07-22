@@ -71,7 +71,7 @@ the bad `segments/<id>.*`; playout is `make serve` / `make stop`.
   `micro_tick_advance_probability` (how often a run acts), `micro_tick_live_window_hours` (how recent
   a story's last beat must be to count as "live today"), `micro_tick_tier` / `micro_tick_max_tokens`
   / `micro_tick_continuity_max_tokens`. *→ these dials are on **Panel → Dials → Micro-tick** (E1.5);
-  a "run micro-tick now" button lands with the world screen (R5.2).*
+  **Panel → World** (R5.2) has "run world-tick / micro-tick now" buttons + the post-tick digest.*
 
 **Playout assets** (each also runs automatically; the target is the standalone prepare/verify):
 - `make fallback` — pre-render the never-dead fallback pool + evergreen playlist (auto at the top of
@@ -213,6 +213,23 @@ auto-selects the folder when it has content, else the file. Set in `.env` only t
 The world moves via the nightly tick (see *Running the station*); the news desk reports it, the
 freshness memory keeps the wording from looping, and figures/quotes make it speak. All dials in
 `.env`, defaults sane.
+
+### See what changed overnight  → Phase E panel · **Panel → World** (R5.2)
+The **World** screen (`make panel` → `/world`) is "what happened last night, and how today should
+unfold" at a glance:
+- **Digest** — after each tick / *acting* micro-tick, a short haiku-tier note is written from the
+  tick's own result (new stories, advanced arcs, planned beats, new people, gate drops) and stored
+  in the `tick_digests` state row (newest first, capped by `WORLD_DIGEST_KEEP`). Best-effort — a
+  digest failure never fails the tick. Dials: `WORLD_DIGEST_ENABLED` / `_TIER` / `_MAX_TOKENS` /
+  `_KEEP`.
+- **Arcs in flight** — each active story → arc stage → latest beat → its next *planned* beat.
+- **Today's beats** — every active-story beat dated to the in-world today, hour-sorted, marked
+  announced / planned / landed (matches `make console`'s story log for any spot-checked beat).
+- **Run buttons** — "World tick" / "Micro-tick" run the same jobs as **Panel → Actions** (the E1.1
+  lock; output streams on the Actions page, the digest appears here when it finishes).
+
+*Fallback (panel down):* run `make world-tick` / `make micro-tick`; read the arcs/beats with
+`make console`; the raw digest list is in the `state` table under `tick_digests`.
 
 ### See it (token-free or cheap; none touch your world)
 ```bash

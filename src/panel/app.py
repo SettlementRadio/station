@@ -38,6 +38,7 @@ from . import (
     grid_edit,
     schedule_view,
     views,
+    world_view,
 )
 
 log = get_logger(__name__)
@@ -743,6 +744,38 @@ def create_app() -> FastAPI:
             "budgets.html",
             {"b": budgets.view(), "refresh_sec": settings.panel_refresh_sec},
         )
+
+    # --- R5.2 (=E1.9): the World screen (post-tick digest + arcs + timeline) --
+
+    @app.get("/world", response_class=HTMLResponse)
+    def world_page(
+        request: Request,
+        msg: str | None = None,  # noqa: ANN001
+        started: str | None = None,
+    ) -> HTMLResponse:
+        """Latest digest, arcs in flight, today's beat timeline + tick run buttons."""
+        return _TEMPLATES.TemplateResponse(
+            request,
+            "world.html",
+            {
+                "w": world_view.view(),
+                "mutation": actions.current_mutation(),
+                "refresh_sec": settings.panel_refresh_sec,
+                "msg": msg,
+                "started": started,
+            },
+        )
+
+    @app.post("/world/run")
+    def world_run(action_id: str = Form(...)) -> RedirectResponse:
+        """Run the world tick / micro-tick from the World screen (E1.1 machinery)."""
+        if action_id not in {"world-tick", "micro-tick"}:
+            return _redirect("/world?msg=unknown+action")
+        try:
+            run = actions.start_action(action_id)
+        except actions.Busy as busy:
+            return _redirect(f"/world?msg=busy:+{busy.holder.label}+is+running")
+        return _redirect(f"/world?started={run.id}")
 
     return app
 

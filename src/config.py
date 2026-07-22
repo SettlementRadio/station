@@ -616,6 +616,18 @@ class Settings(BaseSettings):
     micro_tick_max_tokens: int = 900
     micro_tick_continuity_max_tokens: int = 200
 
+    # --- Tick digest (R5.2: the panel's post-tick "what happened" note) --------
+    # After each nightly tick / micro-tick, a short human-readable DIGEST is written
+    # from the tick's own result (new stories, advanced arcs, next planned beats, new
+    # people, gate drops) so the operator can read "what happened last night" in 30s
+    # on the panel's World screen. Haiku-tier, hard-capped, and BEST-EFFORT — a digest
+    # failure logs and is skipped, never failing the tick. Stored as a capped list in
+    # the `state` row `tick_digests` (survives seed-canon; cleared by reset-world).
+    world_digest_enabled: bool = True
+    world_digest_tier: str = "haiku"
+    world_digest_max_tokens: int = 400
+    world_digest_keep: int = 20  # recent digests retained for the World screen
+
     # --- News desk (D4: the story-log-driven bulletin) -------------------------
     # The desk (src/formats/news.py) no longer asks for N flat headlines; it SELECTS
     # which running stories (D3 log) this hour reports (D4.1), tags each from the

@@ -1,0 +1,112 @@
+{% extends "base.html" %}
+{% block nav_world %}active{% endblock %}
+{% block title %}World — Settlement Radio Operator Panel{% endblock %}
+{% if mutation %}{% block refresh %}<meta http-equiv="refresh" content="{{ refresh_sec }}">{% endblock %}{% endif %}
+
+{% block content %}
+<div class="asof">
+  What changed in the living world overnight, and how today should unfold — from the
+  post-tick digest, the arcs in flight, and today's expected beats.
+  {% if mutation %}· refreshing every {{ refresh_sec }}s while a run is active{% endif %}
+</div>
+
+{% if msg %}<div class="banner warn">⚠ {{ msg }}</div>{% endif %}
+{% if started %}<div class="banner ok">▶ started run {{ started }} — output on the
+  <a href="/actions">Actions</a> page; the digest appears here when it finishes.</div>{% endif %}
+{% if mutation %}
+<div class="banner running">
+  ● Running: <b>{{ mutation.label }}</b> ({{ '%.0f'|format(mutation.duration_sec) }}s)
+  — the digest updates here when it completes.
+</div>
+{% endif %}
+
+<!-- Run buttons (E1.1 machinery) -->
+<section class="card">
+  <h2>Advance the world</h2>
+  <div class="actions">
+    <form method="post" action="/world/run" class="action">
+      <input type="hidden" name="action_id" value="world-tick">
+      <button type="submit" {% if mutation %}disabled{% endif %}>World tick</button>
+      <span class="adesc">The nightly batch — invent + advance stories, write the arcs.</span>
+    </form>
+    <form method="post" action="/world/run" class="action">
+      <input type="hidden" name="action_id" value="micro-tick">
+      <button type="submit" {% if mutation %}disabled{% endif %}>Micro-tick</button>
+      <span class="adesc">A small near-live nudge to one of today's stories (or a quiet run).</span>
+    </form>
+  </div>
+</section>
+
+{% if not w.available %}
+  <section class="card"><div class="warn">⚠ world unavailable: {{ w.error }}</div></section>
+{% else %}
+
+<!-- Latest digest -->
+<section class="card span-full">
+  <h2>Digest <span class="sub">· in-world {{ w.in_world_today }}</span></h2>
+  {% if not w.digests %}
+    <div class="sub">no digest yet — run a world tick to write one.</div>
+  {% else %}
+    {% for d in w.digests %}
+    <details class="run" {% if loop.first %}open{% endif %}>
+      <summary>
+        <span class="badge done">{{ d.kind }}</span>
+        <b>{% if d.tick %}#{{ d.tick }}{% endif %}</b>
+        <span class="sub">· {{ d.when[:16].replace('T', ' ') }}</span>
+      </summary>
+      <div class="digest-text">{{ d.text }}</div>
+    </details>
+    {% endfor %}
+  {% endif %}
+</section>
+
+<!-- Arcs in flight -->
+<section class="card span-full">
+  <h2>Arcs in flight <span class="sub">· {{ w.arcs|length }} active</span></h2>
+  {% if not w.arcs %}
+    <div class="sub">no active stories — run the world tick to grow the world.</div>
+  {% else %}
+  <table class="rows">
+    <tr><th>Stage</th><th>Story</th><th>Latest beat</th><th>Next planned</th></tr>
+    {% for a in w.arcs %}
+    <tr>
+      <td class="stage">[{{ a.stage }}]</td>
+      <td>{{ a.title }}
+        {% for t in a.tags %}<span class="chip">#{{ t }}</span>{% endfor %}
+      </td>
+      <td class="sub">{{ a.latest or '—' }}</td>
+      <td>{% if a.next_planned %}<span class="planned">{{ a.next_planned.when }}
+        · {{ a.next_planned.title }}</span> <span class="sub">({{ a.next_planned.phrase }})</span>
+        {% else %}<span class="sub">—</span>{% endif %}</td>
+    </tr>
+    {% endfor %}
+  </table>
+  {% endif %}
+</section>
+
+<!-- Today's beat timeline -->
+<section class="card span-full">
+  <h2>Today's beats <span class="sub">· in-world {{ w.in_world_today }}</span></h2>
+  {% if not w.timeline %}
+    <div class="sub">no beats dated to today.</div>
+  {% else %}
+  <table class="rows">
+    <tr><th>Time</th><th>Beat</th><th>Story</th><th>State</th></tr>
+    {% for b in w.timeline %}
+    <tr>
+      <td class="mono">{{ b.when }}</td>
+      <td>{{ b.title }}</td>
+      <td class="sub">{{ b.story }}</td>
+      <td>
+        {% if not b.planned %}<span class="sub">announced</span>
+        {% elif b.landed %}<span class="ok">landed</span>
+        {% else %}<span class="planned">planned</span>{% endif %}
+      </td>
+    </tr>
+    {% endfor %}
+  </table>
+  {% endif %}
+</section>
+
+{% endif %}
+{% endblock %}

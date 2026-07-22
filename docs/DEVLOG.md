@@ -38,6 +38,31 @@ A typical *build* session will be short, e.g.:
 
 ---
 
+## 2026-07-22 — Phase R — R5.2 (=E1.9): the World screen — post-tick digest
+**Focus:** give the operator "what happened last night, and how today should unfold" at a glance —
+a written digest after each tick, plus the arcs in flight and today's expected beats.
+**Decisions:**
+- **Digest is written AFTER the tick commits, best-effort.** New `src/world/digest.py` builds
+  structured facts from the tick's own `TickResult`/`MicroTickResult` (new stories, advanced arcs +
+  their next planned beat, new figures/quotes, gate drops) with a couple of small store reads, then
+  one hard-capped **haiku** call writes 2–4 plain sentences. Stored as a capped list in the
+  `tick_digests` state row (survives seed-canon; cleared by reset-world). Any failure logs and is
+  skipped — it must never fail or roll back the tick. A quiet micro-tick writes nothing.
+- **Wired into the tick entrypoints** (`world_tick.main` / `micro_tick.main`), inside the R5.1
+  `usage.job(...)` scope so the digest's small spend is attributed too.
+- **The World screen reuses reads + the E1.1 machinery** — `src/panel/world_view.py` assembles the
+  recent digests, arcs (active story → stage → next planned beat), and today's in-world beat timeline
+  from `store`; the "World tick / Micro-tick" buttons POST to the existing action runner (same lock).
+  Dashboard's raw-`usage_rollup` cost line was already replaced by the R5.1 budget bar; the World
+  card there stays the quick story-log view.
+**Changed:** `src/world/digest.py` (new), `src/panel/world_view.py` (new) + `world.html` + nav + CSS,
+`src/config.py` (`world_digest_*`), `world_tick.py`/`micro_tick.py` (generate hooks),
+`tests/test_panel.py` (+4 → 604 green), `.env.example`, `ADMIN_MANUAL.md`.
+**Why:** an unattended nightly tick is a black box until morning; a 30-second digest + the arc/beat
+tables let the operator confirm the world moved sensibly without reading the story log row by row.
+**Next:** R5.3 (=E1.10) — the major-event gate (`major` stories wait for operator approval).
+Commit: (pending) · Clips: —
+
 ## 2026-07-21 — Phase R — R5.1 (=E1.8): the Budgets screen — cost visibility
 **Focus:** turn the logged token/TTS usage into dollars and put a daily budget line in front
 of the operator — spend by job, a dashboard bar, a red alert past the threshold.
