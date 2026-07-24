@@ -579,6 +579,11 @@ class Settings(BaseSettings):
     world_tick_quiet_domains: int = 4
     world_tick_dedup_threshold: float = 0.86
     world_tick_dedup_jaccard: float = 0.6
+    # R5.3 — a still-pending MAJOR story suppresses similar new proposals (don't
+    # re-propose the same unapproved war each night) for at most this many days; past
+    # the cap the stale pending story is dropped from the de-dup set so an operator who
+    # never approves/rejects can't jam that domain forever.
+    world_tick_pending_major_max_age_days: float = 3.0
     # D10.1 — the tick also peoples its stories: invented FIGURES (the people a story is
     # about) and their attributable, dated QUOTES, generated INSIDE the same proposal /
     # advancement call (so they ride the same safety + continuity gate and the Batch +

@@ -227,9 +227,20 @@ unfold" at a glance:
   announced / planned / landed (matches `make console`'s story log for any spot-checked beat).
 - **Run buttons** — "World tick" / "Micro-tick" run the same jobs as **Panel → Actions** (the E1.1
   lock; output streams on the Actions page, the digest appears here when it finishes).
+- **Awaiting approval (R5.3 major-event gate)** — the tick flags world-changing stories (wars, the
+  death of a named bible figure, a premise-altering discovery) as `major`; those land **`pending`**
+  and are **invisible to air** (excluded from the news desk + the showrunner context) until you act.
+  The queue shows each with its beats: **Approve** flips it `active` (it flows normally); **Reject**
+  archives it and strips its embeddings from recall (the rows stay for audit — the world persists
+  forever). A still-pending major suppresses similar new proposals for
+  `WORLD_TICK_PENDING_MAJOR_MAX_AGE_DAYS` so the log can't jam if you never act. Everything else
+  flows autonomously as before — with no pending stories the queue is empty and behaviour is
+  unchanged.
 
 *Fallback (panel down):* run `make world-tick` / `make micro-tick`; read the arcs/beats with
-`make console`; the raw digest list is in the `state` table under `tick_digests`.
+`make console`; the raw digest list is in the `state` table under `tick_digests`; approve/reject by
+hand with `UPDATE stories SET status='active'|'archived' WHERE id=…` (reject should also clear the
+story's `embeddings` rows).
 
 ### See it (token-free or cheap; none touch your world)
 ```bash
@@ -254,6 +265,9 @@ make format FMT=news  # one voiced bulletin from the REAL world (Claude + TTS; n
 - **Cost/model:** `WORLD_TICK_PROPOSE_TIER`/`_CONTINUITY_TIER`, `WORLD_TICK_MAX_ATTEMPTS`
   (regenerate-then-drop), and `LLM_BATCH_ENABLED` / `LLM_BATCH_POLL_INTERVAL_SEC` /
   `LLM_BATCH_MAX_WAIT_SEC` (the Batch path).
+- **Major-event gate (R5.3):** `WORLD_TICK_PENDING_MAJOR_MAX_AGE_DAYS` — how long a still-pending
+  major suppresses similar new proposals before the tick releases it (approve/reject on
+  **Panel → World**, above).
 
 A contradictory/unsafe proposal is regenerated once then dropped, never written (the C0 gates).
 

@@ -158,6 +158,11 @@ class ProposedStory:
     arc_stage: str
     beats: list[ProposedBeat]
     figures: list[ProposedFigure] = field(default_factory=list)
+    # R5.3 — the tick flags a world-CHANGING story (war, death of a named canon
+    # figure, a premise-altering discovery — anything the bible would need to absorb).
+    # A major story is materialised `pending` and waits for operator approval before
+    # any read can reach it. Ordinary stories are `major=False` and flow as before.
+    major: bool = False
 
 
 @dataclass(frozen=True)
@@ -210,6 +215,7 @@ class TickResult:
     regenerated: int = 0
     advanced: int = 0  # running stories moved on this tick (D3.2)
     resolved: int = 0  # of those, stories that reached `past` (stopped advancing)
+    pending: int = 0  # R5.3: of the new stories, majors held for operator approval
     story_ids: list[str] = field(default_factory=list)  # new stories created
     advanced_ids: list[str] = field(default_factory=list)  # running stories advanced
     usage: dict[str, int] = field(default_factory=dict)
@@ -264,6 +270,11 @@ def run_tick(now: datetime | None = None) -> TickResult:
             conn,
             since_tick=max(0, tick_no - settings.world_tick_domain_window_ticks),
         )
+    # R5.3 — a still-pending major suppresses similar proposals (don't re-propose the
+    # same unapproved war) — but only up to `world_tick_pending_major_max_age_days`, so
+    # an operator who never acts can't jam that domain forever. Past the cap the stale
+    # pending story is dropped from the de-dup set and the world resumes proposing.
+    recent = _drop_stale_pending(recent, now)
 
     # D3.3 pacing — when the living world is already at its soft cap, propose NO new
     # stories this tick (only advance/resolve), so it doesn't churn unboundedly.
@@ -304,6 +315,8 @@ def run_tick(now: datetime | None = None) -> TickResult:
                 + _embed_beats(conn, beats)
             )
             result.story_ids.append(story.id)
+            if story.status == store.STORY_STATUS_PENDING:
+                result.pending += 1
         result.accepted = len(accepted)
 
         for adv in advances:
@@ -690,9 +703,14 @@ def _propose(ctx: _TickContext) -> list[ProposedStory]:
         f"±{settings.world_tick_beat_horizon_days} days; hour is 0-23.\n\n"
         f"{dayarc}"
         f"{people}"
+        'Set "major": true ONLY for a world-CHANGING happening — a war, the death of '
+        "a NAMED bible figure, or a discovery that alters the show's premise (anything "
+        "the world bible would have to absorb). A major story is held for human review "
+        "before it airs, so use it sparingly; ordinary happenings are "
+        '"major": false.\n\n'
         "Return ONLY a JSON array (no prose, no code fence). Each element:\n"
         '{"title": str, "summary": str, "scale": "large"|"small", "domain": str, '
-        '"arc_stage": str, '
+        '"arc_stage": str, "major": bool, '
         '"figures": [{"name": str, "role": str, "bio": str, "tags": [str]}], '
         '"beats": [{"title": str, "body": str, "beat_kind": str, '
         '"day_offset": int, "hour": int, "planned": bool, '
@@ -1056,6 +1074,8 @@ def _materialise(
         source=store.EVENT_SOURCE_TICK,
         created_tick=tick_no,
         last_advanced_tick=tick_no,
+        # R5.3 — a major story is born pending (invisible to air until approved).
+        status=(store.STORY_STATUS_PENDING if p.major else store.STORY_STATUS_ACTIVE),
     )
     beats = [_beat_event(story_id, f"b{j}", b, ctx) for j, b in enumerate(p.beats)]
     return story, beats
@@ -1326,6 +1346,24 @@ def _summarise_active(stories: list[store.Story]) -> str:
     return "\n".join(f"- [{s.arc_stage}] {s.title} — {s.summary}" for s in stories)
 
 
+def _drop_stale_pending(recent: list[store.Story], now: datetime) -> list[store.Story]:
+    """Drop pending stories older than the max-age cap from the de-dup set (R5.3).
+
+    An UNAPPROVED major keeps the tick from re-proposing something similar (good) — but
+    only for `world_tick_pending_major_max_age_days`. Past that the stale pending story
+    is removed here so it no longer suppresses proposals and the world keeps moving.
+    Active/archived stories, and pending stories still within the window, are kept.
+    """
+    cap = timedelta(days=settings.world_tick_pending_major_max_age_days)
+    kept: list[store.Story] = []
+    for s in recent:
+        if s.status == store.STORY_STATUS_PENDING and s.created_at is not None:
+            if now - s.created_at > cap:
+                continue  # stale, unapproved — stop suppressing similar proposals
+        kept.append(s)
+    return kept
+
+
 # --- Variety: domain balance + de-duplication (D3.3) ------------------------
 
 
@@ -1563,6 +1601,7 @@ def _coerce_story(item: object) -> ProposedStory | None:
         arc_stage=arc_stage,
         beats=_cap_story_quotes(beats, settings.world_tick_quotes_per_story_max),
         figures=figures,
+        major=bool(item.get("major", False)),  # R5.3 — operator-gated if true
     )
 
 
@@ -1688,7 +1727,8 @@ def main() -> int:
     usage.flush()  # R5.1 — persist the tick's LLM spend to the usage rollup
 
     print(
-        f"\nWorld tick #{r.tick}: proposed {r.proposed}, accepted {r.accepted}, "
+        f"\nWorld tick #{r.tick}: proposed {r.proposed}, accepted {r.accepted}"
+        f"{f' ({r.pending} pending approval)' if r.pending else ''}, "
         f"dropped {r.dropped} (regenerated {r.regenerated}, "
         f"duplicates {r.duplicates}); advanced {r.advanced} "
         f"running stor{'y' if r.advanced == 1 else 'ies'} ({r.resolved} resolved)."

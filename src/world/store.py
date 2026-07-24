@@ -178,6 +178,16 @@ ARC_PAST = "past"
 # advancing it — D3.2 — but it stays in the log forever as history).
 ARC_STAGES = (ARC_RUMOURED, ARC_UPCOMING, ARC_HAPPENING, ARC_DEVELOPING, ARC_PAST)
 
+# R5.3 — a story's approval status (distinct from its arc STAGE). Non-major stories
+# are born `active` and flow as before; a tick-flagged MAJOR story is born `pending`
+# and is invisible to every air-reaching read (`active_stories`, `events_in_range`)
+# until the operator approves it (→ active) or rejects it (→ archived, embeddings
+# removed). `active` is the default so all existing/non-major stories are unaffected.
+STORY_STATUS_ACTIVE = "active"
+STORY_STATUS_PENDING = "pending"
+STORY_STATUS_ARCHIVED = "archived"
+STORY_STATUSES = (STORY_STATUS_ACTIVE, STORY_STATUS_PENDING, STORY_STATUS_ARCHIVED)
+
 # Legal transitions: from a stage you may stay put (a new beat, same stage) or jump
 # to ANY later stage (a sudden event can leap rumoured -> happening; a false rumour
 # can resolve rumoured -> past) — but NEVER move backward, and `past` is terminal
@@ -233,6 +243,7 @@ class Story:
     created_tick: int | None = None
     last_advanced_tick: int | None = None
     created_at: datetime | None = None
+    status: str = STORY_STATUS_ACTIVE  # R5.3: active | pending | archived
 
 
 @dataclass(frozen=True)
@@ -728,6 +739,13 @@ ALTER TABLE "cast" ADD COLUMN IF NOT EXISTS based text NOT NULL DEFAULT 'station
 -- `events.airable`). Defaults false, so every pre-R4 beat stays reportable exactly as
 -- before — an additive, in-place upgrade (OVERVIEW §2: migrations, never reseed).
 ALTER TABLE events ADD COLUMN IF NOT EXISTS planned boolean NOT NULL DEFAULT false;
+
+-- R5.3: a story's approval status ('active' | 'pending' | 'archived'). Defaults
+-- 'active' so every existing + non-major story keeps flowing exactly as before — an
+-- additive, in-place upgrade (OVERVIEW §2: migrations, never reseed). A tick-flagged
+-- MAJOR story lands 'pending' and is excluded from air until the operator approves it.
+ALTER TABLE stories ADD COLUMN IF NOT EXISTS status text NOT NULL DEFAULT 'active';
+CREATE INDEX IF NOT EXISTS stories_status_idx ON stories (status);
 """
 
 # The world tables, in a stable order for a single TRUNCATE that reproduces the world
@@ -1031,7 +1049,7 @@ def insert_story(conn: psycopg.Connection, story: Story) -> None:
     conn.execute(
         "INSERT INTO stories "
         "(id, title, summary, arc_stage, tags, source, created_tick, "
-        "last_advanced_tick) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)",
+        "last_advanced_tick, status) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)",
         (
             story.id,
             story.title,
@@ -1041,9 +1059,12 @@ def insert_story(conn: psycopg.Connection, story: Story) -> None:
             story.source,
             story.created_tick,
             story.last_advanced_tick,
+            story.status,
         ),
     )
-    log.info("db_insert_story", id=story.id, arc_stage=story.arc_stage)
+    log.info(
+        "db_insert_story", id=story.id, arc_stage=story.arc_stage, status=story.status
+    )
 
 
 def advance_story(
@@ -1457,10 +1478,17 @@ def events_in_range(
     The date-window query B2/B3 use to find what is happening near `now`.
     """
     log.debug("db_events_in_range", start=start.isoformat(), end=end.isoformat())
+    # R5.3 — exclude beats of a non-active story (pending/archived): a standalone
+    # event (NULL story_id, the seeded bible events) always passes; a tick beat passes
+    # only while its story is `active`. With no pending/archived stories the subquery
+    # matches every story, so the result is byte-identical to the pre-R5.3 query.
     rows = conn.execute(
         f"SELECT {_EVENT_COLUMNS} FROM events "
-        "WHERE in_world_datetime BETWEEN %s AND %s ORDER BY in_world_datetime",
-        (start, end),
+        "WHERE in_world_datetime BETWEEN %s AND %s "
+        "AND (story_id IS NULL OR story_id IN "
+        "(SELECT id FROM stories WHERE status = %s)) "
+        "ORDER BY in_world_datetime",
+        (start, end, STORY_STATUS_ACTIVE),
     ).fetchall()
     return [_event_from_row(r) for r in rows]
 
@@ -1469,7 +1497,7 @@ def events_in_range(
 
 _STORY_COLUMNS = (
     "id, title, summary, arc_stage, tags, source, "
-    "created_tick, last_advanced_tick, created_at"
+    "created_tick, last_advanced_tick, created_at, status"
 )
 
 
@@ -1485,6 +1513,7 @@ def _story_from_row(row: tuple) -> Story:
         created_tick=row[6],
         last_advanced_tick=row[7],
         created_at=row[8],
+        status=row[9],
     )
 
 
@@ -1524,15 +1553,53 @@ def active_stories(
     stories move on rather than starving. `limit` is the per-tick advance budget.
     """
     sql = (
-        f"SELECT {_STORY_COLUMNS} FROM stories WHERE arc_stage <> %s "
+        f"SELECT {_STORY_COLUMNS} FROM stories "
+        "WHERE arc_stage <> %s AND status = %s "
         "ORDER BY last_advanced_tick ASC NULLS FIRST, created_at ASC, id ASC"
     )
-    params: tuple = (ARC_PAST,)
+    params: tuple = (ARC_PAST, STORY_STATUS_ACTIVE)
     if limit is not None:
         sql += " LIMIT %s"
-        params = (ARC_PAST, limit)
+        params = (ARC_PAST, STORY_STATUS_ACTIVE, limit)
     rows = conn.execute(sql, params).fetchall()
     return [_story_from_row(r) for r in rows]
+
+
+def pending_stories(conn: psycopg.Connection) -> list[Story]:
+    """Stories awaiting operator approval (R5.3), newest first — the panel queue."""
+    rows = conn.execute(
+        f"SELECT {_STORY_COLUMNS} FROM stories WHERE status = %s "
+        "ORDER BY created_at DESC, id",
+        (STORY_STATUS_PENDING,),
+    ).fetchall()
+    return [_story_from_row(r) for r in rows]
+
+
+def set_story_status(conn: psycopg.Connection, story_id: str, status: str) -> None:
+    """Set a story's approval status (R5.3) — e.g. APPROVE a pending story (→ active)."""  # noqa: E501
+    if status not in STORY_STATUSES:
+        raise ValueError(f"unknown story status {status!r}; expected {STORY_STATUSES}")
+    conn.execute("UPDATE stories SET status = %s WHERE id = %s", (status, story_id))
+    log.info("db_set_story_status", id=story_id, status=status)
+
+
+def reject_story(conn: psycopg.Connection, story_id: str) -> None:
+    """REJECT a pending story (R5.3): archive it + strip its embeddings from recall.
+
+    The rows stay (the living world persists forever — §2a), but the story goes
+    `archived` (excluded from `active_stories` + `events_in_range`) and every embedding
+    it contributed — the story itself and its beats/figures/quotes — is deleted, so
+    semantic recall can never resurface a rejected happening. Idempotent.
+    """
+    delete_embeddings(conn, "story", story_id)
+    for beat in story_beats(conn, story_id):
+        delete_embeddings(conn, "event", beat.id)
+    for figure in figures_for_story(conn, story_id):
+        delete_embeddings(conn, "figure", figure.id)
+    for quote in quotes_for_story(conn, story_id):
+        delete_embeddings(conn, "quote", quote.id)
+    set_story_status(conn, story_id, STORY_STATUS_ARCHIVED)
+    log.info("db_reject_story", id=story_id)
 
 
 def recent_stories(conn: psycopg.Connection, *, since_tick: int) -> list[Story]:

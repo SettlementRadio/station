@@ -777,6 +777,18 @@ def create_app() -> FastAPI:
             return _redirect(f"/world?msg=busy:+{busy.holder.label}+is+running")
         return _redirect(f"/world?started={run.id}")
 
+    @app.post("/world/story/{story_id}/approve")
+    def world_approve(story_id: str) -> RedirectResponse:
+        """Approve a pending major story — it becomes active + can reach air (R5.3)."""
+        msg = f"approved+{story_id}" if world_view.approve(story_id) else "not+pending"
+        return _redirect(f"/world?msg={msg}")
+
+    @app.post("/world/story/{story_id}/reject")
+    def world_reject(story_id: str) -> RedirectResponse:
+        """Reject a pending major story — archived + embeddings removed (R5.3)."""
+        msg = f"rejected+{story_id}" if world_view.reject(story_id) else "not+pending"
+        return _redirect(f"/world?msg={msg}")
+
     return app
 
 

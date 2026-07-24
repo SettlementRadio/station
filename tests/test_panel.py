@@ -1222,11 +1222,12 @@ from src.world import digest  # noqa: E402
 
 
 class _FakeStory:
-    def __init__(self, sid, title, stage="rumour", tags=()):
+    def __init__(self, sid, title, stage="rumour", tags=(), status="active"):
         self.id = sid
         self.title = title
         self.arc_stage = stage
         self.tags = list(tags)
+        self.status = status
 
 
 class _FakeBeat:
@@ -1349,6 +1350,7 @@ def test_world_view_assembles_arcs_and_timeline(monkeypatch):
 
     monkeypatch.setattr(world_view.store, "connect", _fake_connect)
     monkeypatch.setattr(world_view.store, "active_stories", lambda conn: [story])
+    monkeypatch.setattr(world_view.store, "pending_stories", lambda conn: [])
     monkeypatch.setattr(world_view.store, "story_beats", lambda conn, sid: beats)
     monkeypatch.setattr(
         world_view.digest,
@@ -1415,3 +1417,95 @@ def test_world_page_renders_and_run_button(monkeypatch, no_launch):
 
     r = client.post("/world/run", data={"action_id": "nope"})
     assert "unknown" in r.headers["location"]
+
+
+# --- R5.3 (=E1.10): the major-event gate — panel approve/reject --------------
+
+
+def test_world_pending_queue_renders_with_approve_reject(monkeypatch):
+    """The World screen shows the pending-approval queue with approve/reject forms."""
+    monkeypatch.setattr(
+        world_view,
+        "view",
+        lambda now=None: {
+            "available": True,
+            "error": None,
+            "digests": [],
+            "pending": [
+                {
+                    "id": "st-maj-1",
+                    "title": "The lattice war begins",
+                    "summary": "Two settlements break the long peace.",
+                    "stage": "happening",
+                    "tags": ["politics"],
+                    "beats": [{"when": "2626-06-24 06:00", "title": "First strike"}],
+                }
+            ],
+            "arcs": [],
+            "timeline": [],
+            "in_world_today": "Monday 2626-06-24",
+        },
+    )
+    client = TestClient(panelapp.app)
+    resp = client.get("/world")
+    assert resp.status_code == 200
+    assert "Awaiting approval" in resp.text
+    assert "The lattice war begins" in resp.text
+    assert "/world/story/st-maj-1/approve" in resp.text
+    assert "/world/story/st-maj-1/reject" in resp.text
+
+
+def test_world_approve_reject_routes(monkeypatch):
+    """Approve/reject routes call the store action and report the outcome."""
+    calls = {}
+
+    def _approve(sid):
+        calls["approve"] = sid
+        return True
+
+    def _reject(sid):
+        calls["reject"] = sid
+        return False  # simulate "not pending" → the guard rejected it
+
+    monkeypatch.setattr(world_view, "approve", _approve)
+    monkeypatch.setattr(world_view, "reject", _reject)
+    client = TestClient(panelapp.app, follow_redirects=False)
+
+    r = client.post("/world/story/st-1/approve")
+    assert r.status_code == 303 and "approved+st-1" in r.headers["location"]
+    assert calls["approve"] == "st-1"
+
+    # reject returns False (not pending) → the "not pending" message
+    r = client.post("/world/story/st-1/reject")
+    assert "not+pending" in r.headers["location"] and calls["reject"] == "st-1"
+
+
+def test_world_view_act_guards_non_pending(monkeypatch):
+    """approve/reject only act on a genuinely PENDING story (guarded)."""
+    from contextlib import contextmanager
+
+    from src.world import store as wstore
+
+    @contextmanager
+    def _fake_connect():
+        yield object()
+
+    ran = {"n": 0}
+    monkeypatch.setattr(world_view.store, "connect", _fake_connect)
+    monkeypatch.setattr(
+        world_view.store,
+        "set_story_status",
+        lambda conn, sid, status: ran.__setitem__("n", ran["n"] + 1),
+    )
+
+    # an ACTIVE story → approve is a no-op (returns False, never calls set_story_status)
+    active = _FakeStory("st-a", "already live", "happening")
+    active.status = wstore.STORY_STATUS_ACTIVE
+    monkeypatch.setattr(world_view.store, "get_story", lambda conn, sid: active)
+    assert world_view.approve("st-a") is False and ran["n"] == 0
+
+    # a PENDING story → approve runs
+    pending = _FakeStory("st-p", "a war", "happening")
+    pending.status = wstore.STORY_STATUS_PENDING
+    monkeypatch.setattr(world_view.store, "get_story", lambda conn, sid: pending)
+    assert world_view.approve("st-p") is True and ran["n"] == 1

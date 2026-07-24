@@ -38,6 +38,34 @@ A typical *build* session will be short, e.g.:
 
 ---
 
+## 2026-07-22 — Phase R — R5.3 (=E1.10): the major-event gate
+**Focus:** world-changing stories wait for the operator; everything else keeps flowing autonomously.
+**Decisions:**
+- **A story `status` column, not a new table.** `stories.status` ∈ `active`|`pending`|`archived`
+  (additive migration, defaults `active` so all existing + non-major stories are byte-identical). The
+  tick's proposal schema gains `major: bool`; a major story is materialised **`pending`**.
+- **Exclude at the two air-reaching reads.** `store.active_stories` filters `status='active'` (covers
+  the news desk), and `store.events_in_range` excludes beats of a non-active story via a subquery
+  (covers the showrunner context, which reads events by date, not via active_stories). Standalone
+  seed events (NULL `story_id`) always pass; with no pending/archived rows the subquery matches every
+  story, so non-major behaviour is unchanged.
+- **Approve / reject on Panel → World.** `set_story_status` (→ active) and `reject_story` (→ archived
+  **+ delete the story's story/event/figure/quote embeddings** so recall can't resurface it; rows kept
+  for audit). Panel routes guard: they act only on a genuinely pending story.
+- **Anti-jam dial.** A still-pending major stays in the tick's de-dup set (don't re-propose the same
+  unapproved war) for at most `world_tick_pending_major_max_age_days`; past that `_drop_stale_pending`
+  removes it so the world resumes proposing.
+**Changed:** `store.py` (status column/migration, filtered reads, `pending_stories`/`set_story_status`/
+`reject_story`), `world_tick.py` (`major`, prompt, materialise, age cap, `TickResult.pending`),
+`digest.py` (notes pending in the digest), `world_view.py`/`app.py`/`world.html` (queue + approve/reject),
+`config.py`, `tests/test_major_gate.py` (new, 7 DB-backed) + panel tests (+3 → 614 green), `.env.example`,
+`PHASE_D_OVERVIEW.md` §2a, `ADMIN_MANUAL.md`.
+**Why:** the tick is autonomous-behind-gates by design, but a war or a named death is exactly the kind
+of premise-altering event the human should sign off before it airs — without turning every routine
+story into an approval chore.
+**Next:** R5.4 (=E1.11) — DJ pages (card + D13 journal + affinities + schedule).
+Commit: (pending) · Clips: —
+
 ## 2026-07-22 — Phase R — R5.2 (=E1.9): the World screen — post-tick digest
 **Focus:** give the operator "what happened last night, and how today should unfold" at a glance —
 a written digest after each tick, plus the arcs in flight and today's expected beats.

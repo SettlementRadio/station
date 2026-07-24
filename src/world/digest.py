@@ -61,6 +61,7 @@ def build_facts(conn, result, *, kind: str, now: datetime) -> dict:  # noqa: ANN
     facts["tick"] = getattr(result, "tick", None)
     for k in ("proposed", "accepted", "dropped", "duplicates", "advanced", "resolved"):
         facts[k] = getattr(result, k, 0)
+    facts["pending"] = getattr(result, "pending", 0)  # R5.3 majors awaiting approval
 
     new_stories = []
     figures = quotes = 0
@@ -70,7 +71,14 @@ def build_facts(conn, result, *, kind: str, now: datetime) -> dict:  # noqa: ANN
             continue
         figures += len(store.figures_for_story(conn, sid))
         quotes += len(store.quotes_for_story(conn, sid))
-        new_stories.append({"id": sid, "title": story.title, "tags": list(story.tags)})
+        new_stories.append(
+            {
+                "id": sid,
+                "title": story.title,
+                "tags": list(story.tags),
+                "status": story.status,
+            }
+        )
     facts["new_stories"] = new_stories
     facts["new_figures"] = figures
     facts["new_quotes"] = quotes
@@ -115,7 +123,12 @@ def _facts_to_prompt(facts: dict) -> str:
     )
     for s in facts.get("new_stories", []):
         tags = f" [{', '.join(s['tags'])}]" if s["tags"] else ""
-        lines.append(f"NEW: {s['title']}{tags}")
+        flag = (
+            " (MAJOR — awaiting operator approval)"
+            if s.get("status") == "pending"
+            else ""
+        )
+        lines.append(f"NEW: {s['title']}{tags}{flag}")
     for a in facts.get("advanced", []):
         nxt = a.get("next_planned")
         tail = f" — next planned: {nxt['title']} ({nxt['phrase']})" if nxt else ""

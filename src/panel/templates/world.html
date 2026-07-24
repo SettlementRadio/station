@@ -41,6 +41,36 @@
   <section class="card"><div class="warn">⚠ world unavailable: {{ w.error }}</div></section>
 {% else %}
 
+<!-- Pending approval (major-event gate, R5.3) -->
+{% if w.pending %}
+<section class="card span-full danger-zone">
+  <h2 class="danger-title">Awaiting approval <span class="sub">· {{ w.pending|length }} major stor{{ 'y' if w.pending|length == 1 else 'ies' }}</span></h2>
+  <p class="adesc">The tick flagged these as world-changing. They are <b>invisible to air</b>
+    until you decide. <b>Approve</b> lets the story flow; <b>reject</b> archives it and strips
+    its embeddings from recall (the rows stay for audit).</p>
+  {% for p in w.pending %}
+  <div class="pending-item">
+    <div class="onair-head">
+      <span class="stage">[{{ p.stage }}]</span>
+      <b class="prog">{{ p.title }}</b>
+      {% for t in p.tags %}<span class="chip">#{{ t }}</span>{% endfor %}
+    </div>
+    <div class="sub">{{ p.summary }}</div>
+    {% for b in p.beats %}<div class="beat">↳ {{ b.when }}: {{ b.title }}</div>{% endfor %}
+    <div class="pending-acts">
+      <form method="post" action="/world/story/{{ p.id }}/approve">
+        <button type="submit" class="btn-primary">Approve</button>
+      </form>
+      <form method="post" action="/world/story/{{ p.id }}/reject">
+        <button type="submit" class="btn-danger-sm">Reject</button>
+      </form>
+      <span class="sub mono">{{ p.id }}</span>
+    </div>
+  </div>
+  {% endfor %}
+</section>
+{% endif %}
+
 <!-- Latest digest -->
 <section class="card span-full">
   <h2>Digest <span class="sub">· in-world {{ w.in_world_today }}</span></h2>

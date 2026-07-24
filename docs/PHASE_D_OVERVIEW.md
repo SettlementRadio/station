@@ -105,6 +105,8 @@ recoverable from git/manifests or is regenerable.)
 | `canon`, `"cast"` | folder (`docs/canon/`) | `seed-canon` | re-seeded | survives | **cleared + reseeded** | git (folder) |
 | `events` (`source=seed`) | folder | `seed-canon` | replaced | survives | **cleared** | git |
 | `events` (`source=tick`), `stories`, beats | **world tick** | (generated) | **survives** | survives | **cleared** | **YES — irreplaceable** |
+| `stories.status` (R5.3: `active`/`pending`/`archived`) | **world tick** + operator | (set at write / by approve-reject) | **survives** | survives | **cleared** (with `stories`) | **YES — with `stories`** |
+| `tick_digests` (R5.2, `state` row) | tick (haiku digest) | (regenerable) | survives | survives | **cleared** | no (regenerable) |
 | `figures`/`quotes` (`source=bible`) | folder | `seed-canon` | re-seeded | survives | **cleared** | git |
 | `figures`/`quotes` (`source=tick`) | **world tick** | (generated) | **survives** | survives | **cleared** | **YES — irreplaceable** |
 | `embeddings` (polymorphic, D2) | derived | re-embedded at seed | re-embedded (affected rows) | survives | cleared + re-embedded | no (regenerable) |

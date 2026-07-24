@@ -68,12 +68,29 @@ def _timeline(conn, stories, now: datetime) -> list[dict]:  # noqa: ANN001
     return rows
 
 
+def _pending_row(conn, story) -> dict:  # noqa: ANN001
+    """One pending (major) story for the approval queue: summary + a beat preview."""
+    beats = store.story_beats(conn, story.id)
+    return {
+        "id": story.id,
+        "title": story.title,
+        "summary": story.summary,
+        "stage": story.arc_stage,
+        "tags": list(story.tags),
+        "beats": [
+            {"when": b.in_world_datetime.strftime("%Y-%m-%d %H:%M"), "title": b.title}
+            for b in beats
+        ],
+    }
+
+
 def view(now: datetime | None = None) -> dict:
     """Assemble the World view model (DB-backed; degrades to a note if store down)."""
     now = now or datetime.now()
     try:
         with store.connect() as conn:
             digests = digest.recent(conn, limit=settings.world_digest_keep)
+            pending = [_pending_row(conn, s) for s in store.pending_stories(conn)]
             stories = store.active_stories(conn)
             arcs = [_arc_row(conn, s, now) for s in stories]
             timeline = _timeline(conn, stories, now)
@@ -85,7 +102,35 @@ def view(now: datetime | None = None) -> dict:
         "available": True,
         "error": None,
         "digests": digests,
+        "pending": pending,
         "arcs": arcs,
         "timeline": timeline,
         "in_world_today": clock.to_inworld(now).strftime("%A %Y-%m-%d"),
     }
+
+
+def approve(story_id: str) -> bool:
+    """Approve a pending story → active (it can now reach air). Best-effort."""
+    return _act(
+        story_id,
+        lambda conn: store.set_story_status(conn, story_id, store.STORY_STATUS_ACTIVE),
+    )
+
+
+def reject(story_id: str) -> bool:
+    """Reject a pending story → archived + embeddings removed. Best-effort."""
+    return _act(story_id, lambda conn: store.reject_story(conn, story_id))
+
+
+def _act(story_id: str, fn) -> bool:  # noqa: ANN001
+    """Run `fn(conn)` only if `story_id` is genuinely pending; return whether it ran."""
+    try:
+        with store.connect() as conn:
+            story = store.get_story(conn, story_id)
+            if story is None or story.status != store.STORY_STATUS_PENDING:
+                return False
+            fn(conn)
+        return True
+    except Exception as exc:  # noqa: BLE001 — a failed action surfaces, never crashes
+        log.warning("panel_world_action_failed", story=story_id, error=str(exc))
+        return False

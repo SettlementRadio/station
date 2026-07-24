@@ -74,7 +74,8 @@ cuts in on the hour and hands back.
   queue with per-slot regenerate/skip, paginated aired history with scripts + audio, and playout
   start/stop/restart), a Budgets screen (estimated spend by job/day from the logged token + TTS
   usage, a daily-budget bar + red alert), a World screen (the post-tick digest + arcs in flight +
-  today's beat timeline, with tick/micro-tick run buttons), and forms-over-files editors — Grid,
+  today's beat timeline, tick/micro-tick run buttons, and the major-event approval queue), and
+  forms-over-files editors — Grid,
   Catalogs (Tracks/Sponsors/Pronunciation/Voices), Cast, and Dials — each validating through the real
   loader, showing
   a diff, and writing atomically with a `.bak`. It binds `127.0.0.1` ONLY and refuses

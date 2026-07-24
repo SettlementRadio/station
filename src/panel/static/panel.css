@@ -302,6 +302,12 @@ table.rows tr.total td { border-top: 2px solid var(--border); }
 .digest-text { margin: 8px 0 4px; color: var(--text); line-height: 1.5;
   white-space: pre-wrap; }
 
+/* R5.3 — major-event gate: the pending-approval queue */
+.pending-item { border-top: 1px solid var(--border); padding: 12px 0; }
+.pending-item:first-of-type { border-top: none; }
+.pending-acts { display: flex; align-items: center; gap: 10px; margin-top: 8px; }
+.pending-acts form { margin: 0; }
+
 /* --- E1.4 cast manager --- */
 details.newvoice { border: 1px solid var(--border); border-radius: 6px; padding: 8px 12px; }
 details.newvoice summary { cursor: pointer; color: var(--muted); }
