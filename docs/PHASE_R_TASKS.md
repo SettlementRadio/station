@@ -107,7 +107,7 @@ once briefs steer them). R3.1/R6.0 are human Suno batches — start them early, 
 | R2 | The 24-hour grid rebuild | 1, 6 | R1.0 (brief field) | ✅ |
 | R3 | Jingle validation + batch 3 | 2 | R2.0 (the new program list) | ✅ |
 | R4 | The living day (news arcs + micro-ticks) | 4 | — (parallel to R1/R2) | ✅ |
-| R5 | Panel extensions E1.7–E1.11 | 3 | E1.0–E1.6 as planned | ☐ |
+| R5 | Panel extensions E1.7–E1.11 | 3 | E1.0–E1.6 as planned | ✅ |
 | R6 | Music expansion + the chart show | 1, 6 | R2.0 (slot exists) | ☐ |
 | R7 | The public web player, made a real station front | (operator add-on) | R2.2 (the new grid), C7/C8 (a stream to play) | ☐ |
 

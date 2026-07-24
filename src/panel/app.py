@@ -35,6 +35,7 @@ from . import (
     cast_edit,
     catalog_edit,
     dials,
+    dj_view,
     grid_edit,
     schedule_view,
     views,
@@ -440,6 +441,14 @@ def create_app() -> FastAPI:
         return _TEMPLATES.TemplateResponse(
             request, "cast.html", {"cards": cast_edit.list_cards(), "saved": saved}
         )
+
+    @app.get("/cast/dj/{cid}", response_class=HTMLResponse)
+    def cast_dj_page(request: Request, cid: str):  # noqa: ANN001
+        """R5.4 — the read-only "who is this host now" page (card + lived state)."""
+        dj = dj_view.view(cid)
+        if dj is None:
+            return _redirect("/cast")
+        return _TEMPLATES.TemplateResponse(request, "dj.html", {"dj": dj})
 
     @app.get("/cast/new", response_class=HTMLResponse)
     def cast_new(request: Request) -> HTMLResponse:  # noqa: ANN001

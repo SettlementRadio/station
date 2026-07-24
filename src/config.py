@@ -930,6 +930,10 @@ class Settings(BaseSettings):
     panel_playout_stop_cmd: str = "make stop"
     panel_playout_restart_cmd: str = ""  # empty → stop then start
     panel_schedule_history_per_page: int = 20  # aired-history rows per page
+    # R5.4 (=E1.11) — the per-DJ page: how many recent journal entries + recent
+    # segments to show for "who is this host now" (read-only, beside the E1.4 card).
+    panel_dj_journal_limit: int = 20
+    panel_dj_segments_limit: int = 15
 
     def model_id(self, tier: str) -> str:
         """Map a logical tier ("haiku"|"sonnet"|"opus") to its real model id."""

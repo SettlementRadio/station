@@ -1509,3 +1509,185 @@ def test_world_view_act_guards_non_pending(monkeypatch):
     pending.status = wstore.STORY_STATUS_PENDING
     monkeypatch.setattr(world_view.store, "get_story", lambda conn, sid: pending)
     assert world_view.approve("st-p") is True and ran["n"] == 1
+
+
+# --- R5.4 (=E1.11): the per-DJ page ------------------------------------------
+
+from src.panel import dj_view  # noqa: E402
+
+
+class _FakeMember:
+    def __init__(self, tags=(), based="station"):
+        self.tags = list(tags)
+        self.based = based
+
+
+class _FakeJournal:
+    def __init__(self, kind, text, when, other=None, tags=()):
+        self.kind = kind
+        self.text = text
+        self.air_time = when
+        self.other_host = other
+        self.segment_id = "seg-1"
+        self.tags = list(tags)
+
+
+class _FakeProgram:
+    def __init__(self, name, hosts):
+        self.name = name
+        self.hosts = list(hosts)
+
+
+def test_dj_view_assembles_card_journal_shows_segments(monkeypatch):
+    """view() joins the card with journal + affinities + shows + recent segments."""
+    from contextlib import contextmanager
+
+    monkeypatch.setattr(
+        dj_view.cast_edit,
+        "card_form",
+        lambda cid: {
+            "id": cid,
+            "name": "Vell",
+            "logical_voice": "vell_night",
+            "based": "station",
+            "tags": "night, philosophy",
+            "role": "the night host",
+            "sample_lines": "The dark is just distance.",
+        },
+    )
+
+    @contextmanager
+    def _fake_connect():
+        yield object()
+
+    now = datetime(2026, 6, 22, 2, 0)
+    monkeypatch.setattr(dj_view.store, "connect", _fake_connect)
+    monkeypatch.setattr(
+        dj_view.store,
+        "get_cast_member",
+        lambda conn, cid: _FakeMember(tags=["night", "space"]),
+    )
+    monkeypatch.setattr(
+        dj_view.store,
+        "journal_recent_for_host",
+        lambda conn, cid, limit=20: [
+            _FakeJournal("opinion", "I distrust the relay lag.", now, tags=["tech"])
+        ],
+    )
+    monkeypatch.setattr(dj_view.store, "journal_counts", lambda conn: {"vell": 5})
+    monkeypatch.setattr(
+        dj_view.programming,
+        "all_programs",
+        lambda: {
+            "nightfall": _FakeProgram("Nightfall", ["vell", "wren"]),
+            "breakfast": _FakeProgram("Breakfast", ["joss"]),
+        },
+    )
+    # recent segments: one live entry on nightfall (vell hosts), one on breakfast (not)
+    monkeypatch.setattr(
+        dj_view.schedule_view,
+        "_load_state",
+        lambda: {
+            "entries": [
+                {
+                    "id": "s-night",
+                    "program": "nightfall",
+                    "program_name": "Nightfall",
+                    "format": "talk",
+                    "air_time": "2026-06-22T02:00:00",
+                },
+                {
+                    "id": "s-bfast",
+                    "program": "breakfast",
+                    "format": "talk",
+                    "air_time": "2026-06-22T07:00:00",
+                },
+            ]
+        },
+    )
+    monkeypatch.setattr(dj_view.schedule_view, "_iter_sidecars", lambda: [])
+
+    dj = dj_view.view("vell", now)
+    assert dj is not None and dj["in_db"] is True
+    assert dj["affinities"] == ["night", "space"]  # DB tags win over the card line
+    assert [s["name"] for s in dj["shows"]] == ["Nightfall"]  # only vell's show
+    assert [s["id"] for s in dj["segments"]] == ["s-night"]  # only vell's segment
+    assert dj["journal"][0]["kind"] == "opinion" and dj["journal_total"] == 5
+
+
+def test_dj_view_unknown_id_is_none(monkeypatch):
+    monkeypatch.setattr(dj_view.cast_edit, "card_form", lambda cid: None)
+    assert dj_view.view("nobody") is None
+
+
+def test_dj_view_degrades_when_db_down(monkeypatch):
+    """A store failure → the page still renders from the card (affinities from card)."""
+    monkeypatch.setattr(
+        dj_view.cast_edit,
+        "card_form",
+        lambda cid: {
+            "id": cid,
+            "name": "Wren",
+            "logical_voice": "wren_dawn",
+            "based": "station",
+            "tags": "dawn, weather",
+        },
+    )
+
+    def _boom():
+        raise RuntimeError("connection refused")
+
+    monkeypatch.setattr(dj_view.store, "connect", _boom)
+    monkeypatch.setattr(dj_view.programming, "all_programs", lambda: {})
+    monkeypatch.setattr(dj_view.schedule_view, "_load_state", lambda: {"entries": []})
+    monkeypatch.setattr(dj_view.schedule_view, "_iter_sidecars", lambda: [])
+
+    dj = dj_view.view("wren")
+    assert dj["db_error"] and dj["in_db"] is False
+    assert dj["affinities"] == ["dawn", "weather"]  # fell back to the card's Tags line
+    assert dj["journal"] == []
+
+
+def test_dj_page_route_renders_and_unknown_redirects(monkeypatch):
+    """/cast/dj/{cid} renders a real host; an unknown id redirects to /cast."""
+    monkeypatch.setattr(
+        dj_view,
+        "view",
+        lambda cid, now=None: {
+            "available": True,
+            "cid": cid,
+            "in_db": True,
+            "db_error": None,
+            "card": {
+                "name": "Vell",
+                "logical_voice": "vell_night",
+                "role": "night host",
+                "sample_lines": "",
+            },
+            "affinities": ["night"],
+            "based": "station",
+            "shows": [{"id": "nightfall", "name": "Nightfall"}],
+            "segments": [
+                {"id": "s1", "when": "02:00", "program": "Nightfall", "format": "talk"}
+            ],
+            "journal": [
+                {
+                    "kind": "opinion",
+                    "text": "hm",
+                    "when": "2026-06-22 02:00",
+                    "other_host": None,
+                    "segment_id": "s1",
+                    "tags": [],
+                }
+            ],
+            "journal_total": 1,
+        },
+    )
+    client = TestClient(panelapp.app, follow_redirects=False)
+    r = client.get("/cast/dj/vell")
+    assert r.status_code == 200
+    assert "Nightfall" in r.text and "Journal" in r.text and "night host" in r.text
+
+    monkeypatch.setattr(dj_view, "view", lambda cid, now=None: None)
+    r2 = client.get("/cast/dj/ghost")
+    assert r2.status_code == 303 and r2.headers["location"] == "/cast"

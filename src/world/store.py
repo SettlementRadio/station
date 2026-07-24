@@ -2249,6 +2249,23 @@ def journal_counts(conn: psycopg.Connection) -> dict[str, int]:
     return dict(rows)
 
 
+def journal_recent_for_host(
+    conn: psycopg.Connection, host_id: str, *, limit: int = 20
+) -> list[JournalEntry]:
+    """A host's most recent journal entries, newest first — unbounded by time (R5.4).
+
+    The plain "who is this host now" read for the panel's DJ page: the latest N durable
+    memories the host left on air, regardless of window (`journal_for_host` is the
+    recency-bounded recall the writers' room uses; this is the operator's overview).
+    """
+    rows = conn.execute(
+        f"SELECT {_JOURNAL_COLUMNS} FROM host_journal WHERE host_id = %s "
+        "ORDER BY air_time DESC, id DESC LIMIT %s",
+        (host_id, limit),
+    ).fetchall()
+    return [_journal_from_row(r) for r in rows]
+
+
 def get_state(conn: psycopg.Connection, key: str) -> str | None:
     """One state value by key, or None."""
     row = conn.execute("SELECT value FROM state WHERE key = %s", (key,)).fetchone()

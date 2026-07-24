@@ -202,6 +202,15 @@ them back), and the DJ's tick-generated world history in the event log is NOT to
 naming the removed id fails loud at generation and the slot falls back — never dead air. Pull the id
 from `grid.yaml` too so nothing schedules them.
 
+**"Who is this host now" — the DJ page  → Phase E panel · Panel → Cast → page (R5.4).** Beside the
+card editor, each cast row has a **page** link (`/cast/dj/<id>`) — a read-only join of the
+hand-authored card (the bible) with the host's *lived* state: recent **journal** entries (D13
+`host_journal` — what they've said/felt on air), their world-memory **affinities** (the D9.4 tags
+that bias which domain stories they gravitate to), the **shows** the grid schedules them on, and
+their **recent segments** (from the live queue + aired sidecars). It writes nothing — the card stays
+editable on the Cast screen; this is the D13 *journal-is-state* half. Dials: `PANEL_DJ_JOURNAL_LIMIT`
+/ `PANEL_DJ_SEGMENTS_LIMIT`.
+
 ### Point at a different bible (config)
 `CANON_DIR` (folder, default `docs/canon`) and `CANON_PATH` (legacy single file, fallback). Seeding
 auto-selects the folder when it has content, else the file. Set in `.env` only to relocate the bible.

@@ -38,6 +38,29 @@ A typical *build* session will be short, e.g.:
 
 ---
 
+## 2026-07-24 — Phase R — R5.4 (=E1.11): DJ pages — R5 COMPLETE ✅
+**Focus:** the cast manager grows a read-only "who is this host *now*" page joining the card with the
+host's lived state; closes out R5 (the E1.7–E1.11 panel extensions).
+**Decisions:**
+- **A pure read-join, no new state.** `src/panel/dj_view.py` assembles one host's page from existing
+  sources: the E1.4 card (`cast_edit.card_form`), the D13 `host_journal` (a new
+  `store.journal_recent_for_host` — newest N, unbounded by the recall window), the D9.4 affinity tags
+  (the DB cast row, falling back to the card's `Tags:` line if the DB is down), the shows the grid
+  schedules them on (`programming.all_programs`), and their recent segments (live queue + aired
+  sidecars, filtered by grid host-membership). Writes nothing — the card stays editable on Cast; this
+  is the D13 *journal-is-state* half of the split.
+- **Reuses the E1 seams** — route `/cast/dj/{cid}` beside the editor, a "page" link per cast row,
+  degrades to a card-only view when the world DB is down (never a 500).
+**Changed:** `src/panel/dj_view.py` (new) + `dj.html` + `/cast/dj/{cid}` route + cast-list link + CSS,
+`store.journal_recent_for_host`, `config.py` (`panel_dj_*`), `tests/test_panel.py` (+4 → 618 green),
+`.env.example`, `ADMIN_MANUAL.md`, PHASE_R tracker (R5 ✅).
+**Why:** an operator debugging "why does Vell keep talking about the relay?" wants the card, the
+accrued journal, the affinity tags, and the schedule on one screen — not four queries.
+**📣 Postable:** R5 done — the private operator panel now has Schedule, Budgets, World (digest +
+major-event gate), and per-DJ pages on top of the E1 editors. The station can be *run*, not just built.
+**Next:** R6 (music expansion + The Count) / R7 (public web player) — or the server track C5–C9.
+Commit: (pending) · Clips: —
+
 ## 2026-07-22 — Phase R — R5.3 (=E1.10): the major-event gate
 **Focus:** world-changing stories wait for the operator; everything else keeps flowing autonomously.
 **Decisions:**

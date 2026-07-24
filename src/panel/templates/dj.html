@@ -1,0 +1,94 @@
+{% extends "base.html" %}
+{% block nav_cast %}active{% endblock %}
+{% block title %}{{ dj.card.name }} — Settlement Radio Operator Panel{% endblock %}
+
+{% set c = dj.card %}
+{% block content %}
+<div class="asof">
+  <a class="btn-plain" href="/cast">← Cast</a> · who this host is <b>now</b> — the
+  hand-authored card beside its lived state.
+  <a class="btn-plain" href="/cast/edit/{{ dj.cid }}">edit card</a>
+</div>
+
+<!-- Header -->
+<section class="card">
+  <div class="onair-head">
+    <b class="prog" style="font-size:20px">{{ c.name }}</b>
+    <span class="mono sub">{{ dj.cid }}</span>
+    <span class="fmt">{{ c.logical_voice }}</span>
+    <span>{{ dj.based }}{% if dj.based == 'field' %} <span class="chip">relay</span>{% endif %}</span>
+    {% if dj.in_db %}<span class="ok">● in DB</span>{% else %}<span class="warn">○ not seeded</span>{% endif %}
+  </div>
+  {% if dj.affinities %}
+  <div class="sub" style="margin-top:8px">affinities:
+    {% for t in dj.affinities %}<span class="chip">#{{ t }}</span>{% endfor %}
+  </div>
+  {% endif %}
+  {% if dj.db_error %}<div class="warn">⚠ world DB unavailable ({{ dj.db_error }}) —
+    journal + affinities may be incomplete.</div>{% endif %}
+</section>
+
+<!-- Shows + recent segments -->
+<section class="card span-full">
+  <h2>On the grid <span class="sub">· {{ dj.shows|length }} show{{ '' if dj.shows|length == 1 else 's' }}</span></h2>
+  {% if dj.shows %}
+    <div class="sub">{% for s in dj.shows %}<span class="chip">{{ s.name }}</span>{% endfor %}</div>
+  {% else %}
+    <div class="sub">not scheduled on any program (retired or bench).</div>
+  {% endif %}
+
+  <h2 style="margin-top:16px">Recent segments <span class="sub">· {{ dj.segments|length }}</span></h2>
+  {% if not dj.segments %}
+    <div class="sub">no segments in the current schedule / retained history.</div>
+  {% else %}
+  <table class="rows">
+    <tr><th>Air</th><th>Program</th><th>Format</th><th>Id</th></tr>
+    {% for s in dj.segments %}
+    <tr>
+      <td class="mono">{{ s.when }}</td>
+      <td class="prog">{{ s.program }}</td>
+      <td class="fmt">{{ s.format }}</td>
+      <td class="mono sub">{{ s.id }}</td>
+    </tr>
+    {% endfor %}
+  </table>
+  {% endif %}
+</section>
+
+<!-- Journal (D13 lived state) -->
+<section class="card span-full">
+  <h2>Journal <span class="sub">· showing {{ dj.journal|length }} of {{ dj.journal_total }} entries</span></h2>
+  {% if not dj.journal %}
+    <div class="sub">no journal yet — the host accrues memories as they air (D13).</div>
+  {% else %}
+  {% for j in dj.journal %}
+  <div class="journal-entry">
+    <span class="badge done">{{ j.kind }}</span>
+    <span class="mono sub">{{ j.when }}</span>
+    {% if j.other_host %}<span class="sub">· with {{ j.other_host }}</span>{% endif %}
+    {% for t in j.tags %}<span class="chip">#{{ t }}</span>{% endfor %}
+    <div class="digest-text">{{ j.text }}</div>
+    {% if j.segment_id %}<span class="mono sub">{{ j.segment_id }}</span>{% endif %}
+  </div>
+  {% endfor %}
+  {% endif %}
+</section>
+
+<!-- The card (bible) -->
+<section class="card span-full">
+  <h2>Card <span class="sub">· the bible (edit on <a href="/cast/edit/{{ dj.cid }}">the editor</a>)</span></h2>
+  {% set fields = [
+    ('role', 'Role'), ('background', 'Background'), ('personality', 'Personality'),
+    ('humour', 'Humour'), ('voice_tts', 'Voice (for TTS)'),
+    ('verbal_tics', 'Verbal tics'), ('never', 'Never')] %}
+  {% for key, label in fields %}
+    {% if c[key] %}
+    <div class="card-field"><b>{{ label }}:</b> <span class="sub">{{ c[key] }}</span></div>
+    {% endif %}
+  {% endfor %}
+  {% if c.sample_lines %}
+  <div class="card-field"><b>Sample lines:</b></div>
+  <pre class="run-out">{{ c.sample_lines }}</pre>
+  {% endif %}
+</section>
+{% endblock %}
