@@ -189,7 +189,10 @@ query side lowercases + splits on non-alphanumerics, so `Lumen-Festival` won't m
    (default `station`): a field host is never written as live in the booth — the writers'
    room frames their segments as recorded dispatches across the relay lag, automatically,
    on whatever show the grid puts them. Give each card a distinct `Humour:` line too — it's
-   part of what keeps the hosts from sounding like clones.
+   part of what keeps the hosts from sounding like clones. Add a `- **Public bio:**` bullet
+   (R7): 2–3 listener-facing sentences — **the only card field that reaches the public site**
+   (with the heading's role line). Everything else on the card is a prompt and stays private;
+   omit the bullet and that host simply shows no blurb on `/voices`.
 2. Add that voice to `config/voices.yaml` — one entry, all three engines (kokoro /
    elevenlabs / say). The file header documents picking presets.
 3. `make seed-canon` — FAILS LOUD if a card names a voice the registry doesn't have.
@@ -356,6 +359,9 @@ Shape (full model — programs, the clock grammar, the tiling — in `docs/progr
 programs:
   the_gallery:
     name: "The Gallery"              # cast ids (docs/canon/90-cast.md); hosts[0] = lead/anchor
+    tagline: "The arts as they happen."  # R7: the PUBLIC one-liner — the only show copy the web
+                                     # site prints (the `brief` below is internal and never
+                                     # published). Absent = the brief's first sentence is used.
     hosts: [mira, orin]              # `talk` needs ≥2 hosts; a music show needs exactly 1
     framing: ensemble               # solo | handover | ensemble | legacy (the default program)
     clock: [talk, talk, news@:00, talk, music]   # sequence + run-lengths + pinned slots
@@ -654,7 +660,56 @@ make now-playing        # writes + prints segments/nowplaying.json
 ```
 Dials: `NOWPLAYING_FEED_PATH` / `NOWPLAYING_NEXT_COUNT`. The disclosure line comes from
 `src/disclosure.py` and is kept identical to `web/src/lib/disclosure.ts` (air and screen agree —
-a hard rule).
+a hard rule). Each `now`/`next` item also carries the show's public `tagline` and `program_until`
+(when the SHOW ends — the player's "until 09:00" line).
+
+### The public schedule & DJs feeds (R7.0)
+The two SLOW public feeds beside it — what the site's `/schedule` and `/voices` pages render. Same
+allow-list discipline; refreshed on every top-up. Standalone:
+```bash
+make public-feeds       # writes + prints segments/schedule-public.json + djs-public.json
+```
+- **`schedule-public.json`** — a programme directory (`name`, `tagline`, host display names) plus
+  7 days of gap-free tiling (`days[0]` is today; each entry is `program` + `start`/`end`). The
+  tiling is resolved by asking `program_for` at every grid boundary, so **the published schedule
+  can never disagree with what actually airs**.
+- **`djs-public.json`** — one entry per DJ: `name`, `role`, `bio`, `based` (`station`/`field`), and
+  the shows they present this week (derived from the grid, so a benched show never appears).
+- **What is published, and only this:** the grid's `tagline` (NOT the internal `brief`) and the cast
+  card's `Public bio:` bullet + heading role line (NEVER `card_text` — that's a prompt). Write the
+  copy in `docs/programming/grid.yaml` (`tagline:`) and `docs/canon/90-cast.md` (`Public bio:`);
+  the cast fields need a `make seed-canon` to reach the DB.  → Phase E panel · **Panel → Grid**
+  (tagline) / **Panel → Cast** (public bio)
+- Dials: `SCHEDULE_FEED_PATH`, `DJS_FEED_PATH`, `SCHEDULE_FEED_DAYS` (default 7).
+- **Times are settlement wall clock, naive ISO** (no zone suffix) — the site prints them as given
+  ("settlement time (yours)"). Never re-zone them in a browser.
+- If Postgres is unreachable the schedule feed still writes (host names degrade to readable ids)
+  and the DJs feed is **skipped**, leaving the last good file in place — check the logs for
+  `djs_feed_skipped_empty_cast`.
+- Types: `web/src/lib/types.ts` is the shared contract; `tests/test_publicfeeds.py` fails if the
+  feeds and those types drift apart.
+
+**Serving them publicly (the C7 box).** The three JSONs live in `segments/` and are served
+read-only beside the stream, e.g. in nginx:
+```nginx
+location /feeds/ {
+    alias /srv/settlement-radio/segments/;
+    # Only the three public feeds — never the rest of segments/ (audio, schedule.json).
+    location ~ ^/feeds/(nowplaying|schedule-public|djs-public)\.json$ {
+        add_header Access-Control-Allow-Origin "https://settlementradio.com" always;
+        add_header Cache-Control "public, max-age=20" always;   # the fast feed
+        types { } default_type application/json;
+    }
+    return 404;
+}
+```
+- **CORS:** the site fetches client-side from another origin (Vercel → the VPS), so the
+  `Access-Control-Allow-Origin` header is required. Pin it to the production domain (add
+  `http://localhost:3000` while developing) rather than `*`.
+- **Cache:** `nowplaying.json` changes every segment (`max-age=20`); the schedule/DJs feeds change
+  rarely — give them a longer `max-age` (300–3600) in their own `location` block.
+- **Read-only, GET only** — the feeds are files; nothing there accepts a write. Do NOT alias
+  `segments/` as a whole: `schedule.json` is internal operator state.
 
 ### Health & logs
 - `make health` — buffer depth / last scheduler run / stream liveness; logs + optional

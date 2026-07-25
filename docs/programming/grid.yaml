@@ -60,6 +60,12 @@
 # the delivery-pace hint: calm | steady | bright (it also drives the R1.2 register
 # rules — daytime steady/bright bans the house poetry; calm licenses it).
 #
+# `tagline` (R7.0) — the show's PUBLIC one-liner: the single sentence the web player
+# and the /schedule page print under the programme name. Written FOR LISTENERS (the
+# `brief` above is internal direction and carries the "never" lines, so it is never
+# published verbatim). Absent = the public feeds fall back to the brief's first
+# sentence, so a new show is never nameless on the site.
+#
 # `talk_length_sec` (R2.2) — this show's talk-ITEM length target: flagships 240
 # (fast items), 30-min specialists 420, the 15-min desks 180. Absent = the global
 # `segment_default_length_target_sec`. The word budget scales with it — length is a
@@ -70,6 +76,7 @@ programs:
   # ══ NEWS & CURRENT AFFAIRS — the day's spine ═════════════════════════════════
   morning_currents:
     name: "Morning Currents"     # [interview] breakfast FLAGSHIP; fast items; an analyst pressed for specifics
+    tagline: "Breakfast news: what changed overnight, and what it costs you today."
     hosts: [thorn, wren]
     framing: ensemble
     daypart: morning
@@ -88,6 +95,7 @@ programs:
 
   settlement_desk:
     name: "The Settlement Desk"   # [dispatch] the LONG midday bulletin + a field record from Sera
+    tagline: "The long midday bulletin, plus a record from somewhere real."
     hosts: [thorn, sera]
     framing: ensemble
     daypart: midday
@@ -105,6 +113,7 @@ programs:
 
   evening_currents:
     name: "Evening Currents"      # [interview] drive FLAGSHIP — Kael + Joss (R2.2 rota fix); Thorn keeps every bulletin
+    tagline: "Drive time — the day closed out: who won, who lost, what it cost."
     hosts: [kael, joss]
     framing: ensemble
     daypart: evening
@@ -121,6 +130,7 @@ programs:
 
   conditions:
     name: "Conditions"            # [desk] the between-worlds weather report — Zhe from the far edge; 2x daily
+    tagline: "The between-worlds weather: relays, particle storms, crossing windows."
     hosts: [zhe]
     framing: solo
     daypart: update
@@ -138,6 +148,7 @@ programs:
   the_ledger:
     domains: [finance]
     name: "The Ledger"            # [desk] the markets brief — Joss, dry and exact; 2x daily (AM + the close)
+    tagline: "The markets in ten minutes — prices, freight, and who defaulted."
     hosts: [joss]
     framing: solo
     daypart: update
@@ -154,6 +165,7 @@ programs:
   common_ground:
     domains: [peoples]
     name: "Common Ground"         # [interview] daily life across the worlds; an ordinary resident on air
+    tagline: "Ordinary life across the settlements, taken seriously."
     hosts: [wren, mira]
     framing: ensemble
     daypart: morning
@@ -173,6 +185,7 @@ programs:
   the_assembly:
     domains: [nations]
     name: "The Assembly"          # [interview] POLITICS & governance — W1 09:30 (Mon/Wed/Fri/Sun)
+    tagline: "Politics where it lands, one vote and one compact at a time."
     hosts: [thorn, joss]
     framing: ensemble
     daypart: late morning
@@ -191,6 +204,7 @@ programs:
   the_compact:
     domains: [nations]
     name: "The Compact"           # [interview] LAW & crime — W1 09:30 (Tue/Thu/Sat)
+    tagline: "Law and justice, one case at a time."
     hosts: [joss, sera]
     framing: ensemble
     daypart: late morning
@@ -209,6 +223,7 @@ programs:
   the_exchange:
     domains: [finance]
     name: "The Exchange"          # [interview] ECONOMY & trade — W2 10:00 (Mon/Tue/Thu/Fri)
+    tagline: "Money and cargo: prices, convoys, contracts, the Exchange Houses."
     hosts: [wren, joss]
     framing: ensemble
     daypart: late morning
@@ -227,6 +242,7 @@ programs:
   the_far_towns:
     domains: [geography, peoples]
     name: "The Far Towns"         # [dispatch] TRAVEL & the peoples — W2 10:00 (Wed/Sat/Sun)
+    tagline: "One world, moon or ten-family outpost at a time."
     hosts: [sera, mira]
     framing: ensemble
     daypart: late morning
@@ -244,6 +260,7 @@ programs:
   the_workshop:
     domains: [technology]
     name: "The Workshop"          # [interview] SCIENCE & the relay — W3 13:30 (Mon/Wed/Fri/Sat)
+    tagline: "How things work, and why they broke."
     hosts: [wren, joss]
     framing: ensemble
     daypart: afternoon
@@ -262,6 +279,7 @@ programs:
   the_ward:
     domains: [health]
     name: "The Ward"              # [interview] HEALTH & medicine — W3 13:30 (Tue/Thu/Sun); NEW (R2.1 canon: 54-health)
+    tagline: "Medicine at relay distance — clinics, shortages, the physicians' network."
     hosts: [wren, mira]
     framing: ensemble
     daypart: afternoon
@@ -281,6 +299,7 @@ programs:
   the_long_view:
     domains: [history]
     name: "The Long View"         # [duo] HISTORY & deep time — W4 14:00 (Mon/Wed/Fri)
+    tagline: "History with today's date on it."
     hosts: [joss, the-archivist]
     framing: ensemble
     daypart: afternoon
@@ -298,6 +317,7 @@ programs:
   the_reading_room:
     domains: [literature]
     name: "The Reading Room"      # [interview] STORY & the literary arts — W4 14:00 (Tue/Thu/Sat/Sun)
+    tagline: "What the worlds are actually reading."
     hosts: [mira, the-archivist]
     framing: ensemble
     daypart: afternoon
@@ -315,6 +335,7 @@ programs:
   the_standing_watch:
     domains: [war]
     name: "The Standing Watch"    # [dispatch] CONFLICT & the frontier — W5 14:30 (Mon/Wed/Fri/Sun)
+    tagline: "The long peace, watched closely."
     hosts: [thorn, zhe]
     framing: ensemble
     daypart: afternoon
@@ -333,6 +354,7 @@ programs:
   the_thread:
     domains: [technology]
     name: "The Thread"            # [dispatch] COMMUNICATION & the relay — W5 14:30 (Tue/Thu/Sat)
+    tagline: "The relay network as news: nodes, repairs, and the mail queue."
     hosts: [sera, joss]
     framing: ensemble
     daypart: afternoon
@@ -351,6 +373,7 @@ programs:
   # ══ DAILY CULTURE, FOOD, SPORT, MUSIC & LETTERS ══════════════════════════════
   the_table:
     name: "The Table"             # [dispatch] FOOD, daily — Sera records from the kitchens; NEW
+    tagline: "What's actually for dinner, across the worlds."
     hosts: [mira, sera]
     framing: ensemble
     daypart: late morning
@@ -369,6 +392,7 @@ programs:
 
   the_commons:
     name: "The Commons"           # [duo] DEBATE, daily — the midday argument, from the DAY's stories
+    tagline: "One live question, argued properly."
     hosts: [joss, mira]
     framing: ensemble
     daypart: midday
@@ -387,6 +411,7 @@ programs:
   the_gallery:
     domains: [culture]
     name: "The Gallery"           # [interview] the arts, daily
+    tagline: "The arts as they happen: openings, premieres, feuds."
     hosts: [mira, orin]
     framing: ensemble
     daypart: afternoon
@@ -404,6 +429,7 @@ programs:
   the_circuit:
     domains: [sports]
     name: "The Circuit"           # [interview] SPORT, daily, late afternoon
+    tagline: "The season stitched together — standings, races, the amateur leagues."
     hosts: [kael, sera]
     framing: ensemble
     daypart: late afternoon
@@ -421,6 +447,7 @@ programs:
 
   the_count:
     name: "The Count"             # [music] the daily CHART show — R6 wires the moving chart; NEW
+    tagline: "The day's chart, counted down and taken personally."
     hosts: [orin]
     framing: solo
     daypart: late afternoon
@@ -436,6 +463,7 @@ programs:
 
   the_new_signal:
     name: "The New Signal"        # [music] the day's arrivals — the mid-morning music spike
+    tagline: "New music in off the relays, and where it came from."
     hosts: [orin]
     framing: solo
     daypart: late morning
@@ -449,6 +477,7 @@ programs:
 
   the_far_signal:
     name: "The Far Signal"        # [dispatch] today's post from the worlds, daily pre-drive
+    tagline: "Dispatches from the far towns and the edge, played and answered."
     hosts: [sera, zhe]
     framing: ensemble
     daypart: late afternoon
@@ -464,6 +493,7 @@ programs:
 
   the_mailbag:
     name: "The Mailbag"           # [dispatch] listener letters carried on the relay
+    tagline: "Your letters — weeks in transit, answered on air."
     hosts: [vell, wren]
     framing: ensemble
     daypart: late afternoon
@@ -479,6 +509,7 @@ programs:
 
   the_serial:
     name: "The Serial"            # [duo→solo] the nightly 15-min episode — the Archivist opens the book; NEW
+    tagline: "Fifteen minutes of the continuing story, every night."
     hosts: [the-archivist]
     framing: solo
     daypart: evening
@@ -496,6 +527,7 @@ programs:
   the_fit:
     domains: [style]
     name: "The Fit"               # [dispatch] STYLE & dress — Mon + Thu; NEW (R2.1 canon: 56-style)
+    tagline: "What people wear and make across the worlds."
     hosts: [mira, orin]
     framing: ensemble
     daypart: afternoon
@@ -515,6 +547,7 @@ programs:
 
   the_relay_round:
     name: "The Relay Round"       # [duo] the QUIZ — Wed + Fri; Kael v Wren, score kept out loud; NEW
+    tagline: "The station's quiz — settlement against settlement."
     hosts: [kael, wren]
     framing: ensemble
     daypart: afternoon
@@ -533,6 +566,7 @@ programs:
   the_bridge:
     domains: [culture, history]
     name: "The Bridge"            # [interview] culture & history magazine — Tue (back off the bench)
+    tagline: "A slower morning of culture and history, over a second cup."
     hosts: [joss, mira]
     framing: ensemble
     daypart: afternoon
@@ -548,6 +582,7 @@ programs:
 
   deep_listening:
     name: "Deep Listening"        # [music] the curated half-hour — Sat (back off the bench)
+    tagline: "A curated hour: the music, with its stories, and little else."
     hosts: [mira]
     framing: solo
     daypart: afternoon
@@ -561,6 +596,7 @@ programs:
   the_gathering:
     domains: [religion]
     name: "The Gathering"         # [duo] faith, custom & the open questions — Sun (back off the bench)
+    tagline: "Faith, doubt and custom — talked through, never preached."
     hosts: [the-archivist, vell]
     framing: solo
     daypart: afternoon
@@ -577,6 +613,7 @@ programs:
   # ══ THE NIGHT — unchanged (the night is already good) ════════════════════════
   nightfall:
     name: "Nightfall"             # [duo] the dusk handover — now starts 20:15 (The Serial holds 20:00)
+    tagline: "The day set down gently, as the night takes the chair."
     hosts: [vell, wren]           # hosts[0]=incoming lead (vell), hosts[1]=outgoing (wren)
     framing: handover
     daypart: nightfall
@@ -592,6 +629,7 @@ programs:
 
   long_night:
     name: "The Long Night"        # [duo] Vell's warm night — talk, letters, a little music
+    tagline: "Vell's warm night, for the late shift and the dark zones."
     hosts: [vell, the-archivist]
     framing: solo
     daypart: deep night
@@ -608,6 +646,7 @@ programs:
 
   deep_hours:
     name: "The Deep Hours"        # [duo] the Archivist and the deep archives; the strange late hours
+    tagline: "The deep archive, opened — the old, the strange and the slow."
     hosts: [the-archivist, vell]
     framing: solo
     daypart: deep night
@@ -622,6 +661,7 @@ programs:
 
   deep_field:
     name: "The Deep Field"        # [duo] pre-dawn: Zhe from the far edge on the cosmos, the dark, the sublime
+    tagline: "Pre-dawn with the far edge, and the dark between."
     hosts: [zhe, the-archivist]
     framing: solo
     daypart: deep night
@@ -637,6 +677,7 @@ programs:
 
   first_light:
     name: "First Light"           # [duo] the dawn handover: the night hands to the day
+    tagline: "The dawn handover: overnight relays, the lanes, the day ahead."
     hosts: [wren, vell]           # hosts[0]=incoming lead (wren), hosts[1]=outgoing (vell)
     framing: handover
     daypart: first light

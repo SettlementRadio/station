@@ -42,6 +42,7 @@ A `Program` is a named show (e.g. *The Long Night*, *First Light*, *Daywatch*) c
 | `hosts` | ordered list of **cast ids** (from `docs/canon/90-cast.md`; today `vell`, `wren`; the bible already defines `joss`, `kael`, `mira`, `thorn`, `sera`, `the-archivist`, `orin`, `zhe` for D9). Order is meaningful: `hosts[0]` is the lead/anchor. |
 | `framing` | how the room frames the show: `solo` (one anchor + optional companion), `handover` (an outgoing→incoming boundary show), `ensemble` (≥2 co-hosts, later), or `legacy` (reserved for the `default` program — the hour-derived night/dawn/day/dusk frame, `framing.show_frame`). This is the generalised replacement for framing.py's hardcoded handover flag. |
 | `daypart` | an **optional display label** for the console + now-playing feed (*The Long Night*, *First Light*…). It does **not** override the frame's `part_of_day`, which stays hour-derived (see §6) so a program spanning morning→evening still frames each hour correctly and the two-host tests keep exact parity. |
+| `tagline` | **(R7.0, optional)** the show's **public one-liner** — the single listener-facing sentence the web player and the `/schedule` page print under the programme name. Distinct from `brief` on purpose: the brief is internal direction (it carries the "never" lines) and is **never published**. Absent = the public feeds fall back to the brief's first sentence, so a new show is never nameless on the site. Published by `src/publicfeeds.py`. |
 | `clock` | the format **sequence** (see §2.2) — the load-bearing piece. |
 | `break_every` | **(D8.1, optional)** the show's **ad-break cadence**: one sparse break — 1..`commercial_break_max_segments` fresh-generated `commercial`/`promo` spots, bracketed by the d18 `break_in`/`break_out` stings — after every N **content** segments while the show is on air. Absent/`0` = the show takes **no** breaks (the handover shows and `default` stay break-free). The grid, not a global constant, owns each daypart's ad load; the counter resets at every program boundary. Keep it sparse — texture, not interruption. |
 | `brief` | **(R1.0, optional)** the show's **editorial brief** — 2–4 sentences: what this show covers, what a good item looks like, what it never does. Reaches the writers' room as a per-call "ON THIS SHOW" block (showrunner + orchestrator), and scopes the showrunner's fresh pick to *this* show's territory. Absent = the pre-R1 prompts exactly (the `default` program has none). Written per R1.1's rules — concrete stakes, an explicit "never" line. |
@@ -123,6 +124,7 @@ the aliases `weekdays` (mon–fri) / `weekends` (sat–sun) / `daily` (all seven
 programs:
   long_night:                 # <- program id (slug)
     name: "The Long Night"
+    tagline: "Vell's warm night, for the late shift."   # the PUBLIC one-liner (R7.0)
     hosts: [vell]
     framing: solo
     daypart: deep night

@@ -181,8 +181,16 @@ night field); confirm YouTube live-streaming is enabled on the verified channel;
 Icecast stream as the purist option. Put the AI disclosure in the YouTube description.
 **Done when:** Settlement Radio is live 24/7 on YouTube with the brand visual; the Icecast stream
 also works.
+**Also on this box (R7.0):** serve the three PUBLIC feeds read-only beside the stream —
+`segments/nowplaying.json`, `schedule-public.json`, `djs-public.json` — with CORS pinned to the
+production domain and per-feed cache headers (fast feed short, the two slow feeds long). The nginx
+recipe + the "never alias `segments/` as a whole" warning are in `docs/ADMIN_MANUAL.md`
+("The public schedule & DJs feeds").
 
 ## C8 — The web player (grow the `/web` app)
+> **Superseded by R7** (`docs/PHASE_R_TASKS.md`): R7.1–R7.4 build the full station front (player +
+> Programmes + Voices + nav/deploy) against the R7.0 feeds. Keep this entry for the C-track
+> dependency order; build from the R7 pack.
 **Goal:** settlementradio.com plays the live station (the production web deferred from A2).
 **Do:** add a player route to the existing Next app in `/web`: an `<audio>` player pointing at the
 stream (or the YouTube embed), the AI-disclosure line, now-playing if feasible, the support/follow

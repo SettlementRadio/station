@@ -38,6 +38,53 @@ A typical *build* session will be short, e.g.:
 
 ---
 
+## 2026-07-25 — Phase R — R7.0: the public feeds the station front needs
+**Focus:** the three read-only JSONs the R7 site renders from — now/next (extended), the resolved
+programme schedule, and the public cast slice — plus the two public copy fields they publish.
+**Decisions:**
+- **Two new SLOW feeds beside the fast one, not one combined `station.json`.** `src/publicfeeds.py`
+  writes `segments/schedule-public.json` + `segments/djs-public.json`; `nowplaying.json` stays the
+  fast feed. Separate files because their change rates differ by orders of magnitude — the schedule
+  can carry a long `Cache-Control` while "now" polls every 20s.
+- **A public/private split for editorial copy, in the source files.** A show's public line is a NEW
+  `tagline:` in `grid.yaml` (35 written); a host's is a NEW `- **Public bio:**` bullet in
+  `90-cast.md` (10 written) plus the card heading's role tail. The internal `brief` and the DJ
+  `card_text` are prompts and are **never** published — the operator, not a truncation heuristic,
+  chooses the public words. `Program.public_tagline` falls back to the brief's first sentence so a
+  new show is never nameless.
+- **The published schedule is derived by asking `program_for`.** `programming.day_tiling` /
+  `week_tiling` walk every grid boundary, resolve each through the SAME lookup the air uses, and
+  merge equal neighbours — so the site's grid cannot drift from what actually airs (a parametrised
+  test asserts agreement minute-by-minute; another asserts gap-free contiguity).
+- **Cast columns via migration** (`role`, `public_bio` — `ADD COLUMN IF NOT EXISTS`, defaults `''`),
+  per OVERVIEW §2: never a truncate-reseed once the world is alive.
+- **Degrade, never publish something worse.** No cast (store down/unseeded) → the schedule feed
+  still writes with titlecased host ids, and the DJs feed is **skipped** so the last good file
+  stands. Both writes are best-effort inside the top-up, like nowplaying.
+- **Times stay naive settlement wall clock** — the site prints them as given ("settlement time
+  (yours)"), never re-zoned by a browser.
+- **The TS types are a tested contract.** `web/src/lib/types.ts` is the shared fetcher contract, and
+  `tests/test_publicfeeds.py` parses it and asserts each interface's fields equal the built feed's
+  key set — drift fails CI instead of the page.
+**Changed:** `src/publicfeeds.py` (new), `src/nowplaying.py` (+`tagline`/`program_until`, `titlecase`
+made public), `src/world/programming.py` (`tagline` + `public_tagline` + `day_tiling`/`week_tiling`),
+`src/world/store.py` (cast `role`/`public_bio` + migration + `_CAST_COLUMNS`), `src/world/canon_source.py`
+(`Public bio:` + role-from-heading), `src/formats/music.py` (`public_track_lore`, +`story_blurb`),
+`src/scheduler.py` (writes both feeds on top-up), `src/config.py` (3 dials), `docs/programming/grid.yaml`
+(35 taglines), `docs/canon/90-cast.md` (10 public bios), `web/src/lib/types.ts` (new), Makefile
+(`make public-feeds`), `tests/test_publicfeeds.py` (new, 25) + `test_nowplaying.py` (+2) + `test_scheduler_grid.py` (+1,
+the top-up cadence) + `tests/conftest.py` (an autouse sandbox so no test can overwrite the repo's REAL
+published feeds — a pre-existing leak the third feed made obvious) → **646 green**,
+README, ADMIN_MANUAL (feeds + nginx CORS/cache recipe), `docs/programming/README.md`, `docs/canon/README.md`.
+**Why:** R7.1–R7.4 are pure front-end work only if the data is already public-safe by construction.
+Doing the allow-list, the copy split, and the tiling first means the site can never leak a prompt or
+show a schedule the station isn't actually airing.
+**📣 Postable:** the station now publishes a real programme grid — 28 fixtures today, 7 days ahead,
+every one resolved through the same code that decides what airs next.
+**Next:** R7.1 (the player page — the "lit window") once C7 gives a stream to play; the feeds can be
+served read-only from the C7 box today.
+Commit: (pending) · Clips: —
+
 ## 2026-07-24 — Phase R — R5.4 (=E1.11): DJ pages — R5 COMPLETE ✅
 **Focus:** the cast manager grows a read-only "who is this host *now*" page joining the card with the
 host's lived state; closes out R5 (the E1.7–E1.11 panel extensions).

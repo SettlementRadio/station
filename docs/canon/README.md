@@ -132,6 +132,12 @@ parser keys on for every field, so keep the `- **`…`:**` shape exact (a bullet
   fails loud. `field` marks a travelling correspondent who is never live in the booth — the writers'
   room frames their segments as relay dispatches (the lag is canon, 78-communication).
 - `- **Tags:** night, warmth, stories` — optional.
+- `- **Public bio:** Vell keeps the night shift…` — optional, and the **only card field that is
+  published** (R7.0): the 2–3 listener-facing sentences the public `/voices` page prints. Write it as
+  copy, third person, canon-true. Omit it and the host publishes no blurb — the public feed NEVER
+  falls back to `card_text` (that is a prompt, not copy). The role line published beside it is the
+  card **heading's** tail (`### Vell — the night shift (station-based)` → "the night shift"), so
+  headings are public too; the parenthetical is dropped.
 - The whole subsection body is also kept verbatim as the DJ's `card_text` (so the writers' room gets
   the full character card — personality, verbal tics, humour, sample lines, all of it).
 
