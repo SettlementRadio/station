@@ -52,9 +52,23 @@ _FORMAT_LABELS = {
 }
 
 
-def _titlecase(host_id: str) -> str:
-    """`vell` → `Vell`, `the-archivist` → `The Archivist` (fallback display name)."""
+def titlecase(host_id: str) -> str:
+    """`vell` → `Vell`, `the-archivist` → `The Archivist` (fallback display name).
+
+    Public because the R7.0 slow feeds (`src/publicfeeds.py`) share this one
+    fallback — a display name must read the same on every public surface.
+    """
     return host_id.replace("-", " ").replace("_", " ").title()
+
+
+def _program_at(entry: dict) -> programming.Program | None:
+    """The grid `Program` an entry belongs to, or None (an ident carries no program)."""
+    if not entry.get("program"):
+        return None
+    try:
+        return programming.program_for(datetime.fromisoformat(entry["air_time"]))
+    except (KeyError, TypeError, ValueError):
+        return None
 
 
 def _onair_host_ids(entry: dict) -> list[str]:
@@ -63,11 +77,8 @@ def _onair_host_ids(entry: dict) -> list[str]:
     Empty for a non-programmed segment (an ident carries no program). Otherwise the
     program's hosts sliced to the format (the SAME answer the operator console shows).
     """
-    if not entry.get("program"):  # idents etc. — no hosts to show
-        return []
-    try:
-        program = programming.program_for(datetime.fromisoformat(entry["air_time"]))
-    except (KeyError, TypeError, ValueError):
+    program = _program_at(entry)
+    if program is None:  # idents etc. — no hosts to show
         return []
     return onair_hosts(program, entry.get("format"))
 
@@ -78,7 +89,7 @@ def _name_map(host_ids: set[str]) -> dict[str, str]:
     One DB read for the whole feed; a store failure never breaks the public feed — it
     falls back to a readable name derived from the id, so the file always writes.
     """
-    names = {h: _titlecase(h) for h in host_ids}
+    names = {h: titlecase(h) for h in host_ids}
     if not host_ids:
         return names
     try:
@@ -92,15 +103,38 @@ def _name_map(host_ids: set[str]) -> dict[str, str]:
     return names
 
 
+def _program_ends_at(entry: dict) -> str | None:
+    """When the entry's SHOW ends (`until :30`), ISO — None if it has no grid slot.
+
+    R7.0: the player prints "until half past", so it needs the programme's scheduled
+    end, not the segment's. That is the grid slot's span (`programming.program_span`)
+    — the show's own clock, unaffected by how the segments inside it tile.
+    """
+    if not entry.get("program"):
+        return None
+    try:
+        span = programming.program_span(datetime.fromisoformat(entry["air_time"]))
+    except (KeyError, TypeError, ValueError):
+        return None
+    return span[1].isoformat() if span else None
+
+
 def _public_entry(entry: dict, names: dict[str, str]) -> dict:
     """One schedule entry as a PUBLIC-SAFE item — the allow-list only, nothing else."""
     fmt = entry.get("format")
+    program = _program_at(entry)
     return {
         "program": entry.get("program_name"),  # None for a non-programmed segment
         "format": fmt,
-        "format_label": _FORMAT_LABELS.get(fmt, _titlecase(fmt) if fmt else None),
+        "format_label": _FORMAT_LABELS.get(fmt, titlecase(fmt) if fmt else None),
         "hosts": [names[h] for h in _onair_host_ids(entry)],
         "air_time": entry.get("air_time"),  # when it airs — public "on now / next"
+        # R7.0 — the show's PUBLIC one-liner + when the show itself ends, so the
+        # player can print "Morning Currents · until 09:00" under the programme name.
+        # `tagline` falls back to the brief's first sentence (publicfeeds.tagline_of);
+        # both are None for a non-programmed segment (an ident).
+        "tagline": (program.public_tagline or None) if program else None,
+        "program_until": _program_ends_at(entry),
         # D7.4 — the spun track's lore for a music slot (title/artist/album/era —
         # already the public-safe slice, built by the music format); None elsewhere.
         "track": entry.get("track"),

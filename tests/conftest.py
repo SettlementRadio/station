@@ -41,6 +41,24 @@ def _tone(
     )
 
 
+@pytest.fixture(autouse=True)
+def _sandbox_public_feeds(tmp_path_factory, monkeypatch):
+    """No test may write the repo's REAL public feeds (nowplaying/schedule/djs).
+
+    `scheduler.top_up` refreshes all three at the end of a run, and their paths are
+    absolute defaults under `segments/` — independent of the `segments_dir` sandbox
+    each scheduler test sets up. Without this, a suite run leaves a fixture grid
+    ("filler", "half_desk") in the files the station actually publishes. Tests that
+    patch these paths themselves still win: their monkeypatch applies after this one.
+    """
+    from src.config import settings
+
+    d = tmp_path_factory.mktemp("public-feeds")
+    monkeypatch.setattr(settings, "nowplaying_feed_path", d / "nowplaying.json")
+    monkeypatch.setattr(settings, "schedule_feed_path", d / "schedule-public.json")
+    monkeypatch.setattr(settings, "djs_feed_path", d / "djs-public.json")
+
+
 @pytest.fixture(scope="session")
 def audio_factory(tmp_path_factory):
     """`audio_factory(seconds=…, rate=…, channels=…)` → a cached fixture mp3 path."""

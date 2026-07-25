@@ -19,7 +19,8 @@ bible — narrative prose picked up as cached context in B3, not projected to ro
 * `## Canon facts` — a numbered list; each item becomes a `CanonFact`.
 * `## Cast` — `### Name — role` subsections; each becomes a `CastMember`. The
   whole subsection is kept as `card_text` (so the writer later gets the rich
-  card); `logical voice` and `tags` are also pulled from their bullet lines.
+  card); `logical voice`, `tags`, `based` and the public `public bio` are also
+  pulled from their bullet lines, and the heading's tail becomes the public `role`.
 * `## Events` — `### Title` subsections; each becomes an `Event` from its
   `in-world datetime`, `status`, `tags`, and `body` bullet lines.
 
@@ -286,6 +287,20 @@ def _name_from_heading(heading: str) -> str:
     return re.split(r"\s+[—-]\s+", heading, maxsplit=1)[0].strip()
 
 
+def _role_from_heading(heading: str) -> str:
+    """ "Vell — the night shift (station-based)" -> "the night shift" (R7.0).
+
+    The card heading's tail is the host's ROLE LINE — short, already listener-facing,
+    and edited in the same place as the rest of the card. The parenthetical is
+    production detail (`(station-based, live events)`) and is dropped, so this is
+    safe to publish. "" when the heading carries no tail.
+    """
+    parts = re.split(r"\s+[—-]\s+", heading, maxsplit=1)
+    if len(parts) < 2:
+        return ""
+    return re.sub(r"\s*\([^)]*\)", "", parts[1]).strip()
+
+
 # --- Per-section parsers ----------------------------------------------------
 
 
@@ -356,6 +371,11 @@ def _parse_cast(body: str) -> list[CastMember]:
                 logical_voice=voice.strip().strip("`"),
                 tags=_tags(_field(sub, "tags")),
                 based=based,
+                # R7.0 — the two PUBLISHABLE fields. `Public bio:` is optional: a card
+                # without one simply publishes no blurb (the public feed never falls
+                # back to card_text — that is the prompt, not copy).
+                role=_role_from_heading(heading),
+                public_bio=(_field(sub, "public bio") or "").strip(),
             )
         )
     return members

@@ -55,6 +55,25 @@ def split_on_marker(script: str, marker: str) -> list[str]:
     return [p.strip() for p in pattern.split(script) if p.strip()]
 
 
+def public_track_lore(track: Track) -> dict:
+    """The spun track's PUBLIC-SAFE lore — the allow-list the web player shows.
+
+    D7.4 put this dict in the segment's `meta["track"]`, from where the now-playing
+    feed republishes it verbatim; R7.0 named it so the allow-list is a testable seam
+    instead of an inline literal, and added `story_blurb` (the one-line story the
+    player prints beside the song). Every field is listener-facing copy from the
+    curated manifest — never a file path, a track id, or a selector internal.
+    """
+    return {
+        "title": track.title,
+        "artist": track.in_world_artist,
+        "album": track.album,
+        "era": track.era,
+        "in_world_year": track.in_world_year,
+        "story_blurb": track.story_blurb,
+    }
+
+
 def _lore_block(track: Track) -> str:
     """The chosen track's cultural lore as prompt lines (skip what's unknown).
 
@@ -243,15 +262,11 @@ def music(
             "spoken_parts": len(parts),
             # D7.4 — the spun track: id/artist feed the D5 airplay memory (the
             # selector's freshness input); the `track` dict is the PUBLIC-SAFE
-            # lore now-playing shows (title/artist/album/era only).
+            # lore now-playing shows (title/artist/album/era/year, plus the R7.0
+            # one-line `story_blurb` the web player prints beside the song — all of
+            # it listener-facing copy from the curated manifest, never file paths).
             "track_id": track.id,
             "track_artist": track.in_world_artist,
-            "track": {
-                "title": track.title,
-                "artist": track.in_world_artist,
-                "album": track.album,
-                "era": track.era,
-                "in_world_year": track.in_world_year,
-            },
+            "track": public_track_lore(track),
         },
     )

@@ -79,6 +79,12 @@ class CastMember:
     studio) or `field` (a travelling correspondent whose contributions cross the
     relay LAG; canon 78-communication). The writers' room uses it to frame a
     field host's turns as a dispatch/relay exchange, never live in-studio banter.
+
+    `role` and `public_bio` are the two PUBLISHABLE fields (R7.0): the short role
+    line from the card's heading (`### Vell — the night shift` → "the night shift")
+    and the operator-authored `Public bio:` bullet. They exist so the public
+    `/voices` feed can introduce a host WITHOUT ever shipping `card_text` — the card
+    is a prompt (personality, tics, sample lines) and stays operator-private.
     """
 
     id: str
@@ -87,6 +93,8 @@ class CastMember:
     logical_voice: str
     tags: list[str] = field(default_factory=list)
     based: str = BASED_STATION
+    role: str = ""  # R7.0: the card heading's role line — public-safe
+    public_bio: str = ""  # R7.0: the operator-authored public blurb — public-safe
 
     @property
     def is_field(self) -> bool:
@@ -550,7 +558,9 @@ CREATE TABLE IF NOT EXISTS "cast" (
     card_text     text NOT NULL,
     logical_voice text NOT NULL,
     tags          text[] NOT NULL DEFAULT '{}',
-    based         text NOT NULL DEFAULT 'station'
+    based         text NOT NULL DEFAULT 'station',
+    role          text NOT NULL DEFAULT '',
+    public_bio    text NOT NULL DEFAULT ''
 );
 
 CREATE TABLE IF NOT EXISTS events (
@@ -746,6 +756,13 @@ ALTER TABLE events ADD COLUMN IF NOT EXISTS planned boolean NOT NULL DEFAULT fal
 -- MAJOR story lands 'pending' and is excluded from air until the operator approves it.
 ALTER TABLE stories ADD COLUMN IF NOT EXISTS status text NOT NULL DEFAULT 'active';
 CREATE INDEX IF NOT EXISTS stories_status_idx ON stories (status);
+
+-- R7.0: the two PUBLISHABLE cast fields — the card heading's role line and the
+-- operator-authored `Public bio:` bullet — so the public /voices feed can introduce a
+-- host without ever shipping `card_text` (which is a prompt, not copy). Default '' so
+-- a not-yet-reseeded DB simply publishes no bio; `make seed-canon` fills them in.
+ALTER TABLE "cast" ADD COLUMN IF NOT EXISTS role text NOT NULL DEFAULT '';
+ALTER TABLE "cast" ADD COLUMN IF NOT EXISTS public_bio text NOT NULL DEFAULT '';
 """
 
 # The world tables, in a stable order for a single TRUNCATE that reproduces the world
@@ -965,14 +982,33 @@ def insert_canon(conn: psycopg.Connection, facts: Iterable[CanonFact]) -> int:
     return len(rows)
 
 
+# The full cast column list + one row->CastMember mapper, so every read returns the
+# public fields (role/public_bio, R7.0) without repeating the unpacking.
+_CAST_COLUMNS = "id, name, card_text, logical_voice, tags, based, role, public_bio"
+
+
+def _row_to_cast(row: tuple) -> CastMember:
+    id, name, card, voice, tags, based, role, public_bio = row
+    return CastMember(id, name, card, voice, list(tags), based, role, public_bio)
+
+
 def insert_cast(conn: psycopg.Connection, members: Iterable[CastMember]) -> int:
     """Insert cast members; return how many rows were written."""
     rows = [
-        (m.id, m.name, m.card_text, m.logical_voice, m.tags, m.based) for m in members
+        (
+            m.id,
+            m.name,
+            m.card_text,
+            m.logical_voice,
+            m.tags,
+            m.based,
+            m.role,
+            m.public_bio,
+        )
+        for m in members
     ]
     conn.cursor().executemany(
-        'INSERT INTO "cast" (id, name, card_text, logical_voice, tags, based) '
-        "VALUES (%s, %s, %s, %s, %s, %s)",
+        f'INSERT INTO "cast" ({_CAST_COLUMNS}) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)',
         rows,
     )
     log.info("db_insert_cast", count=len(rows))
@@ -1428,26 +1464,17 @@ def canon_by_ids(conn: psycopg.Connection, ids: Iterable[str]) -> list[CanonFact
 
 def all_cast(conn: psycopg.Connection) -> list[CastMember]:
     """All cast members, ordered by id."""
-    rows = conn.execute(
-        'SELECT id, name, card_text, logical_voice, tags, based FROM "cast" ORDER BY id'
-    ).fetchall()
-    return [
-        CastMember(id, name, card, voice, list(tags), based)
-        for id, name, card, voice, tags, based in rows
-    ]
+    rows = conn.execute(f'SELECT {_CAST_COLUMNS} FROM "cast" ORDER BY id').fetchall()
+    return [_row_to_cast(r) for r in rows]
 
 
 def get_cast_member(conn: psycopg.Connection, member_id: str) -> CastMember | None:
     """One cast member by id, or None."""
     row = conn.execute(
-        'SELECT id, name, card_text, logical_voice, tags, based FROM "cast" '
-        "WHERE id = %s",
+        f'SELECT {_CAST_COLUMNS} FROM "cast" WHERE id = %s',
         (member_id,),
     ).fetchone()
-    if row is None:
-        return None
-    id, name, card, voice, tags, based = row
-    return CastMember(id, name, card, voice, list(tags), based)
+    return None if row is None else _row_to_cast(row)
 
 
 def get_event(conn: psycopg.Connection, event_id: str) -> Event | None:

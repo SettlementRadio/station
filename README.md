@@ -85,8 +85,16 @@ cuts in on the hour and hands back.
   `config/settlement-panel.service`. The files stay the source of truth, so the hand-edit workflows in
   `docs/ADMIN_MANUAL.md` remain the fallback.
 - **Public now-playing feed** — `make now-playing` writes `segments/nowplaying.json` (refreshed on every
-  scheduler top-up): the public-safe subset (on-now/next + program + hosts + AI-disclosure line + the
-  playing track's title/artist/album/era) the web player reads. The player UI itself is C8.
+  scheduler top-up): the public-safe subset (on-now/next + program + hosts + the show's public tagline
+  and end time + AI-disclosure line + the playing track's title/artist/album/era/story) the web player
+  reads.
+- **Public schedule + DJs feeds (R7.0)** — `make public-feeds` writes `segments/schedule-public.json`
+  (a programme directory with public taglines + 7 days of gap-free tiling) and
+  `segments/djs-public.json` (per host: role line, the operator-authored `Public bio:`, station-vs-field,
+  the shows they present) — the two slow feeds the site's `/schedule` and `/voices` pages render, also
+  refreshed on every top-up. Same allow-list discipline: the grid's internal `brief` and the DJ
+  `card_text` are **never** published. Shared TS contract: `web/src/lib/types.ts`. Serving (CORS +
+  cache headers) is documented in `docs/ADMIN_MANUAL.md`; the pages themselves are R7.1–R7.4.
 
 ## The production layer (sound design + songs — D7)
 The station *sounds produced*: curated jingles/idents/stings air where the grid calls for them, beds

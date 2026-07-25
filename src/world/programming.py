@@ -30,7 +30,7 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 from pathlib import Path
 
 import yaml
@@ -123,6 +123,12 @@ class Program:
     brief: str = ""
     # R1.0: the delivery-pace hint — one of `calm | steady | bright`; "" = no hint.
     energy: str = ""
+    # R7.0: the show's PUBLIC one-liner — the single sentence the web player and the
+    # `/schedule` page print under the programme name. Written FOR LISTENERS, unlike
+    # `brief` (which is internal direction for the writers' room and carries the
+    # "never" lines). "" (key absent) = the public feeds fall back to the brief's
+    # first sentence, so a new programme is never nameless on air-side surfaces.
+    tagline: str = ""
     # R2.2: this show's talk-item length target in seconds — a flagship runs fast
     # ~3-5-min items while a 30-min specialist runs ~6-8-min ones (the GRID_V2
     # flagship-clock model). Rides ShowFlow into the talk builder, which scales the
@@ -135,6 +141,23 @@ class Program:
     # Exchange talks THIS WEEK's trade story, not trade in the abstract. Empty (key
     # absent) = a general show that keeps the full mix (the flagships, the debate desk).
     domains: tuple[str, ...] = ()
+
+    @property
+    def public_tagline(self) -> str:
+        """The one line the PUBLIC surfaces print under this show's name (R7.0).
+
+        `tagline` when the grid gives one, else the `brief`'s first sentence — which
+        is written as a "what this show is" line, so it degrades gracefully and a
+        programme added without a tagline is never nameless on the web. "" when the
+        show has neither (the `default` program).
+        """
+        if self.tagline:
+            return self.tagline
+        brief = " ".join(self.brief.split())
+        if not brief:
+            return ""
+        m = re.match(r"^(.+?[.!?])(?:\s|$)", brief)
+        return m.group(1) if m else brief
 
 
 @dataclass(frozen=True)
@@ -206,6 +229,7 @@ def _parse_program(pid: str, data: dict) -> Program:
                 value=data.get("guest_chance"),
             )
     brief = str(data.get("brief") or "").strip()
+    tagline = str(data.get("tagline") or "").strip()
     domains = tuple(
         d for d in (str(x).strip().lower() for x in (data.get("domains") or [])) if d
     )
@@ -234,6 +258,7 @@ def _parse_program(pid: str, data: dict) -> Program:
         guest_chance=guest_chance,
         brief=brief,
         energy=energy,
+        tagline=tagline,
         talk_length_sec=talk_length_sec,
         domains=domains,
     )
@@ -420,6 +445,49 @@ def program_span(now: datetime) -> tuple[datetime, datetime] | None:
     return day - timedelta(days=1) + timedelta(minutes=s), day + timedelta(minutes=e)
 
 
+def day_tiling(day: date) -> list[tuple[datetime, datetime, Program]]:
+    """The whole day as a gap-free list of `(start, end, program)` runs.
+
+    R7.0 — the "what's on today" answer the public schedule feed publishes, and the
+    same answer `make console` gives for any hour: it is derived by ASKING
+    `program_for` at every boundary the grid could change on (each slot's start/end
+    minute), then merging adjacent minutes that resolve to the same program. So the
+    tiling can never disagree with what actually airs — including midnight wraps and
+    the specificity/tie-break rules — because it uses the identical lookup.
+
+    Runs are half-open `[start, end)` and always cover the full local day; a day with
+    no matching slots collapses to one run of the default program.
+    """
+    grid = _load_grid()
+    bounds = {0, 24 * 60}
+    for slot in grid.slots:
+        bounds.add(slot.start_min % (24 * 60))
+        bounds.add(slot.end_min % (24 * 60))
+    edges = sorted(bounds)
+
+    midnight = datetime(day.year, day.month, day.day)
+    runs: list[tuple[datetime, datetime, Program]] = []
+    for start_min, end_min in zip(edges, edges[1:], strict=False):
+        program = program_for(midnight + timedelta(minutes=start_min))
+        start = midnight + timedelta(minutes=start_min)
+        end = midnight + timedelta(minutes=end_min)
+        if runs and runs[-1][2].id == program.id:  # merge — same show, one run
+            runs[-1] = (runs[-1][0], end, program)
+        else:
+            runs.append((start, end, program))
+    return runs
+
+
+def week_tiling(
+    start: date, days: int = 7
+) -> list[tuple[date, list[tuple[datetime, datetime, Program]]]]:
+    """`day_tiling` for `days` consecutive days from `start` — the week view (R7.0)."""
+    return [
+        (start + timedelta(days=i), day_tiling(start + timedelta(days=i)))
+        for i in range(max(0, days))
+    ]
+
+
 def _default_program(grid: _Grid) -> Program:
     """The reserved fallback program — from the grid, else synthesised from settings.
 
@@ -527,8 +595,10 @@ __all__ = [
     "ClockStep",
     "Program",
     "all_programs",
+    "day_tiling",
     "next_format",
     "program_for",
     "program_span",
     "reload",
+    "week_tiling",
 ]

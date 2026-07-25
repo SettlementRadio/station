@@ -11,6 +11,7 @@ scheduler CHOSE.
 
 from __future__ import annotations
 
+import json
 from datetime import datetime
 
 from src import scheduler
@@ -133,6 +134,28 @@ def test_scheduler_airs_the_program_clock_with_run_lengths(monkeypatch, tmp_path
     # clock [talk, music x2, news@:00] -> sequence talk, music, music (news pinned to
     # the hour, which 14:15+ hasn't crossed), so the music sweep airs two in a row.
     assert formats == ["talk", "music", "music", "talk", "music", "music"]
+
+
+def test_top_up_refreshes_the_public_feeds(monkeypatch, tmp_path):
+    """R7.0 — the site's feeds track the air because the top-up rewrites them."""
+    from src import publicfeeds
+
+    _, gen = _recording_generator(tmp_path)
+    _wire_grid(monkeypatch, tmp_path, grid_text=_GRID, depth_hours=0.2, generator=gen)
+    # Keep the feed writers hermetic: no cast read (names degrade), so the DJs feed
+    # is deliberately skipped and only the schedule feed lands.
+    monkeypatch.setattr(publicfeeds, "cast_map", dict)
+    monkeypatch.setattr("src.nowplaying._name_map", lambda ids: {i: i for i in ids})
+
+    scheduler.top_up(now=_mon(14, 15))
+
+    assert scheduler.settings.nowplaying_feed_path.exists()
+    feed = json.loads(scheduler.settings.schedule_feed_path.read_text(encoding="utf-8"))
+    today = feed["days"][0]
+    assert today["date"] == "2026-06-22"
+    # The fixture grid tiles the day with one show — the published schedule says so.
+    assert [e["program"] for e in today["entries"]] == ["test_show"]
+    assert feed["programs"]["test_show"]["name"] == "Test Show"
 
 
 def test_pinned_news_lands_at_the_top_of_the_hour(monkeypatch, tmp_path):

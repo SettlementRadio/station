@@ -769,6 +769,17 @@ class Settings(BaseSettings):
         default=_REPO_ROOT / "segments" / "nowplaying.json"
     )
     nowplaying_next_count: int = 3  # how many upcoming items the public feed lists
+    # R7.0 — the two SLOW public feeds beside the now-playing one (src/publicfeeds.py):
+    # the resolved programme schedule (today + the week's tiling) and the public cast
+    # slice the `/voices` page renders. Same allow-list discipline as nowplaying.json;
+    # written on the same top-up cadence (they change rarely, so the web can cache them
+    # much longer than the "now" pointer).
+    schedule_feed_path: Path = Field(
+        default=_REPO_ROOT / "segments" / "schedule-public.json"
+    )
+    djs_feed_path: Path = Field(default=_REPO_ROOT / "segments" / "djs-public.json")
+    # How many days of tiling the schedule feed publishes (7 = the full week view).
+    schedule_feed_days: int = 7
 
     # --- Production media (D7: curated jingles/stings/beds + the songs catalogue) -
     # `assets_dir` is the home of ALL curated, non-regenerable media (idents/themes/

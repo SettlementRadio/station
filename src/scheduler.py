@@ -972,6 +972,16 @@ def top_up(now: datetime | None = None) -> list[dict]:
     except Exception as exc:  # noqa: BLE001 — the feed must not break playout
         log.error("nowplaying_write_error", error=str(exc))
 
+    # R7.0 — and the two SLOW public feeds (the resolved schedule + the public cast)
+    # the web station front reads. Same cadence, same best-effort discipline: they are
+    # read-side conveniences, so a failure here is logged and the air carries on.
+    try:
+        from . import publicfeeds
+
+        publicfeeds.write_feeds(now)
+    except Exception as exc:  # noqa: BLE001 — the feeds must not break playout
+        log.error("publicfeeds_write_error", error=str(exc))
+
     return upcoming
 
 

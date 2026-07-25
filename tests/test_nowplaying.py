@@ -14,6 +14,7 @@ from datetime import datetime, timedelta
 
 from src import nowplaying
 from src.disclosure import DISCLOSURE_LINE
+from src.world import programming
 
 NOW = datetime(2026, 6, 22, 5, 30, 0)  # Monday first light -> the First Light program
 
@@ -77,6 +78,29 @@ def test_now_and_next_from_the_schedule(monkeypatch):
     assert feed["next"][0]["format_label"] == "The Settlement News"
 
 
+def test_program_tagline_and_end_time_are_published(monkeypatch):
+    """R7.0 — the player gets the show's public one-liner and when the show ends."""
+    _stub_names(monkeypatch, {"vell": "Vell", "wren": "Wren"})
+    feed = nowplaying.build_feed(NOW, _schedule())
+
+    first_light = programming.all_programs()["first_light"]
+    assert feed["now"]["tagline"] == first_light.public_tagline
+    # NOT the internal editorial brief (which carries the "never" direction).
+    assert feed["now"]["tagline"] != first_light.brief
+    # First Light runs 05:00-07:00, so a 05:30 segment plays "until 07:00".
+    assert feed["now"]["program_until"] == datetime(2026, 6, 22, 7, 0).isoformat()
+
+
+def test_ident_has_no_tagline_or_end_time(monkeypatch):
+    """An ident belongs to no show, so both program fields stay null."""
+    _stub_names(monkeypatch, {})
+    state = _schedule()
+    state["entries"][0] |= {"program": None, "program_name": None, "format": "ident"}
+    feed = nowplaying.build_feed(NOW, state)
+    assert feed["now"]["tagline"] is None
+    assert feed["now"]["program_until"] is None
+
+
 def test_nothing_on_air_yields_null_now(monkeypatch):
     _stub_names(monkeypatch, {})
     empty = {"entries": [], "last_topup_at": NOW.isoformat()}
@@ -116,8 +140,18 @@ def test_feed_leaks_no_internal_fields(monkeypatch):
     feed = nowplaying.build_feed(NOW, _schedule())
 
     # D7.4 added `track` — the spun track's public lore (title/artist/album/era),
-    # still an allow-listed field, None for non-music entries.
-    allowed = {"program", "format", "format_label", "hosts", "air_time", "track"}
+    # still an allow-listed field, None for non-music entries. R7.0 added the show's
+    # public one-liner + when the SHOW ends (never the internal `brief`).
+    allowed = {
+        "program",
+        "format",
+        "format_label",
+        "hosts",
+        "air_time",
+        "tagline",
+        "program_until",
+        "track",
+    }
     for item in filter(None, [feed["now"], *feed["next"]]):
         assert set(item) == allowed, f"unexpected fields: {set(item) - allowed}"
         for bad in _INTERNAL_KEYS:

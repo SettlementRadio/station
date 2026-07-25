@@ -9,6 +9,7 @@
 #   make status     Show what's running and the mount state.
 #   make console    Read-only operator status: on-air/next, buffer, story log (D6.3).
 #   make now-playing Write + print the PUBLIC now-playing feed for the web player (D6.4).
+#   make public-feeds Write + print the PUBLIC schedule + DJs feeds for the site (R7.0).
 #   make seed-canon Refresh the world from the canon bible (safe; keeps tick state).
 #   make reset-world DESTRUCTIVE full world+canon wipe + rebuild (warns/confirms).
 #   make seed-tracks Refresh the curated tracks catalogue from config/tracks.yaml (D7).
@@ -41,7 +42,7 @@ LIQ_LOG    := $(RUN_DIR)/liquidsoap.log
 PLAYER_URL := http://127.0.0.1:8000/
 STREAM_URL := http://127.0.0.1:8000/settlement.mp3
 
-.PHONY: help generate serve air play play-convo stop status console timeline panel now-playing seed seed-canon reset-world seed-tracks seed-sponsors demo context costprobe costprobe-ab conversation format buffer schedule ident prune fallback health world-tick news-demo figures-demo freshness-demo continuity-demo journal-demo programming-demo commercials-demo acceptance jingle-audit micro-tick
+.PHONY: help generate serve air play play-convo stop status console timeline panel now-playing public-feeds seed seed-canon reset-world seed-tracks seed-sponsors demo context costprobe costprobe-ab conversation format buffer schedule ident prune fallback health world-tick news-demo figures-demo freshness-demo continuity-demo journal-demo programming-demo commercials-demo acceptance jingle-audit micro-tick
 
 # B5 format default: `make format` builds a talk segment; override with FMT=news
 # or FMT=music. Pass a TOPIC=... to steer canon retrieval.
@@ -69,6 +70,7 @@ help:
 	@echo "  make timeline  private web timeline: on-air progress, queued next, the grid ahead"
 	@echo "  make panel     private operator PANEL (loopback web UI): status + controls (E1)"
 	@echo "  make now-playing write + print the public now-playing feed (D6.4)"
+	@echo "  make public-feeds write + print the public schedule + DJs feeds (R7.0)"
 	@echo "  make seed-canon  refresh the world from docs/canon/ (safe; keeps tick state)"
 	@echo "  make reset-world DESTRUCTIVE full world+canon wipe + rebuild (warns/confirms)"
 	@echo "  make demo      show the progressing-event relative-time flip (B2)"
@@ -345,6 +347,13 @@ panel:
 # scheduler also refreshes it on every top-up; this target is for standalone checks.
 now-playing:
 	@$(PY) -m src.nowplaying
+
+# The two SLOW public feeds (R7.0): the resolved programme schedule (today + the week)
+# and the public cast slice the /voices page renders. Same allow-list discipline as
+# now-playing — taglines, not briefs; the `Public bio:` bullet, never the card text.
+# The scheduler refreshes both on every top-up; this target is for standalone checks.
+public-feeds:
+	@$(PY) -m src.publicfeeds
 
 # Programming backbone demo (D6.5): shows the weekly grid drive named programs +
 # hosts + framing by daypart, the per-program clock (run-lengths, pinned top-of-hour
