@@ -94,7 +94,13 @@ cuts in on the hour and hands back.
   the shows they present) — the two slow feeds the site's `/schedule` and `/voices` pages render, also
   refreshed on every top-up. Same allow-list discipline: the grid's internal `brief` and the DJ
   `card_text` are **never** published. Shared TS contract: `web/src/lib/types.ts`. Serving (CORS +
-  cache headers) is documented in `docs/ADMIN_MANUAL.md`; the pages themselves are R7.1–R7.4.
+  cache headers) is documented in `docs/ADMIN_MANUAL.md`.
+- **The public player (R7.1)** — `/listen` in the [`web/`](web/) app: "a lit window seen across the
+  dark". The on-air card (programme + public tagline + host **signal marks** — voices, never faces —
+  and the D7 track lore), a transport that never moves when the air changes, a VU pulse while playing,
+  the up-next rail, and the AI disclosure on the page. It reads the feeds client-side and polls, so a
+  static page keeps tracking the air; with no feed (or a failed one) it still plays behind a static
+  card. `/` stays the coming-soon screen until R7.4 flips it (the public stream is C7).
 
 ## The production layer (sound design + songs — D7)
 The station *sounds produced*: curated jingles/idents/stings air where the grid calls for them, beds

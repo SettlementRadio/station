@@ -38,6 +38,48 @@ A typical *build* session will be short, e.g.:
 
 ---
 
+## 2026-07-26 — Phase R — R7.1: the player page (the "lit window")
+**Focus:** `/listen` in the web app — press play, see what you're hearing — built on the R7.0 feeds.
+**Decisions:**
+- **`/listen`, not `/`, for now.** The public stream (C7) doesn't exist yet, so replacing the live
+  coming-soon page would advertise a transmitter that doesn't transmit. R7.4 owns the nav + the
+  `COMING_SOON` flag that flips `/` here.
+- **The transport sits ABOVE the on-air card.** Found by verification, not by taste: the card changes
+  height as the air changes (a music slot carries track lore, a talk slot doesn't), and with the
+  controls below it the play/stop button jumped **161px** at a programme change — a control you'd have
+  to chase. Above the card its position depends only on the header. Re-measured after the fix: 0px.
+- **Host identity = a hashed signal mark, never a portrait** (`lib/hostMark.ts`): accent tone + five
+  bar heights derived from the display name. Canon-true (listeners know only voices), deterministic
+  (server and client agree; a host's mark never drifts), and no new asset when the cast grows.
+- **The window is always warm; play turns the lamp UP.** `.lit-window` keeps a corner-lit gradient
+  even when idle — the station is on air whether or not you're listening — and playing widens the
+  glow. All motion off under `prefers-reduced-motion`.
+- **Volume is not React state.** It belongs to the audio element and the slider that drives it (an
+  uncontrolled input + localStorage), which also sidesteps the SSR/hydration mismatch a controlled
+  value would create. Stop **releases** the stream (`removeAttribute("src")` + `load()`), it doesn't
+  merely pause — otherwise the browser keeps pulling a live feed in the background.
+- **One reusable poller** (`usePolledFeed`): visible-tab only, `no-store`, keeps the last good payload
+  on failure. R7.2/R7.3 reuse it. Next 16's new `react-hooks/set-state-in-effect` lint pushed both
+  the poller and the volume code into the better shape rather than being suppressed.
+**Verified (not assumed) — driven over CDP against a real local feed + a real mp3 "stream":** a
+trusted click starts audio (`paused:false`, `currentTime:2.34`, volume restored); rewriting the feed
+flips the card to the new programme within one poll cycle **while audio keeps playing**; stop leaves
+`paused:true, hasSrc:false`. Layout re-rendered at true 380px and 320px viewports (iframe probe —
+headless Chrome silently forces a 500px minimum window, which is what made the first "phone
+clipping" a screenshot artifact, not a bug: `inner=500 scroll=500`). **Lighthouse: accessibility 100,
+best-practices 100, zero failing audits** (the pack asked for ≥90).
+**Changed:** `web/src/app/listen/page.tsx`, `web/src/components/{Player,HostMark,SignalMeter}.tsx`,
+`web/src/lib/{feeds,usePolledFeed,hostMark}.ts`, `web/src/app/globals.css` (lit-window/starfield/
+tape-grain/signal keyframes + reduced-motion), `web/.env.example` (4 `NEXT_PUBLIC_*`), `web/README.md`
+(routes, the local CORS-feed recipe, the design language), root README, PHASE_R tracker.
+**Why:** the pack's done-when is behavioural ("plays… updates within a poll cycle… ≥90 a11y"), so it
+wanted behavioural proof. Driving the real page found the button-jump that no amount of reading the
+diff would have.
+**📣 Postable:** the station has a face now — a lit amber window in the dark that tells you the
+programme, the hosts (as waveforms, never faces) and the song's story, and follows the air by itself.
+**Next:** R7.2 (`/schedule` — the Programmes page) on the same feeds; then R7.3 voices, R7.4 ship.
+Commit: (pending) · Clips: —
+
 ## 2026-07-25 — Phase R — R7.0: the public feeds the station front needs
 **Focus:** the three read-only JSONs the R7 site renders from — now/next (extended), the resolved
 programme schedule, and the public cast slice — plus the two public copy fields they publish.

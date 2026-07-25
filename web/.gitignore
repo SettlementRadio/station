@@ -30,8 +30,10 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
-# env files (can opt-in for committing if needed)
+# env files — every real one stays out of git (secrets rule), but the TEMPLATE is
+# committed and kept current, like the backend's root .env.example (CLAUDE.md).
 .env*
+!.env.example
 
 # vercel
 .vercel
