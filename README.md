@@ -101,6 +101,11 @@ cuts in on the hour and hands back.
   the up-next rail, and the AI disclosure on the page. It reads the feeds client-side and polls, so a
   static page keeps tracking the air; with no feed (or a failed one) it still plays behind a static
   card. `/` stays the coming-soon screen until R7.4 flips it (the public stream is C7).
+- **The programmes page (R7.2)** — `/schedule`: **today** as a rail with the current show lit and
+  scrolled into view, and **the week** as a real programme guide (a row per time band, a column per
+  day) so the fixed daily spine and the rotating specialist windows read at a glance. Every rendered
+  cell is checked against `programming.program_for` — the page cannot show a grid the station isn't
+  airing. `make demo-feeds` serves the feeds to a local site so both pages can be worked on offline.
 
 ## The production layer (sound design + songs — D7)
 The station *sounds produced*: curated jingles/idents/stings air where the grid calls for them, beds

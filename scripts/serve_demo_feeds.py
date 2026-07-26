@@ -37,7 +37,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from src import nowplaying  # noqa: E402
+from src import nowplaying, publicfeeds  # noqa: E402
 from src.config import settings  # noqa: E402
 from src.world import programming  # noqa: E402
 
@@ -87,9 +87,24 @@ def build_demo_dir(now: datetime) -> Path:
     feed = nowplaying.build_feed(now, state)
     (out / "nowplaying.json").write_text(json.dumps(feed, indent=2), encoding="utf-8")
 
-    # The schedule + DJs feeds are cheap and REAL — copy them if they've been built.
+    # The schedule + DJs feeds are REAL, and rebuilt here rather than copied: the file
+    # in `segments/` is only as fresh as the last top-up, and a schedule dated
+    # yesterday would show a page where nothing is ever on air. Falls back to the
+    # on-disk copies if the world DB isn't reachable.
+    try:
+        (out / settings.schedule_feed_path.name).write_text(
+            json.dumps(publicfeeds.build_schedule_feed(now), indent=2), encoding="utf-8"
+        )
+        djs = publicfeeds.build_djs_feed(now)
+        if djs["djs"]:
+            (out / settings.djs_feed_path.name).write_text(
+                json.dumps(djs, indent=2), encoding="utf-8"
+            )
+    except Exception as exc:  # noqa: BLE001 — a dev tool degrades, it doesn't crash
+        print(f"  (couldn't rebuild the slow feeds: {exc}; copying segments/ instead)")
+
     for path in (settings.schedule_feed_path, settings.djs_feed_path):
-        if path.exists():
+        if path.exists() and not (out / path.name).exists():
             shutil.copy(path, out / path.name)
     return out
 

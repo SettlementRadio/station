@@ -38,6 +38,50 @@ A typical *build* session will be short, e.g.:
 
 ---
 
+## 2026-07-26 — Phase R — R7.2: Programmes — the day, and the week as a guide
+**Focus:** `/schedule` — today as a rail, the week as a real programme guide, from the R7.0 feed.
+**Decisions:**
+- **The week is a TABLE, not seven lists.** Rows are the time bands where any day changes show,
+  columns are days (`buildWeekRows` slices every day at the union of all boundaries). That is what
+  makes the station's *rhythm* legible: the fixed spine reads as identical rows straight across, and
+  the rotating specialist windows are the cells that differ — "the Tuesday economy hour" is visible
+  without reading a word of explanation. Wide content scrolls in its own box with a sticky time
+  column, so the page itself never scrolls sideways on a phone.
+- **Two clocks, deliberately separate.** The feed is re-read every 5 min (`SLOW_POLL_SECONDS` — the
+  grid changes when the operator edits it), while the on-air highlight is recomputed from the LOCAL
+  clock every 30s. The highlight therefore moves with no reload and without asking the station for
+  anything.
+- **`dayFor()`: the listener's day, not the feed's** — found by verification. Rendering `days[0]`
+  blindly meant that once the local clock crossed midnight (or the feed went a few minutes stale)
+  the rail showed yesterday with NOTHING marked on air. Matching the published day to the viewer's
+  own date fixes both, and the same index drives the week table's live column.
+- **Detail on demand only where it's missing.** Today's rows carry time · name · tagline · hosts
+  inline (scanning "what's on at four" shouldn't cost seven clicks); the week's compact cells open a
+  panel with tagline, hosts and *next airing*.
+- **Auto-scroll uses `block: "nearest"`**, not `center`: it brings the current show into view when
+  it's off-screen and otherwise leaves the page heading alone.
+**Verified (CDP against the real feed):** the rendered week table was dumped from the DOM and diffed
+against `programming.program_for` — **196/196 cells match**, i.e. the published page cannot show a
+grid the station isn't airing (the "matches `make console`" promise, at full coverage rather than
+spot checks). The highlight was checked at six times of day via fixed clock offsets (02:32 → The
+Deep Field, 06:32 → First Light, 10:32 → The Table, 14:32 → The Standing Watch, 18:32 → Evening
+Currents, 22:32 → The Long Night) — all six match the grid. Movement without reload was proved by
+accelerating the page clock 300× with a `Date` shim: the highlight walked 07:00 → 11:00 with
+`performance.getEntriesByType('navigation').length === 1`. Phone: true 380/320px renders, plus a
+metrics-override check that the page's `scrollWidth === innerWidth` while the table scrolls inside
+its own box (380 vs 736). **Lighthouse: accessibility 100, best-practices 100.**
+**Changed:** `web/src/app/schedule/page.tsx`, `web/src/components/{ScheduleView,TodayRail,WeekTable}.tsx`,
+`web/src/lib/schedule.ts` (new — the pure reading: `buildWeekRows`, `dayFor`, `onAirEntry`,
+`nextAiring`), `web/src/lib/feeds.ts` (`SLOW_POLL_SECONDS`), a cross-link on the player,
+`scripts/serve_demo_feeds.py` (rebuild the slow feeds instead of copying a stale `segments/` copy —
+a schedule dated yesterday shows a page where nothing is ever on air), README ×2.
+**Why:** the grid is the strongest evidence the station is programmed rather than generated; the
+verification is aimed squarely at that claim ("does the page agree with the air?").
+**📣 Postable:** the whole week as a programme guide — 24 fixtures a day, the same spine every day,
+and the specialist windows rotating through it. Every cell checked against the scheduler's own answer.
+**Next:** R7.3 (`/voices` — the DJs, from the `djs-public.json` feed), then R7.4 (nav + ship).
+Commit: (pending) · Clips: —
+
 ## 2026-07-26 — Phase R — R7.1: the player page (the "lit window")
 **Focus:** `/listen` in the web app — press play, see what you're hearing — built on the R7.0 feeds.
 **Decisions:**

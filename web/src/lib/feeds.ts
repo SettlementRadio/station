@@ -16,6 +16,17 @@ export const FEEDS_BASE_URL = process.env.NEXT_PUBLIC_FEEDS_BASE_URL ?? "";
 /** How often to re-read the fast feed, in seconds. */
 export const POLL_SECONDS = Number(process.env.NEXT_PUBLIC_FEED_POLL_SEC ?? 20);
 
+/**
+ * How often to re-read the SLOW feeds (schedule, DJs), in seconds.
+ *
+ * The grid changes when the operator edits it — days or weeks apart — so re-reading
+ * every few minutes is already generous. The "on air now" highlight does NOT depend
+ * on this: the page recomputes it from the published times against the local clock.
+ */
+export const SLOW_POLL_SECONDS = Number(
+  process.env.NEXT_PUBLIC_SLOW_FEED_POLL_SEC ?? 300,
+);
+
 /** Optional support link (Ko-fi goes live at MARKETING M1); hidden while unset. */
 export const SUPPORT_URL = process.env.NEXT_PUBLIC_SUPPORT_URL ?? "";
 

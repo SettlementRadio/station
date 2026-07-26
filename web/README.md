@@ -11,6 +11,10 @@ Routes:
 - **`/listen`** — the player (R7.1): press play, see what you're hearing. The on-air card (programme,
   tagline, host signal marks, track lore), the transport, and the up-next rail, all driven by the
   station's public feeds.
+- **`/schedule`** — Programmes (R7.2): **today** as a rail (time · name · tagline · hosts, with the
+  current show lit and scrolled into view) and **the week** as a programme guide — one row per time
+  band, one column per day, so the fixed spine and the rotating specialist windows are visible at a
+  glance. Pick any show in the week view for its tagline, hosts and next airing.
 
 This app is **public and read-only**. The operator/admin surface is NOT here — it's the private,
 VPS-only panel in the Python backend (`make panel`).
@@ -95,3 +99,14 @@ agree, and a host's mark never changes), and no new asset to author when the cas
 **The transport sits above the on-air card on purpose.** The card changes height as the air changes
 (a music slot carries track lore, a talk slot doesn't); below it, the play/stop control would move
 under the listener's cursor at every programme change — measured at 161px during R7.1 verification.
+
+**Two clocks, never one** (R7.2). The feeds are re-read on a timer (`POLL_SECONDS` for now-playing,
+`SLOW_POLL_SECONDS` for the schedule), but anything that depends on *when it is* — the on-air
+highlight, the dimming of finished shows — is recomputed from the LOCAL clock every 30s. So the
+page keeps up with the air without asking the station for anything, and the highlight moves with no
+reload. Times are always the feeds' naive strings sliced for display; `new Date()` is used only to
+compare instants (`lib/schedule.ts`), never to re-zone a printed time.
+
+**The listener's day, not the feed's.** `dayFor()` picks the published day matching the viewer's own
+date rather than `days[0]`, so a page left open across midnight — or a feed a few minutes stale —
+still shows the right rail with the right show lit.

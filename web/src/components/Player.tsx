@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { DISCLOSURE_LINE } from "@/lib/disclosure";
@@ -195,6 +196,14 @@ export default function Player() {
       <OnAirCard entry={now} degraded={failed || !now} lit={playing} />
 
       <UpNext entries={next} />
+
+      {/* R7.4 replaces this with the shared nav; until then the two pages still meet. */}
+      <Link
+        href="/schedule"
+        className="self-start text-sm text-amber/90 underline-offset-4 transition-colors hover:text-amber hover:underline focus-visible:underline focus-visible:outline-none"
+      >
+        See the whole day&rsquo;s programmes →
+      </Link>
 
       {/* The AI-disclosure line: visible on every route, in the station's own voice
           rather than buried in a footer (CLAUDE.md hard rule). */}
