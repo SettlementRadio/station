@@ -30,6 +30,15 @@ export const SLOW_POLL_SECONDS = Number(
 /** Optional support link (Ko-fi goes live at MARKETING M1); hidden while unset. */
 export const SUPPORT_URL = process.env.NEXT_PUBLIC_SUPPORT_URL ?? "";
 
+/**
+ * R7.3 stretch: offer a short voice sample per host on /voices.
+ *
+ * Off by default. Turning it on expects OPERATOR-CURATED clips at
+ * `web/public/voices/<host-id>.mp3` — never an auto-published segment. Hosts without
+ * a clip simply show no control.
+ */
+export const VOICE_SAMPLES = process.env.NEXT_PUBLIC_VOICE_SAMPLES === "true";
+
 /** Absolute URL of one feed file, or null when no feed host is configured. */
 export function feedUrl(file: string): string | null {
   if (!FEEDS_BASE_URL) return null;

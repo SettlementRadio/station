@@ -38,6 +38,47 @@ A typical *build* session will be short, e.g.:
 
 ---
 
+## 2026-07-26 — Phase R — R7.3: The voices — the cast, by voice
+**Focus:** `/voices` — one card per host from the DJs feed, built around the canon rule that
+listeners know the presenters only by their voices.
+**Decisions:**
+- **No portraits, ever — and the page proves it.** Each host is their hashed signal mark in their own
+  accent tone (which also tints the card's top edge), a role line, and the operator-authored public
+  bio. The only image on the whole page is the station wordmark; the verification asserts exactly
+  that, so "voices, not faces" is a checked property rather than an intention.
+- **Two feeds, joined on the client.** `djs-public.json` says who they are and what they present;
+  `schedule-public.json` turns each show into "today 18:00" / "Mon 15:30" via R7.2's `nextAiring`,
+  sorted soonest-first. A host's card therefore answers "when can I hear them?", which the DJs feed
+  alone can't.
+- **The field badge is canon, not decoration** — Sera/Orin/Zhe carry "reports across the relay —
+  dispatches arrive with the lag, never live from the booth", which is the same fact the writers'
+  room enforces from `Based: field`.
+- **Voice samples shipped behind `NEXT_PUBLIC_VOICE_SAMPLES`** (off by default): operator-curated
+  clips at `web/public/voices/<id>.mp3`, never an auto-published segment. `preload="metadata"` on
+  purpose — the card probes the file and hides its own button when the clip 404s, so turning the
+  flag on with two clips recorded doesn't leave eight dud buttons on the page.
+- Two small fixes the render caught: `capitalize` was title-casing role lines ("Culture And Arts" →
+  now `first-letter:uppercase`), and `mt-auto` on the shows block punched a hole in the middle of
+  shorter cards.
+**Verified (CDP against the real DB-backed feed):** all **10 grid-scheduled hosts render, each with
+exactly the shows the grid gives them** (rendered lists diffed against `programming.day_tiling`);
+**zero card-text leakage** — every private card line ≥40 chars, every `logical_voice`, and every tag
+checked against the page HTML, none present; **one image on the page**, the wordmark. The sample
+flag was exercised end-to-end with a real clip (only the host with a file showed a control; a trusted
+click flipped it to "■ Stop"), then the clip removed. True 380/320px phone renders.
+**Lighthouse: accessibility 100, best-practices 100** — all three public pages now.
+**Changed:** `web/src/app/voices/page.tsx`, `web/src/components/VoicesGrid.tsx`,
+`web/src/lib/feeds.ts` (`VOICE_SAMPLES`), cross-links on `/listen` + `/schedule`, `web/.env.example`
+(`NEXT_PUBLIC_VOICE_SAMPLES`, `NEXT_PUBLIC_SLOW_FEED_POLL_SEC`), README ×2.
+**Why:** the cast is the reason to come back, and the whole point of R7.0's authored `Public bio:`
+split was that this page could exist without any prompt text reaching the internet. The leakage
+check is what makes that claim auditable instead of assumed.
+**📣 Postable:** meet the voices — ten presenters, no faces anywhere, because out here nobody has
+seen them either.
+**Next:** R7.4 (shared nav, favicon/OG, Plausible, the `COMING_SOON` flag, Vercel deploy) — the last
+task in R7; it needs the C7 stream before `/` flips.
+Commit: (pending) · Clips: —
+
 ## 2026-07-26 — Phase R — R7.2: Programmes — the day, and the week as a guide
 **Focus:** `/schedule` — today as a rail, the week as a real programme guide, from the R7.0 feed.
 **Decisions:**

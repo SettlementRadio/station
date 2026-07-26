@@ -106,6 +106,10 @@ cuts in on the hour and hands back.
   day) so the fixed daily spine and the rotating specialist windows read at a glance. Every rendered
   cell is checked against `programming.program_for` — the page cannot show a grid the station isn't
   airing. `make demo-feeds` serves the feeds to a local site so both pages can be worked on offline.
+- **The voices page (R7.3)** — `/voices`: one card per host from the DJs feed — signal mark in their
+  accent tone, role line, public bio, the shows they present with next-on-air times, and the
+  field-correspondent badge for Sera/Orin/Zhe. **No portraits** (canon: listeners know the presenters
+  only by their voices), and a test asserts no line of a DJ's card ever reaches the page.
 
 ## The production layer (sound design + songs — D7)
 The station *sounds produced*: curated jingles/idents/stings air where the grid calls for them, beds

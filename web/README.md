@@ -15,6 +15,10 @@ Routes:
   current show lit and scrolled into view) and **the week** as a programme guide — one row per time
   band, one column per day, so the fixed spine and the rotating specialist windows are visible at a
   glance. Pick any show in the week view for its tagline, hosts and next airing.
+- **`/voices`** — The DJs (R7.3): one card per host — their signal mark in their own accent tone,
+  role line, the operator-authored public bio, the shows they present with next-on-air times, and a
+  field-correspondent badge for the three who report across the relay lag. **No portraits, ever**
+  (canon: listeners know the presenters only by their voices).
 
 This app is **public and read-only**. The operator/admin surface is NOT here — it's the private,
 VPS-only panel in the Python backend (`make panel`).
@@ -110,3 +114,11 @@ compare instants (`lib/schedule.ts`), never to re-zone a printed time.
 **The listener's day, not the feed's.** `dayFor()` picks the published day matching the viewer's own
 date rather than `days[0]`, so a page left open across midnight — or a feed a few minutes stale —
 still shows the right rail with the right show lit.
+
+### Voice samples on /voices (R7.3, off by default)
+
+Set `NEXT_PUBLIC_VOICE_SAMPLES=true` and drop **operator-curated** clips (5–10s) at
+`web/public/voices/<host-id>.mp3` — `vell.mp3`, `the-archivist.mp3`, and so on (the id is the one in
+`djs-public.json`). Never publish a generated segment here: this is a chosen introduction, not a
+sample of the air. Hosts without a clip show no control at all — the card probes the file's metadata
+and hides the button when it 404s — so enabling the flag with two clips recorded is safe.

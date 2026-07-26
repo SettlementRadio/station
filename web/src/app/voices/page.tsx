@@ -2,28 +2,29 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 
-import ScheduleView from "@/components/ScheduleView";
+import VoicesGrid from "@/components/VoicesGrid";
 import { DISCLOSURE_LINE } from "@/lib/disclosure";
 
-// R7.2 — "Programmes": the station's whole day and week, the thing that makes a
-// listener read this as a real station rather than a generated stream.
+// R7.3 — "The DJs": who you're listening to.
 //
-// A server component shell; everything that depends on the clock or the feed lives in
-// <ScheduleView /> (client). R7.4 replaces the inline back-link with the shared nav.
+// Canon rule the page is built around (00-station.md, fact 8): listeners know the
+// presenters only by their VOICES. So there are no portraits — each host is a signal
+// mark in their own accent tone, a role line, and the bio the operator wrote for them.
+// R7.4 replaces the inline links with the shared nav.
 
-const title = "Programmes — Settlement Radio";
+const title = "The voices — Settlement Radio";
 const description =
-  "The whole day and the week ahead: every programme on Settlement Radio, in " +
-  "settlement time — news desks, magazines, the chart, and the long night.";
+  "The presenters of Settlement Radio: the night shift, the news desk, the " +
+  "correspondents out past the last relay. You know them by their voices.";
 
 export const metadata: Metadata = {
   title,
   description,
-  openGraph: { title, description, url: "/schedule" },
+  openGraph: { title, description, url: "/voices" },
   twitter: { title, description },
 };
 
-export default function SchedulePage() {
+export default function VoicesPage() {
   return (
     <main className="starfield relative flex flex-1 flex-col items-center bg-night px-5 py-12 text-neutral sm:px-6 sm:py-16">
       <div className="relative flex w-full max-w-4xl flex-col gap-10">
@@ -39,10 +40,11 @@ export default function SchedulePage() {
             />
           </Link>
           <div className="flex flex-col gap-2">
-            <h1 className="text-3xl font-semibold sm:text-4xl">Programmes</h1>
+            <h1 className="text-3xl font-semibold sm:text-4xl">The voices</h1>
             <p className="max-w-prose text-base text-neutral/70">
-              What&rsquo;s on, all week. The spine repeats every day; the specialist
-              windows rotate.
+              Nobody out here has seen the presenters. You know them the way the
+              settlements do — by the voice that comes through the dark, and what it
+              says.
             </p>
           </div>
           <nav className="flex gap-5 text-sm">
@@ -53,15 +55,15 @@ export default function SchedulePage() {
               ← Listen live
             </Link>
             <Link
-              href="/voices"
+              href="/schedule"
               className="text-amber/90 underline-offset-4 transition-colors hover:text-amber hover:underline focus-visible:underline focus-visible:outline-none"
             >
-              The voices
+              Programmes
             </Link>
           </nav>
         </header>
 
-        <ScheduleView />
+        <VoicesGrid />
 
         <footer className="mt-2 border-t border-neutral/10 pt-6">
           <p className="max-w-prose text-xs leading-relaxed text-neutral/60">
