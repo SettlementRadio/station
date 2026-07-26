@@ -1,5 +1,9 @@
-# Secrets
+# Secrets — the live file AND every variant (.env.local, .env.bak, .env.prod…).
+# The pattern used to be a bare `.env`, which left a hand-made `.env.bak` (or an
+# editor's `.env.save`) committable. The TEMPLATE stays tracked and current.
 .env
+.env.*
+!.env.example
 
 # Generated audio & assets (kept as empty dirs via .gitkeep)
 segments/*
