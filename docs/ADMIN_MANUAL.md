@@ -132,7 +132,16 @@ the bad `segments/<id>.*`; playout is `make serve` / `make stop`.
 | `make reset-world` | ⚠ **DESTRUCTIVE** — wipes world+canon incl. everything tick-generated, then rebuilds from the folder; never touches grid/tracks/sponsors | dev resets only; type `reset-world` to confirm (non-interactive: `python -m src.world.seed reset --force`) |
 | `make seed-tracks` | the `tracks` catalogue from `config/tracks.yaml` (probes durations) | after editing the music manifest |
 | `make seed-sponsors` | the `sponsors` catalog from `config/sponsors.yaml` | after editing sponsors |
-| *(no grid seed)* | the grid YAML is read live (mtime-reloaded) | edit → live |
+| *(no seed)* | `docs/programming/grid.yaml`, `config/voices.yaml`, `config/pronunciation.yaml` — all read live (mtime-reloaded) | edit → live, no command |
+
+**Seeds are EDIT-triggered, never scheduled.** Nothing in the daily run seeds anything: the three
+timers (top-up, world tick, micro-tick) never touch folder-owned rows. You run a seed because *you
+changed a file*, and only that file's seed.
+
+**R7 consequence — a cast edit is a website edit.** The public `/voices` page reads `role` and
+`Public bio:` out of the `cast` TABLE, so a card edit reaches the site only after `make seed-canon`
+(then the next top-up rewrites the feed). Grid `tagline` edits need no seed — the grid is read live
+and the feed is rebuilt every top-up.
 
 ### What persists vs resets
 - **The living world** — tick-generated stories/beats/events, figures/quotes (`source='tick'`), news
@@ -143,6 +152,34 @@ the bad `segments/<id>.*`; playout is `make serve` / `make stop`.
   has its own refresh; sponsors are hand-entered, back them up.
 - **Embeddings**: derived — `reset-world` clears + re-embeds everything; `seed-canon` re-embeds only
   the canon rows and leaves tick-generated vectors intact.
+
+### Publishing a content change to the box (bible, tracks, sponsors)
+
+Same commands as locally — the difference is only *how they get invoked*. The content is in git, so
+a change is a deploy, not a database edit:
+
+```bash
+ssh <vps>
+cd /opt/settlement-radio && git pull        # the bible / tracks manifest / grid come with it
+make seed-canon                             # ONLY if docs/canon/ changed
+make seed-tracks                            # ONLY if config/tracks.yaml changed (or new mp3s landed)
+```
+
+- **No service restart is needed for content.** The scheduler timer picks up the new rows on its next
+  top-up; the grid and voice/pronunciation configs are read live.
+- **Curated audio is not in git** (`assets/` is gitignored) — new jingles/tracks are copied to the box
+  separately (`rsync`/object storage) and are what the backups cover.
+- **Without SSH:** the panel does the same jobs — **Panel → Actions** has seed-canon / seed-tracks
+  buttons (behind the E1.1 mutation lock), and **Panel → Cast / Catalogs** re-seed automatically after
+  an edit. Reach it over the SSH tunnel (`ssh -L 8787:localhost:8787 <vps>`).
+- **One-time, at install (C5):** `init_schema` runs on first connect, then `make seed-canon`,
+  `make seed-tracks`, `make seed-sponsors`, and two or three warm `make world-tick` runs so the DJs
+  have a moving present before the first broadcast.
+- ⚠ **Never `make reset-world` on the box.** It destroys the living world — the one irreplaceable
+  thing up there. Restore from the nightly `pg_dump` instead (see *Recovery*).
+
+*(The pull/deploy mechanics above are the intended shape; C5 is what actually wires them — a deploy
+script or a `git pull` + `systemctl` unit. Until then this is a manual SSH sequence.)*
 
 ### Run the world tick / warm up a fresh world
 A freshly-seeded DB has no running stories; run the tick a few times so the news/DJs have a moving
