@@ -1,0 +1,102 @@
+{
+  "collected_at": "2026-07-26T21:57:00.848135",
+  "reference_now": "2026-07-26T12:00:00",
+  "grid_week_start": "2026-07-27T00:00:00",
+  "world": {
+    "new_stories_per_tick_min": 2,
+    "new_stories_per_tick_max": 4,
+    "max_active_stories": 24,
+    "active_stories": 23,
+    "stories_status_active_rows": 40,
+    "stories_total": 40,
+    "domains_covered": 13,
+    "events_in_window": 83,
+    "title_colon_schema_pct": 92.5,
+    "title_subtitle_article_pct": 78.4
+  },
+  "quotes": {
+    "count": 120,
+    "mean_words": 24.2,
+    "median_words": 21.0,
+    "pct_with_contraction": 40.8,
+    "hedges_per_1000w": 1.7,
+    "pct_under_12w": 7.5
+  },
+  "grid": {
+    "format_share": {
+      "chart": 2.1,
+      "music": 10.8,
+      "news": 23.6,
+      "talk": 63.5
+    },
+    "programs": 35,
+    "registered_formats": 6,
+    "host_hours_per_day": {
+      "vell": 8.32,
+      "the-archivist": 7.82,
+      "wren": 7.68,
+      "joss": 4.57,
+      "zhe": 4.29,
+      "thorn": 3.07,
+      "mira": 3.0,
+      "kael": 2.64,
+      "sera": 2.64,
+      "orin": 1.64
+    },
+    "max_host_hours_per_day": 8.32,
+    "min_host_hours_per_day": 1.64,
+    "news_anchor_count": 1,
+    "news_words_low": 800,
+    "news_words_high": 1000,
+    "news_words_distinct_per_program": 1
+  },
+  "context": {
+    "bible_chars": 186353,
+    "cards_chars": 3984,
+    "dynamic_chars": 131361,
+    "events_rendered": 81,
+    "canon_rendered": 267,
+    "quotes_rendered": 4,
+    "topic_passed_on_live_path": false,
+    "event_window_days": 14,
+    "cached_tokens": null,
+    "uncached_tokens": null,
+    "seconds_per_call": null
+  },
+  "freshness": {
+    "window_hours": 6.0,
+    "recent_limit": 10,
+    "mode": "prefer",
+    "enabled": true
+  },
+  "models": {
+    "haiku": "claude-haiku-4-5-20251001",
+    "sonnet": "claude-sonnet-4-6",
+    "opus": "claude-opus-4-8",
+    "default_tier": "sonnet",
+    "batch_enabled_paths": [
+      "src/world/world_tick.py"
+    ]
+  },
+  "cost": {
+    "usd_per_talk_segment": 0.3722,
+    "talk_usd_window": 0.3722,
+    "talk_calls_window": 4.0,
+    "days": 7
+  },
+  "probe": {
+    "runs": 1,
+    "slots": [
+      "2026-07-27T07:12",
+      "2026-07-27T10:12",
+      "2026-07-27T16:12",
+      "2026-07-27T22:12"
+    ],
+    "continuity_slots": 0,
+    "segments": 4,
+    "estimated_llm_calls": 16,
+    "measured_usd_per_segment": 0.3722,
+    "estimated_usd": 1.49,
+    "dry_run": true
+  }
+}

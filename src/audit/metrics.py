@@ -32,7 +32,6 @@ STRICTLY READ-ONLY: no writes, no generation, no dial mutation.
 from __future__ import annotations
 
 import re
-import statistics
 from collections import Counter
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -40,6 +39,8 @@ from pathlib import Path
 from ..config import settings
 from ..logging_setup import get_logger
 from ..world import clock, programming, store
+from . import textstats
+from .textstats import register_stats
 
 log = get_logger(__name__)
 
@@ -47,14 +48,6 @@ log = get_logger(__name__)
 # and host hours) is the same measurement every time. Also the probe's slot date (Q0.1).
 _GRID_WEEK_START = datetime(2026, 7, 27)
 _GRID_WEEK_SLOTS = 7 * 24 * 4  # a full week at 15-minute resolution
-
-# Register regexes, byte-identical to the audit seed's, so the baseline is comparable.
-_CONTR = re.compile(r"\b\w+['’](s|t|re|ve|ll|d|m)\b", re.I)
-_HEDGE = re.compile(
-    r"\b(um|uh|sort of|kind of|you know|I mean|I guess|maybe|probably|"
-    r"honestly|look,|well,|I think|we'll see)\b",
-    re.I,
-)
 
 # THE METRIC CONTRACT. Q8 and gates.yaml read these by name; add, never rename.
 GROUP_KEYS: dict[str, tuple[str, ...]] = {
@@ -102,11 +95,54 @@ GROUP_KEYS: dict[str, tuple[str, ...]] = {
         "quotes_rendered",
         "topic_passed_on_live_path",
         "event_window_days",
+        # Measured by the probe (Q0.1), so a free-only run reports them as null — which
+        # a Q2 gate must read as FAIL, not as a pass. That is the point.
+        "cached_tokens",
+        "uncached_tokens",
+        "seconds_per_call",
     ),
     "freshness": ("window_hours", "recent_limit", "mode", "enabled"),
     "models": ("haiku", "sonnet", "opus", "default_tier", "batch_enabled_paths"),
     "cost": ("usd_per_talk_segment", "talk_usd_window", "talk_calls_window", "days"),
 }
+
+# The groups only the API probe can fill (Q0.1). Declared here beside the free ones so
+# there is ONE place that says what an audit JSON contains.
+PROBE_GROUP_KEYS: dict[str, tuple[str, ...]] = {
+    "topic": (
+        "cross_run_beat_identity_pct",
+        "top_entity",
+        "top_entity_mentions",
+        "top_entity_mentions_total",
+        "top_entity_share",
+        "distinct_entities_per_segment",
+        "segments",
+        "runs",
+    ),
+    "register": (
+        "median_turn_words",
+        "mean_turn_words",
+        "pct_turns_over_40w",
+        "pct_turns_under_4w",
+        "contractions_per_100w",
+        "hedges_per_1000w",
+        "banned_abstractions_daytime",
+        "banned_phrases_found",
+        "segments",
+        "turns",
+    ),
+    "continuity": (
+        "max_verbatim_overlap_chars",
+        "mean_verbatim_overlap_chars",
+        "repeated_ngram_rate",
+        "distinct_beats_in_run",
+        "slots",
+        "program",
+    ),
+}
+
+# Every group an audit JSON may carry, free + probe.
+ALL_GROUP_KEYS: dict[str, tuple[str, ...]] = {**GROUP_KEYS, **PROBE_GROUP_KEYS}
 
 
 # --- small shared maths -----------------------------------------------------
@@ -117,27 +153,8 @@ def _pct(n: int, d: int) -> float | None:
     return round(100 * n / d, 1) if d else None
 
 
-def register_stats(texts: list[str]) -> dict:
-    """Register maths over a body of short texts — the `quotes.*` group's shape.
-
-    Shared with the probe (Q0.1), which runs the same numbers over generated scripts,
-    so "how plain is this text" is measured one way everywhere.
-    """
-    if not texts:
-        return {"count": 0}
-    words = [len(t.split()) for t in texts]
-    joined = " ".join(texts)
-    n_words = max(1, len(joined.split()))
-    return {
-        "count": len(texts),
-        "mean_words": round(statistics.mean(words), 1),
-        "median_words": statistics.median(words),
-        "pct_with_contraction": _pct(
-            sum(1 for t in texts if _CONTR.search(t)), len(texts)
-        ),
-        "hedges_per_1000w": round(1000 * len(_HEDGE.findall(joined)) / n_words, 1),
-        "pct_under_12w": _pct(sum(1 for w in words if w <= 12), len(texts)),
-    }
+# `register_stats` lives in textstats.py (the pure text maths the probe shares) and is
+# re-exported here, because the `quotes.*` group is its caller.
 
 
 # --- world: supply, titles ---------------------------------------------------
@@ -177,6 +194,61 @@ def world_metrics(now: datetime) -> dict:
         "title_colon_schema_pct": _pct(len(colon), len(titles)),
         "title_subtitle_article_pct": _pct(len(article), len(colon)),
     }
+
+
+def world_vocabulary() -> tuple[list[str], list[str]]:
+    """`(names the world knows, cast names to exclude)` — the entity list for §1a.
+
+    The seed's probe scored proper nouns with a bare regex, which counted "That" and
+    "Because" as names; its README asks Q0 to use a real entity list instead. Three
+    sources, all free:
+
+      * the gazetteer's `## ` headings — every named world and station, which is where
+        "Cold Harbor" (23 mentions at baseline) comes from;
+      * the `figures` table — the world's people, full name and surname, because a
+        bulletin says "Sorn" after introducing "Aldric Sorn";
+      * the story and event log — the names the tick has invented since.
+
+    The cast is returned separately so `entity_counts` can drop it: two hosts using each
+    other's name says nothing about what the segment is *about*.
+    """
+    names: set[str] = set(_gazetteer_places())
+    cast: set[str] = set()
+    try:
+        with store.connect() as conn:
+            for (figure,) in conn.execute("SELECT name FROM figures").fetchall():
+                names.add(figure)
+                names.update(part for part in figure.split() if len(part) > 2)
+            texts = [
+                r[0]
+                for r in conn.execute(
+                    "SELECT title FROM stories UNION ALL SELECT title FROM events"
+                ).fetchall()
+            ]
+            for member in store.all_cast(conn):
+                cast.update({member.id, member.name})
+    except Exception as exc:  # noqa: BLE001 — the gazetteer alone still measures
+        log.warning("audit_vocabulary_partial", error=str(exc))
+        texts = []
+    names |= textstats.vocabulary_from(texts)
+    names -= cast
+    return sorted(names), sorted(cast)
+
+
+def _gazetteer_places() -> list[str]:
+    """The named worlds and stations — the gazetteer cornerstone's `## ` headings."""
+    path = settings.canon_dir / "06-gazetteer.md"
+    try:
+        text = path.read_text(encoding="utf-8")
+    except OSError:
+        log.warning("audit_gazetteer_missing", path=str(path))
+        return []
+    out: list[str] = []
+    for line in text.splitlines():
+        if line.startswith("## "):
+            # One heading can name two places ("Far Reach and Breathe Easy").
+            out += [part.strip() for part in line[3:].split(" and ") if part.strip()]
+    return out
 
 
 def quote_metrics() -> dict:
@@ -419,14 +491,36 @@ def collect_free(now: datetime | None = None) -> dict:
     return out
 
 
-def _normalise(group: str, values: dict, *, error: str | None = None) -> dict:
+def normalise_group(group: str, values: dict, *, error: str | None = None) -> dict:
     """Fill the group out to its declared keys — missing ones become explicit `null`."""
-    out: dict = {key: values.get(key) for key in GROUP_KEYS[group]}
+    out: dict = {key: values.get(key) for key in ALL_GROUP_KEYS[group]}
     for key, value in values.items():  # keep extras, but never drop a declared key
         if key not in out:
             out[key] = value
     if error:
         out["error"] = error
+    return out
+
+
+_normalise = normalise_group  # the in-module short name
+
+
+def merge_probe(free: dict, probe: dict) -> dict:
+    """Fold a probe result into a free run — one audit JSON with every group in it.
+
+    The probe's `context.*` keys (cached/uncached tokens, seconds per call) land inside
+    the free `context` group rather than beside it, because §1f treats them as one
+    story: what every prompt ships and what it costs to ship it.
+    """
+    out = dict(free)
+    for group, values in probe.items():
+        if group == "context":
+            merged = {**(out.get("context") or {}), **values}
+            out["context"] = normalise_group("context", merged)
+        elif group in ALL_GROUP_KEYS:
+            out[group] = normalise_group(group, values)
+        else:
+            out[group] = values  # probe metadata (the plan, the spend)
     return out
 
 
@@ -436,12 +530,14 @@ def _normalise(group: str, values: dict, *, error: str | None = None) -> dict:
 def render_table(data: dict) -> str:
     """The audit as a readable table — the thing `make audit` prints."""
     lines = [
-        "===== SETTLEMENT RADIO — AUDIT (free metrics, Q0.0) =====",
+        "===== SETTLEMENT RADIO — AUDIT (docs/PHASE_Q_TASKS.md §1) =====",
         f"  collected {data.get('collected_at', '—')}"
         f"  ·  reference now {data.get('reference_now', '—')}"
         f"  ·  grid week from {(data.get('grid_week_start') or '—')[:10]}",
     ]
-    for group in GROUP_KEYS:
+    for group in ALL_GROUP_KEYS:
+        if group in PROBE_GROUP_KEYS and group not in data:
+            continue  # a free-only run: don't print empty probe groups
         body = data.get(group) or {}
         lines += ["", f"── {group.upper()} ──"]
         if body.get("error"):
@@ -466,18 +562,23 @@ def _fmt(value: object) -> str:
 
 
 __all__ = [
+    "ALL_GROUP_KEYS",
     "GROUP_KEYS",
+    "PROBE_GROUP_KEYS",
     "batch_enabled_paths",
     "collect_free",
     "context_metrics",
     "cost_metrics",
     "freshness_metrics",
     "grid_metrics",
+    "merge_probe",
     "model_metrics",
+    "normalise_group",
     "quote_metrics",
     "reference_now",
     "register_stats",
     "render_table",
     "topic_passed_on_live_path",
     "world_metrics",
+    "world_vocabulary",
 ]

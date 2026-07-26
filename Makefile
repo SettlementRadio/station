@@ -25,6 +25,7 @@
 #   make world-tick    Run one world tick: invent + advance world stories (D3; needs seed).
 #   make micro-tick    Run one intra-day micro-tick: nudge a live story a small beat (R4.1).
 #   make audit         Measure the station (Phase Q §1 metrics) + write a run JSON (Q0.0).
+#   make audit-full    ...plus the API probe (Q0.1) — real Anthropic calls; DRY=1 to price it.
 #
 # `generate`/`play`/`schedule` make live Anthropic + TTS calls (needs a populated
 # .env). Since C2, `serve` airs the SCHEDULER's playlist (segments/playlist.txt),
@@ -46,7 +47,7 @@ LIQ_LOG    := $(RUN_DIR)/liquidsoap.log
 PLAYER_URL := http://127.0.0.1:8000/
 STREAM_URL := http://127.0.0.1:8000/settlement.mp3
 
-.PHONY: help generate serve air play play-convo stop status console timeline panel station station-stop station-status now-playing public-feeds demo-feeds seed seed-canon reset-world seed-tracks seed-sponsors demo context costprobe costprobe-ab conversation format buffer schedule ident prune fallback health world-tick news-demo figures-demo freshness-demo continuity-demo journal-demo programming-demo commercials-demo acceptance jingle-audit micro-tick audit
+.PHONY: help generate serve air play play-convo stop status console timeline panel station station-stop station-status now-playing public-feeds demo-feeds seed seed-canon reset-world seed-tracks seed-sponsors demo context costprobe costprobe-ab conversation format buffer schedule ident prune fallback health world-tick news-demo figures-demo freshness-demo continuity-demo journal-demo programming-demo commercials-demo acceptance jingle-audit micro-tick audit audit-full
 
 # B5 format default: `make format` builds a talk segment; override with FMT=news
 # or FMT=music. Pass a TOPIC=... to steer canon retrieval.
@@ -102,6 +103,7 @@ help:
 	@echo "  make acceptance run the integrated 24-48h acceptance simulation — the Phase-D gate (D11.3)"
 	@echo "  make jingle-audit run the R3.0 jingle placement audit — proof every clip fires where it should"
 	@echo "  make audit     measure the station: the Phase Q free metrics + a run JSON (Q0.0; token-free)"
+	@echo "  make audit-full  ... plus the API probe: topic/register/continuity/prompt (Q0.1; real calls)"
 	@echo "  make air       schedule + serve — the live scheduler-driven stream (C2)"
 
 # Seed/refresh the world-state DB from the canon bible (docs/canon/ folder, or the
@@ -437,11 +439,30 @@ jingle-audit:
 #   make audit                  -> docs/audit/<today>-free.json
 #   make audit LABEL=baseline   -> docs/audit/<today>-baseline.json
 #   make audit NOW=2026-07-27T12:00   pin the reference clock for an exact re-run
-LABEL ?= free
+LABEL ?=
 NOW   ?=
 audit:
 	@echo "==> Audit: free metrics (Q0.0)…"
-	@$(PY) -m src.audit --label $(LABEL) $(if $(NOW),--now $(NOW),)
+	@$(PY) -m src.audit $(if $(LABEL),--label $(LABEL),) $(if $(NOW),--now $(NOW),)
+
+# Q0.1: the free metrics PLUS the API probe — the §1a/§1d/§1e/§1f numbers that only real
+# generation can produce (cross-run beat identity, the register of actual dialogue, the
+# continuity replay, what a prompt ships and costs). Makes REAL Anthropic calls; TTS is
+# mocked and every DB write lands in ONE ROLLED-BACK transaction, so the world is
+# unchanged afterwards. It prints its estimated spend before starting.
+#   make audit-full             -> docs/audit/<today>-full.json (+ a .transcripts.txt)
+#   make audit-full LABEL=q1    name the run for the task whose gate it feeds
+#   make audit-full DRY=1       print the plan + the estimate and spend NOTHING
+#   make audit-full RUNS=1      one pass of the slot list (no cross-run comparison)
+#   make audit-full CONT=0      skip the 5-slot continuity run (the cheap register sample)
+RUNS ?= 2
+CONT ?= 1
+DRY  ?=
+audit-full:
+	@echo "==> Audit: free metrics + the API probe (Q0.1; real Anthropic calls)…"
+	@$(PY) -m src.audit --full --runs $(RUNS) $(if $(DRY),--dry-run,) \
+		$(if $(filter 0,$(CONT)),--no-continuity,) \
+		$(if $(LABEL),--label $(LABEL),) $(if $(NOW),--now $(NOW),)
 
 # D8.3: the commercials & sponsorship demo — generate ONE commercial + ONE promo
 # (live Anthropic + TTS calls; needs `make seed`), show where the grid places the
