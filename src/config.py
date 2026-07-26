@@ -977,6 +977,18 @@ class Settings(BaseSettings):
     panel_dj_journal_limit: int = 20
     panel_dj_segments_limit: int = 15
 
+    # --- Audit harness (Q0: the measured feedback loop) -------------------------
+    # `src/audit/` computes the PHASE_Q_TASKS.md §1 metrics and writes one JSON per
+    # run into `audit_dir` (named `<YYYY-MM-DD>-<label>.json`). The committed
+    # baseline lives there too and is never edited. `audit_cost_window_days` is the
+    # look-back over the `usage` ledger for the measured $/segment; the ~4 LLM calls
+    # a talk segment costs (showrunner + orchestrate + continuity + journal) is the
+    # divisor that turns ledger calls into segments — a property of the pipeline, so
+    # it moves only when that call chain does.
+    audit_dir: Path = Field(default=_REPO_ROOT / "docs" / "audit")
+    audit_cost_window_days: int = 7
+    audit_llm_calls_per_talk_segment: int = 4
+
     def model_id(self, tier: str) -> str:
         """Map a logical tier ("haiku"|"sonnet"|"opus") to its real model id."""
         ids = {

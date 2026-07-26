@@ -24,6 +24,7 @@
 #   make schedule      Top up the rolling buffer to depth + write the playout playlist (C2).
 #   make world-tick    Run one world tick: invent + advance world stories (D3; needs seed).
 #   make micro-tick    Run one intra-day micro-tick: nudge a live story a small beat (R4.1).
+#   make audit         Measure the station (Phase Q §1 metrics) + write a run JSON (Q0.0).
 #
 # `generate`/`play`/`schedule` make live Anthropic + TTS calls (needs a populated
 # .env). Since C2, `serve` airs the SCHEDULER's playlist (segments/playlist.txt),
@@ -45,7 +46,7 @@ LIQ_LOG    := $(RUN_DIR)/liquidsoap.log
 PLAYER_URL := http://127.0.0.1:8000/
 STREAM_URL := http://127.0.0.1:8000/settlement.mp3
 
-.PHONY: help generate serve air play play-convo stop status console timeline panel station station-stop station-status now-playing public-feeds demo-feeds seed seed-canon reset-world seed-tracks seed-sponsors demo context costprobe costprobe-ab conversation format buffer schedule ident prune fallback health world-tick news-demo figures-demo freshness-demo continuity-demo journal-demo programming-demo commercials-demo acceptance jingle-audit micro-tick
+.PHONY: help generate serve air play play-convo stop status console timeline panel station station-stop station-status now-playing public-feeds demo-feeds seed seed-canon reset-world seed-tracks seed-sponsors demo context costprobe costprobe-ab conversation format buffer schedule ident prune fallback health world-tick news-demo figures-demo freshness-demo continuity-demo journal-demo programming-demo commercials-demo acceptance jingle-audit micro-tick audit
 
 # B5 format default: `make format` builds a talk segment; override with FMT=news
 # or FMT=music. Pass a TOPIC=... to steer canon retrieval.
@@ -100,6 +101,7 @@ help:
 	@echo "  make commercials-demo hear a fresh spot + see the sparse break + a Powered-by read (D8)"
 	@echo "  make acceptance run the integrated 24-48h acceptance simulation — the Phase-D gate (D11.3)"
 	@echo "  make jingle-audit run the R3.0 jingle placement audit — proof every clip fires where it should"
+	@echo "  make audit     measure the station: the Phase Q free metrics + a run JSON (Q0.0; token-free)"
 	@echo "  make air       schedule + serve — the live scheduler-driven stream (C2)"
 
 # Seed/refresh the world-state DB from the canon bible (docs/canon/ folder, or the
@@ -425,6 +427,21 @@ JINGLE_HOURS ?= 48
 jingle-audit:
 	@echo "==> Jingle placement audit ($(JINGLE_HOURS)h window, R3.0)…"
 	$(PY) -m src.production.audit --hours $(JINGLE_HOURS) $(if $(DUMP),--dump $(DUMP),)
+
+# Q0.0: the FREE audit metrics — the measured half of the Phase Q feedback loop
+# (docs/PHASE_Q_TASKS.md §2a). Reads the world-store, walks a pinned week of the grid,
+# assembles one real writer context and inspects the code; prints the §1 table and
+# writes docs/audit/<date>-<label>.json. NO Anthropic/TTS calls, no writes to world
+# state — safe to run while the station is on air. Needs a reachable Postgres (an
+# unreachable one degrades that group to explicit nulls, it doesn't fail the run).
+#   make audit                  -> docs/audit/<today>-free.json
+#   make audit LABEL=baseline   -> docs/audit/<today>-baseline.json
+#   make audit NOW=2026-07-27T12:00   pin the reference clock for an exact re-run
+LABEL ?= free
+NOW   ?=
+audit:
+	@echo "==> Audit: free metrics (Q0.0)…"
+	@$(PY) -m src.audit --label $(LABEL) $(if $(NOW),--now $(NOW),)
 
 # D8.3: the commercials & sponsorship demo — generate ONE commercial + ONE promo
 # (live Anthropic + TTS calls; needs `make seed`), show where the grid places the
