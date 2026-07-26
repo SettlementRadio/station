@@ -169,9 +169,11 @@ make seed-tracks                            # ONLY if config/tracks.yaml changed
   top-up; the grid and voice/pronunciation configs are read live.
 - **Curated audio is not in git** (`assets/` is gitignored) — new jingles/tracks are copied to the box
   separately (`rsync`/object storage) and are what the backups cover.
-- **Without SSH:** the panel does the same jobs — **Panel → Actions** has seed-canon / seed-tracks
-  buttons (behind the E1.1 mutation lock), and **Panel → Cast / Catalogs** re-seed automatically after
-  an edit. Reach it over the SSH tunnel (`ssh -L 8787:localhost:8787 <vps>`).
+- **Without SSH:** the panel does the same jobs — **Panel → Actions** has all three seed buttons
+  (canon / tracks / sponsors, behind the E1.1 mutation lock). **Panel → Cast** and **→ Catalogs** do
+  NOT seed for you: they write the file, then offer a one-click *Seed now* on the spot (Cast also
+  flags any card that isn't in the DB yet with "○ not seeded"; the live-reloaded catalogs say "no
+  seed needed" instead). Reach the panel over the SSH tunnel (`ssh -L 8787:localhost:8787 <vps>`).
 - **One-time, at install (C5):** `init_schema` runs on first connect, then `make seed-canon`,
   `make seed-tracks`, `make seed-sponsors`, and two or three warm `make world-tick` runs so the DJs
   have a moving present before the first broadcast.
