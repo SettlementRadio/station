@@ -4,8 +4,9 @@
 > exact command/file/steps. Development (repo setup, generating segments by hand, tests, lint)
 > lives in [`docs/HOWTO.md`](HOWTO.md).
 >
-> **Last verified:** 2026-07-07 (D11), against the local stack. **Re-verify at soft launch (CM),**
-> when unattended operation begins: re-run the how-tos here, then bump this date.
+> **Last verified:** 2026-07-26 — the full local stack end-to-end (world → segment → Icecast →
+> the web player), after Phase R. **Re-verify at soft launch (CM),** when unattended operation
+> begins: re-run the how-tos here, then bump this date.
 >
 > **Tag convention — `→ Phase E panel`:** any how-to that is a *hand-edit-a-file / re-run-a-seed / set
 > an env dial* workflow carries this tag. These are deliberate interim mechanics; the Phase E operator
@@ -33,9 +34,47 @@ All commands from the repo root; live-generation commands need a populated `.env
 | Playout processes + mount state | `make status` |
 | Station state: on-air/next, buffer, story log, cost | `make console` |
 | Health checks (non-zero exit when unhealthy) | `make health` |
+| Serve the public feeds to a local site (CORS) | `make demo-feeds REAL=1` |
+| The public site (player / programmes / voices) | `cd web && npm run dev` → <http://localhost:3000> |
 
 **Playout start/stop/restart + the queue** are also on the panel — see *Watch the queue &
 regenerate a bad segment* below.
+
+### The whole station on one machine (backend + playout + site)
+
+Real broadcast, no demo data. Four terminals from the repo root; each step below was run
+end-to-end on 2026-07-26 (a real segment generated, Icecast serving it, the site playing it).
+
+```bash
+# 0. once per day-ish: give the world something to talk about (skip if a tick ran today)
+make world-tick                 # add LLM_BATCH_ENABLED=false to get it back in seconds, not
+                                # via the Batch queue — worth it when you're watching
+
+# 1. fill the buffer and start playout  ── terminal 1
+make air                        # = make schedule + make serve; the FIRST run also renders the
+                                # never-dead fallback pool + the disclosure ident
+                                # BUFFER_DEPTH_HOURS=0.25 make air → a quick first fill
+
+# 2. keep it topped up          ── terminal 2 (this is C5's cron, run by hand locally)
+make schedule INTERVAL=300      # also rewrites the playlist + all three public feeds each pass
+
+# 3. serve those feeds to the site, with CORS  ── terminal 3
+make demo-feeds REAL=1          # REAL=1 = the actual segments/ feeds, not the demo ones
+
+# 4. the site                   ── terminal 4
+cd web && NEXT_PUBLIC_STREAM_URL=http://127.0.0.1:8000/settlement.mp3 npm run dev
+```
+
+- **Listen:** <http://127.0.0.1:8000/settlement.mp3> (raw) or <http://localhost:3000/listen>
+  (the player, with now/next, the grid and the voices).
+- `web/.env.local` should already carry `NEXT_PUBLIC_FEEDS_BASE_URL=http://127.0.0.1:8099`; add
+  `NEXT_PUBLIC_COMING_SOON=false` there to see the player as the front page (`/`).
+- **Expect the first fill to be slow:** Kokoro renders in roughly real time on a Mac — about
+  3–4 minutes of wall time per ~6-minute segment, so a full `BUFFER_DEPTH_HOURS=3` fill is a long
+  first run. Lower it for a quick look; the top-up loop keeps it topped up after that.
+- **Every few hours** (optional locally, cron on the box): `make micro-tick`.
+- **Stop everything:** `make stop` (playout), then Ctrl-C the other three terminals.
+- Watch it with `make console`, or `make panel` for the private web console.
 
 ### Watch the queue & regenerate a bad segment  → Phase E panel · **Panel → Schedule** (R5.0)
 The **Schedule** screen (`make panel` → `/schedule`) is the operator's live view over the same
@@ -57,8 +96,8 @@ the bad `segments/<id>.*`; playout is `make serve` / `make stop`.
 **The recurring jobs** (cron/systemd on the box — C5; they are separate, don't fold them):
 - **Scheduler top-up** — `make schedule` (one-shot, the cron shape; `make schedule INTERVAL=300`
   loops locally). Tops the rolling buffer up to `BUFFER_DEPTH_HOURS` of measured audio, rewrites
-  `segments/playlist.txt` (Liquidsoap re-reads it, no restart), refreshes the public now-playing
-  feed, and runs the disk GC + airplay sweep.
+  `segments/playlist.txt` (Liquidsoap re-reads it, no restart), refreshes **all three public feeds**
+  (now-playing + the R7.0 schedule/DJs feeds the web site reads), and runs the disk GC + airplay sweep.
 - **World tick, nightly** — `make world-tick`. *Writes* world state (stories/beats/events,
   figures/quotes); the scheduler *reads* it. Keep `LLM_BATCH_ENABLED=true` on the box (50% Batch
   discount). One-shot; exits non-zero on failure with the store untouched (one transaction).
