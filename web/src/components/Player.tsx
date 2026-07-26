@@ -1,9 +1,7 @@
 "use client";
 
-import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 
-import { DISCLOSURE_LINE } from "@/lib/disclosure";
 import {
   NOWPLAYING_FEED,
   POLL_SECONDS,
@@ -197,27 +195,6 @@ export default function Player() {
 
       <UpNext entries={next} />
 
-      {/* R7.4 replaces this with the shared nav; until then the pages still meet. */}
-      <nav className="flex flex-wrap gap-5 text-sm">
-        <Link
-          href="/schedule"
-          className="text-amber/90 underline-offset-4 transition-colors hover:text-amber hover:underline focus-visible:underline focus-visible:outline-none"
-        >
-          See the whole day&rsquo;s programmes →
-        </Link>
-        <Link
-          href="/voices"
-          className="text-amber/90 underline-offset-4 transition-colors hover:text-amber hover:underline focus-visible:underline focus-visible:outline-none"
-        >
-          Meet the voices →
-        </Link>
-      </nav>
-
-      {/* The AI-disclosure line: visible on every route, in the station's own voice
-          rather than buried in a footer (CLAUDE.md hard rule). */}
-      <p className="max-w-prose text-xs leading-relaxed text-neutral/60">
-        {DISCLOSURE_LINE}
-      </p>
     </div>
   );
 }

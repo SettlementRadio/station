@@ -4,13 +4,14 @@ The Settlement Radio public site (Next.js App Router + TypeScript + Tailwind), d
 [settlementradio.com](https://settlementradio.com) via Vercel (**Root Directory = `web`**). The
 Python station backend lives at the repo root and is never built or deployed by Vercel.
 
-Routes:
+Routes (all three station pages share one shell: masthead, nav, and a footer carrying the letters
+box, the follow links and the AI disclosure):
 
-- **`/`** — the coming-soon screen (A2) with the email signup. Still the front page: the public
-  stream (C7) isn't up yet. R7.4 adds the nav and the `COMING_SOON` flag that flips `/` to the player.
+- **`/`** — **the switch** (R7.4). With `NEXT_PUBLIC_COMING_SOON` on (the default) it's the A2
+  coming-soon screen; set it to `false` and it becomes the player. See *The front-door flag* below.
 - **`/listen`** — the player (R7.1): press play, see what you're hearing. The on-air card (programme,
   tagline, host signal marks, track lore), the transport, and the up-next rail, all driven by the
-  station's public feeds.
+  station's public feeds. Redirects to `/` once the flag is off, so there's one canonical home.
 - **`/schedule`** — Programmes (R7.2): **today** as a rail (time · name · tagline · hosts, with the
   current show lit and scrolled into view) and **the week** as a programme guide — one row per time
   band, one column per day, so the fixed spine and the rotating specialist windows are visible at a
@@ -22,6 +23,44 @@ Routes:
 
 This app is **public and read-only**. The operator/admin surface is NOT here — it's the private,
 VPS-only panel in the Python backend (`make panel`).
+
+## The front-door flag (R7.4)
+
+One switch decides whether the world sees the station or the waiting room:
+
+| `NEXT_PUBLIC_COMING_SOON` | `/` | `/listen` | `/schedule`, `/voices` |
+|---|---|---|---|
+| `true` (default, safe) | coming-soon screen | the player, `noindex` | live, `noindex` |
+| `false` | **the player** | 307 → `/` | live, indexable |
+
+- **Default is the safe state.** The flag is only off when it says exactly `false`, so a missing or
+  mistyped variable can never accidentally advertise a stream that isn't running.
+- **Pre-launch, the station pages still work** — unlinked from the coming-soon screen and marked
+  `noindex`, so you can preview and share them by hand without Google announcing the launch for you.
+- **The redirect is deliberately temporary (307)**, not permanent: flipping the flag back must not be
+  defeated by a cached 308 in everyone's browser.
+- It's a build-time value (`NEXT_PUBLIC_`), so **flipping it means a redeploy** — which is the point.
+  Flipping the front page should be an act, not an accident.
+
+## Deploying (Vercel)
+
+Root Directory = `web`. Set these in **Project → Settings → Environment Variables**, then redeploy
+(all are build-time; changing one without redeploying changes nothing):
+
+| Variable | Production value | Notes |
+|---|---|---|
+| `NEXT_PUBLIC_COMING_SOON` | `true` until launch, then `false` | the front-door flag above |
+| `NEXT_PUBLIC_STREAM_URL` | the C7 stream URL | empty ⇒ the play control is disabled and says so |
+| `NEXT_PUBLIC_FEEDS_BASE_URL` | where the C7 box serves the JSON feeds | needs CORS for this domain |
+| `NEXT_PUBLIC_PLAUSIBLE_DOMAIN` | `settlementradio.com` | empty ⇒ no analytics script at all |
+| `BUTTONDOWN_API_KEY` | the list key | **server-side only**, never `NEXT_PUBLIC_` |
+| `NEXT_PUBLIC_FEED_POLL_SEC` / `NEXT_PUBLIC_SLOW_FEED_POLL_SEC` | leave unset | defaults 20s / 300s |
+| `NEXT_PUBLIC_SUPPORT_URL` | the Ko-fi link at M1 | hidden while unset |
+| `NEXT_PUBLIC_VOICE_SAMPLES` | unset | `true` only once clips exist |
+
+Launch order that never shows a dead player: **C7 stream up → feeds reachable with CORS → set the
+stream/feeds/Plausible vars → redeploy and check `/listen` → only then set `COMING_SOON=false` and
+redeploy again.**
 
 ## Develop
 

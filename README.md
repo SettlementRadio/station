@@ -110,6 +110,12 @@ cuts in on the hour and hands back.
   accent tone, role line, public bio, the shows they present with next-on-air times, and the
   field-correspondent badge for Sera/Orin/Zhe. **No portraits** (canon: listeners know the presenters
   only by their voices), and a test asserts no line of a DJ's card ever reaches the page.
+- **One site, one switch (R7.4)** — the three pages share a shell (masthead + nav + a footer carrying
+  the letters box, the links and the AI disclosure, so "disclosed on every route" is structural). The
+  front door is decided by `NEXT_PUBLIC_COMING_SOON`: on (the default, safe state) `/` is the
+  coming-soon screen and the station pages are live but `noindex`; off, `/` **is** the player and
+  `/listen` redirects to it. Plausible loads only when a domain is configured. Deploy notes +
+  the env-var table: [`web/README.md`](web/README.md).
 
 ## The production layer (sound design + songs — D7)
 The station *sounds produced*: curated jingles/idents/stings air where the grid calls for them, beds

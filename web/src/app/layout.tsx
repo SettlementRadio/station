@@ -1,5 +1,8 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
+import Script from "next/script";
+
+import { OG_IMAGE, PLAUSIBLE_DOMAIN } from "@/lib/site";
 import "./globals.css";
 
 const inter = Inter({
@@ -23,20 +26,13 @@ export const metadata: Metadata = {
     url: "/",
     title,
     description,
-    images: [
-      {
-        url: "/og-image.png",
-        width: 1000,
-        height: 1180,
-        alt: "Settlement Radio — late-night radio from the far future",
-      },
-    ],
+    images: [OG_IMAGE],
   },
   twitter: {
     card: "summary_large_image",
     title,
     description,
-    images: ["/og-image.png"],
+    images: [OG_IMAGE.url],
   },
 };
 
@@ -50,7 +46,18 @@ export default function RootLayout({
       lang="en"
       className={`${inter.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col font-sans">{children}</body>
+      <body className="min-h-full flex flex-col font-sans">
+        {children}
+        {/* MARKETING M1 — privacy-friendly, cookieless analytics, and only when a
+            domain is configured (so local and preview builds send nothing). */}
+        {PLAUSIBLE_DOMAIN && (
+          <Script
+            defer
+            data-domain={PLAUSIBLE_DOMAIN}
+            src="https://plausible.io/js/script.js"
+          />
+        )}
+      </body>
     </html>
   );
 }

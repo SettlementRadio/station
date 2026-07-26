@@ -38,6 +38,49 @@ A typical *build* session will be short, e.g.:
 
 ---
 
+## 2026-07-26 — Phase R — R7.4: one site, one switch — R7 CODE COMPLETE ✅
+**Focus:** the shared shell + nav, the front-door flag, analytics, and the deploy contract. The last
+R7 code task; the deploy itself is the operator's move.
+**Decisions:**
+- **One switch, and its default is the safe one.** `NEXT_PUBLIC_COMING_SOON` decides the front door:
+  on (default) `/` is the A2 coming-soon screen and the station pages are live but `noindex`; off,
+  `/` **is** the player and `/listen` 307s to it. The flag is only off when it reads exactly
+  `false`, so a missing or fat-fingered variable can only ever leave the waiting room up — it can
+  never advertise a stream that isn't running. The redirect is deliberately **temporary**: a 308
+  would be cached in every browser and outlive a flip back.
+- **The chrome is structural, not per-page.** `SiteShell` (a server component — no client JS for
+  nav) gives all three pages one masthead, one nav with `aria-current`, and one footer holding the
+  letters box (the A2 signup, kept, in the station's voice), the follow links and the AI-disclosure
+  line. "Disclosed on every route" is now a property of the shell rather than something each new
+  page has to remember.
+- **Pre-launch pages are unlinked AND `noindex`.** Otherwise Google would happily publish "Listen
+  live — Settlement Radio" for a station with no transmitter.
+- **Analytics only when configured**: the Plausible script renders only if
+  `NEXT_PUBLIC_PLAUSIBLE_DOMAIN` is set, so local and preview builds send nothing.
+**Fixed a real bug found while doing it:** Next merges metadata **shallowly**, so the per-page
+`openGraph` blocks I wrote in R7.1–R7.3 were *replacing* the layout's — `/listen`, `/schedule` and
+`/voices` were shipping **no `og:image`** (every shared link a blank card). All page metadata now
+goes through `pageMetadata()`, which keeps the brand card; verified present on all four routes.
+**Verified:** both flag states end-to-end — flag ON gives `/`=coming-soon + three `noindex` station
+pages; flag OFF gives `/`=player, `/listen`→307→`/`, everything indexable, and the nav's "Listen"
+following the flag. `og:image` and the disclosure line present on all four routes in both states.
+**Lighthouse: accessibility 100, best-practices 100 on all four routes.** Phone nav checked at
+380/320px.
+**Changed:** `web/src/lib/site.ts` (new — the flag, `pageMetadata`, brand OG, follow links),
+`web/src/components/{SiteShell,ComingSoon}.tsx` (new), `SignupForm` moved to `components/`,
+`app/page.tsx` (the switch), the three page files reduced to metadata + a shell + their content,
+`app/layout.tsx` (Plausible + shared OG), `web/.env.example`, `web/README.md` (the flag table + the
+Vercel env-var table + a launch order), README, MARKETING M1.
+**Not done, deliberately:** the production deploy. It's an outward-facing action on the operator's
+Vercel account, and the launch order in `web/README.md` says why it must follow C7: stream up →
+feeds reachable with CORS → set the vars → verify `/listen` → *then* flip the flag.
+**📣 Postable:** the site is one station now — Listen, Programmes, The voices — sitting behind a
+single switch that says whether the world sees it yet.
+**Next:** R7 is code-complete (R7.0–R7.4 ✅). Remaining in Phase R: **R6.1–R6.2** (the chart machinery
++ The Count) once the v3 music lands; then the server track **C5–C9**, which is what actually turns
+the flag off.
+Commit: (pending) · Clips: —
+
 ## 2026-07-26 — Phase R — R7.3: The voices — the cast, by voice
 **Focus:** `/voices` — one card per host from the DJs feed, built around the canon rule that
 listeners know the presenters only by their voices.

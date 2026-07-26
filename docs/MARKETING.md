@@ -171,11 +171,16 @@ other gate — this is warming, not launch.
 ### M1 — Soft launch *(CM — gated by Phase C / C9)*
 The "it's alive" moment, quiet, to existing followers only.
 - [ ] **C9 soak passed** (7 days unattended, safe, AI-disclosed, never-dead, zero rescues).
+- [ ] **The public site flipped live** — R7.4 built it behind `NEXT_PUBLIC_COMING_SOON`;
+      launch order is C7 stream → feeds reachable (CORS) → set the Vercel vars → verify
+      `/listen` → set `COMING_SOON=false` and redeploy (`web/README.md`).
 - [ ] Spoken + on-player + YouTube-description **AI disclosure** verified live (C3).
 - [ ] "It's alive" announcement posted (Station + Maker voice) with the live link.
 - [ ] **Ko-fi live** (+ GitHub Sponsors), framed in the station's voice.
 - [ ] First YouTube clips/Shorts from the live station published.
 - [ ] **Plausible installed** on the web player (so returning-listener tracking starts on day one).
+      *(R7.4: the script is wired into the site and loads as soon as `NEXT_PUBLIC_PLAUSIBLE_DOMAIN`
+      is set in Vercel — so this box is one env var + a redeploy, not a code change.)*
 **Tech gate:** *Do not fire M1 before C9 passes.* A 24/7 stream that stalls or says something unsafe
 in week one is the one first impression you can't redo. Keep it a *soft* launch — the loud one is M4.
 
