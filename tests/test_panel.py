@@ -1328,6 +1328,94 @@ def test_digest_generate_and_store_guards(monkeypatch):
     assert stored[0]["kind"] == "micro-tick" and stored[0]["text"] == text
 
 
+def test_world_view_includes_chart(monkeypatch):
+    """R6.1 — the World view surfaces the daily chart with movement language."""
+    blob = {
+        "date": "2026-06-22",
+        "chart_no": 4,
+        "story_text": "Rest-Day Rock holds the top for a third day running.",
+        "entries": [
+            {
+                "track_id": "a__x",
+                "title": "Rest-Day Rock",
+                "artist": "The Ferry Cats",
+                "story_blurb": None,
+                "rank": 1,
+                "prev_rank": 1,
+                "days_on": 3,
+            },
+            {
+                "track_id": "b__y",
+                "title": "Ice Highway",
+                "artist": "Low Orbit Kings",
+                "story_blurb": None,
+                "rank": 2,
+                "prev_rank": 6,
+                "days_on": 2,
+            },
+        ],
+    }
+    monkeypatch.setattr(world_view.chartmod, "current", lambda conn: blob)
+    view = world_view._chart_view(object())
+    assert view["chart_no"] == 4 and len(view["positions"]) == 2
+    assert view["positions"][0]["movement"] == "holds at one"
+    assert view["positions"][1]["movement"] == "up four"
+
+    # A chart read failure degrades to no-chart, never tanks the World screen.
+    def _boom(conn):
+        raise RuntimeError("no chart state")
+
+    monkeypatch.setattr(world_view.chartmod, "current", _boom)
+    assert world_view._chart_view(object()) is None
+
+
+def test_world_page_renders_the_chart(monkeypatch, no_launch):
+    """/world renders the chart panel + the Update-chart run button (R6.1)."""
+    monkeypatch.setattr(
+        world_view,
+        "view",
+        lambda now=None: {
+            "available": True,
+            "error": None,
+            "digests": [],
+            "pending": [],
+            "arcs": [],
+            "timeline": [],
+            "in_world_today": "Monday 2626-06-22",
+            "chart": {
+                "date": "2026-06-22",
+                "chart_no": 4,
+                "story_text": "A new entry crashes the top five.",
+                "positions": [
+                    {
+                        "rank": 1,
+                        "title": "Rest-Day Rock",
+                        "artist": "The Ferry Cats",
+                        "movement": "holds at one",
+                        "kind": "nonmover",
+                    },
+                    {
+                        "rank": 2,
+                        "title": "Ice Highway",
+                        "artist": "The Low Orbit Kings",
+                        "movement": "up four",
+                        "kind": "up",
+                    },
+                ],
+            },
+        },
+    )
+    client = TestClient(panelapp.app, follow_redirects=False)
+    resp = client.get("/world")
+    assert resp.status_code == 200
+    assert "The Count" in resp.text and "Rest-Day Rock" in resp.text
+    assert "up four" in resp.text and "A new entry crashes the top five." in resp.text
+    assert 'value="chart"' in resp.text  # the Update-chart run button
+
+    r = client.post("/world/run", data={"action_id": "chart"})
+    assert r.status_code == 303 and "started" in r.headers["location"]
+
+
 def test_world_view_assembles_arcs_and_timeline(monkeypatch):
     """view() builds arcs (next planned beat) + today's beats; degrades on DB down."""
     from contextlib import contextmanager

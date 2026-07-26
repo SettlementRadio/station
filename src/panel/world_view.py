@@ -15,9 +15,50 @@ from datetime import datetime
 
 from ..config import settings
 from ..logging_setup import get_logger
+from ..world import chart as chartmod
 from ..world import clock, digest, events, store
 
 log = get_logger(__name__)
+
+
+def _chart_view(conn) -> dict | None:  # noqa: ANN001
+    """The current daily chart for the World screen (R6.1), or None if none built yet.
+
+    Read-only lore: each position with its movement phrase, plus the day's chart story.
+    The 'Update chart' action (E1.1 `world` group) regenerates it; it also rides the
+    nightly tick. Self-degrading: any read failure returns None (no chart shown) rather
+    than failing the whole World screen — the chart is a nice-to-have panel here.
+    """
+    try:
+        blob = chartmod.current(conn)
+    except Exception as exc:  # noqa: BLE001 — a chart read must never 500 the page
+        log.warning("panel_world_chart_unavailable", error=str(exc))
+        return None
+    if not blob or not blob.get("entries"):
+        return None
+    positions = []
+    for e in blob["entries"]:
+        try:
+            entry = chartmod.ChartEntry(
+                **{k: e.get(k) for k in chartmod.ChartEntry.__annotations__}
+            )
+        except TypeError:
+            continue
+        positions.append(
+            {
+                "rank": entry.rank,
+                "title": entry.title,
+                "artist": entry.artist,
+                "movement": entry.movement_phrase(),
+                "kind": entry.movement()[0],  # new | up | down | nonmover (for styling)
+            }
+        )
+    return {
+        "date": blob.get("date"),
+        "chart_no": blob.get("chart_no"),
+        "story_text": blob.get("story_text"),
+        "positions": positions,
+    }
 
 
 def _arc_row(conn, story, now: datetime) -> dict:  # noqa: ANN001
@@ -94,6 +135,7 @@ def view(now: datetime | None = None) -> dict:
             stories = store.active_stories(conn)
             arcs = [_arc_row(conn, s, now) for s in stories]
             timeline = _timeline(conn, stories, now)
+            chart = _chart_view(conn)
     except Exception as exc:  # noqa: BLE001 — the page degrades, never 500s
         log.warning("panel_world_screen_unavailable", error=str(exc))
         return {"available": False, "error": str(exc)}
@@ -105,6 +147,7 @@ def view(now: datetime | None = None) -> dict:
         "pending": pending,
         "arcs": arcs,
         "timeline": timeline,
+        "chart": chart,
         "in_world_today": clock.to_inworld(now).strftime("%A %Y-%m-%d"),
     }
 

@@ -777,8 +777,8 @@ def create_app() -> FastAPI:
 
     @app.post("/world/run")
     def world_run(action_id: str = Form(...)) -> RedirectResponse:
-        """Run the world tick / micro-tick from the World screen (E1.1 machinery)."""
-        if action_id not in {"world-tick", "micro-tick"}:
+        """Run the world tick / micro-tick / chart from the World screen (E1.1)."""
+        if action_id not in {"world-tick", "micro-tick", "chart"}:
             return _redirect("/world?msg=unknown+action")
         try:
             run = actions.start_action(action_id)

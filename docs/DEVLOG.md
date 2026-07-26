@@ -60,14 +60,18 @@ it down and plays it — the machinery behind the R6.0 wave-3 catalogue.
 **Changed:** new `src/world/chart.py`, `src/formats/chart.py`, `tests/test_chart.py` (13 tests);
 `src/formats/__init__.py` (register `chart`), `src/freshness.py` (record chart plays as music airplay),
 `src/world/world_tick.py` (hook the update into the tick job), `src/config.py` (chart + format dials),
-`docs/programming/grid.yaml` (the_count → `[chart]`), `Makefile` (`make chart`). 659 tests green, ruff clean.
+`docs/programming/grid.yaml` (the_count → `[chart]`), `Makefile` (`make chart`). **R6.2 + panel:** the
+chart on **Panel → World** with an "Update chart" run button (`src/panel/world_view.py`,
+`src/panel/actions.py`, `src/panel/app.py`, `templates/world.html`, +2 panel tests); README music
+section, ADMIN_MANUAL `make chart` row, R6 tracker flipped ✅. **661 tests green, ruff clean.**
 **Why:** the wave-3 catalogue (R6.0) exists to feed a moving chart; a deterministic-with-seed random
 walk gives believable day-to-day movement for near-zero cost (no LLM in the ranking), and keeping the
-chart in `state` matches how digests already persist — one seam, not a new table.
+chart in `state` matches how digests already persist — one seam, not a new table. The panel surface is
+read-only lore + one run button, self-degrading so a chart read never 500s the World screen.
 **📣 Postable:** live two-day sim off the real catalogue — Day 1 all debuts, Day 2 "holds at one",
 "up three", "down four", four new entries. The chart moves like a real chart. (commit + `make chart`)
-**Next:** R6.2 — ADMIN_MANUAL music/chart section + panel tag (chart on the World screen), then the
-`featured` tagging pass; flip the R6 tracker row when R6.2 lands.
+**Next:** the `featured` tagging pass on the manifest (which tracks the human wants weighted), then
+R6.1's remaining live check — render a full The Count episode end-to-end once TTS is warm.
 Commit: (pending) · Clips: (none yet)
 
 ## 2026-07-26 — Phase R — R7.4: one site, one switch — R7 CODE COMPLETE ✅

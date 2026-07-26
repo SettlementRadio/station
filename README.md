@@ -149,6 +149,15 @@ duck under speech, and real songs play in the `music` format — all Layer 4
   featured/pinned artists (`MUSIC_SELECT_*` dials). The DJ's intro/back-announce is written around that
   track's lore — the segment airs as one mp3: intro → music bumper → **the track** → back-announce.
   No playable track ⇒ the slot falls back to a spoken evergreen — a silent gap is impossible.
+- **The daily chart & The Count (R6.1)** — a moving **top-10** re-ranked once a night at the tail of
+  `make world-tick` (or `make chart` standalone): a cheap, deterministic-per-day weighted random walk
+  off yesterday's ranks + a novelty boost + the human's `featured` tag — **no LLM in the ranking**
+  ([`src/world/chart.py`](src/world/chart.py); stored in the `state` row `chart:daily`, `CHART_*` dials).
+  Tag a manifest row `chart` to make it chart-eligible. **The Count** (the `chart` format,
+  [`src/formats/chart.py`](src/formats/chart.py) — the `the_count` grid slot) counts down the top N and
+  plays each track with its movement language ("up three", "new entry") and the D20 countdown stings;
+  those spins record to the airplay memory so they don't loop in the ordinary music slots right after.
+  The current chart shows on the operator panel's **World** screen.
 
 ## Commercials & sponsorship (texture, not interruption — D8)
 The station airs **in-world commercials** — but never a rotating ad reel. Every spot is **written

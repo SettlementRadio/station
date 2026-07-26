@@ -34,6 +34,11 @@
       <button type="submit" {% if mutation %}disabled{% endif %}>Micro-tick</button>
       <span class="adesc">A small near-live nudge to one of today's stories (or a quiet run).</span>
     </form>
+    <form method="post" action="/world/run" class="action">
+      <input type="hidden" name="action_id" value="chart">
+      <button type="submit" {% if mutation %}disabled{% endif %}>Update chart</button>
+      <span class="adesc">Re-rank the daily music chart The Count counts down (also rides the tick).</span>
+    </form>
   </div>
 </section>
 
@@ -87,6 +92,34 @@
       <div class="digest-text">{{ d.text }}</div>
     </details>
     {% endfor %}
+  {% endif %}
+</section>
+
+<!-- The daily chart (R6.1 — what The Count counts down) -->
+<section class="card span-full">
+  <h2>The Count — today's chart
+    {% if w.chart %}<span class="sub">· chart #{{ w.chart.chart_no }} · {{ w.chart.date }}</span>{% endif %}
+  </h2>
+  {% if not w.chart %}
+    <div class="sub">no chart yet — run “Update chart” above (or it builds on the next world tick).</div>
+  {% else %}
+    {% if w.chart.story_text %}<div class="digest-text">★ {{ w.chart.story_text }}</div>{% endif %}
+    <table class="rows">
+      <tr><th>#</th><th>Track</th><th>Artist</th><th>Movement</th></tr>
+      {% for p in w.chart.positions %}
+      <tr>
+        <td class="mono">{{ p.rank }}</td>
+        <td>{{ p.title }}</td>
+        <td class="sub">{{ p.artist }}</td>
+        <td>
+          {% if p.kind == 'new' %}<span class="ok">{{ p.movement }}</span>
+          {% elif p.kind == 'up' %}<span class="planned">▲ {{ p.movement }}</span>
+          {% elif p.kind == 'down' %}<span class="sub">▼ {{ p.movement }}</span>
+          {% else %}<span class="sub">{{ p.movement }}</span>{% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </table>
   {% endif %}
 </section>
 

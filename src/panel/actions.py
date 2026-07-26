@@ -122,6 +122,13 @@ _ACTION_LIST: tuple[Action, ...] = (
         "world",
     ),
     Action(
+        "chart",
+        "Update chart",
+        "Re-rank the daily music chart The Count counts down (rides the nightly tick).",
+        ("src.world.chart",),
+        "world",
+    ),
+    Action(
         "schedule",
         "Schedule top-up",
         "Top up the rolling buffer to depth + "
