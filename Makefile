@@ -10,6 +10,7 @@
 #   make console    Read-only operator status: on-air/next, buffer, story log (D6.3).
 #   make now-playing Write + print the PUBLIC now-playing feed for the web player (D6.4).
 #   make public-feeds Write + print the PUBLIC schedule + DJs feeds for the site (R7.0).
+#   make demo-feeds  Serve the public feeds (with CORS) to a local `npm run dev` site (R7.1).
 #   make seed-canon Refresh the world from the canon bible (safe; keeps tick state).
 #   make reset-world DESTRUCTIVE full world+canon wipe + rebuild (warns/confirms).
 #   make seed-tracks Refresh the curated tracks catalogue from config/tracks.yaml (D7).
@@ -42,7 +43,7 @@ LIQ_LOG    := $(RUN_DIR)/liquidsoap.log
 PLAYER_URL := http://127.0.0.1:8000/
 STREAM_URL := http://127.0.0.1:8000/settlement.mp3
 
-.PHONY: help generate serve air play play-convo stop status console timeline panel now-playing public-feeds seed seed-canon reset-world seed-tracks seed-sponsors demo context costprobe costprobe-ab conversation format buffer schedule ident prune fallback health world-tick news-demo figures-demo freshness-demo continuity-demo journal-demo programming-demo commercials-demo acceptance jingle-audit micro-tick
+.PHONY: help generate serve air play play-convo stop status console timeline panel now-playing public-feeds demo-feeds seed seed-canon reset-world seed-tracks seed-sponsors demo context costprobe costprobe-ab conversation format buffer schedule ident prune fallback health world-tick news-demo figures-demo freshness-demo continuity-demo journal-demo programming-demo commercials-demo acceptance jingle-audit micro-tick
 
 # B5 format default: `make format` builds a talk segment; override with FMT=news
 # or FMT=music. Pass a TOPIC=... to steer canon retrieval.
@@ -71,6 +72,7 @@ help:
 	@echo "  make panel     private operator PANEL (loopback web UI): status + controls (E1)"
 	@echo "  make now-playing write + print the public now-playing feed (D6.4)"
 	@echo "  make public-feeds write + print the public schedule + DJs feeds (R7.0)"
+	@echo "  make demo-feeds  serve the feeds with CORS for local web dev (R7.1)"
 	@echo "  make seed-canon  refresh the world from docs/canon/ (safe; keeps tick state)"
 	@echo "  make reset-world DESTRUCTIVE full world+canon wipe + rebuild (warns/confirms)"
 	@echo "  make demo      show the progressing-event relative-time flip (B2)"
@@ -354,6 +356,14 @@ now-playing:
 # The scheduler refreshes both on every top-up; this target is for standalone checks.
 public-feeds:
 	@$(PY) -m src.publicfeeds
+
+# Dev convenience for the /web player (R7.1): serve the public feeds on :8099 WITH the
+# CORS header a browser needs, so a local `npm run dev` site can read them. By default
+# it synthesises a now-playing feed from the REAL grid (a dev box has no scheduler
+# top-up, so the real one says "nothing on air"); `make demo-feeds REAL=1` serves
+# segments/ as-is. Never writes into segments/; never runs on the VPS.
+demo-feeds:
+	@$(PY) scripts/serve_demo_feeds.py $(if $(REAL),--real,)
 
 # Programming backbone demo (D6.5): shows the weekly grid drive named programs +
 # hosts + framing by daypart, the per-program clock (run-lengths, pinned top-of-hour

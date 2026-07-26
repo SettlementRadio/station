@@ -24,30 +24,34 @@ cp .env.example .env.local   # then fill in BUTTONDOWN_API_KEY
 npm run dev   # http://localhost:3000
 ```
 
-### Running the player against real feeds, locally
+### Seeing the player with something on air
 
-The player reads the station's JSON feeds cross-origin, so serve them with a CORS header and point
-the app at them. From the repo root, with the backend's `segments/` populated (`make public-feeds`):
+`npm run dev` alone gives you `/listen` with its no-feed fallback (a static on-air card, the play
+control disabled) — correct, but dull. To see it populated, serve the station's feeds **with CORS**
+from the repo root in a second terminal and point the app at them:
 
 ```bash
-# 1. serve the feeds with CORS on :8099
-.venv/bin/python - <<'EOF'
-import http.server, functools
-class H(http.server.SimpleHTTPRequestHandler):
-    def end_headers(self):
-        self.send_header("Access-Control-Allow-Origin", "*")
-        super().end_headers()
-http.server.ThreadingHTTPServer(("127.0.0.1", 8099),
-    functools.partial(H, directory="segments")).serve_forever()
-EOF
+# terminal 1 (repo root) — feeds on :8099, with a demo "now" built from the real grid
+make demo-feeds            # add REAL=1 to serve segments/ as-is instead
 
-# 2. point the app at them (any mp3 URL stands in for the stream while C7 is unbuilt)
-cd web && NEXT_PUBLIC_FEEDS_BASE_URL=http://127.0.0.1:8099 \
-  NEXT_PUBLIC_STREAM_URL=http://127.0.0.1:8099/some-track.mp3 npm run dev
+# terminal 2
+cd web && NEXT_PUBLIC_FEEDS_BASE_URL=http://127.0.0.1:8099 npm run dev
 ```
 
-Then open <http://localhost:3000/listen>. With no feed URL set the page still works — it shows a
-static "Settlement Radio" on-air card and (if a stream URL is set) still plays.
+Then open <http://localhost:3000/listen>. The demo now-playing feed exists because a dev box has
+run no scheduler top-up, so the real `nowplaying.json` correctly says nothing is on air.
+
+To actually **hear** it, run the real local stream and point the player at it:
+
+```bash
+# terminal 1 (repo root) — generates segments and serves Icecast (costs Claude + TTS)
+make air
+# terminal 2 (repo root)
+make demo-feeds REAL=1
+# terminal 3
+cd web && NEXT_PUBLIC_FEEDS_BASE_URL=http://127.0.0.1:8099 \
+  NEXT_PUBLIC_STREAM_URL=http://127.0.0.1:8000/settlement.mp3 npm run dev
+```
 
 ## Email signup (Buttondown)
 
