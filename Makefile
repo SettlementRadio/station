@@ -151,6 +151,14 @@ micro-tick:
 	@echo "==> Running one intra-day micro-tick (R4.1)…"
 	$(PY) -m src.world.micro_tick
 
+# R6.1: re-rank the daily music chart The Count counts down. Normally runs at the tail
+# of `make world-tick`; this target runs it standalone for a quick look/regen. Cheap +
+# deterministic-per-day (a weighted random walk off yesterday's chart), plus one optional
+# haiku line for the day's chart story. Needs `make seed-tracks` + .env.
+chart:
+	@echo "==> Updating the daily chart (R6.1)…"
+	$(PY) -m src.world.chart
+
 # D4: show the news desk read the living story log across a SIMULATED day — one story
 # goes breaking → repeated → repeated-and-evolved → referenced-as-past while another is
 # steadily trailed. Deterministic + token-free (no Claude/TTS); seeds its own demo

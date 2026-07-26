@@ -32,8 +32,15 @@ def test_split_on_marker_without_marker_is_one_part():
 
 
 def test_registry_has_the_formats():
-    # The B5 trio plus D8.0's two spot entries (one builder, two modes).
-    assert set(formats.FORMATS) == {"news", "talk", "music", "commercial", "promo"}
+    # The B5 trio, D8.0's two spot entries (one builder, two modes), and R6.1's chart.
+    assert set(formats.FORMATS) == {
+        "news",
+        "talk",
+        "music",
+        "commercial",
+        "promo",
+        "chart",
+    }
     for spec in formats.FORMATS.values():
         assert callable(spec.build)
         assert list(spec.speaker_ids())  # resolves to at least one cast id

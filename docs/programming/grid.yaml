@@ -451,7 +451,7 @@ programs:
     hosts: [orin]
     framing: solo
     daypart: late afternoon
-    clock: [music, music, music]
+    clock: [chart]                # R6.1 — one countdown episode plays the top N (was music x3)
     break_every: 4
     energy: bright
     brief: >-

@@ -32,6 +32,7 @@ from ..world.context import AssembledContext
 
 # Import the builders under aliases so the submodules (`formats.news`, etc.) keep
 # their names — `make_format_segment` is the public entry point, not the builders.
+from .chart import chart as build_chart
 from .commercial import commercial as build_commercial
 from .commercial import promo as build_promo
 from .music import music as build_music
@@ -58,6 +59,9 @@ FORMATS: dict[str, FormatSpec] = {
     "news": FormatSpec(build_news, lambda: [settings.format_news_speaker_id]),
     "talk": FormatSpec(build_talk, lambda: settings.convo_speaker_ids),
     "music": FormatSpec(build_music, lambda: [settings.format_music_speaker_id]),
+    # R6.1 — The Count, the daily chart show (the `chart` clock step). One host
+    # counts down + plays the top N of the moving chart (src/world/chart.py).
+    "chart": FormatSpec(build_chart, lambda: [settings.format_chart_speaker_id]),
     # D8.0 — one builder, two entries: `commercial` (fictional product spot) and
     # `promo` (station self-promo) share src/formats/commercial.py's gate+render
     # plumbing; the mode is bound per entry.

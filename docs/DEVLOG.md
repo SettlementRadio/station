@@ -38,6 +38,38 @@ A typical *build* session will be short, e.g.:
 
 ---
 
+## 2026-07-26 — Phase R — R6.1: the moving chart + The Count
+**Focus:** a daily music chart that actually moves, and the `chart` format (The Count) that counts
+it down and plays it — the machinery behind the R6.0 wave-3 catalogue.
+**Decisions:**
+- **The chart is a scoring problem, not an LLM's opinion** — same posture as the D7.4 selector.
+  `chart.compute_chart(tracks, prev, size, seed)` is a PURE function: yesterday's ranks carry
+  momentum (bounded random walk), novelty lifts recent entries (decays with `days_on`), debuts get
+  a mid-pack seeded leap, and the human's `featured` tag is the one thumb on the scale. Seeded from
+  the date, so each day is deterministic yet different — a chart that moves but keeps a stable core.
+- **State in the `state` kv row `chart:daily`** (JSON blob) — RUNTIME state that survives seed-canon
+  and is cleared by reset-world (§2a), mirroring the tick digest. Updated once at the tail of the
+  nightly tick job (`chart.update_and_store`), best-effort, never fatal — never in the scheduler loop.
+- **The Count plays the songs** — `formats/chart.py` reads the top N, writes the whole episode in one
+  LLM call (an intro per position with the exact movement language + the song's own story, counting
+  down), and stitches sting → intro → track per position with the D20 countdown ramp. Every played
+  track is recorded in the D5 airplay memory (via `chart_tracks` meta) so the chart's spins don't
+  loop again in the ordinary music slots right after. Grid: `the_count` clock `[music×3]` → `[chart]`.
+- **The day's chart story** (climber/new entry/holdout) is picked deterministically from the movement;
+  the one-line narration is an optional, best-effort haiku call Orin opens on.
+**Changed:** new `src/world/chart.py`, `src/formats/chart.py`, `tests/test_chart.py` (13 tests);
+`src/formats/__init__.py` (register `chart`), `src/freshness.py` (record chart plays as music airplay),
+`src/world/world_tick.py` (hook the update into the tick job), `src/config.py` (chart + format dials),
+`docs/programming/grid.yaml` (the_count → `[chart]`), `Makefile` (`make chart`). 659 tests green, ruff clean.
+**Why:** the wave-3 catalogue (R6.0) exists to feed a moving chart; a deterministic-with-seed random
+walk gives believable day-to-day movement for near-zero cost (no LLM in the ranking), and keeping the
+chart in `state` matches how digests already persist — one seam, not a new table.
+**📣 Postable:** live two-day sim off the real catalogue — Day 1 all debuts, Day 2 "holds at one",
+"up three", "down four", four new entries. The chart moves like a real chart. (commit + `make chart`)
+**Next:** R6.2 — ADMIN_MANUAL music/chart section + panel tag (chart on the World screen), then the
+`featured` tagging pass; flip the R6 tracker row when R6.2 lands.
+Commit: (pending) · Clips: (none yet)
+
 ## 2026-07-26 — Phase R — R7.4: one site, one switch — R7 CODE COMPLETE ✅
 **Focus:** the shared shell + nav, the front-door flag, analytics, and the deploy contract. The last
 R7 code task; the deploy itself is the operator's move.

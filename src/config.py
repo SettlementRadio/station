@@ -360,6 +360,16 @@ class Settings(BaseSettings):
     # Real song scheduling is Phase C playout; here the slot is just this marker,
     # kept in the script and recorded in the Segment meta, never spoken.
     format_music_song_marker: str = "[SONG]"
+    # R6.1 — The Count (the `chart` format): one episode counts down the top N of the
+    # daily chart, each position PLAYING its track (stitched with the D20 countdown
+    # stings), intro lines drawn from the track's story + its chart movement. Speaker
+    # is grid-driven (the_count → orin); this default only serves the direct path.
+    format_chart_speaker_id: str = "orin"
+    format_chart_top_n: int = 5  # how many chart positions The Count plays (N..1)
+    format_chart_words_low: int = 220
+    format_chart_words_high: int = 340
+    format_chart_max_tokens: int = 900
+    format_chart_length_target_sec: int = 120  # spoken frame only; +track durations
 
     # --- Nightly buffer (B6: light pre-generated buffer; bridge to Phase C) ----
     # `make buffer` generates a small, varied run of segments in one go — the mind
@@ -632,6 +642,27 @@ class Settings(BaseSettings):
     world_digest_tier: str = "haiku"
     world_digest_max_tokens: int = 400
     world_digest_keep: int = 20  # recent digests retained for the World screen
+
+    # --- The daily chart (R6.1: the moving chart The Count counts down) ---------
+    # A cheap, deterministic-with-seed daily re-rank of the chart-eligible catalogue,
+    # run at the end of the nightly tick job (never in the scheduler loop). The chart
+    # is a JSON blob in the `state` row `chart:daily` — RUNTIME state that survives
+    # seed-canon and is cleared by reset-world (§2a). The update is a weighted random
+    # walk off yesterday's ranks + a novelty boost for recent entries + the human's
+    # `featured` tag, so the chart plausibly MOVES day to day without an LLM. One
+    # optional haiku call narrates the day's chart story (climber/new entry/holdout).
+    chart_enabled: bool = True
+    chart_size: int = 10  # how many positions the chart holds (The Count plays top N)
+    chart_min_tracks: int = 3  # need at least this many eligible tracks to run
+    chart_eligible_tag: str = "chart"  # manifest tag marking a chart candidate
+    chart_random_walk: float = 3.0  # ± rank-points a holdover drifts each day
+    chart_new_entry_base: float = 3.0  # a debut's baseline momentum (mid-pack)
+    chart_new_entry_spread: float = 4.0  # how far a debut can leap on entry
+    chart_freshness_weight: float = 1.5  # novelty boost, decaying with days_on chart
+    chart_featured_weight: float = 4.0  # the human's `featured`/`pinned` tag boost
+    chart_story_enabled: bool = True  # narrate the day's chart story (haiku, optional)
+    chart_story_tier: str = "haiku"
+    chart_story_max_tokens: int = 160
 
     # --- News desk (D4: the story-log-driven bulletin) -------------------------
     # The desk (src/formats/news.py) no longer asks for N flat headlines; it SELECTS

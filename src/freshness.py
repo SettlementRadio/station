@@ -226,7 +226,14 @@ def record_segment(seg: Segment) -> bool:
     sidecar/disk-GC housekeeping — a DB hiccup here is logged, never fatal (the audio
     aired fine; only the freshness memory misses one row). Returns True if a row was
     written.
+
+    R6.1 — a `chart` segment (The Count) PLAYS several tracks in one slot, so it
+    records one MUSIC airplay row per played track (`meta["chart_tracks"]`), exactly
+    as if each had aired in an ordinary music slot. That keeps the chart's spins from
+    looping again in the music slots right after (the selector's D5 freshness veto).
     """
+    if seg.format == "chart":
+        return _record_chart_plays(seg)
     record = extract_features(seg)
     if record is None:
         return False
@@ -236,6 +243,43 @@ def record_segment(seg: Segment) -> bool:
         return True
     except Exception as exc:  # noqa: BLE001 — freshness memory must not break playout
         log.warning("airplay_record_failed", seg_id=seg.id, error=str(exc))
+        return False
+
+
+def _record_chart_plays(seg: Segment) -> bool:
+    """Record one `music` airplay row per track The Count played (R6.1). Best-effort."""
+    if seg.meta.get("fallback") or not seg.air_time:
+        return False
+    try:
+        aired_at = datetime.fromisoformat(seg.air_time)
+    except ValueError:
+        log.warning("airplay_bad_air_time", seg_id=seg.id, air_time=seg.air_time)
+        return False
+    plays = seg.meta.get("chart_tracks") or []
+    written = 0
+    try:
+        with store.connect() as conn:
+            for play in plays:
+                tid = play.get("id")
+                if not tid:
+                    continue
+                artist = play.get("artist")
+                features = [f"{ARTIST_FEATURE_PREFIX}{artist}"] if artist else []
+                store.record_airplay(
+                    conn,
+                    store.AirplayRecord(
+                        seg_id=seg.id,
+                        format="music",  # a chart spin IS a music play for freshness
+                        aired_at=aired_at,
+                        topic=str(tid),
+                        opening=None,
+                        features=features,
+                    ),
+                )
+                written += 1
+        return written > 0
+    except Exception as exc:  # noqa: BLE001 — freshness memory must not break playout
+        log.warning("chart_airplay_record_failed", seg_id=seg.id, error=str(exc))
         return False
 
 

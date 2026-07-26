@@ -1712,13 +1712,15 @@ def main() -> int:
     own timers — the nightly tick feeds the buffer the scheduler tops up.
     """
     from .. import usage
-    from . import digest
+    from . import chart, digest
 
     try:
         with usage.job("tick"):
             r = run_tick()
             # R5.2 — a short operator digest of what changed (best-effort, never fatal).
             digest.generate_and_store(r, kind="tick")
+            # R6.1 — re-rank the daily chart for The Count (best-effort, never fatal).
+            chart.update_and_store()
     except Exception as exc:  # noqa: BLE001 — fail loud for the timer; store rolled back
         log.error("world_tick_failed", error=str(exc))
         usage.flush()  # money spent on batch calls even if the tick rolled back
