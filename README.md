@@ -20,8 +20,17 @@ the science-fiction authors who taught a generation to imagine a kinder future.
 It's also being built almost entirely by AI agents — and in the open.
 
 ## Listen
-- 🎧 Live stream: Cooming soon
+- 🎧 Live stream: coming soon
 - 🌍 [settlementradio.com]
+
+## Run it yourself (locally)
+```bash
+make station        # everything: generation, playout, the feeds, the site, the panel
+make station-stop
+```
+Then open the operator panel at <http://127.0.0.1:8787/> (the site is on
+<http://localhost:3000/>, the raw stream on <http://127.0.0.1:8000/settlement.mp3>). First-time
+setup, the world seed and the per-piece detail are in [`docs/ADMIN_MANUAL.md`](docs/ADMIN_MANUAL.md).
 
 ## What it is
 - A continuous, time-aware broadcast — generated ahead of air, played out 24/7.

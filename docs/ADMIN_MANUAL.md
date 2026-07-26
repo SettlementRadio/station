@@ -28,7 +28,8 @@ All commands from the repo root; live-generation commands need a populated `.env
 
 | Do | Command |
 |---|---|
-| Start the stream (top up the buffer + serve the playlist) | `make air` |
+| **Run the whole station (then use the panel)** | **`make station`** / `make station-stop` |
+| Start the stream only (top up the buffer + serve the playlist) | `make air` |
 | Serve only (Icecast + Liquidsoap over the current playlist) | `make serve` |
 | Stop playout (no orphans) | `make stop` |
 | Playout processes + mount state | `make status` |
@@ -40,41 +41,47 @@ All commands from the repo root; live-generation commands need a populated `.env
 **Playout start/stop/restart + the queue** are also on the panel — see *Watch the queue &
 regenerate a bad segment* below.
 
-### The whole station on one machine (backend + playout + site)
-
-Real broadcast, no demo data. Four terminals from the repo root; each step below was run
-end-to-end on 2026-07-26 (a real segment generated, Icecast serving it, the site playing it).
+### The whole station on one machine — ONE command
 
 ```bash
-# 0. once per day-ish: give the world something to talk about (skip if a tick ran today)
-make world-tick                 # add LLM_BATCH_ENABLED=false to get it back in seconds, not
-                                # via the Batch queue — worth it when you're watching
-
-# 1. fill the buffer and start playout  ── terminal 1
-make air                        # = make schedule + make serve; the FIRST run also renders the
-                                # never-dead fallback pool + the disclosure ident
-                                # BUFFER_DEPTH_HOURS=0.25 make air → a quick first fill
-
-# 2. keep it topped up          ── terminal 2 (this is C5's cron, run by hand locally)
-make schedule INTERVAL=300      # also rewrites the playlist + all three public feeds each pass
-
-# 3. serve those feeds to the site, with CORS  ── terminal 3
-make demo-feeds REAL=1          # REAL=1 = the actual segments/ feeds, not the demo ones
-
-# 4. the site                   ── terminal 4
-cd web && NEXT_PUBLIC_STREAM_URL=http://127.0.0.1:8000/settlement.mp3 npm run dev
+make station          # starts everything, then get out of the terminal
+make station-stop     # …and puts it all down again
 ```
 
-- **Listen:** <http://127.0.0.1:8000/settlement.mp3> (raw) or <http://localhost:3000/listen>
-  (the player, with now/next, the grid and the voices).
-- `web/.env.local` should already carry `NEXT_PUBLIC_FEEDS_BASE_URL=http://127.0.0.1:8099`; add
-  `NEXT_PUBLIC_COMING_SOON=false` there to see the player as the front page (`/`).
-- **Expect the first fill to be slow:** Kokoro renders in roughly real time on a Mac — about
-  3–4 minutes of wall time per ~6-minute segment, so a full `BUFFER_DEPTH_HOURS=3` fill is a long
-  first run. Lower it for a quick look; the top-up loop keeps it topped up after that.
-- **Every few hours** (optional locally, cron on the box): `make micro-tick`.
-- **Stop everything:** `make stop` (playout), then Ctrl-C the other three terminals.
-- Watch it with `make console`, or `make panel` for the private web console.
+That's it. It prints three URLs; the only one you need is the **panel**:
+
+| | |
+|---|---|
+| **Panel** | <http://127.0.0.1:8787/> — your control surface (also `make panel` alone) |
+| Site | <http://localhost:3000/> — the public player / programmes / voices |
+| Stream | <http://127.0.0.1:8000/settlement.mp3> — raw audio |
+
+**In the panel**, from then on: **Actions → World tick** when you want fresh stories,
+**Schedule** to watch the queue or stop/start playout, **World** for the digest and the
+major-event queue. Nothing else needs a terminal.
+
+<details><summary>What <code>make station</code> actually starts (each = one VPS service in C5)</summary>
+
+| Piece | Local | On the box (C5/C7) |
+|---|---|---|
+| Rolling top-up (generates segments, rewrites the playlist + all three feeds) | `src.scheduler --interval 300` | the scheduler systemd timer |
+| Playout | Icecast + Liquidsoap via `make serve` | playout systemd services |
+| Public feeds with CORS | `scripts/serve_demo_feeds.py --real` | nginx |
+| The site | `npm run dev` in `web/` | Vercel |
+| Operator panel | `src.panel` | `settlement-panel.service` |
+
+Logs are `.run/<piece>.log`, PIDs `.run/<piece>.pid`; `make station-status` shows what's up.
+Re-running `make station` adopts whatever is already running and only restarts what died, so
+it's safe to run twice. Override the top-up cadence with `INTERVAL=600 make station`.
+It is NOT a supervisor: if a piece dies it stays dead and shows as down — this is a laptop,
+not the box.
+</details>
+
+**Two things to expect on a first run:** the world tick is worth running once a day
+(`Actions → World tick`, or `LLM_BATCH_ENABLED=false make world-tick` for a fast synchronous
+one), and the first buffer fill takes a few minutes — Kokoro renders at roughly real time, so
+~3–4 min per 6-minute segment. Until a segment lands, playout airs the never-dead fallback
+rather than silence.
 
 ### Watch the queue & regenerate a bad segment  → Phase E panel · **Panel → Schedule** (R5.0)
 The **Schedule** screen (`make panel` → `/schedule`) is the operator's live view over the same

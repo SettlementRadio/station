@@ -7,6 +7,8 @@
 #   make play-convo generate a two-DJ conversation + serve it (B4; see note below).
 #   make stop       Stop Icecast + Liquidsoap (no orphans left behind).
 #   make status     Show what's running and the mount state.
+#   make station    START THE WHOLE STATION (top-up + playout + feeds + site + panel).
+#   make station-stop  Stop all of it again.
 #   make console    Read-only operator status: on-air/next, buffer, story log (D6.3).
 #   make now-playing Write + print the PUBLIC now-playing feed for the web player (D6.4).
 #   make public-feeds Write + print the PUBLIC schedule + DJs feeds for the site (R7.0).
@@ -43,7 +45,7 @@ LIQ_LOG    := $(RUN_DIR)/liquidsoap.log
 PLAYER_URL := http://127.0.0.1:8000/
 STREAM_URL := http://127.0.0.1:8000/settlement.mp3
 
-.PHONY: help generate serve air play play-convo stop status console timeline panel now-playing public-feeds demo-feeds seed seed-canon reset-world seed-tracks seed-sponsors demo context costprobe costprobe-ab conversation format buffer schedule ident prune fallback health world-tick news-demo figures-demo freshness-demo continuity-demo journal-demo programming-demo commercials-demo acceptance jingle-audit micro-tick
+.PHONY: help generate serve air play play-convo stop status console timeline panel station station-stop station-status now-playing public-feeds demo-feeds seed seed-canon reset-world seed-tracks seed-sponsors demo context costprobe costprobe-ab conversation format buffer schedule ident prune fallback health world-tick news-demo figures-demo freshness-demo continuity-demo journal-demo programming-demo commercials-demo acceptance jingle-audit micro-tick
 
 # B5 format default: `make format` builds a talk segment; override with FMT=news
 # or FMT=music. Pass a TOPIC=... to steer canon retrieval.
@@ -67,6 +69,8 @@ help:
 	@echo "  make serve     start Icecast + Liquidsoap (loops newest segment)"
 	@echo "  make stop      stop Icecast + Liquidsoap"
 	@echo "  make status    show what's running (playout pids + mount)"
+	@echo "  make station   START EVERYTHING (top-up + playout + feeds + site + panel), then use the panel"
+	@echo "  make station-stop stop everything make station started"
 	@echo "  make console   read-only station status: on-air/next, buffer, story log (D6.3)"
 	@echo "  make timeline  private web timeline: on-air progress, queued next, the grid ahead"
 	@echo "  make panel     private operator PANEL (loopback web UI): status + controls (E1)"
@@ -350,6 +354,20 @@ timeline:
 # NEVER internet-exposed (CLAUDE.md hard rule: public read-only, admin private).
 panel:
 	@$(PY) -m src.panel
+
+# THE ONE COMMAND. Starts every piece of the station on this machine — the rolling
+# top-up (which generates segments and refreshes the public feeds), Icecast +
+# Liquidsoap, the feeds with CORS, the web site, and the operator panel — then leaves
+# the PANEL as the only surface you need. Each piece is the local stand-in for what
+# the VPS runs as a systemd unit/timer (C5). Top-up cadence: INTERVAL=600 make station.
+station:
+	@scripts/station.sh start
+
+station-stop:
+	@scripts/station.sh stop
+
+station-status:
+	@scripts/station.sh status
 
 # Public now-playing / program-info feed (D6.4): write the small JSON the C8 web
 # player reads (on-now/next + program + hosts + disclosure) and print it. PUBLIC-SAFE
