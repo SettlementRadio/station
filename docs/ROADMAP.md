@@ -180,6 +180,52 @@ enough depth to come back tomorrow.
 
 ---
 
+## Phase R — "Real Radio" refresh (build) — ✅ CODE COMPLETE
+
+The operator's 2026-07-19 listening audit: the grid ran long slow blocks, the DJs talked like
+academics, and programme content drifted to philosophy instead of a living world. R answered it in
+seven packs — editorial **briefs + the register overhaul** (R1), the **24-hour GRID_V2 week** of two
+flagships plus ~20 short fixtures (R2), jingle validation + batch 3 (R3), the **living day**
+(same-day story arcs + intra-day micro-ticks, R4), the **operator panel extensions** (R5), the
+**music expansion + the moving chart** (R6), and the **public web front** — Listen / Programmes /
+Voices behind a `COMING_SOON` flag (R7). Pack: `docs/PHASE_R_TASKS.md`.
+**DONE WHEN:** ✅ done — R1–R7 all built. R7's deploy is the one thing still pending, and it waits on
+C7 (a stream to point at).
+
+---
+
+## Phase Q — Quality: supply, form & register (build) ← THE GATE ON THE SOAK
+
+The **2026-07-26 external audit** (real API probes against the live world) found that R1's register
+fix genuinely worked — and that what remains is **structural, not prompt-level**. The station
+consumes ~150 content slots a day while the world engine produces **2–4 stories a night**, and
+**63.5% of content slots run the single `talk` code path**. Nearly everything that still reads as
+"not a real station" falls out of those two numbers.
+
+Q is therefore a *measurement-first* pack: **Q0 builds `make audit` and commits a baseline JSON**
+before anything changes, every later pack is gated by `make gate PACK=Qn` (exits non-zero on a
+miss), and **Q8's final audit runs in a separate, unbriefed session** against a standalone brief.
+Master pack: **`docs/PHASE_Q_TASKS.md`** (the measured baseline in §1, the fixes in §3); the
+auditor's brief: **`docs/PHASE_Q_AUDIT_BRIEF.md`**; the reference probes the audit actually ran:
+`scripts/audit_seed/`.
+
+**The packs:** Q0 audit harness + baseline · Q1 **story supply** (a cheap high-volume small-items
+generator — the keystone) · Q2 bounded/ranked context + finally wiring D2's RAG, which has never run
+in production · Q3 three new **formats** (round-up / letters / interview) · Q4 per-programme news
+length + a second anchor + the rota · Q5 register **at the source** (the tick's own prompt) · Q6 the
+D12 verbatim-repeat fix + widening freshness · Q7 model refresh (Sonnet 5 / Opus 5) + batching the
+scheduler's deep buffer · Q8 the independent audit.
+
+**YOU:** four short operator gates (Q1.1, Q3.1, Q5.0, Q7.1) where you read a blind sample and
+answer — the building agent never scores its own work; then open the fresh Q8 session and tell it
+nothing.
+**CLAUDE CODE:** Q0→Q7, one pack per session, each ending in its own numeric gate.
+**DONE WHEN:** Q8's unbriefed session reports the deltas and answers, in plain words, whether it
+reads like a real station. **This gates the C9 soak** — Q1–Q7 change what the soak would be
+listening to, so soak after Q lands.
+
+---
+
 ## DM — Loud launch + sponsorship (marketing) ← THE COMMERCIAL GOAL
 
 **YOU:** record/approve the **hero clip**; publish the **case study + tribute essay** (Claude drafts,

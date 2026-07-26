@@ -38,6 +38,78 @@ A typical *build* session will be short, e.g.:
 
 ---
 
+## 2026-07-26 — Audit — external quality audit + Phase Q planned (the supply/form/register pack)
+**Focus:** an operator-commissioned external audit of everything built so far — *does it read like a
+real radio station?* — run against the live world with **real Anthropic calls, TTS mocked, all writes
+rolled back**. Then the fix pack it produced.
+**The verdict:** **not a dead end, and not done.** R1's register fix genuinely worked — the DJs no
+longer talk like academics (5.4 contractions/100w, zero banned abstractions on daytime shows). What
+is still wrong is **structural, not prompt-level**: the station consumes ~150 content slots a day
+and the world engine produces **2–4 stories a night**. Nearly everything the operator disliked falls
+out of that one ratio.
+**The findings that matter (full baseline in `docs/PHASE_Q_TASKS.md` §1):**
+- **Supply.** 23 active stories vs ~150 slots/day ≈ **6 airings per story per day**. Proved rather
+  than asserted: the same four shows generated **twice in separate processes with no shared state**
+  picked the **identical beat 3 times out of 4**; "Cold Harbor" is named **23 times** across four
+  segments on four different programmes. The showrunner isn't unimaginative — there is nothing else
+  to pick.
+- **Form.** **63.5% of content slots are the single `talk` code path**, 23.6% news. 35 programme
+  names, but only 4 formats ever appear in a grid clock, and `commercial`/`promo` are break-fillers
+  — so effectively **two forms carry 87% of the station**.
+- **Register at the source.** R1 fixed the DJs and never reached the world: the tick's propose prompt
+  has **no register instruction at all**, so every figure in the world is an aphorist — **1 of 120
+  stored quotes contains any hedge**, and **92% of story titles** share one schema.
+- **Not spoken, merely plain.** 1.7 hedges/filler per 1000 words against 30–60 in real transcripts;
+  20% of turns run 40+ words. Every line lands, which is exactly what a live mic doesn't do.
+- **D12's verbatim repeat is still live** — a continuing slot replayed the previous segment's closing
+  exchange word for word, and one host told the same anecdote twice in consecutive segments.
+- **The dynamic prompt half was never bounded.** The bible cache works perfectly (40,291 tokens read
+  at 0.1×) but every call also ships **28,342 uncached tokens**: 80 full event paragraphs with no
+  cap or ranking, plus **all 267 canon facts**. `topic` is never passed on the live path
+  (`scheduler.py:267`), so **D2's semantic RAG has never run in production**. Measured **$0.372 per
+  talk segment** → ~$30–55/day, against CLAUDE.md's "near-trivial".
+**Decisions (the durable ones):**
+- **The feedback loop is a committed script, not a prose instruction.** `make audit` computes the
+  metrics, the baseline is a checked-in JSON, and `make gate PACK=Qn` **exits non-zero** on a miss.
+  An agent cannot rationalise `topic.top_entity_mentions`. Q0.2 is not done until a deliberately
+  broken threshold makes the gate exit 1 — *a gate that cannot fail is not a gate*.
+- **The building agent never judges its own work** (`PHASE_Q_TASKS.md` §2d). Every gate resolves
+  numerically, by the operator on a blind sample, or deferred to Q8. The default for any judgment
+  call is **"no change"**, and **a null result is a completed task** — so there is no incentive to
+  re-roll until the number moves.
+- **The final audit runs in a separate, unbriefed session** against
+  `docs/PHASE_Q_AUDIT_BRIEF.md`, which stands alone and tells the auditor **not to read the task
+  pack** until its blind scores are on disk. Two independent guards: script-computed numbers, and a
+  blind qualitative read over a shuffled pre/post script pool.
+- **Supply before steering.** Widening freshness (6h → 48h) or ranking events against a 23-story
+  world would *starve* the showrunner. Q1 comes first among the content fixes.
+- **New formats, not new programmes.** R2 already shipped 35 names; the registry takes a new format
+  as one entry. Q3 adds round-up / letters / interview.
+- **Don't rewrite the canon** — it is the strongest artefact in the repo. Q5 *adds* one cornerstone
+  (the ordinary and the petty) and puts the register instruction where generation can see it.
+- **Acceptance stays mocked and mechanism-only.** It passes 9/9 while every finding above is true —
+  that is its scope, not a bug. Real-text quality is `make audit`'s job; conflating them makes both
+  worse, so **no 10th property**.
+**Changed:** new `docs/PHASE_Q_TASKS.md` (the baseline + Q0–Q8), new `docs/PHASE_Q_AUDIT_BRIEF.md`
+(the standalone brief for the unbriefed session), new `scripts/audit_seed/` (the four throwaway
+probes the audit actually ran — `free_metrics.py`, `contrastive_probe.py`, `text_metrics.py`,
+`day_probe.py` — plus a README mapping each to its Q0 target, so the baseline is measured the same
+way the findings were). Updated `docs/ROADMAP.md` + `CLAUDE.md` (Phase R and Phase Q were in
+neither), `docs/PHASE_R_TASKS.md` (a closing note on what R reached and what it didn't).
+**Why:** the operator's question was "real improvements pending, dead end, or done?" — answering it
+credibly needed measurement rather than opinion, and keeping it answerable needs that measurement to
+be repeatable by someone who wasn't here. Writing the baseline down *before* the fixes is the only
+thing that makes "did it work?" a diff instead of an argument.
+**📣 Postable:** an AI station audited its own output and found the writing was fine — it had built a
+very good writer and given it almost nothing to write about. 23 stories, 150 slots a day, and the
+same town named 23 times in four unrelated programmes.
+**Next:** **Q0** — build `src/audit/` from `scripts/audit_seed/`, commit
+`docs/audit/2026-07-26-baseline.json`, and prove the gate can fail. Then Q1 (story supply), which is
+the keystone. Nothing else moves the needle until it lands.
+Commit: branch `phase-q-plan` (a commit can't carry its own hash — see the branch tip) · Clips: —
+
+---
+
 ## 2026-07-26 — Phase R — R6.1: the moving chart + The Count
 **Focus:** a daily music chart that actually moves, and the `chart` format (The Count) that counts
 it down and plays it — the machinery behind the R6.0 wave-3 catalogue.

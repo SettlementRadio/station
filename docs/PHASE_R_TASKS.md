@@ -520,6 +520,28 @@ the real VPS feeds; disclosure visible on every route; DEVLOG + MARKETING M1 che
 
 ---
 
+## 1a. Post-R verdict (external audit, 2026-07-26) — what R reached, and what it didn't
+
+R1–R7 all landed, and an audit with real API probes against the live world confirms **R1 worked**:
+5.4 contractions per 100 words, zero banned house-poetry abstractions on daytime shows, hosts
+recognisably distinct. Topic 5 ("the DJs talk like academics") is **fixed**.
+
+What R did **not** reach — because they were never prompt problems:
+
+| R topic | Status | What the audit found |
+|---|---|---|
+| 5 — academic DJs | ✅ fixed | the register pass held |
+| 1 — long slow blocks | ⚠️ partly | items are short now, but **63.5% of slots are still the one `talk` code path**; R2 added programme *names*, not *forms* |
+| 6 — content drifts to philosophy | ⚠️ partly | the daytime is concrete, but the **world** still only produces dignified civic stories — the tick's prompt has no register instruction at all |
+| 4 — news doesn't evolve intra-day | ✅ built | R4's machinery works; it just runs over **2–4 stories a night** against ~150 slots/day |
+
+The root cause R could not have found by listening: **supply**. 23 active stories vs ~150 content
+slots a day ≈ 6 airings per story per day — proved by two independent runs of the same four shows
+picking the identical beat 3 times out of 4. That, plus form and the world's own register, is
+**Phase Q** → `docs/PHASE_Q_TASKS.md` (baseline in §1).
+
+---
+
 ## 2. Suggested build order (one line)
 
 **R1.0 → R1.1–R1.4 → R2.0 (sign-off) → R2.1 → R2.2–R2.4 → R3.0 → R3.1 (human) →
