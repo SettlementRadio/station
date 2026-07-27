@@ -254,6 +254,54 @@ class Story:
     status: str = STORY_STATUS_ACTIVE  # R5.3: active | pending | archived
 
 
+# An item's status (the `items.status` column). Deliberately a two-value flag, not an
+# arc: an item either counts toward the day's texture or it does not. `dropped` is kept
+# as a value (rather than deleting the row) so a safety-flagged item is auditable until
+# the GC sweeps it — but no read path ever returns it.
+ITEM_STATUS_ACTIVE = "active"
+ITEM_STATUS_DROPPED = "dropped"
+
+# An item's provenance. Only the tick makes items — there is no hand-authored item in
+# the bible — but the column exists so the §2a seed/reset split reads the same as
+# everywhere else, and so a future hand-seeded item would be expressible.
+ITEM_SOURCE_TICK = EVENT_SOURCE_TICK  # "tick"
+
+
+@dataclass(frozen=True)
+class Item:
+    """One small thing that happened — the arc-less companion to a `Story` (Q1.0).
+
+    The station consumes ~150 content slots a day and the world tick makes 2-4 stories
+    a night (PHASE_Q_TASKS.md §1a). A real newsroom's day is a handful of arc'd stories
+    plus DOZENS of small things that get thirty seconds each — a price, a result, a
+    delay, a fine, a queue, a complaint, a birth. This is that second class.
+
+    Deliberately thin, and deliberately NOT a story: `text` is ONE sentence, and there
+    are no beats, no figures, no quotes and no arc stage. An item is never advanced; it
+    happens, it is worth a line for a day or two, and then it is gone. That is why it is
+    cheap enough to generate 30-60 of them a night on the haiku tier (Q1.1).
+
+    `in_world_datetime` is the same naive in-world timeline as `Event`, so the B2 clock
+    frames an item (this morning / yesterday) for free. `domain` is one of the tick's
+    `DOMAINS` (plus the everyday categories Q1.1 adds), and is also the FIRST tag, so a
+    programme's domain filter matches items exactly as it matches a story's tags.
+
+    EXPIRY IS THE POINT (§2a): items are read only inside `settings.item_window_hours`
+    and swept past `settings.item_retention_days`. World history persists forever for
+    stories; the world does not need to remember that the grain price moved on a
+    Tuesday. Tick-owned: survives `seed-canon`, cleared by `reset-world`, not backed up.
+    """
+
+    id: str
+    text: str
+    domain: str
+    in_world_datetime: datetime
+    tags: list[str] = field(default_factory=list)
+    source: str = ITEM_SOURCE_TICK
+    created_tick: int | None = None
+    status: str = ITEM_STATUS_ACTIVE
+
+
 @dataclass(frozen=True)
 class NewsCoverage:
     """One record of the news desk covering a story in a bulletin (D4.0).
@@ -589,6 +637,27 @@ CREATE TABLE IF NOT EXISTS stories (
     created_at         timestamptz NOT NULL DEFAULT now()
 );
 
+-- The small-items log (Q1.0): the cheap, high-volume, ARC-LESS companion to
+-- `stories`. One sentence per row, no beats, no figures, no quotes, no arc — a price,
+-- a delay, a result, a fine, a queue, a birth. Generated in bulk by the nightly item
+-- tick (Q1.1) so the station has ~150 things a day to talk about instead of 3.
+-- DISPOSABLE BY DESIGN (§2a): read only inside `item_window_hours`, swept past
+-- `item_retention_days` by `prune_items`. Tick-owned — it survives `seed-canon` (it
+-- carries no folder-authored rows to replace) and is cleared by `reset-world` (it is
+-- in `_WORLD_TABLES`). No FK to anything: an item belongs to no story, which is what
+-- makes it cheap. `domain` is duplicated as `tags[1]` so the R4.3 domain filter reads
+-- items exactly as it reads a story's tags.
+CREATE TABLE IF NOT EXISTS items (
+    id                text PRIMARY KEY,
+    text              text NOT NULL,
+    domain            text NOT NULL,
+    in_world_datetime timestamp NOT NULL,
+    tags              text[] NOT NULL DEFAULT '{}',
+    source            text NOT NULL DEFAULT 'tick',
+    created_tick      integer,
+    status            text NOT NULL DEFAULT 'active'
+);
+
 -- The news desk's per-story coverage memory (D4.0): one row per (story, bulletin)
 -- the desk aired — what stage + latest beat it reported and the angle/handle it used,
 -- so bulletins can repeat / evolve / stay consistent (D4.1–D4.3). `covered_at` is the
@@ -712,6 +781,10 @@ CREATE INDEX IF NOT EXISTS quotes_story_idx     ON quotes (story_id);
 CREATE INDEX IF NOT EXISTS quotes_figure_idx    ON quotes (figure_id);
 CREATE INDEX IF NOT EXISTS quotes_datetime_idx  ON quotes (in_world_datetime);
 CREATE INDEX IF NOT EXISTS quotes_source_idx    ON quotes (source);
+-- Q1.0: the room and the desk read items as a dated window (newest first), usually
+-- narrowed to a programme's domains; the sweep deletes by date.
+CREATE INDEX IF NOT EXISTS items_datetime_idx ON items (in_world_datetime DESC);
+CREATE INDEX IF NOT EXISTS items_domain_idx   ON items (domain);
 -- D13.0: the journal reads pull per-host (and per-pair) newest-first by real air
 -- time; the plain air_time index serves cross-host sweeps (prune, console).
 CREATE INDEX IF NOT EXISTS host_journal_host_air_idx
@@ -773,6 +846,9 @@ ALTER TABLE "cast" ADD COLUMN IF NOT EXISTS public_bio text NOT NULL DEFAULT '';
 # state, but ALL are cleared on the destructive `reset-world` (§2a) and counted — so
 # they live here. (They are NOT in the `scope="canon"` refresh, so a bible edit
 # leaves them standing — §2a: "survives".)
+# `items` (Q1.0) is disposable tick output rather than world history, but it is world
+# state all the same: a full reset clears it, and it has no `source='seed'` rows for a
+# canon refresh to replace, so it simply survives one (§2a).
 # `embeddings` is handled separately (it is DERIVED, regenerable — see below).
 # `tracks` (D7.0) is deliberately ABSENT: it is curated config/catalog (§2a), owned
 # by `make seed-tracks`, and survives even the destructive full wipe.
@@ -781,6 +857,7 @@ _WORLD_TABLES = (
     '"cast"',
     "events",
     "stories",
+    "items",
     "figures",
     "quotes",
     "news_coverage",
@@ -1141,6 +1218,106 @@ def advance_story(
         to_stage=new_stage,
         tick=tick,
     )
+
+
+# --- Items (Q1.0: the small-items log) --------------------------------------
+# Three functions, and deliberately only three: items are written in bulk by the
+# nightly item tick, read as a dated window, and swept. There is no `advance_item`,
+# no `get_item` and no per-item update — an item that needs any of those is a story.
+
+_ITEM_COLUMNS = (
+    "id, text, domain, in_world_datetime, tags, source, created_tick, status"
+)
+
+
+def _item_from_row(row: tuple) -> Item:
+    """Build an `Item` from a row selected with `_ITEM_COLUMNS`."""
+    return Item(
+        id=row[0],
+        text=row[1],
+        domain=row[2],
+        in_world_datetime=row[3],
+        tags=list(row[4]),
+        source=row[5],
+        created_tick=row[6],
+        status=row[7],
+    )
+
+
+def insert_items(conn: psycopg.Connection, items: Iterable[Item]) -> int:
+    """Insert small items; return how many rows were written (Q1.0).
+
+    Bulk, append-only, and ON CONFLICT DO NOTHING on the id: the item tick generates
+    dozens at a time and one re-used id must never sink a whole night's batch (they are
+    disposable — dropping the collision is the right failure, not aborting).
+    """
+    rows = [
+        (
+            i.id,
+            i.text,
+            i.domain,
+            i.in_world_datetime,
+            i.tags,
+            i.source,
+            i.created_tick,
+            i.status,
+        )
+        for i in items
+    ]
+    conn.cursor().executemany(
+        f"INSERT INTO items ({_ITEM_COLUMNS}) "
+        "VALUES (%s, %s, %s, %s, %s, %s, %s, %s) ON CONFLICT (id) DO NOTHING",
+        rows,
+    )
+    log.info("db_insert_items", count=len(rows))
+    return len(rows)
+
+
+def items_in_range(
+    conn: psycopg.Connection,
+    start: datetime,
+    end: datetime,
+    *,
+    domains: Sequence[str] | None = None,
+    limit: int | None = None,
+) -> list[Item]:
+    """Active items dated within `[start, end]`, newest first (Q1.0).
+
+    The one read path. `domains` narrows to a programme's fields (R4.3's rule applied
+    to items); `limit` caps the block the room is shown, because a night's batch is
+    dozens of lines and a prompt wants a handful. Only `active` items are ever
+    returned — a safety-flagged item stays in the table for audit but never reaches
+    air. The window itself is the caller's (`settings.item_window_hours`), not this
+    function's: the store stays a query, the policy stays in config.
+    """
+    sql = (
+        f"SELECT {_ITEM_COLUMNS} FROM items "
+        "WHERE in_world_datetime BETWEEN %s AND %s AND status = %s"
+    )
+    params: list[object] = [start, end, ITEM_STATUS_ACTIVE]
+    if domains:
+        sql += " AND domain = ANY(%s)"
+        params.append([d.lower() for d in domains])
+    sql += " ORDER BY in_world_datetime DESC, id"
+    if limit is not None:
+        sql += " LIMIT %s"
+        params.append(limit)
+    rows = conn.execute(sql, tuple(params)).fetchall()
+    return [_item_from_row(r) for r in rows]
+
+
+def prune_items(conn: psycopg.Connection, iw_now: datetime, *, keep: timedelta) -> int:
+    """Delete items older than `keep` before in-world `iw_now`; return rows removed.
+
+    Items EXPIRE — that is the difference between them and stories, which are world
+    history and are never GC'd (§2a). `iw_now` is the IN-WORLD clock, because that is
+    the timeline `in_world_datetime` lives on. Runs at the tail of the item tick (Q1.1).
+    """
+    cutoff = iw_now - keep
+    cur = conn.execute("DELETE FROM items WHERE in_world_datetime < %s", (cutoff,))
+    n = cur.rowcount
+    log.info("db_prune_items", removed=n, cutoff=cutoff.isoformat())
+    return n
 
 
 def insert_figures(conn: psycopg.Connection, figures: Iterable[Figure]) -> int:

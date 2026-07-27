@@ -106,6 +106,7 @@ recoverable from git/manifests or is regenerable.)
 | `events` (`source=seed`) | folder | `seed-canon` | replaced | survives | **cleared** | git |
 | `events` (`source=tick`), `stories`, beats | **world tick** | (generated) | **survives** | survives | **cleared** | **YES — irreplaceable** |
 | `stories.status` (R5.3: `active`/`pending`/`archived`) | **world tick** + operator | (set at write / by approve-reject) | **survives** | survives | **cleared** (with `stories`) | **YES — with `stories`** |
+| `items` (Q1.0: the small-items log) | **item tick** | (generated nightly) | **survives** | survives | **cleared** | no — **disposable by design** (expire at `item_retention_days`) |
 | `tick_digests` (R5.2, `state` row) | tick (haiku digest) | (regenerable) | survives | survives | **cleared** | no (regenerable) |
 | `figures`/`quotes` (`source=bible`) | folder | `seed-canon` | re-seeded | survives | **cleared** | git |
 | `figures`/`quotes` (`source=tick`) | **world tick** | (generated) | **survives** | survives | **cleared** | **YES — irreplaceable** |

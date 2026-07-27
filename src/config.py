@@ -631,6 +631,21 @@ class Settings(BaseSettings):
     micro_tick_max_tokens: int = 900
     micro_tick_continuity_max_tokens: int = 200
 
+    # --- Small items (Q1.0/Q1.1: the world's second, arc-less class of happening) --
+    # The station consumes ~150 content slots a day and the story tick makes 2-4 stories
+    # a night (PHASE_Q_TASKS.md §1a) — so the same beat comes round every few hours. An
+    # ITEM is the missing second class: ONE sentence, no arc, no figures, no quotes — a
+    # price, a delay, a result, a fine, a queue, a birth. Dozens a night, generated on
+    # the haiku tier through the Batch API for pennies (Q1.1).
+    #
+    # These two dials are the EXPIRY policy, and expiry is the point: unlike stories
+    # (world history, never GC'd), an item is worth a line for a day and then gone.
+    # `*_window_hours` is how far back a read reaches — the room and the desk see only
+    # items this fresh; `*_retention_days` is when `prune_items` deletes them for good
+    # (comfortably wider than the window, so a read never races the sweep).
+    item_window_hours: float = 36.0
+    item_retention_days: float = 7.0
+
     # --- Tick digest (R5.2: the panel's post-tick "what happened" note) --------
     # After each nightly tick / micro-tick, a short human-readable DIGEST is written
     # from the tick's own result (new stories, advanced arcs, next planned beats, new
