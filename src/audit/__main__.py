@@ -4,6 +4,8 @@
     make audit LABEL=baseline       # ... -> docs/audit/<date>-baseline.json
     make audit-full LABEL=q1        # + the API probe (real Anthropic calls)
     make audit-full DRY=1           # print the probe plan + estimate, spend nothing
+    make audit-compare BASE=… HEAD=…    # the delta table between two runs
+    make gate PACK=Q0               # the pass/fail table; exit code is the answer
     .venv/bin/python -m src.audit --json --no-write --now 2026-07-27T12:00
 
 `--full` adds the Q0.1 probe: real generation, TTS mocked, every DB write rolled back.
@@ -22,24 +24,12 @@ import sys
 from datetime import datetime
 from pathlib import Path
 
-import structlog
-
 from ..config import settings
-from ..logging_setup import configure_logging, get_logger
-from .metrics import collect_free, merge_probe, render_table
+from ..logging_setup import get_logger
+from .cli import logs_to_stderr
+from .metrics import collect_free, merge_checks, merge_probe, render_table
 
 log = get_logger(__name__)
-
-
-def _logs_to_stderr() -> None:
-    """Route this CLI's structured logs to stderr so stdout is only the report.
-
-    The station's logger prints JSON lines to stdout (right for an unattended 24/7
-    process); here stdout carries the audit itself, and `--json` has to be pipeable
-    into `jq`. Local to this entry point — nothing else's logging changes.
-    """
-    configure_logging()
-    structlog.configure(logger_factory=structlog.PrintLoggerFactory(file=sys.stderr))
 
 
 def write_run(data: dict, label: str, *, out_dir: Path | None = None) -> Path:
@@ -96,6 +86,12 @@ def main(argv: list[str]) -> int:
         help="skip the probe's 5-slot continuity run (--full only)",
     )
     parser.add_argument(
+        "--with-checks",
+        action="store_true",
+        help="also run the acceptance sim + the test suite (§2b guards; slow, free; "
+        "implied by --full)",
+    )
+    parser.add_argument(
         "--dry-run",
         action="store_true",
         help="with --full: print the probe plan + spend estimate and spend nothing",
@@ -106,9 +102,14 @@ def main(argv: list[str]) -> int:
     )
     args = parser.parse_args(argv)
 
-    _logs_to_stderr()
+    logs_to_stderr()
     now = datetime.fromisoformat(args.now) if args.now else None
     data = collect_free(now)
+
+    if (args.with_checks or args.full) and not args.dry_run:
+        from .checks import collect_checks
+
+        data = merge_checks(data, collect_checks())
 
     segments: list[dict] = []
     if args.full:
@@ -121,7 +122,10 @@ def main(argv: list[str]) -> int:
         data = merge_probe(data, probe)
 
     print(json.dumps(data, indent=2, default=str) if args.json else render_table(data))
-    if not args.no_write:
+    # A dry run measured nothing the probe was asked for, so writing a file LABELLED a
+    # full run would leave a half-empty artifact that `make gate` could later pick up as
+    # "the newest run". Print and stop.
+    if not args.no_write and not args.dry_run:
         label = args.label or ("full" if args.full else "free")
         path = write_run(data, label)
         print(f"\nwrote {path}")

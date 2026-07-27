@@ -91,6 +91,19 @@ _MOCK_SEC_PER_WORD = 5.0  # mock text is a stand-in for a full segment (→ minu
 _MOCK_SYNTH_FLOOR_SEC = 45.0  # a single voiced part is never shorter than this
 _DEFAULT_START = datetime(2026, 7, 1, 0, 0, 0)  # a fixed Wednesday 00:00 (reproducible)
 
+# THE SIMULATION SHAPE `make acceptance` RUNS — and so the shape "9/9 green" refers to.
+# Hoisted out of `main`'s argparse so there is exactly ONE definition of it:
+# `src/audit/checks.py` measures the §2b `acceptance.properties_passed` guard by calling
+# `run_acceptance` directly, and must use the same cadence. It previously used the bare
+# keyword defaults, whose `tick_every_hours=24` leaves only one in-window tick — too
+# little advancement for `stories_evolve`, so the audit reported 8/9 on a green station.
+CLI_DEFAULTS: dict[str, float | int] = {
+    "window_hours": 24.0,
+    "step_minutes": 60,
+    "tick_every_hours": 12.0,
+    "buffer_depth_hours": 1.0,
+}
+
 # Word bank for the mock world tick — coprime-strided combinations give lexically
 # distinct stories (low word overlap) so the tick's structural de-dup keeps them all.
 _SUBJECTS = [
@@ -591,6 +604,23 @@ def _sim_environment(
         # OFF (a real ffmpeg duck over placeholder audio would noisily fall to dry).
         p(mock.patch.object(settings, "segments_dir", segdir))
         p(mock.patch.object(settings, "schedule_state_path", segdir / "schedule.json"))
+        # The three PUBLIC feeds too: `scheduler.top_up` refreshes them at the end of
+        # every run, and their defaults are absolute paths under `segments/` — not
+        # affected by the `segments_dir` sandbox above. Without these, a simulated
+        # day overwrites the feeds the real station publishes — fabricated now-playing
+        # on a PUBLIC surface. tests/conftest.py guards the suite the same way; this
+        # closes the same hole for the CLI.
+        p(
+            mock.patch.object(
+                settings, "nowplaying_feed_path", segdir / "nowplaying.json"
+            )
+        )
+        p(
+            mock.patch.object(
+                settings, "schedule_feed_path", segdir / "schedule-public.json"
+            )
+        )
+        p(mock.patch.object(settings, "djs_feed_path", segdir / "djs-public.json"))
         p(
             mock.patch.object(
                 settings, "schedule_playlist_path", segdir / "playlist.txt"
@@ -1197,13 +1227,29 @@ def main(argv: list[str]) -> int:
     ap = argparse.ArgumentParser(
         description="Phase-D integrated acceptance simulation."
     )
-    ap.add_argument("--hours", type=float, default=24.0, help="window length (h)")
-    ap.add_argument("--step-minutes", type=int, default=60, help="clock step (min)")
     ap.add_argument(
-        "--tick-every-hours", type=float, default=12.0, help="world-tick cadence (h)"
+        "--hours",
+        type=float,
+        default=CLI_DEFAULTS["window_hours"],
+        help="window length (h)",
     )
     ap.add_argument(
-        "--buffer-depth-hours", type=float, default=1.0, help="rolling buffer depth (h)"
+        "--step-minutes",
+        type=int,
+        default=CLI_DEFAULTS["step_minutes"],
+        help="clock step (min)",
+    )
+    ap.add_argument(
+        "--tick-every-hours",
+        type=float,
+        default=CLI_DEFAULTS["tick_every_hours"],
+        help="world-tick cadence (h)",
+    )
+    ap.add_argument(
+        "--buffer-depth-hours",
+        type=float,
+        default=CLI_DEFAULTS["buffer_depth_hours"],
+        help="rolling buffer depth (h)",
     )
     ap.add_argument(
         "--dump", default=None, help="write the placed timeline JSON here (debug aid)"

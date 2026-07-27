@@ -988,6 +988,25 @@ class Settings(BaseSettings):
     audit_dir: Path = Field(default=_REPO_ROOT / "docs" / "audit")
     audit_cost_window_days: int = 7
     audit_llm_calls_per_talk_segment: int = 4
+    # The COMMITTED baseline: the measurement of the world before Phase Q touched it,
+    # and the anchor every relative threshold in `gates.yaml` ("within ±5% of
+    # baseline") is read against. Named for the external audit's date, NOT the day it
+    # was generated, and never edited afterwards — see docs/audit/README.md.
+    audit_baseline_path: Path = Field(
+        default=_REPO_ROOT / "docs" / "audit" / "2026-07-26-baseline.json"
+    )
+    # `gate`/`audit --with-checks` read these two §2b guards by running the real local
+    # checks; `audit_gates_path` is the committed threshold file the gate evaluates.
+    audit_gates_path: Path = Field(default=_REPO_ROOT / "docs" / "audit" / "gates.yaml")
+    audit_acceptance_hours: float = 24.0  # window for the acceptance property check
+    audit_checks_timeout_sec: int = 1800  # bound on the pytest subprocess
+    # The probe patches `llm_timeout_sec` down to this for its own run. `llm.generate`
+    # STREAMS, so the httpx timeout bounds each read, not the call's total wall time: a
+    # server dribbling chunks can hold one call open indefinitely. A baseline run was
+    # observed taking 69 minutes on one call that way. A tighter read timeout makes a
+    # stalled stream fail and retry in ~90s instead of hanging the audit. It applies
+    # ONLY inside the probe's isolation — the live station keeps `llm_timeout_sec`.
+    audit_probe_llm_timeout_sec: float = 90.0
 
     def model_id(self, tier: str) -> str:
         """Map a logical tier ("haiku"|"sonnet"|"opus") to its real model id."""

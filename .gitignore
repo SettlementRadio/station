@@ -19,6 +19,11 @@ venv/
 *.egg-info/
 .pytest_cache/
 
+# Q8's blind-pool ANSWER KEY (docs/audit/blind/). The unlabelled scripts are committed so
+# the auditor can read them; the key that says which arm each came from must not be, or
+# the blind read stops being blind.
+docs/audit/blind/key.json
+
 # Playout runtime (pids, logs)
 .run/
 

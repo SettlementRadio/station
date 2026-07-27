@@ -1,0 +1,122 @@
+# gates.yaml — every Phase Q threshold, in machine-readable form.
+#
+# Transcribed from docs/PHASE_Q_TASKS.md §2b (the guards) and §3 (each pack's GATE block).
+# `make gate PACK=Qn` evaluates these against the newest audit run and EXITS NON-ZERO on
+# any miss. The exit code is the answer, not an agent's summary of it (§2a).
+#
+# Rules the evaluator understands (src/audit/gate.py):
+#
+#   {min: 30}                         value >= 30
+#   {max: 12}                         value <= 12
+#   {equals: true}                    value == true
+#   {min_ratio_to_baseline: 1.5}      value >= 1.5x the committed baseline's value
+#   {max_ratio_to_baseline: 1.0}      value <= 1.0x baseline ("unchanged or lower")
+#   {ratio_to_baseline_within: 0.05}  |value/baseline - 1| <= 0.05 ("within +/-5%")
+#   {min_each: 3.0, except: [chart]}  every entry of a mapping >= 3.0, bar those named
+#
+# Two things that are FEATURES, not bugs:
+#
+#   * A metric that is missing or null FAILS. Gating a pack on a free-only `make audit`
+#     run therefore fails every probe-measured threshold, and gating a pack before it has
+#     built its own metric fails that too. "Not measured" is never silently green.
+#   * A pack block's rule for a key REPLACES the global guard for that key. That is how
+#     §2b's "cost <= 0.40 until Q2, <= 0.12 after" is expressed.
+#
+# Relative rules are read against docs/audit/2026-07-26-baseline.json (never edited).
+
+guards: # checked on EVERY pack (§2b)
+  # OPERATOR RULING, 2026-07-26: floor 3.5, NOT §2b's tabled 5.0. The metric is noisy at
+  # probe sample sizes — four measurements over the identical pinned slots on UNCHANGED
+  # code gave 3.7, 3.7, 5.1 and 5.4 (the external audit's own figure being the top of that
+  # range, not an outlier). A 5.0 floor fails ~2 runs in 3 on a healthy station; 3.5 sits
+  # just below the lowest observation, so it still trips if plain speech collapses. Do not
+  # "restore" this to 5.0 without re-measuring the spread. R1 is separately protected by
+  # `banned_abstractions_daytime` below and by acceptance's own `plain_register` property.
+  register.contractions_per_100w: {min: 3.5}
+  register.banned_abstractions_daytime: {max: 0}
+  acceptance.properties_passed: {min: 9}
+  # §2b: ">= current count (661 at pack start), 0 failures". 720 is the count once Q0's
+  # own tests landed; raise it as later packs add theirs.
+  tests.passed: {min: 721}
+  tests.failed: {max: 0}
+  # §2b: "<= 0.40 until Q2, <= 0.12 after" — Q2+ blocks override this line.
+  cost.usd_per_talk_segment: {max: 0.40}
+
+packs:
+  # Q0 — the harness itself. It has no metric targets of its own: its "done when" is that
+  # the baseline is committed, a baseline-vs-baseline compare is all zeroes, and a
+  # deliberately broken threshold makes this command exit 1. Guards still apply.
+  Q0: {}
+
+  # Q1 — story supply: the small-items generator.
+  Q1:
+    world.items_per_night: {min: 30}
+    topic.cross_run_beat_identity_pct: {max: 40}
+    topic.top_entity_mentions: {max: 12}
+    # "distinct_entities_per_segment >= 1.5x baseline".
+    topic.distinct_entities_per_segment: {min_ratio_to_baseline: 1.5}
+
+  # Q2 — bounded, ranked context + wire the RAG.
+  Q2:
+    context.uncached_tokens: {max: 8000}
+    context.cached_tokens: {ratio_to_baseline_within: 0.05}
+    context.seconds_per_call: {max: 12}
+    context.topic_passed_on_live_path: {equals: true}
+    cost.usd_per_talk_segment: {max: 0.12}
+    # "topic.* no worse than after Q1" is a pack-to-pack comparison, not a baseline one:
+    # run `make audit-compare BASE=q1 HEAD=q2` and read the topic rows.
+
+  # Q3 — three new formats (roundup / letters / interview).
+  Q3:
+    grid.format_share.talk: {max: 45}
+    grid.registered_formats: {min: 9}
+    # The number that actually matters: a format nothing schedules is not a form.
+    # Q3 adds this key to collect_free; until then it is absent, and absent is a FAIL.
+    grid.formats_in_clocks: {min: 7}
+    # "No format below 3% except chart" — i.e. the new forms actually air.
+    grid.format_share: {min_each: 3.0, except: [chart]}
+    # "register.median_turn_words unchanged or lower".
+    register.median_turn_words: {max_ratio_to_baseline: 1.0}
+    cost.usd_per_talk_segment: {max: 0.12}
+
+  # Q4 — news budget, a second anchor, and the rota.
+  Q4:
+    grid.max_host_hours_per_day: {max: 6.0}
+    grid.news_anchor_count: {min: 2}
+    grid.news_words_distinct_per_program: {min: 2}
+    # Q4.2's other half: "no host below 2.0".
+    grid.min_host_hours_per_day: {min: 2.0}
+    cost.usd_per_talk_segment: {max: 0.12}
+
+  # Q5 — register at the source.
+  Q5:
+    quotes.hedges_per_1000w: {min: 8}
+    quotes.pct_with_contraction: {min: 60}
+    world.title_colon_schema_pct: {max: 55}
+    register.hedges_per_1000w: {min: 8}
+    # Q5's OWN target for this metric is 5.0 and the pack calls it hard — kept verbatim,
+    # deliberately stricter than the 3.5 global guard above, because Q5.1 is the task that
+    # sets out to raise spokenness while holding plainness. See the guard's note on the
+    # measured 3.7-5.4 spread before reading a miss here as a regression.
+    register.contractions_per_100w: {min: 5.0}
+    cost.usd_per_talk_segment: {max: 0.12}
+
+  # Q6 — continuity pickup + freshness.
+  Q6:
+    continuity.max_verbatim_overlap_chars: {max: 60}
+    continuity.repeated_ngram_rate: {max: 2}
+    continuity.distinct_beats_in_run: {min: 4}
+    # Q6.1: freshness_window_hours 6 -> 48 (blocked on Q1).
+    freshness.window_hours: {min: 48}
+    cost.usd_per_talk_segment: {max: 0.12}
+
+  # Q7 — model routing + the unclaimed batch discount.
+  Q7:
+    cost.usd_per_talk_segment: {max: 0.08}
+    models.sonnet: {equals: claude-sonnet-5}
+    models.opus: {equals: claude-opus-5}
+
+  # Q8 — the post-fix audit runs in a separate, unbriefed session against
+  # docs/PHASE_Q_AUDIT_BRIEF.md. Its verdict is a written report plus blind scores, not a
+  # threshold table, so this block carries the guards only.
+  Q8: {}

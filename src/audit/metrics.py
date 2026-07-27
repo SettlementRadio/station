@@ -106,6 +106,19 @@ GROUP_KEYS: dict[str, tuple[str, ...]] = {
     "cost": ("usd_per_talk_segment", "talk_usd_window", "talk_calls_window", "days"),
 }
 
+# The §2b guards that are facts about the repo, not the world (src/audit/checks.py).
+# Slow, so they are opt-in: a run without `--with-checks` reports them null, and a gate
+# reads null as FAIL — a pack is not green on a run that never checked the tests.
+CHECK_GROUP_KEYS: dict[str, tuple[str, ...]] = {
+    "acceptance": (
+        "properties_passed",
+        "properties_total",
+        "properties_failed",
+        "window_hours",
+    ),
+    "tests": ("passed", "failed", "errors", "skipped", "exit_code"),
+}
+
 # The groups only the API probe can fill (Q0.1). Declared here beside the free ones so
 # there is ONE place that says what an audit JSON contains.
 PROBE_GROUP_KEYS: dict[str, tuple[str, ...]] = {
@@ -141,8 +154,12 @@ PROBE_GROUP_KEYS: dict[str, tuple[str, ...]] = {
     ),
 }
 
-# Every group an audit JSON may carry, free + probe.
-ALL_GROUP_KEYS: dict[str, tuple[str, ...]] = {**GROUP_KEYS, **PROBE_GROUP_KEYS}
+# Every group an audit JSON may carry, free + checks + probe.
+ALL_GROUP_KEYS: dict[str, tuple[str, ...]] = {
+    **GROUP_KEYS,
+    **CHECK_GROUP_KEYS,
+    **PROBE_GROUP_KEYS,
+}
 
 
 # --- small shared maths -----------------------------------------------------
@@ -505,6 +522,14 @@ def normalise_group(group: str, values: dict, *, error: str | None = None) -> di
 _normalise = normalise_group  # the in-module short name
 
 
+def merge_checks(free: dict, checks: dict) -> dict:
+    """Fold the slow local checks (acceptance, tests) into a run."""
+    out = dict(free)
+    for group, values in checks.items():
+        out[group] = normalise_group(group, values, error=values.get("error"))
+    return out
+
+
 def merge_probe(free: dict, probe: dict) -> dict:
     """Fold a probe result into a free run — one audit JSON with every group in it.
 
@@ -536,8 +561,8 @@ def render_table(data: dict) -> str:
         f"  ·  grid week from {(data.get('grid_week_start') or '—')[:10]}",
     ]
     for group in ALL_GROUP_KEYS:
-        if group in PROBE_GROUP_KEYS and group not in data:
-            continue  # a free-only run: don't print empty probe groups
+        if group not in GROUP_KEYS and group not in data:
+            continue  # a free-only run: don't print empty probe/check groups
         body = data.get(group) or {}
         lines += ["", f"── {group.upper()} ──"]
         if body.get("error"):
@@ -563,6 +588,7 @@ def _fmt(value: object) -> str:
 
 __all__ = [
     "ALL_GROUP_KEYS",
+    "CHECK_GROUP_KEYS",
     "GROUP_KEYS",
     "PROBE_GROUP_KEYS",
     "batch_enabled_paths",
@@ -571,6 +597,7 @@ __all__ = [
     "cost_metrics",
     "freshness_metrics",
     "grid_metrics",
+    "merge_checks",
     "merge_probe",
     "model_metrics",
     "normalise_group",

@@ -215,6 +215,13 @@ def isolated() -> Iterator[tuple[_MockTTS, CallLog]]:
             )
         )
         p(mock.patch.object(settings, "llm_batch_enabled", False))
+        # A stalled stream must not be able to hang the whole audit — see the setting's
+        # note. Scoped to the probe; the live station's timeout is untouched.
+        p(
+            mock.patch.object(
+                settings, "llm_timeout_sec", settings.audit_probe_llm_timeout_sec
+            )
+        )
         p(mock.patch.object(settings, "production_bedded_programs", []))
         try:
             yield tts, calls

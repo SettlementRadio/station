@@ -26,6 +26,8 @@
 #   make micro-tick    Run one intra-day micro-tick: nudge a live story a small beat (R4.1).
 #   make audit         Measure the station (Phase Q §1 metrics) + write a run JSON (Q0.0).
 #   make audit-full    ...plus the API probe (Q0.1) — real Anthropic calls; DRY=1 to price it.
+#   make audit-compare BASE=… HEAD=…  Delta table between two audit runs (Q0.2).
+#   make gate PACK=Qn  THE GATE: exits non-zero if any of that pack's thresholds miss (Q0.2).
 #
 # `generate`/`play`/`schedule` make live Anthropic + TTS calls (needs a populated
 # .env). Since C2, `serve` airs the SCHEDULER's playlist (segments/playlist.txt),
@@ -47,7 +49,7 @@ LIQ_LOG    := $(RUN_DIR)/liquidsoap.log
 PLAYER_URL := http://127.0.0.1:8000/
 STREAM_URL := http://127.0.0.1:8000/settlement.mp3
 
-.PHONY: help generate serve air play play-convo stop status console timeline panel station station-stop station-status now-playing public-feeds demo-feeds seed seed-canon reset-world seed-tracks seed-sponsors demo context costprobe costprobe-ab conversation format buffer schedule ident prune fallback health world-tick news-demo figures-demo freshness-demo continuity-demo journal-demo programming-demo commercials-demo acceptance jingle-audit micro-tick audit audit-full
+.PHONY: help generate serve air play play-convo stop status console timeline panel station station-stop station-status now-playing public-feeds demo-feeds seed seed-canon reset-world seed-tracks seed-sponsors demo context costprobe costprobe-ab conversation format buffer schedule ident prune fallback health world-tick news-demo figures-demo freshness-demo continuity-demo journal-demo programming-demo commercials-demo acceptance jingle-audit micro-tick audit audit-full audit-compare gate audit-blind
 
 # B5 format default: `make format` builds a talk segment; override with FMT=news
 # or FMT=music. Pass a TOPIC=... to steer canon retrieval.
@@ -104,6 +106,9 @@ help:
 	@echo "  make jingle-audit run the R3.0 jingle placement audit — proof every clip fires where it should"
 	@echo "  make audit     measure the station: the Phase Q free metrics + a run JSON (Q0.0; token-free)"
 	@echo "  make audit-full  ... plus the API probe: topic/register/continuity/prompt (Q0.1; real calls)"
+	@echo "  make audit-compare BASE=… HEAD=…  delta table between two audit runs (Q0.2; token-free)"
+	@echo "  make gate PACK=Qn  THE GATE: pass/fail table + non-zero exit on any miss (Q0.2)"
+	@echo "  make audit-blind  build Q8's blind pre/post script pool (Q0.2; real calls; DRY=1 to price)"
 	@echo "  make air       schedule + serve — the live scheduler-driven stream (C2)"
 
 # Seed/refresh the world-state DB from the canon bible (docs/canon/ folder, or the
@@ -463,6 +468,39 @@ audit-full:
 	@$(PY) -m src.audit --full --runs $(RUNS) $(if $(DRY),--dry-run,) \
 		$(if $(filter 0,$(CONT)),--no-continuity,) \
 		$(if $(LABEL),--label $(LABEL),) $(if $(NOW),--now $(NOW),)
+
+# Q0.2: the DELTA TABLE between two runs — one row per metric, value/value/delta, with a
+# ✗ where a §2b guard regressed. Descriptive only: it always exits 0 (2 if a run can't be
+# found). `make gate` is what decides a pack. BASE/HEAD take a short label (`baseline`,
+# `q1`) or a full path. Token-free, seconds.
+#   make audit-compare BASE=baseline HEAD=q1
+BASE ?= baseline
+HEAD ?=
+audit-compare:
+	@$(PY) -m src.audit.compare --base $(BASE) --head $(if $(HEAD),$(HEAD),$(BASE))
+
+# Q0.2: THE GATE. Reads docs/audit/gates.yaml (every §2b guard + the named pack's §3
+# thresholds, transcribed) and the newest audit run, prints a pass/fail table, and EXITS
+# NON-ZERO on any miss. This is the command that says whether a pack is done — the exit
+# code is the answer, not a summary of it (§2a). A missing/null metric counts as FAIL.
+# Token-free, seconds. Pass HEAD= to judge a specific run instead of the newest.
+#   make gate PACK=Q1 ; echo "exit=$?"
+PACK ?= Q0
+gate:
+	@$(PY) -m src.audit.gate --pack $(PACK) $(if $(HEAD),--head $(HEAD),)
+
+# Q0.2 (for Q8): build the BLIND SCRIPT POOL the post-fix audit scores — N scripts
+# regenerated from the pre-Q0 git tag (in a throwaway worktree, so it really is that
+# revision's prompts) plus N from the working tree, shuffled into unlabelled files under
+# docs/audit/blind/ with a GITIGNORED answer key. Real Anthropic calls in BOTH arms;
+# DRY=1 prices it first. Needs the tag to exist: `git tag q0-baseline <pre-Q0 commit>`.
+#   make audit-blind DRY=1
+#   make audit-blind BASE_REF=q0-baseline N=10
+BASE_REF ?= q0-baseline
+N        ?= 10
+audit-blind:
+	@echo "==> Building Q8's blind script pool (Q0.2; real Anthropic calls)…"
+	@$(PY) -m src.audit.blind --base-ref $(BASE_REF) --n $(N) $(if $(DRY),--dry-run,)
 
 # D8.3: the commercials & sponsorship demo — generate ONE commercial + ONE promo
 # (live Anthropic + TTS calls; needs `make seed`), show where the grid places the
