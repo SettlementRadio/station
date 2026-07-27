@@ -30,6 +30,77 @@ platform docs (`docs/marketing/*`) mine; `grep "📣"` to find them. Skip when t
 Commit: <hash>  ·  Clips: <filenames in devlog/>
 ```
 
+## 2026-07-27 — Phase Q — Q1: the small-items generator, and a gate the pack did not clear
+**Focus:** give the world a SECOND class of happening. The station consumes ~150 content slots a
+day and the world tick makes 2–4 stories a night (§1a), which is why three of four shows led on
+the same beat and "Cold Harbor" got named 23 times. Q1 adds the thing a real newsroom actually
+runs on between its arc'd stories: dozens of one-line small items.
+
+**Decisions:**
+- **Items are a separate table, not a cheap story.** `items` has no beats, no figures, no quotes
+  and no arc stage — that thinness is what makes 60-a-night affordable. An item that needs any of
+  those is a story, and the story tick already makes those.
+- **Items EXPIRE; stories never do.** World history persists forever (§2a) but the world does not
+  need to remember that the grain price moved on a Tuesday: a 36h read window, 7d retention, swept
+  by `prune_items` on the tail of every run. New §2a matrix row: tick-owned, survives `seed-canon`,
+  cleared by `reset-world`, **not backed up** — disposable by design.
+- **A flagged item is DROPPED, never regenerated.** The story tick's regenerate-once escalation
+  is right for a story and wrong for one disposable sentence, of which there are dozens.
+- **Five batch requests, not one list.** Independent haiku samples across sliced categories repeat
+  each other far less than one long list does, each stays inside `item_tick_max_tokens`, and a
+  failed request costs a slice of the night rather than the night. All five share the cached bible.
+- **The register instruction is the load-bearing half of the prompt** — ordinary, often boring,
+  sometimes petty, epigram shape banned outright. Written deliberately to match the fix Q5.0 will
+  make to the story prompt, so the two can't drift.
+- **Gate outcome: ACCEPTED WITH A MISS (operator's call).** `make gate PACK=Q1` exits 1 — see below.
+
+**Changed:** new `items` table + `insert_items`/`items_in_range`/`prune_items` (Q1.0); new
+`src/world/items.py` + `make item-tick` (Q1.1); the items slice in `context.assemble`, the
+showrunner's small-item option, and the bulletin's "and briefly…" tail (Q1.2); cron docs in
+`PHASE_C_TASKS.md` + `ADMIN_MANUAL.md`, `world.items_per_night` in `collect_free`, `gates.yaml`
+test floor 721 → 735 (Q1.3). 735 tests.
+
+**The measured result — first real run:** 60 items, 0 dropped, 0 duplicates, 3m56s, **$0.099**
+(the pack's bar was under $0.15). Operator gate on a 20-item sample: passed.
+
+**The gate miss, recorded honestly (§2a — the exit code is the answer):**
+
+| Metric | Baseline | Q1 | Target | |
+|---|---|---|---|---|
+| `world.items_per_night` | 0 | **60** | ≥ 30 | ✓ |
+| `topic.cross_run_beat_identity_pct` | 75% | **50%** | ≤ 40 | ✗ |
+| `topic.top_entity_mentions` | 22.5/run | **19** | ≤ 12 | ✗ |
+| `topic.distinct_entities_per_segment` | 13.5 | **9.25** | ≥ 20.25 | ✗ |
+
+All five §2b guards green (9/9 acceptance, 735 tests, contractions 4.3, banned abstractions 0,
+cost $0.372). `make gate PACK=Q1` → **exit 1, 3 of 10 checks failed.**
+
+**What DID move, and why the numbers didn't follow.** The baseline's actual finding was that three
+of four shows led on the same beat. This run: 07:12 Morning Currents leads on a ferry running 40
+minutes late; 10:12 The Exchange on a grain convoy arriving early; 22:12 The Long Night on the
+ES-447 death notice — three of four leading on SMALL ITEMS — and 16:12 The Circuit on the Cold
+Harbor ice race, which is that programme's own subject. Four shows, four beats. The 07:12 segment
+also worked four more items in passing (a birth named Relay, a rota swap, seven recycled-air
+headaches, an inspection finished early). The residual concentration is in the STORY layer, not
+the items: across the 60 items the settings spread evenly (Meridian 6, Cold Harbor 6, Far Reach 6,
+Halcyon 5). `distinct_entities_per_segment` fell because a segment now goes deep on one small
+concrete thing instead of name-dropping across several stories.
+
+**Why:** supply alone cannot reach these three thresholds — they measure what **Q2** (cap the
+event block at 15 and rank it; wire the RAG that never runs in production) and **Q6** (widen
+freshness 6h → 48h, which was explicitly blocked on Q1 and is now unblocked) exist to change.
+The pack hung them on Q1 on the assumption supply would carry them; the measurement says supply
+moved beat-identity 75 → 50 and top-entity 22.5 → 19 and then stopped. Operator decision:
+accept and record, proceed to Q2, **re-check Q1's gate after Q6 lands.**
+
+**📣 Postable:** the four-beat table — before, three of four shows opened on the same story; after,
+a late ferry, a grain convoy, an ice-race rescue and a death notice that took three weeks to
+arrive. The fix was not a better prompt, it was giving the world sixty boring things a night.
+
+**Next:** Q2 — bound and rank the event block (28,342 uncached tokens, 80 flat paragraphs) and
+wire the semantic RAG the live path never calls.
+Commit: 43c21bf, cd7bb51, 5a16eb8, (this one)  ·  Clips: (none)
+
 ## 2026-07-27 — Phase Q — Q0: the audit harness, and the baseline it measures against
 **Focus:** build the feedback loop the rest of Phase Q is gated on — `make audit` (free
 metrics), `make audit-full` (the API probe), `make audit-compare`, and `make gate PACK=Qn`,

@@ -65,6 +65,13 @@ GROUP_KEYS: dict[str, tuple[str, ...]] = {
         "events_in_window",
         "title_colon_schema_pct",
         "title_subtitle_article_pct",
+        # Q1 — the supply fix. `items_per_night` is the Q1 gate metric: how many small
+        # items the LATEST item tick wrote (not a rolling count, so a half-failed run
+        # shows up). `items_in_window` is what the room actually sees right now;
+        # `items_total` is the whole disposable table.
+        "items_per_night",
+        "items_in_window",
+        "items_total",
     ),
     "quotes": (
         "count",
@@ -191,6 +198,15 @@ def world_metrics(now: datetime) -> dict:
             "SELECT count(DISTINCT tags[1]) FROM stories"
         ).fetchone()[0]
         events = len(store.events_in_range(conn, iw_now - window, iw_now + window))
+        items_total, items_per_night = _item_supply(conn)
+        items_in_window = len(
+            store.items_in_range(
+                conn,
+                iw_now - timedelta(hours=settings.item_window_hours),
+                iw_now,
+                limit=None,
+            )
+        )
 
     # Title schema uniformity: "The Noun Phrase: A Clause Explaining It" (92% at
     # baseline). The pair is deliberate — the colon share is the schema, the article
@@ -210,7 +226,26 @@ def world_metrics(now: datetime) -> dict:
         "events_in_window": events,
         "title_colon_schema_pct": _pct(len(colon), len(titles)),
         "title_subtitle_article_pct": _pct(len(article), len(colon)),
+        "items_per_night": items_per_night,
+        "items_in_window": items_in_window,
+        "items_total": items_total,
     }
+
+
+def _item_supply(conn) -> tuple[int, int]:
+    """`(items in the table, items the LATEST item tick wrote)` — the Q1 gate metric.
+
+    Per-night rather than rolling, because the gate asks whether the generator produced
+    a night's worth: a run that half-failed reads as a small number here, where a
+    rolling count would hide it behind the previous nights that are still in retention.
+    `(0, 0)` before the first `make item-tick` — an honest zero, not a null.
+    """
+    total = conn.execute("SELECT count(*) FROM items").fetchone()[0]
+    row = conn.execute(
+        "SELECT count(*) FROM items WHERE created_tick = "
+        "(SELECT max(created_tick) FROM items)"
+    ).fetchone()
+    return total, (row[0] if total else 0)
 
 
 def world_vocabulary() -> tuple[list[str], list[str]]:

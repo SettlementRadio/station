@@ -129,7 +129,9 @@ condition raises an alert.
 in object storage alongside the DB. **`segments/` is NOT backed up** — it's regenerable one-shot
 audio, kept bounded by C2.5's retention GC. Deploy Liquidsoap + Icecast. systemd/cron for services +
 the **periodic scheduler top-up** (which now also prunes — C2.5 — so the disk stays bounded
-unattended); services restart on reboot. **Three world/audio timers now:** the **nightly world tick**
+unattended); services restart on reboot. **Four world/audio timers now:** the **nightly item tick**
+(`make item-tick`, Q1.1 — the night's 30–60 small items; **run it BEFORE the world tick** so the
+story tick sees the day's texture), the **nightly world tick**
 (`make world-tick`), the **periodic scheduler top-up** (`make schedule`), and — added in R4.1 — the
 **intra-day micro-tick** (`make micro-tick`, every 2–4h through the broadcast day: a light haiku nudge
 so the day evolves between nightly ticks; quiet runs are normal, it never touches the schedule). Secrets in env only, non-world-readable, redacted in logs

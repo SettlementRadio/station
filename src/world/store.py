@@ -255,9 +255,11 @@ class Story:
 
 
 # An item's status (the `items.status` column). Deliberately a two-value flag, not an
-# arc: an item either counts toward the day's texture or it does not. `dropped` is kept
-# as a value (rather than deleting the row) so a safety-flagged item is auditable until
-# the GC sweeps it — but no read path ever returns it.
+# arc: an item either counts toward the day's texture or it does not. NOTHING writes
+# `dropped` today — the item tick (Q1.1) never persists a safety-flagged item at all,
+# which is the stronger posture — so this is the hook for an OPERATOR hiding a single
+# bad item without waiting for the GC (→ Phase E panel). `items_in_range` already
+# honours it, so that action needs no code beyond the button.
 ITEM_STATUS_ACTIVE = "active"
 ITEM_STATUS_DROPPED = "dropped"
 

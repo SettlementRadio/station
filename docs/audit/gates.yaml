@@ -35,9 +35,9 @@ guards: # checked on EVERY pack (§2b)
   register.contractions_per_100w: {min: 3.5}
   register.banned_abstractions_daytime: {max: 0}
   acceptance.properties_passed: {min: 9}
-  # §2b: ">= current count (661 at pack start), 0 failures". 720 is the count once Q0's
-  # own tests landed; raise it as later packs add theirs.
-  tests.passed: {min: 721}
+  # §2b: ">= current count (661 at pack start), 0 failures". 721 was the count once Q0's
+  # own tests landed, 735 once Q1's did; raise it as later packs add theirs.
+  tests.passed: {min: 735}
   tests.failed: {max: 0}
   # §2b: "<= 0.40 until Q2, <= 0.12 after" — Q2+ blocks override this line.
   cost.usd_per_talk_segment: {max: 0.40}

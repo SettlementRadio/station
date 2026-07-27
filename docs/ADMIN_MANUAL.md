@@ -105,6 +105,22 @@ the bad `segments/<id>.*`; playout is `make serve` / `make stop`.
   loops locally). Tops the rolling buffer up to `BUFFER_DEPTH_HOURS` of measured audio, rewrites
   `segments/playlist.txt` (Liquidsoap re-reads it, no restart), refreshes **all three public feeds**
   (now-playing + the R7.0 schedule/DJs feeds the web site reads), and runs the disk GC + airplay sweep.
+- **Item tick, nightly — run it BEFORE the world tick** — `make item-tick` (Q1.1). Generates the
+  night's 30–60 **small items**: one-sentence ordinary happenings (a price, a delay, a result, a
+  fine, a queue, a birth, something that broke again) that the shows and the news desk talk about
+  *between* the arc'd stories. This is the supply fix — the station consumes ~150 content slots a
+  day and the world tick makes 2–4 stories, so without items every show reaches for the same beat.
+  Haiku-tier through the Batch API sharing the cached bible: a whole night costs **~$0.10** and
+  takes a few minutes. Safety-gated per item (a flagged item is dropped, never regenerated),
+  de-duped against the last few days, and it sweeps expired items on the tail. Order matters —
+  run it *before* `world-tick` so the story tick sees the day's texture. Items EXPIRE
+  (`item_window_hours` 36h read window, `item_retention_days` 7d retention); they are disposable by
+  design and are not backed up. Dials: `item_tick_enabled` (kill switch), `item_tick_min`/`_max`,
+  `item_tick_tier`, `item_tick_requests`, `item_tick_max_tokens`, `item_tick_dedup_window_days`,
+  plus `context_items_limit` (how many the writers' room sees) and `news_item_count`/`_short` (the
+  bulletin's "and briefly…" tail). *→ Phase E panel: the items-in-window count belongs on
+  **Panel → World** beside the story count, with a "run item-tick now" button next to the existing
+  tick buttons.*
 - **World tick, nightly** — `make world-tick`. *Writes* world state (stories/beats/events,
   figures/quotes); the scheduler *reads* it. Keep `LLM_BATCH_ENABLED=true` on the box (50% Batch
   discount). One-shot; exits non-zero on failure with the store untouched (one transaction).
@@ -142,8 +158,8 @@ the bad `segments/<id>.*`; playout is `make serve` / `make stop`.
 | `make seed-sponsors` | the `sponsors` catalog from `config/sponsors.yaml` | after editing sponsors |
 | *(no seed)* | `docs/programming/grid.yaml`, `config/voices.yaml`, `config/pronunciation.yaml` — all read live (mtime-reloaded) | edit → live, no command |
 
-**Seeds are EDIT-triggered, never scheduled.** Nothing in the daily run seeds anything: the three
-timers (top-up, world tick, micro-tick) never touch folder-owned rows. You run a seed because *you
+**Seeds are EDIT-triggered, never scheduled.** Nothing in the daily run seeds anything: the four
+timers (top-up, item tick, world tick, micro-tick) never touch folder-owned rows. You run a seed because *you
 changed a file*, and only that file's seed.
 
 **R7 consequence — a cast edit is a website edit.** The public `/voices` page reads `role` and
