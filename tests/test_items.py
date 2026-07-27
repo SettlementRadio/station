@@ -128,10 +128,15 @@ def test_prune_items_expires_the_old_ones(db):
 def test_seed_canon_keeps_items_full_reset_clears_them(db):
     # §2a: tick-owned, survives `seed-canon` (no folder-authored items to replace),
     # cleared by the destructive `reset-world`.
+    def _live() -> int:
+        return db.execute(
+            "SELECT count(*) FROM items WHERE id = 'q10-live'"
+        ).fetchone()[0]
+
     store.insert_items(db, [_item("q10-live")])
 
     store.clear_world(db, scope="canon")  # the SAFE refresh
-    assert store.counts(db)["items"] == 1  # a night's items SURVIVE a bible edit
+    assert _live() == 1  # a night's items SURVIVE a bible edit
 
     store.clear_world(db, scope="world")  # the DESTRUCTIVE full wipe
     assert store.counts(db)["items"] == 0

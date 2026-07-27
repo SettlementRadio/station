@@ -122,8 +122,16 @@ def test_batch_enabled_paths_finds_calls_not_docstring_mentions(tmp_path):
 
 
 def test_batch_enabled_paths_on_the_real_tree_is_the_tick_only():
-    """The unclaimed-50% finding Q7.2 exists to change."""
-    assert metrics.batch_enabled_paths() == ["src/world/world_tick.py"]
+    """The unclaimed-50% finding Q7.2 exists to change.
+
+    Q1.1 added the second batch caller (the item tick); the SCHEDULER's generation
+    path — the one §1h calls out as leaving 50% unclaimed — is still not on the list,
+    and that is what Q7.2 changes.
+    """
+    assert metrics.batch_enabled_paths() == [
+        "src/world/items.py",
+        "src/world/world_tick.py",
+    ]
 
 
 # --- the grid walk ----------------------------------------------------------

@@ -95,6 +95,7 @@ help:
 	@echo "  make schedule  top up the rolling buffer to depth + write the playlist (C2)"
 	@echo "  make world-tick run one world tick: invent + advance world stories (D3)"
 	@echo "  make micro-tick run one intra-day micro-tick: nudge a live story (R4.1)"
+	@echo "  make item-tick  generate tonight's small items — the world's second class (Q1.1)"
 	@echo "  make news-demo show the news desk reframe stories across a simulated day (D4)"
 	@echo "  make figures-demo show the world's people speak — attributed quotes (D10)"
 	@echo "  make freshness-demo show anti-repetition keep talk openings/beats varied (D5)"
@@ -155,6 +156,17 @@ seed-sponsors:
 world-tick:
 	@echo "==> Running one world tick (D3)…"
 	$(PY) -m src.world.world_tick
+
+# Q1.1: generate ONE night's SMALL ITEMS — the dozens of ordinary things (a price, a
+# delay, a fine, a queue) that the station talks about between the arc'd stories. Runs
+# haiku-tier through the Batch API for pennies, safety-gates each item (a flagged item
+# is dropped, never regenerated), de-dupes against the last few days, and sweeps expired
+# items on the tail. Nightly job for the C5 cron, run BEFORE `world-tick` so the story
+# tick sees the day's texture. Needs `make seed-canon` + .env. For a quick synchronous
+# local run with no async batch wait: `LLM_BATCH_ENABLED=false make item-tick`.
+item-tick:
+	@echo "==> Generating tonight's small items (Q1.1)…"
+	$(PY) -m src.world.items
 
 # R4.1: run ONE intra-day micro-tick — the light, near-live nudge the C5 cron fires
 # every 2-4h BETWEEN nightly ticks. May advance one of today's live stories a small

@@ -188,6 +188,11 @@ class Settings(BaseSettings):
     # semantic breadth pulled before bounding to the limit.
     context_quotes_limit: int = 4
     context_quotes_top_k: int = 8
+    # Q1.2: how many SMALL ITEMS (Q1.0/Q1.1) the writers' room sees — the ordinary
+    # things it can mention in passing or build a short slot around. The programme's own
+    # domains fill the list first, the general mix fills the remainder (R4.3's shape).
+    # ONE LINE each, so a dozen costs almost nothing; 0 turns the section off.
+    context_items_limit: int = 12
 
     # --- Conversation (B4: two-DJ dialogue — the writers' room) ----------------
     # The cast ids (cards from the DB) who hold the conversation, in handover
@@ -638,13 +643,32 @@ class Settings(BaseSettings):
     # price, a delay, a result, a fine, a queue, a birth. Dozens a night, generated on
     # the haiku tier through the Batch API for pennies (Q1.1).
     #
-    # These two dials are the EXPIRY policy, and expiry is the point: unlike stories
-    # (world history, never GC'd), an item is worth a line for a day and then gone.
-    # `*_window_hours` is how far back a read reaches — the room and the desk see only
-    # items this fresh; `*_retention_days` is when `prune_items` deletes them for good
-    # (comfortably wider than the window, so a read never races the sweep).
+    # `item_window_hours` / `item_retention_days` are the EXPIRY policy, and expiry is
+    # the point: unlike stories (world history, never GC'd), an item is worth a line for
+    # a day and then gone. `*_window_hours` is how far back a read reaches — the room
+    # and the desk see only items this fresh; `*_retention_days` is when `prune_items`
+    # deletes them for good (comfortably wider than the window, so a read never races
+    # the sweep).
     item_window_hours: float = 36.0
     item_retention_days: float = 7.0
+    # The nightly generator (`make item-tick`, src/world/items.py). `*_enabled` kills
+    # it entirely.
+    # `*_min`/`*_max` are the target band for one night's ACCEPTED items — the min is
+    # what the Q1 gate asserts, the max what the generation aims at (safety drops and
+    # de-dup take a bite out of it). `*_tier` is haiku — CLAUDE.md routes exactly this
+    # high-volume/low-stakes job there, and the run goes through the BATCH path, where
+    # the other 50% lives. `*_requests` is how many batch requests one night is split
+    # into: independent samples spread across the everyday categories, which is both
+    # cheaper per call (bounded output) and more varied than one giant list.
+    # `*_max_tokens` caps each request's output; `*_dedup_window_days` is how far back
+    # de-dup compares (the same Jaccard helper the story tick uses).
+    item_tick_enabled: bool = True
+    item_tick_min: int = 30
+    item_tick_max: int = 60
+    item_tick_tier: str = "haiku"
+    item_tick_requests: int = 6
+    item_tick_max_tokens: int = 2000
+    item_tick_dedup_window_days: float = 3.0
 
     # --- Tick digest (R5.2: the panel's post-tick "what happened" note) --------
     # After each nightly tick / micro-tick, a short human-readable DIGEST is written
@@ -723,6 +747,11 @@ class Settings(BaseSettings):
     # `news_daysummary_end_hour`)) closes with a "the day so far" wrap of the day's
     # threads — a distinct flavour from the hourly shorts.
     news_story_count_short: int = 3
+    # Q1.2 — the bulletin's ITEMS TAIL: the "and briefly…" run of one-line small items
+    # (Q1.0/Q1.1) a real bulletin closes on, after the arc'd stories. `*_short` is the
+    # hourly pin's shorter tail. 0 turns the tail off (the pre-Q1 bulletin exactly).
+    news_item_count: int = 4
+    news_item_count_short: int = 2
     news_trail_max_stale_hours: float = 48.0
     news_trail_proximity_bonus: float = 0.5
     news_daysummary_start_hour: int = 18

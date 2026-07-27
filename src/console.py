@@ -31,13 +31,13 @@ separate: internal state → this console (private); public subset → the feed 
 from __future__ import annotations
 
 import sys
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from . import health
 from .config import settings
 from .logging_setup import get_logger
 from .scheduler import _duration_of, _load_state, onair_hosts, split_schedule
-from .world import events, programming, store
+from .world import clock, events, programming, store
 
 log = get_logger(__name__)
 
@@ -133,7 +133,14 @@ def last_run_lines(now: datetime, state: dict) -> list[str]:
 
 
 def world_lines(conn, now: datetime) -> list[str]:
-    """World-tick heartbeat (D3): last run, tick count, and active-story count."""
+    """World-tick heartbeat (D3): last run, tick count, active stories — and items.
+
+    The second line is the Q1 supply figure: how many SMALL items are inside the read
+    window right now. It is the number the whole Phase Q pack turns on — a story count
+    of 23 against ~150 slots a day is what made every show reach for the same beat, so
+    the operator should see both counts side by side.
+    """
+    from .world.items import _ITEM_COUNT_KEY, _ITEM_LAST_AT_KEY
     from .world.world_tick import _TICK_COUNT_KEY, _TICK_LAST_AT_KEY
 
     count = store.get_state(conn, _TICK_COUNT_KEY)
@@ -147,8 +154,20 @@ def world_lines(conn, now: datetime) -> list[str]:
             )
         except ValueError:
             pass
+
+    iw_now = clock.to_inworld(now)
+    in_window = len(
+        store.items_in_range(
+            conn, iw_now - timedelta(hours=settings.item_window_hours), iw_now
+        )
+    )
+    item_last = store.get_state(conn, _ITEM_LAST_AT_KEY)
+    item_count = store.get_state(conn, _ITEM_COUNT_KEY)
     return [
-        f"  last tick: {when}  ·  ticks run: {count or 0}  ·  active stories: {active}"
+        f"  last tick: {when}  ·  ticks run: {count or 0}  ·  active stories: {active}",
+        f"  items in window ({settings.item_window_hours:g}h): {in_window}"
+        f"  ·  item ticks run: {item_count or 0}"
+        f"  ·  last: {(item_last or 'never')[:19]}",
     ]
 
 

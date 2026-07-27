@@ -165,6 +165,10 @@ def test_world_and_story_panels_render_from_the_store(monkeypatch, tmp_path):
     monkeypatch.setattr(store, "active_stories", lambda conn, limit=None: [story])
     monkeypatch.setattr(store, "story_beats", lambda conn, sid: [beat])
     monkeypatch.setattr(store, "journal_counts", lambda conn: {"vell": 2, "wren": 1})
+    # Q1.2 — the world panel's second line is the small-items supply figure.
+    monkeypatch.setattr(
+        store, "items_in_range", lambda conn, a, b, **kw: [object(), object()]
+    )
 
     @contextlib.contextmanager
     def _fake_conn():
@@ -174,6 +178,7 @@ def test_world_and_story_panels_render_from_the_store(monkeypatch, tmp_path):
 
     report = console.render(NOW)
     assert "ticks run: 12" in report and "active stories: 1" in report
+    assert "items in window (36h): 2" in report  # Q1.2: the supply figure
     assert "The Relay Goes Dark" in report and "[developing]" in report
     assert "Contact lost at dusk" in report  # the newest beat
     assert "vell: 2" in report and "wren: 1" in report  # the D13.1 journal line
