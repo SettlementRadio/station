@@ -841,6 +841,34 @@ make jingle-audit DUMP=/tmp/t.json   # also dump the placed timeline JSON
   freshly-dropped clip actually resolves. `tests/test_jingle_audit.py` covers the same checks unit
   + end-to-end in CI.
 
+### Measure the station (the Phase Q audit)  → Phase E panel · **Panel → (not built yet)**
+The numbers behind "does it read like a real station" — story supply, format mix, host load,
+register, topic concentration, prompt size and cost. Two commands: a free one you can run any
+time, and a paid one that generates real segments.
+```bash
+make audit                       # FREE: DB + grid + code reads. Seconds, no API calls.
+make audit LABEL=before-q1       # name the run: docs/audit/<date>-before-q1.json
+make audit-full DRY=1            # price the paid run first (prints the plan + estimate)
+make audit-full LABEL=q1         # + real generation + the acceptance/test guards
+make audit-compare BASE=baseline HEAD=q1     # the delta table
+make gate PACK=Q1                # THE GATE: pass/fail table; non-zero exit on any miss
+```
+- **`make audit` is safe on a live station** — pure reads, nothing written but its own JSON.
+  **`make audit-full` is not free**: it generates ~13 talk segments with live Anthropic calls
+  (see the printed estimate), and it runs the acceptance sim + the whole test suite, so budget
+  15+ minutes. TTS is mocked and every DB write lands in one rolled-back transaction, so the
+  world is untouched — verified even through a hard kill mid-run.
+- **The gate is the answer, not a summary of it.** `make gate PACK=Qn` exits non-zero if any
+  threshold in `docs/audit/gates.yaml` misses. A missing or null metric counts as a FAIL, so
+  gating on a free-only run correctly fails the thresholds that need real generation. Note
+  `make` reports a failure as exit **2**; run `.venv/bin/python -m src.audit.gate --pack Qn`
+  for the exact 0/1.
+- `docs/audit/2026-07-26-baseline.json` is the committed "before" snapshot and is **never
+  edited** — every relative threshold is read against it. `docs/audit/README.md` has the full
+  rules, including two caveats worth knowing before you read a number off the table.
+- If a run hangs: a stalled Anthropic stream can hold one call open for tens of minutes
+  (`llm_timeout_sec` bounds each read, not a streaming call's total). Killing the run is safe.
+
 ### Peek inside the world (read-only snippets)
 The story log the tick wrote:
 ```bash

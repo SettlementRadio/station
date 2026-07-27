@@ -30,6 +30,69 @@ platform docs (`docs/marketing/*`) mine; `grep "📣"` to find them. Skip when t
 Commit: <hash>  ·  Clips: <filenames in devlog/>
 ```
 
+## 2026-07-27 — Phase Q — Q0: the audit harness, and the baseline it measures against
+**Focus:** build the feedback loop the rest of Phase Q is gated on — `make audit` (free
+metrics), `make audit-full` (the API probe), `make audit-compare`, and `make gate PACK=Qn`,
+the command that decides whether a pack is done.
+
+**Decisions:**
+- **The §2b contraction guard floor is 3.5, not the tabled 5.0** (operator ruling). Five
+  measurements of `register.contractions_per_100w` over the identical pinned slots on
+  *unchanged* code gave **3.7, 3.7, 4.5, 5.1, 5.4** — the external audit's own 5.4 is the
+  top of that range, not a lost target. A 5.0 floor would fail most runs on a healthy station.
+  3.5 sits just under the lowest observation, so it still trips if plain speech collapses.
+  Reasoning is committed beside the rule in `gates.yaml`; Q5's own 5.0 target stays verbatim.
+- **`topic.top_entity_mentions` is measured PER RUN**, with `top_entity_mentions_total`
+  beside it. §1a's "named 23 times" counted one pass of the four slots, so an absolute count
+  would double under `--runs 2` and Q1's ≤12 gate would be measuring the probe's size
+  instead of the station's concentration.
+- **The committed baseline is the probe run of 2026-07-26**, promoted rather than
+  regenerated. Three attempts at a fresh run were defeated by Anthropic streaming stalls
+  (single calls hanging 13–69 minutes); the promoted run is the same station on the same day,
+  13 segments, and every relative threshold reads correctly against it. The one blemish —
+  `top_entity_mentions: 45` recorded under the pre-fix definition (= 22.5 per run) — is
+  documented rather than edited, because that file is never edited.
+- **Entity counting uses a real world vocabulary**, not the seed's proper-noun regex (which
+  scored "That" and "Because" as names): the gazetteer's `##` headings + the `figures` table
+  + the story/event log, cast excluded, possessives normalised.
+- **No 10th acceptance property.** Topic concentration is printed as one informational line
+  in the `make acceptance` summary (§1g/§4): acceptance stays mocked and mechanism-only.
+
+**Changed:** new `src/audit/` (`metrics`, `probe`, `textstats`, `checks`, `runs`, `compare`,
+`gate`, `blind`, `cli`); `docs/audit/` (`gates.yaml`, `README.md`, the committed baseline +
+its transcripts); five new `make` targets + help; `src/config.py` audit dials;
+`src/acceptance.py` (see the two fixes below); `tests/test_audit_{metrics,probe,gate}.py`
+(60 tests; suite 661 → 721).
+
+**Two pre-existing bugs found while wiring the §2b guards, both fixed:**
+- `run_acceptance()`'s keyword default `tick_every_hours=24` vs the CLI's flag default of
+  **12** — calling the function bare gives one in-window tick, starves `stories_evolve`, and
+  reported **8/9 on a station `make acceptance` calls green**. Hoisted to one
+  `acceptance.CLI_DEFAULTS` used by both callers.
+- `_sim_environment` sandboxed `segments_dir` but **not** the three public feed paths, whose
+  defaults are absolute under `segments/` — so `make acceptance` overwrote the station's real
+  `nowplaying.json` / `schedule-public.json` / `djs-public.json` with simulated data.
+  Fabricated now-playing on a PUBLIC surface; `tests/conftest.py` had guarded the suite
+  against exactly this, the CLI was unguarded. Now patched in the sim itself.
+
+**Why:** the pack's whole premise is that Phase Q's problems are measured, not felt — so the
+gate has to be able to fail by itself, and it has to fail for the right reasons. Both bugs
+were found by making a guard real: `acceptance.properties_passed` and `tests.passed` were
+listed in §2b but nothing produced them, and wiring them up is what exposed the cadence
+mismatch and the feed leak. A guard nobody computes is a guard nobody trusts.
+
+**📣 Postable:** "The gate found two bugs before it measured anything." Writing the harness
+that checks whether the station regressed turned up a simulation that overwrote the real
+public now-playing feed, and a green/8-of-9 disagreement between two ways of calling the same
+function. Good material on why you make your checks executable.
+
+**Next:** Q1 — the small-items generator (`items` table + `run_item_tick()`), the keystone
+that fixes the 150-slots-vs-3-stories ratio. Caution recorded in `gates.yaml`:
+`topic.cross_run_beat_identity_pct` already measures 25% on unchanged code (baseline said
+75%), so Q1's ≤40% gate is satisfied before any fix lands — don't read a pass there as proof.
+Commit: (this session)  ·  Clips: (none)
+
+
 A typical *build* session will be short, e.g.:
 > `## 2026-07-02 — Phase A — T3 script generation working`
 > Focus: got Claude writing Vell's segment from canon. Decisions: cache the whole canon as one

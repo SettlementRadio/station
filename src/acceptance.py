@@ -52,6 +52,7 @@ import json
 import re
 import sys
 import tempfile
+from collections import Counter
 from collections.abc import Iterator, Sequence
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
@@ -168,6 +169,9 @@ class AcceptanceReport:
     window_hours: float
     results: list[PropertyResult] = field(default_factory=list)
     telemetry: dict[str, int] = field(default_factory=dict)
+    # Q0.3 — printed as ONE informational line, deliberately NOT a tenth property. See
+    # `topic_concentration` for why acceptance reports this without asserting on it.
+    concentration: dict = field(default_factory=dict)
 
     @property
     def ok(self) -> bool:
@@ -181,6 +185,8 @@ class AcceptanceReport:
             mark = "✅ PASS" if r.ok else "❌ FAIL"
             lines.append(f"  {mark}  {r.name}")
             lines.append(f"          {r.detail}")
+        if self.concentration:
+            lines.append("  " + render_concentration(self.concentration))
         t = self.telemetry
         lines.append(
             "  telemetry: " + ", ".join(f"{k}={v}" for k, v in sorted(t.items()))
@@ -714,7 +720,10 @@ def run_acceptance(
             **{f"llm_{k}": v for k, v in gen.by_kind.items()},
         }
 
-    report = AcceptanceReport(window_hours=window_hours, telemetry=telemetry)
+    concentration = topic_concentration(final_world["openings"])
+    report = AcceptanceReport(
+        window_hours=window_hours, telemetry=telemetry, concentration=concentration
+    )
     report.results = [
         _check_no_dead_gaps(timeline, start, end),
         _check_no_repetition(timeline, final_world["openings"]),
@@ -727,6 +736,7 @@ def run_acceptance(
         _check_plain_register(timeline, gen),
     ]
     log.info("acceptance_done", ok=report.ok, **telemetry)
+    log.info("acceptance_topic_concentration", **concentration)
     return report
 
 
@@ -734,6 +744,62 @@ def _maybe_dump_timeline(timeline: list[dict], path: str | None) -> None:
     """Write the placed timeline JSON to `path` (a debug aid to inspect a failure)."""
     if path:
         Path(path).write_text(json.dumps(timeline, indent=2))
+
+
+def topic_concentration(openings: Sequence[tuple]) -> dict:
+    """How concentrated the window's aired TOPICS were. INFORMATIONAL, never a check.
+
+    PHASE_Q_TASKS.md §1g: `no_repetition` checks opening fingerprints and adjacent
+    duplicates, so it passes cleanly on a day where three of four shows lead on the
+    same story. That is not a bug in the property, it is its scope — so Q0.3 shows the
+    blind spot rather than asserting on it. Two reasons it must stay informational:
+
+      * acceptance runs on a MOCKED writer, so this measures the beat-PICKING mechanism,
+        not the writing. Real topic concentration over live text is `make audit-full`'s
+        `topic.*` (Q0.1), against the committed baseline.
+      * §4: "no 10th acceptance property" — conflating mechanism with quality would make
+        both measurements worse.
+
+    Reads the airplay memory the freshness system writes, so it sees exactly what the
+    anti-repetition steer saw.
+    """
+    # The handles are heterogeneous by format (`freshness._topic_handle`): talk stores a
+    # shortened BEAT line, news a comma-joined list of the story ids it covered, music
+    # the track id. Only news needs splitting — counting its handles verbatim scores
+    # every distinct COMBINATION of stories as its own topic, which reads as healthy
+    # variety when a handful of stories are in fact carrying the day. A talk beat stays
+    # whole: its first line can itself contain commas, so splitting it would fragment
+    # one angle into several and inflate the distinct count the other way.
+    mentions: list[str] = []
+    for fmt, _opening, topic in openings:
+        if not topic:
+            continue
+        if fmt == "news":
+            mentions += [part.strip() for part in topic.split(",") if part.strip()]
+        else:
+            mentions.append(topic)
+    if not mentions:
+        return {"aired": 0, "distinct": 0}
+    counts = Counter(mentions)
+    top, n = counts.most_common(1)[0]
+    return {
+        "aired": len(mentions),
+        "distinct": len(counts),
+        "top_topic": top,
+        "top_count": n,
+        "top_share_pct": round(100 * n / len(mentions), 1),
+    }
+
+
+def render_concentration(c: dict) -> str:
+    """The one informational line the summary prints."""
+    if not c.get("aired"):
+        return "topic concentration: no aired topics recorded (informational)"
+    return (
+        f"topic concentration: {c['distinct']} distinct topic handle(s) over "
+        f"{c['aired']} mention(s); top {str(c['top_topic'])[:40]!r} ×{c['top_count']} "
+        f"({c['top_share_pct']}%)  — informational, not a property"
+    )
 
 
 def _snapshot_world(now: datetime) -> dict:

@@ -573,6 +573,18 @@ The backend follows the engineering standards in [`CLAUDE.md`](CLAUDE.md). For c
   ([`src/world/canon_source.py`](src/world/canon_source.py)) and `make seed-canon` project it into the DB,
   and the writer reads its world back out through [`src/world/context.py`](src/world/context.py),
   never the raw file.
+- **Measuring the station (Phase Q).** [`src/audit/`](src/audit/) computes the quality metrics
+  the Phase Q packs are gated on, and `make gate` decides whether a pack is done — it exits
+  non-zero if any threshold in [`docs/audit/gates.yaml`](docs/audit/gates.yaml) misses, and a
+  metric that was never measured counts as a failure rather than a pass:
+  ```bash
+  make audit                    # free: DB + grid + code reads, seconds, no API calls
+  make audit-full DRY=1         # price the paid run (real generation) before running it
+  make audit-compare BASE=baseline HEAD=q1
+  make gate PACK=Q1             # the pass/fail table + a non-zero exit on any miss
+  ```
+  `docs/audit/2026-07-26-baseline.json` is the committed "before" snapshot and is never edited;
+  [`docs/audit/README.md`](docs/audit/README.md) explains the rules and the caveats.
 - **Lint + format.** [`ruff`](https://docs.astral.sh/ruff/) is configured in `pyproject.toml`:
   ```bash
   .venv/bin/ruff check src     # lint

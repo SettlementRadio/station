@@ -1,0 +1,189 @@
+{
+  "collected_at": "2026-07-27T21:55:52.857625",
+  "reference_now": "2026-07-27T12:00:00",
+  "grid_week_start": "2026-07-27T00:00:00",
+  "world": {
+    "new_stories_per_tick_min": 2,
+    "new_stories_per_tick_max": 4,
+    "max_active_stories": 24,
+    "active_stories": 23,
+    "stories_status_active_rows": 40,
+    "stories_total": 40,
+    "domains_covered": 13,
+    "events_in_window": 80,
+    "title_colon_schema_pct": 92.5,
+    "title_subtitle_article_pct": 78.4
+  },
+  "quotes": {
+    "count": 120,
+    "mean_words": 24.2,
+    "median_words": 21.0,
+    "pct_with_contraction": 40.8,
+    "hedges_per_1000w": 1.7,
+    "pct_under_12w": 7.5
+  },
+  "grid": {
+    "format_share": {
+      "chart": 2.1,
+      "music": 10.8,
+      "news": 23.6,
+      "talk": 63.5
+    },
+    "programs": 35,
+    "registered_formats": 6,
+    "host_hours_per_day": {
+      "vell": 8.32,
+      "the-archivist": 7.82,
+      "wren": 7.68,
+      "joss": 4.57,
+      "zhe": 4.29,
+      "thorn": 3.07,
+      "mira": 3.0,
+      "kael": 2.64,
+      "sera": 2.64,
+      "orin": 1.64
+    },
+    "max_host_hours_per_day": 8.32,
+    "min_host_hours_per_day": 1.64,
+    "news_anchor_count": 1,
+    "news_words_low": 800,
+    "news_words_high": 1000,
+    "news_words_distinct_per_program": 1
+  },
+  "context": {
+    "bible_chars": 186353,
+    "cards_chars": 3984,
+    "dynamic_chars": 130808,
+    "events_rendered": 80,
+    "canon_rendered": 267,
+    "quotes_rendered": 4,
+    "topic_passed_on_live_path": false,
+    "event_window_days": 14,
+    "cached_tokens": 40264,
+    "uncached_tokens": 29228,
+    "seconds_per_call": 24.7,
+    "calls": 8,
+    "warm_calls": 7
+  },
+  "freshness": {
+    "window_hours": 6.0,
+    "recent_limit": 10,
+    "mode": "prefer",
+    "enabled": true
+  },
+  "models": {
+    "haiku": "claude-haiku-4-5-20251001",
+    "sonnet": "claude-sonnet-4-6",
+    "opus": "claude-opus-4-8",
+    "default_tier": "sonnet",
+    "batch_enabled_paths": [
+      "src/world/world_tick.py"
+    ]
+  },
+  "cost": {
+    "usd_per_talk_segment": 0.3722,
+    "talk_usd_window": 0.3722,
+    "talk_calls_window": 4.0,
+    "days": 7
+  },
+  "acceptance": {
+    "properties_passed": 9,
+    "properties_total": 9,
+    "properties_failed": [],
+    "window_hours": 24.0
+  },
+  "tests": {
+    "passed": 721,
+    "failed": 0,
+    "errors": 0,
+    "skipped": 0,
+    "exit_code": 0
+  },
+  "topic": {
+    "cross_run_beat_identity_pct": null,
+    "top_entity": "Cold Harbor",
+    "top_entity_mentions": 20.0,
+    "top_entity_mentions_total": 20,
+    "top_entity_share": 22.5,
+    "distinct_entities_per_segment": 11,
+    "segments": 4,
+    "runs": 1,
+    "entity_mentions_total": 89,
+    "top_entities": {
+      "Cold Harbor": 20,
+      "Accords": 8,
+      "Meridian": 4,
+      "Solis": 4,
+      "Meridian Accords": 3,
+      "Renn Kael": 3,
+      "Twenty": 3,
+      "House Vidal-Renn": 2,
+      "Breathe Easy": 2,
+      "Settlement": 2
+    }
+  },
+  "register": {
+    "median_turn_words": 15.5,
+    "mean_turn_words": 21.1,
+    "pct_turns_over_40w": 15.4,
+    "pct_turns_under_4w": 16.9,
+    "contractions_per_100w": 4.5,
+    "hedges_per_1000w": 1.0,
+    "banned_abstractions_daytime": 0,
+    "banned_phrases_found": [],
+    "segments": 4,
+    "turns": 136,
+    "daytime_segments": 3
+  },
+  "continuity": {
+    "max_verbatim_overlap_chars": null,
+    "mean_verbatim_overlap_chars": null,
+    "repeated_ngram_rate": null,
+    "distinct_beats_in_run": null,
+    "slots": 0,
+    "program": null
+  },
+  "probe": {
+    "runs": 1,
+    "slots": [
+      "2026-07-27T07:12",
+      "2026-07-27T10:12",
+      "2026-07-27T16:12",
+      "2026-07-27T22:12"
+    ],
+    "continuity_slots": 0,
+    "segments": [
+      {
+        "run": 1,
+        "slot": "2026-07-27T07:12",
+        "program": "morning_currents",
+        "dominant_entity": "Cold Harbor"
+      },
+      {
+        "run": 1,
+        "slot": "2026-07-27T10:12",
+        "program": "the_exchange",
+        "dominant_entity": "Accords"
+      },
+      {
+        "run": 1,
+        "slot": "2026-07-27T16:12",
+        "program": "the_circuit",
+        "dominant_entity": "Cold Harbor"
+      },
+      {
+        "run": 1,
+        "slot": "2026-07-27T22:12",
+        "program": "long_night",
+        "dominant_entity": "Twenty"
+      }
+    ],
+    "estimated_llm_calls": 16,
+    "measured_usd_per_segment": 0.3722,
+    "estimated_usd": 1.49,
+    "actual_llm_calls": 8,
+    "tts_synths": 0,
+    "wall_seconds": 161.4,
+    "segments_generated": 4
+  }
+}

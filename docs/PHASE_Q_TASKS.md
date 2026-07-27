@@ -264,7 +264,7 @@ Work in order. Q0 is mandatory first — without it nothing else has a gate.
 
 | Pack | What | Baseline finding it fixes | Depends on | Built? |
 |---|---|---|---|---|
-| **Q0** | The audit harness + the committed baseline | §2 (there is no loop today) | — | ☐ |
+| **Q0** | The audit harness + the committed baseline | §2 (there is no loop today) | — | ✅ |
 | **Q1** | Story supply: the small-items generator | §1a — 3 stories/day vs 150 slots | Q0 | ☐ |
 | **Q2** | Bounded, ranked context + wire the RAG | §1f — 28k uncached tokens, dead RAG | Q0 (Q1 makes ranking load-bearing) | ☐ |
 | **Q3** | Three new formats (round-up / letters / interview) | §1b — 63.5% one code path | Q1 (the round-up eats Q1's supply) | ☐ |

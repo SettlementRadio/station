@@ -27,8 +27,8 @@
 guards: # checked on EVERY pack (§2b)
   # OPERATOR RULING, 2026-07-26: floor 3.5, NOT §2b's tabled 5.0. The metric is noisy at
   # probe sample sizes — four measurements over the identical pinned slots on UNCHANGED
-  # code gave 3.7, 3.7, 5.1 and 5.4 (the external audit's own figure being the top of that
-  # range, not an outlier). A 5.0 floor fails ~2 runs in 3 on a healthy station; 3.5 sits
+  # code gave 3.7, 3.7, 4.5, 5.1 and 5.4 (the external audit's own figure being the top of
+  # that range, not an outlier). A 5.0 floor fails most runs on a healthy station; 3.5 sits
   # just below the lowest observation, so it still trips if plain speech collapses. Do not
   # "restore" this to 5.0 without re-measuring the spread. R1 is separately protected by
   # `banned_abstractions_daytime` below and by acceptance's own `plain_register` property.
