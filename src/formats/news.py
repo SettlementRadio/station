@@ -38,6 +38,7 @@ from ..segment import Segment
 from ..world import clock, store
 from ..world import events as events_mod
 from ..world.context import AssembledContext
+from ..world.store import Item
 from . import common, news_select
 from .news_select import SelectedStory
 
@@ -187,24 +188,46 @@ def _freshness_section(recent_openings: str) -> str:
     )
 
 
-def _bulletin_shape(now: datetime, flow: ShowFlow | None) -> tuple[int, bool]:
-    """How big + what flavour this bulletin is (R4.2), from the program's grid slot.
+def _items_block(items: list[Item], now: datetime) -> str:
+    """The bulletin's items tail (Q1.2) — the short "and briefly…" run at the back.
 
-    Returns `(story_count, day_summary)`. A SHORT program's news pin (the hourly
-    `news@:00` in a ≤30-min show — `flow.short_show`) runs a lean 2-3-item bulletin;
-    a flagship / dedicated desk runs the full mix. The DRIVE-time desk (in-world hour
-    in the day-summary window) additionally closes with a "the day so far" wrap — a
-    distinct flavour from the hourly shorts, so a short slot never gets the wrap.
+    One line each, exactly as they came out of the world: these are meant to be read
+    almost as-is, in ten seconds apiece. Empty when there are no items in the window
+    (the pre-Q1 bulletin).
+    """
+    if not items:
+        return ""
+    lines = [
+        f"- {events_mod.phrase_for_datetime(i.in_world_datetime, now)}: {i.text}"
+        for i in items
+    ]
+    return (
+        "And briefly — small items for the back of the bulletin (one short sentence "
+        "each, in the order that reads best; do not expand them into stories):\n"
+        + "\n".join(lines)
+    )
+
+
+def _bulletin_shape(now: datetime, flow: ShowFlow | None) -> tuple[int, int, bool]:
+    """How big + what flavour this bulletin is (R4.2/Q1.2), from the program's slot.
+
+    Returns `(story_count, item_count, day_summary)`. A SHORT program's news pin (the
+    hourly `news@:00` in a ≤30-min show — `flow.short_show`) runs a lean 2-3-item
+    bulletin with a two-line tail; a flagship / dedicated desk runs the full mix and a
+    longer tail. The DRIVE-time desk (in-world hour in the day-summary window)
+    additionally closes with a "the day so far" wrap — a distinct flavour from the
+    hourly shorts, so a short slot never gets the wrap.
     """
     short = bool(flow and flow.short_show)
     count = settings.news_story_count_short if short else settings.news_story_count
+    items = settings.news_item_count_short if short else settings.news_item_count
     iw_hour = clock.to_inworld(now).hour
     day_summary = (not short) and (
         settings.news_daysummary_start_hour
         <= iw_hour
         < settings.news_daysummary_end_hour
     )
-    return count, day_summary
+    return count, items, day_summary
 
 
 def _build_system(
@@ -213,6 +236,7 @@ def _build_system(
     anchor: str,
     selected: list[SelectedStory],
     *,
+    items: list[Item] | None = None,
     revision_note: str | None = None,
     recent_openings: str = "",
     day_summary: bool = False,
@@ -236,6 +260,8 @@ def _build_system(
     continuity = _continuity_block(selected)
     continuity_section = f"{continuity}\n\n" if continuity else ""
     freshness_section = _freshness_section(recent_openings)
+    items_block = _items_block(items or [], now)
+    items_section = f"{items_block}\n\n" if items_block else ""
     return (
         f"{revision}"
         "You are the writer for Settlement Radio's news desk, scripting the anchor "
@@ -251,6 +277,7 @@ def _build_system(
         "institutions, and places a story is about, and refer to each by the SAME name "
         "every time it comes up.\n\n"
         f"The stories to report this hour:\n{_briefs_block(selected, now)}\n\n"
+        f"{items_section}"
         f"{continuity_section}"
         f"{freshness_section}"
         "How to handle them:\n"
@@ -265,9 +292,18 @@ def _build_system(
         "ones be shorter.\n"
         "  - Where a story lists quotes, ATTRIBUTE one or two by name and role and "
         "frame them in time ('the relay-keeper said yesterday: …') — quote the words "
-        "given, don't invent new ones; skip quotes that don't add to the report.\n\n"
-        "Shape: a short desk open (this is the settlement news) → the items above, in "
-        "a natural order → "
+        "given, don't invent new ones; skip quotes that don't add to the report.\n"
+        + (
+            "  - The SMALL ITEMS run at the BACK, after the stories, as a quick "
+            "round of one-sentence briefs — a change of pace, read faster and "
+            "flatter. Give each one a line; don't build any of them out, don't "
+            "editorialise, and don't repeat a story you already reported.\n"
+            if items_block
+            else ""
+        )
+        + "\nShape: a short desk open (this is the settlement news) → the stories "
+        "above, in a natural order → "
+        + ("the brief items round → " if items_block else "")
         + (
             "a brief 'the day so far' wrap — one or two sentences drawing the day's "
             "main threads together (this is the drive-time desk) → "
@@ -415,16 +451,19 @@ def news(now: datetime, ctx: AssembledContext, flow: ShowFlow | None = None) -> 
     seg_id = common.make_seg_id("news", now)
 
     # R4.2 — the bulletin's size + flavour come from the program's grid slot.
-    story_count, day_summary = _bulletin_shape(now, flow)
+    story_count, item_count, day_summary = _bulletin_shape(now, flow)
 
     # D4.1 — pick + tag the hour's stories from the living world (own short read txn).
     selected = news_select.select_stories(now, count=story_count)
+    # Q1.2 — and the small-items tail the bulletin closes on ("and briefly…").
+    items = news_select.select_items(now, count=item_count)
     log.info(
         "format_news_start",
         seg_id=seg_id,
         anchor=anchor_card.id,
         selected=len(selected),
         story_count=story_count,
+        items=len(items),
         day_summary=day_summary,
     )
 
@@ -441,6 +480,7 @@ def news(now: datetime, ctx: AssembledContext, flow: ShowFlow | None = None) -> 
             now,
             anchor_card.name,
             selected,
+            items=items,
             revision_note=revision_note,
             recent_openings=recent_openings,
             day_summary=day_summary,

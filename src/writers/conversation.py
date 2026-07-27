@@ -196,7 +196,11 @@ def _situation(frame: ShowFrame, ctx: AssembledContext) -> str:
 
 
 def _showrunner_thread(
-    flow: ShowFlow | None, *, on_brief: bool = False, energy: str = ""
+    flow: ShowFlow | None,
+    *,
+    on_brief: bool = False,
+    energy: str = "",
+    has_items: bool = False,
 ) -> tuple[str, str]:
     """The showrunner's D12.2 thread context + task, for `(thread_block, task_block)`.
 
@@ -213,6 +217,11 @@ def _showrunner_thread(
     (`steady`/`bright`) the fresh pick's angle becomes a CONCRETE everyday stake,
     not a meditation — the beat-level half of the register fix. `calm` and ""
     keep the original human-angle wording (the night's soul; the direct paths).
+
+    `has_items` (Q1.2) — True when the context carries small items. It opens the fresh
+    pick up to one of them: the measured problem (§1a) is that ~150 slots a day chase
+    2-4 stories, so the picker must know that a price move is a legitimate beat and not
+    a lesser one. False keeps the pre-Q1 task exactly.
     """
     show_scope = (
         "Pick a beat that belongs on THIS show — the ON THIS SHOW brief above "
@@ -231,10 +240,19 @@ def _showrunner_thread(
             "disagreement, something one of them can't stop thinking about — not "
             "just a fact to report"
         )
+    small_item_option = (
+        "One of the SMALL THINGS listed above is a perfectly good beat in its own "
+        "right — a price, a delay, a queue, a fine, something that broke again. A "
+        "short slot does not need the biggest story in the world, and two hosts on "
+        "a small, concrete thing beats two hosts on a large, vague one. "
+        if has_items
+        else ""
+    )
     fresh_task = (
         f"{show_scope}"
         f"Pick exactly ONE current event or world fact for them to glance off, and "
         f"{angle}. "
+        f"{small_item_option}"
         "The angle should suit both hosts AND the time of day above; do not assume "
         "night, morning, or a handover unless the time and the on-air note say so. "
         "Reply with a SHORT brief (2-4 sentences): the topic, the human angle, and "
@@ -327,7 +345,10 @@ def showrunner(
     show_section = _show_section(program)
     freshness_section = f"{recent_block}\n\n" if recent_block else ""
     thread_block, task_block = _showrunner_thread(
-        flow, on_brief=bool(show_section), energy=program.energy
+        flow,
+        on_brief=bool(show_section),
+        energy=program.energy,
+        has_items=bool(ctx.items),
     )
     system = (
         "You are the showrunner for Settlement Radio, a tribute sci-fi radio "

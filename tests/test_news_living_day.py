@@ -151,14 +151,16 @@ def _flow(*, short: bool):
 
 
 def test_shape_short_slot_runs_a_lean_bulletin():
-    count, day_summary = news._bulletin_shape(NOW, _flow(short=True))
+    count, items, day_summary = news._bulletin_shape(NOW, _flow(short=True))
     assert count == settings.news_story_count_short
+    assert items == settings.news_item_count_short  # Q1.2: a shorter items tail too
     assert not day_summary
 
 
 def test_shape_flagship_runs_the_full_mix():
-    count, day_summary = news._bulletin_shape(NOW, _flow(short=False))
+    count, items, day_summary = news._bulletin_shape(NOW, _flow(short=False))
     assert count == settings.news_story_count
+    assert items == settings.news_item_count
     assert not day_summary  # midday, not the drive window
     # No flow at all (a direct call) is also the full mix.
     assert news._bulletin_shape(NOW, None)[0] == settings.news_story_count
@@ -166,10 +168,10 @@ def test_shape_flagship_runs_the_full_mix():
 
 def test_shape_drive_desk_gets_the_day_so_far_wrap():
     drive = datetime(2026, 6, 24, 18, 0)  # in the day-summary window
-    count, day_summary = news._bulletin_shape(drive, _flow(short=False))
+    count, _items, day_summary = news._bulletin_shape(drive, _flow(short=False))
     assert count == settings.news_story_count and day_summary
     # A short slot in the same window never gets the wrap.
-    assert news._bulletin_shape(drive, _flow(short=True))[1] is False
+    assert news._bulletin_shape(drive, _flow(short=True))[2] is False
 
 
 def test_build_system_weaves_the_day_summary_wrap_only_when_asked():

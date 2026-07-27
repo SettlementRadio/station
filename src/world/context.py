@@ -35,7 +35,7 @@ from ..logging_setup import get_logger
 from ..providers import embeddings
 from . import canon_source, clock, store
 from . import events as events_mod
-from .store import CanonFact, CastMember, Event, Figure, Quote
+from .store import CanonFact, CastMember, Event, Figure, Item, Quote
 
 log = get_logger(__name__)
 
@@ -82,6 +82,10 @@ class AssembledContext:
     # D10.2 — recent/relevant attributable quotes (paired with their figure), so the DJs
     # can reference what someone in the world said. Empty when there are no figures yet.
     quotes: list[tuple[Quote, Figure]] = field(default_factory=list)
+    # Q1.2 — the night's SMALL ITEMS inside the read window: the ordinary things (a
+    # price, a delay, a queue) the room can use in passing or build a short slot around.
+    # Empty before the first `make item-tick`, which is exactly the pre-Q1 behaviour.
+    items: list[Item] = field(default_factory=list)
 
     @property
     def speaker(self) -> CastMember | None:
@@ -162,6 +166,7 @@ def assemble(
         raw_events = store.events_in_range(conn, iw_now - window, iw_now + window)
         canon = _select_canon(conn, topic)
         quotes = _select_quotes(conn, topic, iw_now, window)
+        items = _select_items(conn, iw_now, domains)
         # R4.3 — the domain of each near-event lives on its parent story's tags.
         story_tags = (
             store.story_tags_for(conn, [e.story_id for e in raw_events if e.story_id])
@@ -184,7 +189,7 @@ def assemble(
 
     cards_text = _render_cards(cards)
     dynamic = _render_dynamic(
-        near_events, canon, quotes, now, preferred_events=preferred_events
+        near_events, canon, quotes, now, preferred_events=preferred_events, items=items
     )
 
     log.info(
@@ -194,6 +199,7 @@ def assemble(
         preferred=len(preferred_events),
         canon=len(canon),
         quotes=len(quotes),
+        items=len(items),
         # CO2 — the stable core is now two cache blocks; log both spans so a silent
         # size regression in either is visible.
         bible_chars=len(bible),
@@ -208,6 +214,7 @@ def assemble(
         events=preferred_events + near_events,
         canon=canon,
         quotes=quotes,
+        items=items,
     )
 
 
@@ -285,6 +292,31 @@ def _select_canon(conn, topic: str | None) -> list[CanonFact]:
     return store.all_canon(conn)
 
 
+def _select_items(conn, iw_now: datetime, domains: Sequence[str] | None) -> list[Item]:
+    """The small items this show can use (Q1.2) — its own field first, then the rest.
+
+    The same shape R4.3 gives events, applied to a much cheaper row: a vertical sees
+    ITS field's items at the top of the block, and the general mix fills the remainder
+    so a quiet domain never leaves the section empty. Bounded by
+    `settings.context_items_limit` (the section is off at 0) and by
+    `settings.item_window_hours` — an item older than the window is not "right now".
+    """
+    limit = settings.context_items_limit
+    if limit <= 0:
+        return []
+    start = iw_now - timedelta(hours=settings.item_window_hours)
+    picked = (
+        store.items_in_range(conn, start, iw_now, domains=domains, limit=limit)
+        if domains
+        else []
+    )
+    if len(picked) < limit:
+        seen = {i.id for i in picked}
+        rest = store.items_in_range(conn, start, iw_now, limit=limit)
+        picked += [i for i in rest if i.id not in seen][: limit - len(picked)]
+    return picked
+
+
 def _topic_tags(topic: str) -> list[str]:
     """Lowercase word tokens from a free-text topic, to match against canon tags."""
     return [t for t in re.split(r"[^a-z0-9]+", topic.lower()) if t]
@@ -354,6 +386,7 @@ def _render_dynamic(
     now: datetime,
     *,
     preferred_events: list[Event] | None = None,
+    items: list[Item] | None = None,
 ) -> str:
     """The per-call dynamic block: what is true right now, for the system prompt.
 
@@ -361,6 +394,11 @@ def _render_dynamic(
     as a "this show's beat — prefer these" section, and `events` (the rest) follow as
     background — so a vertical picks from its field first. When None/empty the events
     render as one undifferentiated "Current events" list (a general show, as before).
+
+    `items` (Q1.2) are the night's small things, rendered as their own compact section:
+    ONE LINE EACH, never a paragraph. That density is the point — the room should be
+    able to glance down a list of twelve ordinary happenings and pick one, which is what
+    a world of 23 stories could never offer it.
     """
     sections: list[str] = []
 
@@ -380,6 +418,16 @@ def _render_dynamic(
         lines = [_event_line(e, now) for e in events]
         header = "Current events (reference naturally, don't recite):\n"
         sections.append(header + "\n".join(lines))
+
+    if items:
+        lines = [
+            f"- {events_mod.phrase_for_datetime(i.in_world_datetime, now)}: {i.text}"
+            for i in items
+        ]
+        sections.append(
+            "Small things happening right now (a line each — use one in passing, or "
+            "build a short item around it):\n" + "\n".join(lines)
+        )
 
     if quotes:
         lines = [

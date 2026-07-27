@@ -162,6 +162,7 @@ def test_assemble_prefers_the_program_domain(monkeypatch):
         context.store, "attributed_quotes_near", lambda conn, a, b, limit=0: []
     )
     monkeypatch.setattr(context.store, "story_tags_for", lambda conn, ids: tags)
+    monkeypatch.setattr(context.store, "items_in_range", lambda conn, a, b, **kw: [])
 
     # The finance vertical leads with its own story; the health beat is background.
     fin_ctx = context.assemble(now, speakers="vell", domains=["finance"])

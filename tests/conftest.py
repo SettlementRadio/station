@@ -134,6 +134,9 @@ def co1_world(monkeypatch):
     monkeypatch.setattr(
         context.store, "attributed_quotes_near", lambda conn, a, b, limit=0: []
     )
+    # Q1.2 — no small items in the fixture world, so the CO goldens stay pinned to
+    # exactly the bytes the cache pack measured.
+    monkeypatch.setattr(context.store, "items_in_range", lambda conn, a, b, **kw: [])
 
     return SimpleNamespace(
         bible=bible,

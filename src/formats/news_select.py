@@ -38,7 +38,7 @@ records coverage after a successful render, D4.2). All SQL stays behind `world.s
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import TYPE_CHECKING
 
 from ..config import settings
@@ -369,6 +369,31 @@ def select_for(
     return selected
 
 
+def select_items_for(
+    conn: Connection, now: datetime, *, count: int | None = None
+) -> list[store.Item]:
+    """The bulletin's ITEMS TAIL (Q1.2): the two-to-four "and briefly…" lines.
+
+    Real bulletins close on a run of short items — a price, a delay, a result — and
+    until Q1 the station had no such class of thing, so every bulletin was five minutes
+    of arc'd stories. Newest first inside `item_window_hours`, bounded by `count`
+    (`settings.news_item_count`); an empty list simply means no tail, which is exactly
+    the pre-Q1 bulletin. A pure read, like the rest of this module.
+    """
+    n = settings.news_item_count if count is None else count
+    if n <= 0:
+        return []
+    iw_now = clock.to_inworld(now)
+    items = store.items_in_range(
+        conn,
+        iw_now - timedelta(hours=settings.item_window_hours),
+        iw_now,
+        limit=n,
+    )
+    log.info("news_select_items", now=now.isoformat(), selected=len(items), asked=n)
+    return items
+
+
 def select_stories(
     now: datetime, *, count: int | None = None, ground: bool = True
 ) -> list[SelectedStory]:
@@ -383,3 +408,9 @@ def select_stories(
     """
     with store.connect() as conn:
         return select_for(conn, now, count=count, ground=ground)
+
+
+def select_items(now: datetime, *, count: int | None = None) -> list[store.Item]:
+    """`select_items_for` in its own short read transaction (Q1.2)."""
+    with store.connect() as conn:
+        return select_items_for(conn, now, count=count)
