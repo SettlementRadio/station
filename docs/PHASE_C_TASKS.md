@@ -120,6 +120,48 @@ ping).
 **Done when:** killing the generator mid-run leaves the stream playing; a low-buffer or stall
 condition raises an alert.
 
+## C4.1 — A hung job must die, not hang — **HARD PREREQUISITE FOR C9**
+**Goal:** no unattended run of the generator can hang indefinitely. C4 proved a *failing* generator
+is survivable; this is the harder case — a generator that never fails and never finishes, which no
+health check catches because the process is alive and the buffer is merely not growing.
+**Observed 2026-07-28 (Q2 session), three distinct symptoms, all in one evening:**
+- `make audit-full` sat **33 minutes** inside one `llm.generate` before raising
+  `The read operation timed out`, twice, against a `llm_timeout_sec` of 120 (and the probe's own
+  `audit_probe_llm_timeout_sec` of 90).
+- A `make schedule` run sat at **0% CPU for over an hour**, past its own shell `timeout`, and had to
+  be `kill -9`'d — most likely the Kokoro/torch multiprocessing TTS pool, whose worker had already
+  ignored the SIGTERM `timeout` sent.
+- That killed run's LLM spend **never reached the ledger**: `usage.flush()` only runs on the tail of
+  a completed `top_up()`, so a run that dies loses its own accounting.
+**Root cause of the first (confirmed by reading the code, not inferred):** `llm.generate` sets the
+per-request timeout via `client.with_options(timeout=…)` and then STREAMS
+(`client.messages.stream(...)`, `src/providers/llm.py`). For a streamed response httpx applies that
+value as a **per-chunk read** timeout, not a total-call one — so a response that keeps dribbling
+tokens (or keepalives) never trips it. `retry.call_with_retry` bounds the **number** of attempts,
+never the **duration** of one. Between them there is no wall-clock ceiling on a `generate` call
+anywhere in the station.
+**Do:**
+- Give `llm.generate` a real **wall-clock deadline** per attempt (a new
+  `settings.llm_wall_clock_timeout_sec`, distinct from the per-read `llm_timeout_sec`): check
+  elapsed time inside the `text_stream` loop and abort the attempt when it is exceeded, so
+  `call_with_retry`'s bound becomes a bound on total time rather than on attempts alone. Log the
+  abort loudly — a stall must be greppable, and it currently is not until it resolves.
+- Do the same for the TTS seam (`providers/tts.py`), where the observed hang was unkillable rather
+  than merely slow: bound a synthesis call, and make the failure path release the worker pool.
+- **Flush the usage ledger incrementally**, not only at the tail of `top_up()` — per placed segment,
+  or on a signal handler — so a killed or hung run's spend is still accounted for.
+- Extend `src/health.py`'s checks with a **liveness** signal, not just a buffer-depth one: a run that
+  has produced nothing for N minutes while claiming to be running is the condition the soak needs
+  alerting on. (`last_topup_at` already exists; this is the intra-run equivalent.)
+**Done when:** a deliberately stalled LLM or TTS call (block the socket, or point the base URL at a
+sink that accepts and never answers) causes the job to **fail loudly within the configured deadline**
+and the scheduler to skip that slot, instead of hanging; the killed run's spend still appears in
+`make budgets`; and a stalled generator raises a health alert while it is stalled.
+**Why it gates C9:** the soak's pass condition is "7 days uninterrupted, zero manual rescues". Every
+one of the three symptoms above required a manual rescue within one evening on a laptop. A hang is
+strictly worse than a crash for an unattended station — a crash is retried by cron, a hang holds the
+lock and produces nothing while looking healthy.
+
 ## C5 — Deploy to the VPS (playout + DB + secrets + backups)
 **Goal:** the station runs on the always-on box, not your laptop.
 **Do:** provision the Hetzner VPS — a **CX33** (4 vCPU Intel/AMD, 8 GB RAM, 80 GB SSD, ~€11/mo;
@@ -201,6 +243,9 @@ links. Keep the coming-soon content or replace it with the live player.
 
 ## C9 — Soak test: 7 days unattended
 **Goal:** prove it survives being left alone.
+**Prerequisite: C4.1 must be done first.** As of 2026-07-28 a single `llm.generate` or TTS call can
+hang without bound, and one evening of local Q2 work produced three separate hangs needing a manual
+`kill -9`. Starting the soak before that is fixed measures the hang, not the station.
 **Do:** run the full system for 7 days; watch for stalls, dead air, failed nightly runs, drift,
 safety escapes; fix what breaks. This is the Phase C gate.
 **Done when:** 7 days uninterrupted, safe, disclosed, never-dead, zero manual rescues.

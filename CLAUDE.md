@@ -35,9 +35,12 @@ the public web front). See `docs/PHASE_D_OVERVIEW.md` and `docs/PHASE_R_TASKS.md
   non-zero on a miss — the exit code is the answer, not a summary of it). **Q8's final audit runs in
   a separate, unbriefed session** against `docs/PHASE_Q_AUDIT_BRIEF.md` — do not summarise the fixes
   anywhere that session will read first.
-- **Phase C server track (C5–C9)** — provision the VPS, Postgres-on-the-box, YouTube relay, the web
-  player, the 7-day soak. Mostly ops/deploy. Pack: `docs/PHASE_C_TASKS.md`. **Soak after Q lands** —
-  Q1–Q7 change what the soak would be listening to.
+- **Phase C server track (C4.1, C5–C9)** — provision the VPS, Postgres-on-the-box, YouTube relay,
+  the web player, the 7-day soak. Mostly ops/deploy. Pack: `docs/PHASE_C_TASKS.md`. **Soak after Q
+  lands** — Q1–Q7 change what the soak would be listening to. **C4.1 is a hard prerequisite for the
+  C9 soak**: an `llm.generate` or TTS call can currently hang without any wall-clock bound (found
+  2026-07-28 during Q2 — three manual `kill -9`s in one evening), and a hang is worse than a crash
+  for an unattended station because nothing alerts on it.
 
 **Phase Q standing rules (they bind every task in that pack):**
 - **The building agent never judges whether its own work succeeded** (`PHASE_Q_TASKS.md` §2d). Every

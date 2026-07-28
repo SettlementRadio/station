@@ -78,6 +78,9 @@ live-streaming is enabled on the verified channel; make the launch-voice call (C
   local hardware. Complete the ElevenLabs registry so both DJs render on either backend.
 - **YouTube Live relay + web player (C7–C8).** 24/7 RTMP push with a calm brand visual; the live
   player on settlementradio.com.
+- **Bound the hangs (C4.1) — before the soak.** An `llm.generate` or TTS call has no wall-clock
+  ceiling today; one evening of Q2 work produced three hangs needing a manual kill. A hang beats a
+  crash for damage: cron retries a crash, nothing notices a hang.
 - **Soak test (C9).** 7 days unattended, zero rescues — the Phase C gate.
 **CLAUDE (chat):** answers/reviews; preps the CM soft-launch copy + the grant-application answers.
 **DONE WHEN:** 7 days of uninterrupted, safe, AI-disclosed, never-dead 24/7 broadcasting on the
