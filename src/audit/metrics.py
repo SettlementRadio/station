@@ -98,10 +98,12 @@ GROUP_KEYS: dict[str, tuple[str, ...]] = {
         "cards_chars",
         "dynamic_chars",
         "events_rendered",
+        "events_tail_rendered",
         "canon_rendered",
         "quotes_rendered",
         "topic_passed_on_live_path",
         "event_window_days",
+        "events_max",
         # Measured by the probe (Q0.1), so a free-only run reports them as null — which
         # a Q2 gate must read as FAIL, not as a pass. That is the point.
         "cached_tokens",
@@ -378,19 +380,34 @@ def grid_metrics(start: datetime | None = None) -> dict:
 
 
 def context_metrics(now: datetime) -> dict:
-    """The cached/dynamic split and whether the RAG is reachable live (§1f)."""
-    from ..world import context  # local: pulls in embeddings
+    """The cached/dynamic split and whether the RAG is reachable live (§1f).
 
-    ctx = context.assemble(now, speakers=list(settings.convo_speaker_ids))
+    Q2.1: assembled the way the SCHEDULER assembles — the programme on the grid at
+    `now`, its domains, and its brief as the retrieval topic (`context.topic_for`) —
+    because a measurement of a prompt production never sends measures nothing. Runs
+    before Q2 recorded the topic-less shape (`canon_rendered` 267), which is the
+    baseline this is meant to move.
+    """
+    from ..world import context, programming  # local: pulls in embeddings
+
+    program = programming.program_for(now) if settings.programming_enabled else None
+    ctx = context.assemble(
+        now,
+        topic=context.topic_for(program),
+        speakers=list(settings.convo_speaker_ids),
+        domains=program.domains if program else (),
+    )
     return {
         "bible_chars": len(ctx.bible),
         "cards_chars": len(ctx.cards_text),
         "dynamic_chars": len(ctx.dynamic),
         "events_rendered": len(ctx.events),
+        "events_tail_rendered": len(ctx.tail_events),
         "canon_rendered": len(ctx.canon),
         "quotes_rendered": len(ctx.quotes),
         "topic_passed_on_live_path": topic_passed_on_live_path(),
         "event_window_days": settings.context_event_window_days,
+        "events_max": settings.context_events_max,
     }
 
 

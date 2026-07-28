@@ -430,6 +430,29 @@ fresh. Survives `seed-canon`; cleared by `reset-world`.
 survive `seed-canon`; bible-authored ones (`source='bible'`) are re-seeded by it. (The seed path
 that loads bible-authored figures is future work; the schema + split are in place.)
 
+### Tune what the writers' room READS (Q2)  → Phase E panel · **Panel → Dials → Context**
+This is the **uncached, per-call half** of every prompt, so it is the main text-cost dial on the
+station. `make context` prints exactly what a show sees, token-free, before you change anything.
+- **`CONTEXT_EVENTS_MAX`** — how many near-events are rendered WITH BODIES (default 15). Ranked by
+  recency × story arc stage × programme-domain match × breaking-ness, so this is the *top* 15 of the
+  window, not the first 15. Roughly ~1,000 characters each — this is the number that moves the bill.
+- **`CONTEXT_EVENTS_TAIL`** — how many *more* are listed title-only underneath (default 10), so a
+  running story the show isn't leading on doesn't vanish from its awareness. ~60 chars each; 0 off.
+- **`CONTEXT_EVENTS_DOMAIN_MIN`** — a vertical's reserved seats inside those bodied 15 (default 5):
+  The Exchange keeps five finance beats even on a day when a louder story elsewhere outranks them.
+- **`CONTEXT_EVENT_WINDOW_DAYS`** — the ±day window events are *drawn from* (default 14). Since Q2
+  this is a breadth dial, not a cost dial: widening it gives the ranker more to choose from and
+  changes the prompt size not at all.
+- **`CONTEXT_CANON_TOP_K`** — how many canon facts semantic recall pulls for the show's brief
+  (default 6). The live path passes each programme's `brief` from the grid as the retrieval topic,
+  so **editing a show's brief changes which canon it reads**. A programme with no brief falls back
+  to its `tagline`, and one with neither to the whole canon (the pre-Q2 behaviour).
+- Also here: `CONTEXT_ITEMS_LIMIT` (small items, above) and `CONTEXT_QUOTES_LIMIT` (figures, above).
+
+*Verify:* `make context` (free) shows the bodied list, the titles tail, items, quotes and canon in
+the order the room reads them; `make audit` reports `context.events_rendered`,
+`context.events_tail_rendered`, `context.canon_rendered` and `context.dynamic_chars`.
+
 ---
 
 ## Programming the grid

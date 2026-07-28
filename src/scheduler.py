@@ -92,7 +92,7 @@ from .production.placement import (
     sweeper_segment,
 )
 from .segment import Segment
-from .world import programming, store
+from .world import context, programming, store
 from .world.programming import Program
 from .writers.journal import capture_segment as capture_journal
 
@@ -250,6 +250,7 @@ def _generate_slot(
     air_cursor: datetime,
     speakers: list[str] | None = None,
     flow: ShowFlow | None = None,
+    topic: str | None = None,
 ) -> Segment | None:
     """Produce one segment for `name` at `air_cursor`, bounded-retrying on error.
 
@@ -260,12 +261,21 @@ def _generate_slot(
     the active program's hosts routed into the format; None keeps the format default.
     `flow` (D12.0) is the slot's show-position + talk hand-off substrate (only the
     talk format reads it); None keeps the standalone shape.
+
+    `topic` (Q2.1) is the active programme's editorial brief (`context.topic_for`) — the
+    key D2's semantic canon recall retrieves on. Before Q2.1 the live path passed none,
+    so that RAG never ran in production and every call shipped the whole canon uncached.
+    None (a flat-rotation slot, or a programme with no brief) keeps that older shape.
     """
     attempts = settings.schedule_failure_max_retries + 1
     for attempt in range(1, attempts + 1):
         try:
             seg = make_format_segment(
-                name, air_cursor.isoformat(), speakers=speakers, flow=flow
+                name,
+                air_cursor.isoformat(),
+                topic=topic,
+                speakers=speakers,
+                flow=flow,
             )
             seg.air_time = air_cursor.isoformat()  # pin the slot's air-time
             return seg
@@ -530,7 +540,12 @@ def top_up(now: datetime | None = None) -> list[dict]:
         for _ in range(max(settings.commercial_break_max_segments, 1)):
             is_promo = promo_n > 0 and (break_spots_total + 1) % promo_n == 0
             mode = "promo" if is_promo else "commercial"
-            spot = _generate_slot(mode, air_cursor, _program_speakers(program, mode))
+            spot = _generate_slot(
+                mode,
+                air_cursor,
+                _program_speakers(program, mode),
+                topic=context.topic_for(program),
+            )
             if spot is None:
                 break  # infra failure — air whatever already generated
             break_spots_total += 1
@@ -771,7 +786,15 @@ def top_up(now: datetime | None = None) -> list[dict]:
         else:
             name = rotation[rot_i % len(rotation)]
 
-        seg = _generate_slot(name, air_cursor, speakers, slot_flow) if name else None
+        # Q2.1 — the programme's brief rides in as the canon-retrieval topic, so D2's
+        # semantic RAG runs on the LIVE path instead of shipping all 267 facts uncached.
+        seg = (
+            _generate_slot(
+                name, air_cursor, speakers, slot_flow, topic=context.topic_for(program)
+            )
+            if name
+            else None
+        )
         if seg is None:
             # The slot failed (infra error) or the program yielded nothing airable —
             # advance past it (commit the clock/rotation step so we don't retry the

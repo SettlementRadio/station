@@ -62,7 +62,9 @@ def _recording_generator(tmp_path, *, duration=120.0):
     calls: list[dict] = []
 
     def _gen(name, now_iso, *, topic=None, speakers=None, flow=None):
-        calls.append({"format": name, "speakers": speakers, "air_time": now_iso})
+        calls.append(
+            {"format": name, "speakers": speakers, "air_time": now_iso, "topic": topic}
+        )
         path = tmp_path / f"{name}-{len(calls):03d}.mp3"
         path.write_bytes(b"\x00")
         return Segment(
@@ -184,6 +186,41 @@ def test_program_hosts_are_routed_into_generation(monkeypatch, tmp_path):
     # single-voice music desk gets the lead only — the grid drives who's on air.
     assert by_format["talk"] == ["wren", "vell"]
     assert by_format["music"] == ["wren"]
+
+
+_GRID_WITH_BRIEF = _GRID.replace(
+    "    framing: solo\n    clock: [talk, music x2, news@:00]\n",
+    '    framing: solo\n    brief: "What this show is about."\n'
+    "    clock: [talk, music x2, news@:00]\n",
+)
+
+
+def test_program_brief_is_routed_in_as_the_retrieval_topic(monkeypatch, tmp_path):
+    """Q2.1 — the §1f finding: the live path never passed a topic, so the RAG slept."""
+    calls, gen = _recording_generator(tmp_path)
+    _wire_grid(
+        monkeypatch,
+        tmp_path,
+        grid_text=_GRID_WITH_BRIEF,
+        depth_hours=0.2,
+        generator=gen,
+    )
+
+    scheduler.top_up(now=_mon(14, 15))
+
+    assert calls, "no slots generated"
+    assert {c["topic"] for c in calls} == {"What this show is about."}
+
+
+def test_a_program_with_no_brief_still_generates_with_no_topic(monkeypatch, tmp_path):
+    """The fallback is the pre-Q2 shape (whole canon), never a crash or a blank show."""
+    calls, gen = _recording_generator(tmp_path)
+    _wire_grid(monkeypatch, tmp_path, grid_text=_GRID, depth_hours=0.2, generator=gen)
+
+    scheduler.top_up(now=_mon(14, 15))
+
+    assert calls
+    assert {c["topic"] for c in calls} == {None}
 
 
 def test_news_reads_from_the_dedicated_desk_not_the_show_lead(monkeypatch):

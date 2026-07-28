@@ -265,8 +265,8 @@ Work in order. Q0 is mandatory first — without it nothing else has a gate.
 | Pack | What | Baseline finding it fixes | Depends on | Built? |
 |---|---|---|---|---|
 | **Q0** | The audit harness + the committed baseline | §2 (there is no loop today) | — | ✅ |
-| **Q1** | Story supply: the small-items generator | §1a — 3 stories/day vs 150 slots | Q0 | ☐ |
-| **Q2** | Bounded, ranked context + wire the RAG | §1f — 28k uncached tokens, dead RAG | Q0 (Q1 makes ranking load-bearing) | ☐ |
+| **Q1** | Story supply: the small-items generator | §1a — 3 stories/day vs 150 slots | Q0 | ✅ (gate accepted with a miss — DEVLOG 2026-07-27) |
+| **Q2** | Bounded, ranked context + wire the RAG | §1f — 28k uncached tokens, dead RAG | Q0 (Q1 makes ranking load-bearing) | 🔨 built, **gate unresolved** — probe blocked on API credit (DEVLOG 2026-07-28) |
 | **Q3** | Three new formats (round-up / letters / interview) | §1b — 63.5% one code path | Q1 (the round-up eats Q1's supply) | ☐ |
 | **Q4** | News word budget per programme + 2nd anchor + rota | §1c | Q0 | ☐ |
 | **Q5** | Register at the source: tick quotes/titles, permission to be boring, the ordinary cornerstone | §1d | Q0 | ☐ |

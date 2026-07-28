@@ -162,6 +162,7 @@ def test_assemble_prefers_the_program_domain(monkeypatch):
         context.store, "attributed_quotes_near", lambda conn, a, b, limit=0: []
     )
     monkeypatch.setattr(context.store, "story_tags_for", lambda conn, ids: tags)
+    monkeypatch.setattr(context.store, "story_arcs_for", lambda conn, ids: {})
     monkeypatch.setattr(context.store, "items_in_range", lambda conn, a, b, **kw: [])
 
     # The finance vertical leads with its own story; the health beat is background.
@@ -176,6 +177,152 @@ def test_assemble_prefers_the_program_domain(monkeypatch):
     gen_ctx = context.assemble(now, speakers="vell")
     assert "On THIS show's subject" not in gen_ctx.dynamic
     assert "Current events" in gen_ctx.dynamic
+
+
+# --- Q2.0: rank_events — the bounded, ranked event block --------------------
+#
+# The baseline shipped 74-82 flat event bodies per call. These pin the four scoring
+# factors (recency / arc stage / domain match / breaking-ness), the reserved domain
+# sub-quota, and the fact that ranking never LOSES an event — it only orders it, so
+# the caller can slice a bodied head and a title-only tail out of the same list.
+
+_RANK_NOW = datetime(2026, 6, 24, 12, 0)
+
+
+def _rev(
+    eid: str,
+    *,
+    hours: float = 0.0,
+    story_id: str | None = None,
+    beat_kind: str | None = None,
+) -> Event:
+    """An event `hours` from the in-world now (negative = in the past)."""
+    return Event(
+        id=eid,
+        title=f"title {eid}",
+        body=f"body of {eid}",
+        in_world_datetime=clock.to_inworld(_RANK_NOW) + timedelta(hours=hours),
+        status="past",
+        story_id=story_id,
+        beat_kind=beat_kind,
+    )
+
+
+def test_rank_events_prefers_the_recent_over_the_distant():
+    fresh, stale = _rev("fresh", hours=-2), _rev("stale", hours=-24 * 10)
+    ranked = context.rank_events([stale, fresh], _RANK_NOW)
+    assert [e.id for e in ranked] == ["fresh", "stale"]
+
+
+def test_rank_events_discounts_the_future_against_the_past():
+    # Same distance either side of now: what happened outranks what will.
+    past, future = _rev("past", hours=-30), _rev("future", hours=30)
+    ranked = context.rank_events([future, past], _RANK_NOW)
+    assert [e.id for e in ranked] == ["past", "future"]
+
+
+def test_rank_events_prefers_a_live_arc_over_a_resolved_one():
+    live = _rev("live", hours=-6, story_id="s-live")
+    done = _rev("done", hours=-6, story_id="s-done")
+    arcs = {"s-live": store.ARC_HAPPENING, "s-done": store.ARC_PAST}
+    ranked = context.rank_events([done, live], _RANK_NOW, story_arcs=arcs)
+    assert [e.id for e in ranked] == ["live", "done"]
+
+
+def test_rank_events_prefers_a_breaking_beat_kind_at_equal_age():
+    ann = _rev("ann", hours=-6, beat_kind="announcement")
+    rum = _rev("rum", hours=-6, beat_kind="rumour")
+    ranked = context.rank_events([rum, ann], _RANK_NOW)
+    assert [e.id for e in ranked] == ["ann", "rum"]
+
+
+def test_rank_events_lifts_the_programme_own_domain():
+    # The in-domain beat is OLDER, and still leads for the finance vertical — that is
+    # what stops a louder story elsewhere taking a vertical's own field off its desk.
+    mine = _rev("mine", hours=-20, story_id="fin")
+    loud = _rev("loud", hours=-6, story_id="hea")
+    tags = {"fin": ["finance"], "hea": ["health"]}
+    ranked = context.rank_events([loud, mine], _RANK_NOW, ["finance"], story_tags=tags)
+    assert [e.id for e in ranked] == ["mine", "loud"]
+    # …and for a general show (no domains) the plain recency order returns.
+    assert [e.id for e in context.rank_events([mine, loud], _RANK_NOW)] == [
+        "loud",
+        "mine",
+    ]
+
+
+def test_rank_events_reserves_a_domain_subquota_inside_the_bodied_head():
+    from src.config import settings
+
+    head, floor = settings.context_events_max, settings.context_events_domain_min
+    # A wall of fresh out-of-field beats, and a handful of stale in-field ones that
+    # score far below them even with the domain boost.
+    loud = [_rev(f"loud{i}", hours=-i, story_id="hea") for i in range(head + 10)]
+    mine = [_rev(f"mine{i}", hours=-24 * 12, story_id="fin") for i in range(floor + 2)]
+    tags = {"fin": ["finance"], "hea": ["health"]}
+
+    ranked = context.rank_events(loud + mine, _RANK_NOW, ["finance"], story_tags=tags)
+    in_head = [e.id for e in ranked[:head] if e.id.startswith("mine")]
+    assert len(in_head) == floor  # the floor, and not one more than the floor
+    assert len(ranked) == len(loud) + len(mine)  # nothing was dropped
+    # The displaced out-of-field beats fall to just behind the head, not off the end.
+    assert ranked[head].id.startswith("loud")
+
+
+def test_rank_events_keeps_every_event_and_is_deterministic():
+    events = [_rev(f"e{i}", hours=-i * 3) for i in range(30)]
+    first = context.rank_events(events, _RANK_NOW)
+    second = context.rank_events(list(reversed(events)), _RANK_NOW)
+    assert [e.id for e in first] == [e.id for e in second]
+    assert sorted(e.id for e in first) == sorted(e.id for e in events)
+
+
+def test_render_dynamic_tail_is_titles_only():
+    now = _RANK_NOW
+    bodied = events_mod.progressed(_rev("b1", hours=-2), now)
+    tail = events_mod.progressed(_rev("t1", hours=-48), now)
+    out = context._render_dynamic([bodied], [], [], now, tail_events=[tail])
+    assert "body of b1" in out
+    assert "title t1" in out
+    assert "body of t1" not in out  # the whole point: a title costs ~60 chars
+
+
+def test_assemble_caps_the_bodied_events_and_keeps_a_titles_tail(monkeypatch):
+    from src.config import settings
+    from src.world.store import CastMember
+
+    head, tail_n = settings.context_events_max, settings.context_events_tail
+    events = [_rev(f"e{i}", hours=-i) for i in range(head + tail_n + 20)]
+
+    class _Conn:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *exc):
+            return False
+
+    monkeypatch.setattr(context.canon_source, "load_bible", lambda *a: "bible")
+    monkeypatch.setattr(context.store, "connect", lambda: _Conn())
+    monkeypatch.setattr(
+        context.store,
+        "get_cast_member",
+        lambda conn, sid: CastMember(sid, sid.title(), "host", "voice-a"),
+    )
+    monkeypatch.setattr(context.store, "events_in_range", lambda conn, a, b: events)
+    monkeypatch.setattr(context.store, "all_canon", lambda conn: [])
+    monkeypatch.setattr(
+        context.store, "attributed_quotes_near", lambda conn, a, b, limit=0: []
+    )
+    monkeypatch.setattr(context.store, "story_tags_for", lambda conn, ids: {})
+    monkeypatch.setattr(context.store, "story_arcs_for", lambda conn, ids: {})
+    monkeypatch.setattr(context.store, "items_in_range", lambda conn, a, b, **kw: [])
+
+    ctx = context.assemble(_RANK_NOW, speakers="vell")
+    assert len(ctx.events) == head
+    assert len(ctx.tail_events) == tail_n
+    # The 20 beyond head+tail are in the window but reach the prompt not at all.
+    assert ctx.dynamic.count("body of ") == head
+    assert "Also running, headlines only" in ctx.dynamic
 
 
 # --- _select_canon: the D2.4 hybrid (semantic + tag), DB/model mocked -------
@@ -219,6 +366,46 @@ def test_select_canon_hybrid_unions_semantic_then_tag(monkeypatch):
     # off-tag-safe: semantic hits lead (meaning-rank preserved), tag-only de-duped in.
     assert captured["ids"] == ["c-sem1", "c-sem2", "c-tag1"]
     assert [f.id for f in out] == ["c-sem1", "c-sem2", "c-tag1"]
+
+
+def test_select_canon_bounds_the_union_to_top_k(monkeypatch):
+    """Q2.1 — a programme BRIEF as topic tag-matches most of the canon; bound it.
+
+    `_topic_tags` tokenises three sentences into dozens of ordinary words, so without
+    the bound the "hybrid" union was 80 facts uncached on every live call — the exact
+    cost the RAG was supposed to remove.
+    """
+    from src.config import settings
+
+    k = settings.context_canon_top_k
+    monkeypatch.setattr(
+        embeddings,
+        "retrieve",
+        lambda topic, *, k, corpus: [
+            embeddings.Retrieved(f"c-sem{i}", "", 1.0 - i / 100) for i in range(k)
+        ],
+    )
+    monkeypatch.setattr(
+        store,
+        "canon_by_tags",
+        lambda conn, tags: [CanonFact(f"c-tag{i}", "", ["x"]) for i in range(80)],
+    )
+    monkeypatch.setattr(
+        store, "canon_by_ids", lambda conn, ids: [CanonFact(i, "", []) for i in ids]
+    )
+
+    out = context._select_canon(object(), "a three sentence editorial brief")
+    assert len(out) == k
+    assert all(f.id.startswith("c-sem") for f in out)  # semantic rank decides the cut
+
+
+def test_topic_for_prefers_the_brief_then_the_tagline():
+    from types import SimpleNamespace
+
+    assert context.topic_for(None) is None
+    assert context.topic_for(SimpleNamespace(brief="", tagline="")) is None
+    assert context.topic_for(SimpleNamespace(brief="", tagline="t")) == "t"
+    assert context.topic_for(SimpleNamespace(brief="b", tagline="t")) == "b"
 
 
 def test_select_canon_falls_back_to_all_when_no_hits(monkeypatch):

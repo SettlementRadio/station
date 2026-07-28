@@ -247,7 +247,15 @@ def _generate(now: datetime, flow: ShowFlow, program) -> tuple[str, str]:  # noq
     from ..world import context
     from ..writers import conversation as convo
 
-    ctx = context.assemble(now, speakers=_hosts_for(program), domains=program.domains)
+    # Q2.1 — `topic=` mirrors what the scheduler now passes on the live path. The probe
+    # is only worth its API calls while it ships the same prompt production does, so
+    # this and `scheduler._generate_slot` read the SAME `context.topic_for`.
+    ctx = context.assemble(
+        now,
+        topic=context.topic_for(program),
+        speakers=_hosts_for(program),
+        domains=program.domains,
+    )
     beat = convo.showrunner(ctx, now, flow=flow, program=program)
     script = convo.orchestrate(
         ctx,

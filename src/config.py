@@ -193,6 +193,20 @@ class Settings(BaseSettings):
     # domains fill the list first, the general mix fills the remainder (R4.3's shape).
     # ONE LINE each, so a dozen costs almost nothing; 0 turns the section off.
     context_items_limit: int = 12
+    # Q2.0: the event block is BOUNDED and RANKED, not "everything in the window flat".
+    # `context.rank_events` scores each near-event on recency x arc stage x domain match
+    # x breaking-ness; the top `context_events_max` are rendered WITH BODIES and the
+    # next
+    # `context_events_tail` as title-only one-liners (so the room still knows they exist
+    # — that tail is what keeps continuity from forgetting a running story). Programme-
+    # domain matches hold a reserved sub-quota of `context_events_domain_min` inside the
+    # bodied set, so a vertical never loses its own field to a louder story elsewhere.
+    # These are the cost dial for the dynamic half of every prompt: raising the max
+    # raises uncached tokens roughly linearly (a bodied event is ~1,000 chars, a tail
+    # line ~60). 0 for the tail turns that section off; 0 for the max is not meaningful.
+    context_events_max: int = 15
+    context_events_domain_min: int = 5
+    context_events_tail: int = 10
 
     # --- Conversation (B4: two-DJ dialogue — the writers' room) ----------------
     # The cast ids (cards from the DB) who hold the conversation, in handover

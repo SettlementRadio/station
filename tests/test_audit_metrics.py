@@ -103,9 +103,14 @@ def test_topic_passed_on_live_path_reads_the_real_call_site(tmp_path):
     assert metrics.topic_passed_on_live_path(tmp_path / "gone.py") is False
 
 
-def test_topic_is_not_passed_on_the_live_path_today():
-    """The §1f baseline finding, asserted against the real scheduler."""
-    assert metrics.topic_passed_on_live_path() is False
+def test_topic_is_passed_on_the_live_path_today():
+    """Q2.1 closed the §1f finding — asserted against the real scheduler.
+
+    Until Q2.1 this asserted `False` (the baseline: the live path passed no topic, so
+    D2's semantic canon recall never ran in production and all 267 facts shipped
+    uncached on every call). It is now the standing regression guard on that fix.
+    """
+    assert metrics.topic_passed_on_live_path() is True
 
 
 def test_batch_enabled_paths_finds_calls_not_docstring_mentions(tmp_path):

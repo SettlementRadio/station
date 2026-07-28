@@ -1749,6 +1749,26 @@ def story_tags_for(
     return {r[0]: list(r[1]) for r in rows}
 
 
+def story_arcs_for(
+    conn: psycopg.Connection, story_ids: Iterable[str]
+) -> dict[str, str]:
+    """Map each given story id to its ARC STAGE (`ARC_STAGES`) — Q2.0.
+
+    The sibling of `story_tags_for`, and the other half of what `context.rank_events`
+    needs to score a beat: a beat of a `happening` story is worth a body in the prompt,
+    a beat of a story that resolved a fortnight ago is worth a title. Unknown ids are
+    simply absent from the map (the ranker treats that as "no story" — a standalone
+    bible event — which is exactly right).
+    """
+    ids = list(dict.fromkeys(story_ids))  # de-dupe, keep order
+    if not ids:
+        return {}
+    rows = conn.execute(
+        "SELECT id, arc_stage FROM stories WHERE id = ANY(%s)", (ids,)
+    ).fetchall()
+    return {r[0]: r[1] for r in rows}
+
+
 def active_stories(
     conn: psycopg.Connection, *, limit: int | None = None
 ) -> list[Story]:

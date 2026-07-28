@@ -30,6 +30,117 @@ platform docs (`docs/marketing/*`) mine; `grep "📣"` to find them. Skip when t
 Commit: <hash>  ·  Clips: <filenames in devlog/>
 ```
 
+## 2026-07-28 — Phase Q — Q2: the room reads fifteen things, not eighty
+**Focus:** the §1f finding. The *cached* half of the prompt was already perfect (40,291 tokens read
+at 0.1×, the CO0–CO4 work). The **dynamic** half was never bounded: ~131,000 characters per call —
+74–82 full event bodies with no cap and no ranking, plus all 267 canon facts, uncached, every time.
+That was the $0.372 talk segment, the ~25s call, and the reason the beat-picker saw eighty
+equally-weighted paragraphs and had no way to tell which one mattered.
+
+**Decisions:**
+- **`rank_events` scores, the caller truncates.** The pack asked for a ranker that truncates; it
+  returns the FULL list in priority order instead, because the caller needs *two* slices out of one
+  ranking — the bodied head AND the title-only tail just behind it. Score is a product of four
+  independent, pure factors: recency (36h half-life, the future discounted 0.8× against the past) ×
+  parent story's **arc stage** × programme-**domain match** (2×) × **breaking-ness** (`beat_kind`,
+  bumped 1.25× for a beat dated today). Weight tables are named module constants next to the
+  algorithm, not settings — the config-vs-constant rule; the operator's dials are the three counts.
+- **The titles tail is the continuity insurance.** Capping at 15 alone would make a running story
+  the show isn't leading on *vanish*. Ten more render as `- Title (four days ago)` — ~60 characters
+  each against ~1,000 for a body — with an explicit instruction that the room has no detail on them
+  and must not invent any. This is the cheap half of the fix and probably the important one.
+- **The domain sub-quota lives in the ranker, not the caller.** A vertical holds five reserved seats
+  inside the bodied fifteen. Doing it at render time would have meant ranking twice.
+- **`story_arcs_for` is a new store read, and story tags are now fetched unconditionally.** R4.3 only
+  looked up tags when a programme declared domains; the ranker needs both on every call. Two trivial
+  indexed reads against `stories`, and they make the difference between "the 15 most recent" and
+  "the 15 that matter".
+- **The retrieval topic is the programme's editorial BRIEF** (`context.topic_for`, brief → tagline →
+  None). It is the only sentence-level statement of what a show is about and it is already authored
+  per programme in the grid. Consequence worth knowing: **editing a show's brief now changes which
+  canon it reads.**
+- **One `topic_for`, three callers — deliberately.** The scheduler, the audit probe and the free
+  metrics all call it. A probe that ships a different prompt from production measures nothing, and
+  §1f's finding existed precisely because measurement and production had drifted apart.
+- **The hybrid canon union is now bounded to `context_canon_top_k`.** Wiring the RAG *exposed* a
+  second bug rather than fixing one: `_topic_tags` tokenises a three-sentence brief into dozens of
+  ordinary words, which tag-matched **80** of the 267 facts. Semantic rank decides the cut; the tag
+  complement fills the remainder below k, which is what a complement was always for.
+
+**Changed:** `rank_events` + `_promote_domain_quota` + `topic_for` + the tail section in
+`_render_dynamic`, and the `tail_events` field on `AssembledContext` (Q2.0); `store.story_arcs_for`;
+three dials (`CONTEXT_EVENTS_MAX` 15 / `_DOMAIN_MIN` 5 / `_TAIL` 10); `_select_canon` bounded;
+`scheduler._generate_slot(topic=…)` at both call sites; `probe._generate` and `metrics.context_metrics`
+assembled the way the scheduler assembles; new `context.events_tail_rendered` / `events_max` keys;
+README + a new ADMIN_MANUAL "Tune what the writers' room READS" section. **748 tests** (was 735).
+
+**The measured result:**
+
+| Metric | Baseline | Q2 | |
+|---|---|---|---|
+| `context.dynamic_chars` | 132,660 | **20,066** | −85% |
+| `context.uncached_tokens` (real call) | 28,342 | **4,671–5,388** | −83% |
+| `context.cached_tokens` | 40,291 | **39,235–40,264** | −2.6%, inside ±5% |
+| `context.events_rendered` | 80 | **15** + a 10-title tail | |
+| `context.canon_rendered` | 267 | **6** | |
+| `context.topic_passed_on_live_path` | `false` | **`true`** | |
+| $ per talk segment, **post-Q2 traffic only** | 0.372 | **0.0956** | −74% |
+
+**Q2.2 (the cache must not break):** `make costprobe` — `cache_read` 39,235–40,263 across both
+passes, `input_tokens` 20 (the probe's own user turn), one small `cache_creation` per speaker set on
+pass 1 and none on pass 2. `make costprobe-ab` — **model input byte-identical on all four formats**;
+the CO1 equivalence invariant survives untouched. Q2.1's canon spot-check: three consecutive Long
+Night segments, generated from **six** semantically-recalled facts, cited the Quiet Engineer ("tended
+a failing relay alone for some forty years") and the Core Harmony cycle — both verified verbatim
+against `docs/canon/15-figures.md`. No continuity fallbacks.
+
+**GATE STATUS: NOT RESOLVED — blocked, not failed, and not passed.** `make audit-full LABEL=q2`
+died two hours in with `Your credit balance is too low to access the Anthropic API`. The probe never
+completed, so the four Q2 thresholds and three of the five §2b guards are **unmeasured**, and
+`make gate PACK=Q2` correctly exits 1 with `FAIL (not measured)` against them — that is the harness
+working as designed (§2a: "not measured is never silently green"), not a verdict on the work.
+
+| Check | Status |
+|---|---|
+| `context.topic_passed_on_live_path` = true | ✓ measured, passes |
+| `context.uncached_tokens` ≤ 8,000 | ⏸ probe blocked (real calls before the stop read **4,671–5,388**) |
+| `context.cached_tokens` within ±5% | ⏸ probe blocked (real calls read **39,235–40,264** vs 40,293) |
+| `context.seconds_per_call` ≤ 12s | ⏸ probe blocked |
+| `cost.usd_per_talk_segment` ≤ 0.12 | ✗ **0.1648** blended — see below |
+| `acceptance.properties_passed` = 9 | ✓ **9/9**, measured separately via `make acceptance` (mocked, free) |
+| `tests.passed` ≥ 748 / `tests.failed` = 0 | ✓ **748 / 0** |
+| `register.*` guards | ⏸ probe blocked |
+
+**To finish the gate:** top up the API account, then `make audit-full LABEL=q2 && make gate PACK=Q2`.
+Everything else it needs is in place. `gates.yaml`'s tests floor is raised 735 → 748.
+
+**Two things recorded rather than solved:**
+- **The 7-day cost window is blended.** `cost.usd_per_talk_segment` averages the ledger over
+  `audit_cost_window_days`, which still contains the single **pre-Q2** segment at $0.372. Blended:
+  $0.1648. Post-Q2 traffic in isolation: **$0.0956** (3 real scheduler segments, 12 calls). The fix
+  clears the ≤0.12 bar; the *window* does not, until the pre-Q2 row ages out on 2026-08-02. This is a
+  measurement-window artifact, and the operator's call whether to accept it, wait it out, or shorten
+  `audit_cost_window_days` — **not the agent's** (§2d).
+- **The local generation path stalls.** A deeper top-up run and the `make audit-full` run both hit
+  33-minute `read operation timed out` stalls on streaming responses, and one scheduler run
+  deadlocked at 0% CPU past its own `timeout` (killed; its ~9 calls never reached the ledger).
+  `audit_probe_llm_timeout_sec` (90s) is not reaching the stream read — `llm.generate` opens
+  `client.messages.stream(...)` and the httpx *read* timeout is what actually governs it. Same
+  symptom that delayed Q0's baseline. **Worth a look before the C9 soak** — an unattended 24/7
+  station cannot afford a generator that hangs instead of failing loudly.
+
+**Why:** the pack's framing was that this is a cost task. It is really a *signal* task — cost is the
+symptom. Eighty flat paragraphs is not context, it is a haystack; the beat-picker had no way to
+prefer the thing that just happened in this show's own field over something a fortnight old
+elsewhere. The 85% saving is what falls out of fixing that, not the point of it.
+
+**📣 Postable:** the prompt went from 131,000 characters of everything to 20,000 characters of the
+right things — and the segments got *better*, not thinner. The cut half was never being read.
+
+**Next:** top up the API account and close Q2's gate (`make audit-full LABEL=q2 && make gate PACK=Q2`),
+then Q3 — three new formats (round-up / letters / interview); §1b's 63.5%-one-code-path.
+Commit: (this one)  ·  Clips: (none)
+
 ## 2026-07-27 — Phase Q — Q1: the small-items generator, and a gate the pack did not clear
 **Focus:** give the world a SECOND class of happening. The station consumes ~150 content slots a
 day and the world tick makes 2–4 stories a night (§1a), which is why three of four shows led on

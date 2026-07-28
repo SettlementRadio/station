@@ -26,7 +26,7 @@ widens (and eventually gains the embeddings seam) — the cached core stays cach
 from __future__ import annotations
 
 import re
-from collections.abc import Sequence
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 
@@ -44,6 +44,50 @@ log = get_logger(__name__)
 # It is the ONE place the core's byte layout is defined, so the two cache blocks
 # (CO2) and the back-compat `cached_context` join stay in lockstep. See below.
 _CORE_SEP = "\n\n"
+
+
+# --- Q2.0: the event ranking weights ----------------------------------------
+# Intrinsic to the ranking algorithm, so they are named module constants here rather
+# than settings (the config-vs-constant rule in config.py); the operator's dials are
+# the three counts — `context_events_max` / `_domain_min` / `_tail`.
+
+# Recency: a half-life in in-world hours. At 36h an event scores half of one happening
+# right now, at 72h a quarter — so a fortnight-old beat is ~0.1% and effectively only
+# reachable via the title tail. The window itself stays ±14 days; this is what stops
+# that width from costing anything.
+_RECENCY_HALFLIFE_HOURS = 36.0
+# The future is worth slightly less than the past at equal distance: a thing that
+# happened is reportable, a thing that will happen is only trailable.
+_FUTURE_DISCOUNT = 0.8
+
+# Arc stage of the beat's PARENT STORY (store.ARC_STAGES). A live arc outranks a
+# resolved one at the same age; `_ARC_DEFAULT` covers a standalone bible event with no
+# story, which sits mid-table (it is world texture, neither breaking nor spent).
+_ARC_WEIGHT: dict[str, float] = {
+    store.ARC_HAPPENING: 1.0,
+    store.ARC_DEVELOPING: 0.9,
+    store.ARC_UPCOMING: 0.7,
+    store.ARC_RUMOURED: 0.6,
+    store.ARC_PAST: 0.45,
+}
+_ARC_DEFAULT = 0.55
+
+# Breaking-ness: the beat's own kind (`events.beat_kind`, free-form as authored by the
+# tick — anything unlisted is neutral), times a bump for a beat dated TODAY in-world.
+_BEAT_WEIGHT: dict[str, float] = {
+    "announcement": 1.15,
+    "development": 1.1,
+    "consequence": 1.0,
+    "resolution": 1.0,
+    "rumour": 0.9,
+}
+_BEAT_DEFAULT = 1.0
+_TODAY_BOOST = 1.25
+
+# Domain match: a beat whose story is in the on-air programme's field. Big enough to
+# lift a quiet in-field beat over a loud out-of-field one, and backed by the reserved
+# sub-quota (`context_events_domain_min`) for when even that isn't enough.
+_DOMAIN_BOOST = 2.0
 
 
 @dataclass(frozen=True)
@@ -86,6 +130,10 @@ class AssembledContext:
     # price, a delay, a queue) the room can use in passing or build a short slot around.
     # Empty before the first `make item-tick`, which is exactly the pre-Q1 behaviour.
     items: list[Item] = field(default_factory=list)
+    # Q2.0 — the events ranked JUST below the bodied `events`: rendered as title-only
+    # one-liners, so the room knows they exist (continuity) without paying for a
+    # paragraph each. Empty when the window holds nothing beyond the bodied set.
+    tail_events: list[Event] = field(default_factory=list)
 
     @property
     def speaker(self) -> CastMember | None:
@@ -168,11 +216,11 @@ def assemble(
         quotes = _select_quotes(conn, topic, iw_now, window)
         items = _select_items(conn, iw_now, domains)
         # R4.3 — the domain of each near-event lives on its parent story's tags.
-        story_tags = (
-            store.story_tags_for(conn, [e.story_id for e in raw_events if e.story_id])
-            if domains
-            else {}
-        )
+        # Q2.0 — and its arc stage on the same row; both feed `rank_events`, so unlike
+        # R4.3's read these are fetched whether or not the programme sets a domain.
+        story_ids = [e.story_id for e in raw_events if e.story_id]
+        story_tags = store.story_tags_for(conn, story_ids)
+        story_arcs = store.story_arcs_for(conn, story_ids)
 
     # Recompute each event's status live so the writer never sees a stale snapshot.
     # R4.0: `airable` first — the window reaches forward, so it would otherwise pick up
@@ -182,14 +230,35 @@ def assemble(
         events_mod.progressed(e, now) for e in events_mod.airable(raw_events, now)
     ]
 
+    # Q2.0 — rank the whole window, then take a BOUNDED slice: the top
+    # `context_events_max` get bodies, the next `context_events_tail` get titles. The
+    # window may hold 80 beats; the room reads the 15 that matter plus 10 it should
+    # know exist.
+    ranked = rank_events(
+        near_events, now, domains, story_tags=story_tags, story_arcs=story_arcs
+    )
+    bodied = ranked[: settings.context_events_max]
+    tail_events = ranked[
+        settings.context_events_max : settings.context_events_max
+        + max(settings.context_events_tail, 0)
+    ]
+
     # R4.3 — split into THIS show's own beats (its domain) and the background mix. Only
     # when both a program domain is set AND at least one near-event is in it; otherwise
     # the show keeps the full mix (a general show, or a vertical with no story yet).
-    preferred_events, near_events = _split_by_domain(near_events, domains, story_tags)
+    # Applied to the BODIED slice: ranking already guaranteed the domain's sub-quota is
+    # in there, this decides how those beats are PRESENTED.
+    preferred_events, near_events = _split_by_domain(bodied, domains, story_tags)
 
     cards_text = _render_cards(cards)
     dynamic = _render_dynamic(
-        near_events, canon, quotes, now, preferred_events=preferred_events, items=items
+        near_events,
+        canon,
+        quotes,
+        now,
+        preferred_events=preferred_events,
+        items=items,
+        tail_events=tail_events,
     )
 
     log.info(
@@ -197,6 +266,8 @@ def assemble(
         speakers=[c.id for c in cards],
         events=len(near_events),
         preferred=len(preferred_events),
+        tail=len(tail_events),
+        in_window=len(ranked),
         canon=len(canon),
         quotes=len(quotes),
         items=len(items),
@@ -215,7 +286,119 @@ def assemble(
         canon=canon,
         quotes=quotes,
         items=items,
+        tail_events=tail_events,
     )
+
+
+def topic_for(program: object | None) -> str | None:
+    """The canon-retrieval topic for the programme on air (Q2.1) — brief, else tagline.
+
+    The §1f finding was that the live path never passed a `topic`, so `_select_canon`
+    fell through to `all_canon` and D2's semantic RAG never ran in production — 267
+    facts, uncached, on every call. The programme's editorial **brief** is the right
+    key: it is the only sentence-level statement of what THIS show is about, and it is
+    already authored per programme in the grid. Its public one-liner (`tagline`) is the
+    fallback for a programme that has no brief; `None` for one with neither, which keeps
+    the whole-canon behaviour exactly as it was for those shows.
+
+    Lives here, and is used by the scheduler, the audit probe AND the free metrics, so
+    what the audit measures cannot drift from what production ships.
+    """
+    if program is None:
+        return None
+    return getattr(program, "brief", "") or getattr(program, "tagline", "") or None
+
+
+def rank_events(
+    events: Sequence[Event],
+    now: datetime,
+    domains: Sequence[str] | None = None,
+    *,
+    story_tags: Mapping[str, Sequence[str]] | None = None,
+    story_arcs: Mapping[str, str] | None = None,
+) -> list[Event]:
+    """Order near-events by how much this show, right now, needs to read them (Q2.0).
+
+    The baseline audit's §1f finding: `events_in_range` has no cap and no ranking, so
+    every call shipped 74–82 full event bodies — ~81k characters of flat, equally
+    weighted paragraphs. That is most of the uncached half of the prompt, most of the
+    25s latency, and the reason the beat-picker had no signal about what matters.
+
+    Score is a product of four independent factors, each a pure function of the row:
+
+    * **recency** — exponential decay on the in-world hours between the beat and `now`
+      (`_RECENCY_HALFLIFE_HOURS`), with the future discounted slightly against the past;
+    * **arc stage** — the parent story's stage (`_ARC_WEIGHT`): a `happening` arc
+      outranks one that resolved, at equal age;
+    * **domain match** — `_DOMAIN_BOOST` when the story's tags meet the programme's
+      `domains`;
+    * **breaking-ness** — the beat's own `beat_kind` (`_BEAT_WEIGHT`), bumped when the
+      beat is dated TODAY in-world.
+
+    Returns **every** event, highest first — truncation is the caller's, because the
+    caller needs both slices: the bodied head AND the title-only tail just behind it.
+    `context_events_domain_min` is honoured here rather than by the caller, as a
+    reserved sub-quota inside the first `context_events_max`: if the programme's own
+    field would otherwise be crowded out by a louder story elsewhere, its top-ranked
+    beats are promoted into the head. Order *within* the head stays by score.
+
+    Pure: no DB, no clock read beyond `now` (`clock.to_inworld` is a fixed offset), and
+    ties break on the id, so the same world at the same instant always ranks the same.
+    `story_tags` / `story_arcs` are the two `store` lookups the caller already does;
+    absent, the corresponding factor is simply neutral.
+    """
+    iw_now = clock.to_inworld(now)
+    tags = story_tags or {}
+    arcs = story_arcs or {}
+    domset = {d.lower() for d in (domains or [])}
+
+    def in_domain(e: Event) -> bool:
+        return bool(e.story_id) and bool(
+            domset.intersection(t.lower() for t in tags.get(e.story_id, []))
+        )
+
+    def key(e: Event) -> tuple[float, float, str]:
+        hours = (e.in_world_datetime - iw_now).total_seconds() / 3600.0
+        score = 0.5 ** (abs(hours) / _RECENCY_HALFLIFE_HOURS)
+        if hours > 0:
+            score *= _FUTURE_DISCOUNT
+        score *= _ARC_WEIGHT.get(arcs.get(e.story_id or "", ""), _ARC_DEFAULT)
+        score *= _BEAT_WEIGHT.get(e.beat_kind or "", _BEAT_DEFAULT)
+        if e.in_world_datetime.date() == iw_now.date():
+            score *= _TODAY_BOOST
+        if in_domain(e):
+            score *= _DOMAIN_BOOST
+        return (-score, abs(hours), e.id)
+
+    ranked = sorted(events, key=key)
+    return _promote_domain_quota(ranked, in_domain)
+
+
+def _promote_domain_quota(
+    ranked: list[Event], in_domain: Callable[[Event], bool]
+) -> list[Event]:
+    """Guarantee the programme's own field a floor inside the bodied head (Q2.0).
+
+    `ranked` is already in score order. If fewer than `context_events_domain_min` of
+    the first `context_events_max` are in-domain, promote the next-best in-domain beats
+    into that head — displacing the weakest out-of-domain ones, which drop to just
+    behind it (they become the title tail, not nothing). Order within each region stays
+    by score, so the promotion is the only thing that reorders anything.
+    """
+    head_n = settings.context_events_max
+    floor = min(settings.context_events_domain_min, head_n)
+    if head_n <= 0 or floor <= 0 or len(ranked) <= head_n:
+        return ranked
+    dom = [e for e in ranked if in_domain(e)]
+    if sum(1 for e in ranked[:head_n] if in_domain(e)) >= min(floor, len(dom)):
+        return ranked
+    keep = {e.id for e in dom[:floor]}
+    for e in ranked:
+        if len(keep) >= head_n:
+            break
+        keep.add(e.id)
+    log.debug("context_events_domain_promoted", head=head_n, floor=floor, dom=len(dom))
+    return [e for e in ranked if e.id in keep] + [e for e in ranked if e.id not in keep]
 
 
 def _split_by_domain(
@@ -264,7 +447,14 @@ def _select_canon(conn, topic: str | None) -> list[CanonFact]:
     * **structured** — `store.canon_by_tags` adds any tag-matched facts the vectors
       missed (the complement; it earns its keep once facts are tagged in D2.5).
 
-    The union is semantic-first (preserving meaning-rank), then any tag-only extras.
+    The union is semantic-first (preserving meaning-rank), then any tag-only extras,
+    **bounded to `context_canon_top_k`** (Q2.1). That bound is new and load-bearing: the
+    live path now passes a programme BRIEF as the topic, and a brief is three sentences,
+    so `_topic_tags` tokenises it into dozens of ordinary words that tag-match most of
+    the canon — 80 facts, uncached, every call. Semantic rank decides who makes the cut;
+    the tag complement fills whatever is left below k (which is what it was always for —
+    covering the facts the vectors missed, not doubling the block).
+
     If BOTH come back empty — no vector hit AND no tag match, or vectors unavailable
     (pgvector off / embeddings backend down, where `retrieve` returns `[]`) — we fall
     back to the whole canon, so the writer never loses the core facts.
@@ -278,7 +468,7 @@ def _select_canon(conn, topic: str | None) -> list[CanonFact]:
     tag_ids = [f.id for f in store.canon_by_tags(conn, _topic_tags(topic))]
 
     seen = set(sem_ids)
-    union_ids = sem_ids + [i for i in tag_ids if not (i in seen or seen.add(i))]
+    union_ids = (sem_ids + [i for i in tag_ids if not (i in seen or seen.add(i))])[:k]
     if union_ids:
         log.debug(
             "context_canon_hybrid",
@@ -387,6 +577,7 @@ def _render_dynamic(
     *,
     preferred_events: list[Event] | None = None,
     items: list[Item] | None = None,
+    tail_events: list[Event] | None = None,
 ) -> str:
     """The per-call dynamic block: what is true right now, for the system prompt.
 
@@ -399,6 +590,11 @@ def _render_dynamic(
     ONE LINE EACH, never a paragraph. That density is the point — the room should be
     able to glance down a list of twelve ordinary happenings and pick one, which is what
     a world of 23 stories could never offer it.
+
+    `tail_events` (Q2.0) are the beats ranked just below the bodied set: TITLE ONLY, so
+    the room knows a running story exists — and can pick it up next time it leads —
+    without paying a paragraph for each. They render last of the event material,
+    deliberately quiet.
     """
     sections: list[str] = []
 
@@ -418,6 +614,15 @@ def _render_dynamic(
         lines = [_event_line(e, now) for e in events]
         header = "Current events (reference naturally, don't recite):\n"
         sections.append(header + "\n".join(lines))
+
+    if tail_events:
+        lines = [
+            f"- {e.title} ({events_mod.relative_phrase(e, now)})" for e in tail_events
+        ]
+        sections.append(
+            "Also running, headlines only — you know these are out there, but you "
+            "don't have the detail, so don't invent it:\n" + "\n".join(lines)
+        )
 
     if items:
         lines = [

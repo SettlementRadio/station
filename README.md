@@ -357,6 +357,14 @@ exactly what the writer will send:
 ```bash
 make context     # prints the cached core and the dynamic (events/canon) slice for now
 ```
+> **The dynamic half is bounded and ranked (Phase Q / Q2).** `rank_events` scores every event in
+> the window on **recency × story arc stage × programme-domain match × breaking-ness** and renders
+> only the top `CONTEXT_EVENTS_MAX` (15) with bodies, plus the next `CONTEXT_EVENTS_TAIL` (10) as
+> title-only one-liners so a running story stays in the room's awareness for free. A vertical holds
+> `CONTEXT_EVENTS_DOMAIN_MIN` reserved seats in that bodied set. And the scheduler now passes the
+> on-air programme's **editorial brief** as the retrieval `topic`, so the semantic canon recall
+> below actually runs on the live path (before Q2 it never did, and all 267 facts shipped uncached
+> on every call). Together: ~133k → ~20k characters of per-call prompt.
 > **Semantic retrieval is live (Phase D / D2).** Structured queries (by date / status / tag) still
 > serve the fast path, but the canon is now also recalled by **meaning** via pgvector. The vector SQL
 > lives only in [`src/world/store.py`](src/world/store.py) — `CREATE EXTENSION vector` plus ONE
